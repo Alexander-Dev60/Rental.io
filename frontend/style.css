@@ -1,0 +1,184 @@
+:root {
+    --primary: #6366f1;
+    --primary-hover: #4f46e5;
+    --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --glass-bg: rgba(255, 255, 255, 0.9);
+    --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+}
+
+body {
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg-gradient);
+    background-attachment: fixed;
+    min-height: 100vh;
+    margin: 0;
+    color: #1f2937;
+}
+
+.container {
+    max-width: 1100px;
+    margin: auto;
+    padding: 40px 20px;
+}
+
+h1 {
+    color: white;
+    font-weight: 800;
+    font-size: 2.5rem;
+    text-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    margin-bottom: 40px;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
+}
+
+.card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 25px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: var(--shadow);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.25);
+}
+
+.card.full {
+    grid-column: span 2;
+}
+
+@media (max-width: 768px) {
+    .card.full { grid-column: span 1; }
+}
+
+h2 {
+    margin-top: 0;
+    font-size: 1.2rem;
+    color: var(--primary);
+    border-left: 4px solid var(--primary);
+    padding-left: 12px;
+}
+
+input, select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px 15px;
+    margin: 10px 0;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+    background: #f9fafb;
+    transition: all 0.2s;
+}
+
+input:focus, select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+}
+
+button {
+    width: 100%;
+    padding: 12px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    font-weight: 600;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    margin-top: 10px;
+}
+
+button:hover {
+    background: var(--primary-hover);
+}
+
+button:active {
+    transform: scale(0.98);
+}
+
+/* List styling */
+ul {
+    margin-top: 15px;
+}
+
+li {
+    background: white;
+    margin-bottom: 8px;
+    padding: 12px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-left: 3px solid #e5e7eb;
+    animation: fadeIn 0.4s ease forwards;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+
+
+.stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.stat {
+    background: #f9fafc;
+    padding: 10px;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.stat h3 {
+    margin: 5px 0;
+}
+
+.stat p {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+li {
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+li:hover {
+    background: #f0f4ff;
+    cursor: pointer;
+}
+
+#receiptOutput {
+    margin-top: 15px;
+    padding: 15px;
+    border: 2px dashed #333;
+    background: white;
+}
+
+.receipt-title {
+    text-align: center;
+    font-weight: bold;
+    font-size: 18px;
+}
+
+.receipt {
+    margin-top: 15px;
+    padding: 15px;
+    border: 2px dashed #444;
+    background: #fff;
+    border-radius: 10px;
+}

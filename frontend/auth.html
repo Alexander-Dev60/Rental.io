@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rental Portal — Access</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=Martian+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <style>
+    /* ─── Variables ─── */
+    :root {
+      --night:    #080a0f;
+      --deep:     #0d1017;
+      --panel:    #12161f;
+      --edge:     rgba(255,255,255,0.06);
+      --edge2:    rgba(255,255,255,0.12);
+      --accent:   #e8c27a;       /* warm gold */
+      --accent2:  #c4623a;       /* terracotta */
+      --accent-g: rgba(232,194,122,0.15);
+      --text:     #e8e2d9;
+      --muted:    #6a6460;
+      --error:    #ff5a5a;
+      --success:  #4ecca3;
+      --font-d:   'Instrument Serif', Georgia, serif;
+      --font-b:   'Syne', sans-serif;
+      --font-m:   'Martian Mono', monospace;
+      --ease:     cubic-bezier(0.4,0,0.2,1);
+      --spring:   cubic-bezier(0.34,1.56,0.64,1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+
+    body {
+      background: var(--night);
+      color: var(--text);
+      font-family: var(--font-b);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ─── Background: animated geometric constellation ─── */
+    .bg-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    /* Large gradient orbs */
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.18;
+      animation: orbDrift 18s ease-in-out infinite alternate;
+    }
+    .orb-1 {
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, #b8922a, transparent 70%);
+      top: -120px; left: -100px;
+      animation-duration: 20s;
+    }
+    .orb-2 {
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, #c4623a, transparent 70%);
+      bottom: -80px; right: -80px;
+      animation-duration: 25s;
+      animation-delay: -8s;
+    }
+    .orb-3 {
+      width: 280px; height: 280px;
+      background: radial-gradient(circle, #e8c27a, transparent 70%);
+      top: 50%; right: 20%;
+      animation-duration: 15s;
+      animation-delay: -4s;
+      opacity: 0.10;
+    }
+
+    @keyframes orbDrift {
+      from { transform: translate(0, 0) scale(1); }
+      to   { transform: translate(40px, 30px) scale(1.12); }
+    }
+
+    /* Grid lines */
+    .bg-canvas::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+
+    /* Diagonal accent line */
+    .bg-canvas::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 200%; height: 2px;
+      background: linear-gradient(90deg, transparent 0%, var(--accent) 40%, var(--accent2) 60%, transparent 100%);
+      opacity: 0.12;
+      transform: rotate(-12deg) translateY(30vh);
+    }
+
+    /* Floating particles */
+    .particle {
+      position: absolute;
+      width: 2px; height: 2px;
+      background: var(--accent);
+      border-radius: 50%;
+      opacity: 0;
+      animation: particleFly linear infinite;
+    }
+
+    @keyframes particleFly {
+      0%   { opacity: 0; transform: translateY(0) translateX(0); }
+      10%  { opacity: 0.6; }
+      90%  { opacity: 0.3; }
+      100% { opacity: 0; transform: translateY(-120vh) translateX(30px); }
+    }
+
+    /* ─── Split layout ─── */
+    .auth-wrapper {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      width: min(960px, 96vw);
+      height: min(600px, 92vh);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow:
+        0 0 0 1px var(--edge2),
+        0 40px 100px rgba(0,0,0,0.7),
+        0 0 60px rgba(232,194,122,0.06);
+      animation: wrapperIn 0.8s var(--ease) both;
+    }
+
+    @keyframes wrapperIn {
+      from { opacity: 0; transform: scale(0.94) translateY(20px); }
+      to   { opacity: 1; transform: scale(1)    translateY(0); }
+    }
+
+    /* ─── Left panel: Branding ─── */
+    .brand-panel {
+      flex: 1;
+      background: var(--panel);
+      border-right: 1px solid var(--edge);
+      padding: 3rem 2.5rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Vertical accent bar */
+    .brand-panel::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 2px; height: 100%;
+      background: linear-gradient(180deg, transparent, var(--accent), transparent);
+      opacity: 0.5;
+    }
+
+    /* Big background number */
+    .brand-panel::after {
+      content: '🏠';
+      position: absolute;
+      bottom: -20px; right: -10px;
+      font-size: 200px;
+      opacity: 0.04;
+      line-height: 1;
+      filter: grayscale(1);
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      animation: fadeUp 0.6s 0.2s var(--ease) both;
+    }
+
+    .brand-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+      box-shadow: 0 4px 16px rgba(232,194,122,0.3);
+    }
+
+    .brand-name {
+      font-family: var(--font-b);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--text);
+      opacity: 0.7;
+    }
+
+    .brand-headline {
+      animation: fadeUp 0.6s 0.35s var(--ease) both;
+    }
+
+    .brand-headline h1 {
+      font-family: var(--font-d);
+      font-style: italic;
+      font-size: clamp(2.2rem, 3.5vw, 3rem);
+      font-weight: 400;
+      line-height: 1.2;
+      color: var(--text);
+      margin-bottom: 1rem;
+    }
+
+    .brand-headline h1 em {
+      color: var(--accent);
+      font-style: italic;
+    }
+
+    .brand-headline p {
+      font-size: 0.8rem;
+      font-weight: 400;
+      color: var(--muted);
+      line-height: 1.7;
+      letter-spacing: 0.02em;
+      max-width: 240px;
+    }
+
+    .brand-features {
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+      animation: fadeUp 0.6s 0.5s var(--ease) both;
+    }
+
+    .feat {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-weight: 400;
+      letter-spacing: 0.03em;
+    }
+
+    .feat-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      flex-shrink: 0;
+      box-shadow: 0 0 6px var(--accent);
+    }
+
+    /* ─── Right panel: Form ─── */
+    .form-panel {
+      width: 380px;
+      flex-shrink: 0;
+      background: var(--deep);
+      padding: 2.8rem 2.5rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Subtle corner decoration */
+    .form-panel::before {
+      content: '';
+      position: absolute;
+      top: 0; right: 0;
+      width: 100px; height: 100px;
+      border-top: 1px solid var(--edge2);
+      border-right: 1px solid var(--edge2);
+      border-radius: 0 20px 0 0;
+      pointer-events: none;
+    }
+
+    .form-panel::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0;
+      width: 80px; height: 80px;
+      border-bottom: 1px solid var(--edge);
+      border-left: 1px solid var(--edge);
+      border-radius: 0 0 0 20px;
+      pointer-events: none;
+    }
+
+    /* ─── Mode toggle tabs ─── */
+    .mode-tabs {
+      display: flex;
+      background: var(--panel);
+      border: 1px solid var(--edge);
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 2rem;
+      animation: fadeUp 0.5s 0.4s var(--ease) both;
+    }
+
+    .tab-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-family: var(--font-b);
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      padding: 0.6rem;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: background 0.25s var(--ease), color 0.25s var(--ease), box-shadow 0.25s var(--ease);
+      width: auto;
+      margin: 0;
+    }
+
+    .tab-btn.active {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(232,194,122,0.25);
+    }
+
+    .tab-btn:hover:not(.active) { color: var(--text); }
+    .tab-btn::before, .tab-btn::after { display: none; }
+
+    /* ─── Form title ─── */
+    .form-title {
+      margin-bottom: 1.6rem;
+      animation: fadeUp 0.5s 0.5s var(--ease) both;
+    }
+
+    .form-title h2 {
+      font-family: var(--font-d);
+      font-size: 1.8rem;
+      font-style: italic;
+      font-weight: 400;
+      color: var(--text);
+      letter-spacing: 0.01em;
+      margin-bottom: 0.25rem;
+    }
+
+    .form-title p {
+      font-size: 0.72rem;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+      font-family: var(--font-m);
+    }
+
+    /* ─── Form fields ─── */
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      margin-bottom: 1.3rem;
+      animation: fadeUp 0.5s 0.55s var(--ease) both;
+    }
+
+    .field {
+      position: relative;
+    }
+
+    .field-icon {
+      position: absolute;
+      left: 0.9rem;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.85rem;
+      opacity: 0.4;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+
+    .field input {
+      width: 100%;
+      background: var(--panel);
+      border: 1px solid var(--edge);
+      border-radius: 9px;
+      color: var(--text);
+      font-family: var(--font-b);
+      font-size: 0.82rem;
+      font-weight: 400;
+      padding: 0.75rem 1rem 0.75rem 2.6rem;
+      margin: 0;
+      outline: none;
+      transition: border-color 0.2s var(--ease), background 0.2s var(--ease), box-shadow 0.2s var(--ease);
+      letter-spacing: 0.02em;
+    }
+
+    .field input::placeholder {
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    .field input:focus {
+      border-color: var(--accent);
+      background: rgba(232,194,122,0.05);
+      box-shadow: 0 0 0 3px rgba(232,194,122,0.1);
+    }
+
+    .field input:focus + .field-icon,
+    .field:focus-within .field-icon {
+      opacity: 0.8;
+    }
+
+    /* Hidden field animation */
+    .field.hidden {
+      display: none;
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+
+    .field.visible {
+      display: block;
+      animation: fieldReveal 0.35s var(--spring) both;
+    }
+
+    @keyframes fieldReveal {
+      from { opacity: 0; transform: translateY(-10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ─── Submit button ─── */
+    #submitBtn {
+      width: 100%;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-family: var(--font-b);
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      padding: 0.85rem;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: opacity 0.2s, transform 0.15s var(--ease), box-shadow 0.2s var(--ease);
+      box-shadow: 0 4px 20px rgba(196,98,58,0.3);
+      animation: fadeUp 0.5s 0.65s var(--ease) both;
+      margin: 0;
+    }
+
+    #submitBtn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 100%);
+    }
+
+    /* Ripple shimmer */
+    #submitBtn::after {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+      transition: left 0.45s ease;
+    }
+
+    #submitBtn:hover::after { left: 100%; }
+
+    #submitBtn:hover {
+      opacity: 0.92;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(196,98,58,0.4);
+    }
+
+    #submitBtn:active {
+      transform: translateY(1px);
+      box-shadow: 0 2px 10px rgba(196,98,58,0.2);
+    }
+
+    #submitBtn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Loading spinner inside button */
+    #submitBtn.loading::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: inherit;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ─── Toast notification ─── */
+    #toast {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--panel);
+      border: 1px solid var(--edge2);
+      border-radius: 10px;
+      padding: 0.75rem 1.4rem;
+      font-family: var(--font-m);
+      font-size: 0.75rem;
+      letter-spacing: 0.06em;
+      color: var(--text);
+      opacity: 0;
+      transition: opacity 0.3s var(--ease), transform 0.3s var(--ease);
+      z-index: 999;
+      pointer-events: none;
+      white-space: nowrap;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    #toast.error  { border-color: rgba(255,90,90,0.5); color: var(--error); }
+    #toast.success { border-color: rgba(78,204,163,0.5); color: var(--success); }
+
+    /* ─── Shared animations ─── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ─── Responsive ─── */
+    @media (max-width: 700px) {
+      .auth-wrapper {
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+        border-radius: 0;
+        width: 100%;
+      }
+
+      .brand-panel {
+        border-right: none;
+        border-bottom: 1px solid var(--edge);
+        padding: 2rem 1.5rem 1.8rem;
+        flex: none;
+      }
+
+      .brand-panel::after { display: none; }
+
+      .brand-headline h1 { font-size: 1.8rem; }
+
+      .brand-features { flex-direction: row; flex-wrap: wrap; }
+
+      .form-panel {
+        width: 100%;
+        padding: 2rem 1.5rem;
+        flex: 1;
+      }
+    }
+
+    @media (max-width: 400px) {
+      .form-panel { padding: 1.5rem 1.2rem; }
+      .brand-panel { padding: 1.5rem 1.2rem; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Background -->
+  <div class="bg-canvas">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast"></div>
+
+  <!-- Auth wrapper -->
+  <div class="auth-wrapper">
+
+    <!-- Left: Branding -->
+    <div class="brand-panel">
+      <div class="brand-logo">
+        <div class="brand-icon">🏠</div>
+        <span class="brand-name">RentPortal</span>
+      </div>
+
+      <div class="brand-headline">
+        <h1>Your home,<br><em>managed well.</em></h1>
+        <p>A modern rental platform for tenants and landlords. Pay rent, track receipts, and stay informed — all in one place.</p>
+      </div>
+
+      <div class="brand-features">
+        <div class="feat"><span class="feat-dot"></span> Real-time payment receipts</div>
+        <div class="feat"><span class="feat-dot"></span> Tenant & landlord chat</div>
+        <div class="feat"><span class="feat-dot"></span> Arrears & balance tracking</div>
+        <div class="feat"><span class="feat-dot"></span> Secure JWT authentication</div>
+      </div>
+    </div>
+
+    <!-- Right: Form -->
+    <div class="form-panel">
+
+      <!-- Mode tabs -->
+      <div class="mode-tabs">
+        <button class="tab-btn active" id="loginTab"    onclick="setMode('login')">Login</button>
+        <button class="tab-btn"        id="registerTab" onclick="setMode('register')">Register</button>
+      </div>
+
+      <!-- Title -->
+      <div class="form-title">
+        <h2 id="title">Welcome back.</h2>
+        <p id="subtitle">SIGN IN TO YOUR ACCOUNT</p>
+      </div>
+
+      <!-- Fields -->
+      <div class="field-group">
+
+        <!-- Name — register only -->
+        <div class="field hidden" id="nameField">
+          <input type="text" id="name" placeholder="Full name">
+          <span class="field-icon">👤</span>
+        </div>
+
+        <!-- Email — always visible -->
+        <div class="field">
+          <input type="email" id="email" placeholder="Email address">
+          <span class="field-icon">✉️</span>
+        </div>
+
+        <!-- Phone — register only -->
+        <div class="field hidden" id="phoneField">
+          <input type="text" id="phone" placeholder="Phone number (07XXXXXXXX)">
+          <span class="field-icon">📞</span>
+        </div>
+
+        <!-- Password — always visible -->
+        <div class="field">
+          <input type="password" id="password" placeholder="Password">
+          <span class="field-icon">🔑</span>
+        </div>
+
+      </div>
+
+      <!-- Submit -->
+      <button id="submitBtn" onclick="submitAuth()">Sign In</button>
+
+    </div>
+  </div>
+
+  <script>
+    // ── Particle generator ──
+    const bgCanvas = document.querySelector('.bg-canvas');
+    for (let i = 0; i < 18; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      p.style.cssText = `
+        left: ${Math.random() * 100}%;
+        top: ${80 + Math.random() * 20}%;
+        animation-duration: ${8 + Math.random() * 14}s;
+        animation-delay: ${-Math.random() * 20}s;
+        width: ${1 + Math.random() * 2}px;
+        height: ${1 + Math.random() * 2}px;
+      `;
+      bgCanvas.appendChild(p);
+    }
+
+    // ── currentMode — read by auth.js submitAuth() ──
+    let currentMode = 'login';
+
+    function setMode(mode) {
+      currentMode = mode;
+
+      const nameField  = document.getElementById('nameField');
+      const phoneField = document.getElementById('phoneField'); // FIX: wrapper not input
+      const title      = document.getElementById('title');
+      const subtitle   = document.getElementById('subtitle');
+      const loginTab   = document.getElementById('loginTab');
+      const registerTab= document.getElementById('registerTab');
+      const btn        = document.getElementById('submitBtn');
+
+      if (mode === 'login') {
+        loginTab.classList.add('active');
+        registerTab.classList.remove('active');
+        title.textContent    = 'Welcome back.';
+        subtitle.textContent = 'SIGN IN TO YOUR ACCOUNT';
+        btn.textContent      = 'Sign In';
+
+        // Hide register-only fields
+        nameField.classList.remove('visible');
+        nameField.classList.add('hidden');
+        phoneField.classList.remove('visible');
+        phoneField.classList.add('hidden');
+
+      } else {
+        registerTab.classList.add('active');
+        loginTab.classList.remove('active');
+        title.textContent    = 'Create account.';
+        subtitle.textContent = 'JOIN THE RENTAL PORTAL';
+        btn.textContent      = 'Create Account';
+
+        // Show register-only fields
+        nameField.classList.remove('hidden');
+        nameField.classList.add('visible');
+        phoneField.classList.remove('hidden');
+        phoneField.classList.add('visible');
+      }
+    }
+
+    // ── Toast ──
+    function showToast(msg, type = '') {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className   = 'show ' + type;
+      clearTimeout(t._timer);
+      t._timer = setTimeout(() => { t.className = ''; }, 3500);
+    }
+
+    // ── Loading state ──
+    function setLoading(on) {
+      const btn = document.getElementById('submitBtn');
+      btn.disabled    = on;
+      btn.textContent = on
+        ? (currentMode === 'login' ? 'Signing in…' : 'Creating account…')
+        : (currentMode === 'login' ? 'Sign In'     : 'Create Account');
+    }
+
+    // Init
+    setMode('login');
+  </script>
+
+  <script src="auth.js"></script>
+
+</body>
+</html>
