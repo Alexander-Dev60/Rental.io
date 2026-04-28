@@ -491,7 +491,10 @@ async function sendAdminMessage() {
         console.error(err);
     }
 }
-
+// Enter key sends message
+document.getElementById('adminMsg').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAdminMessage(); }
+});
 
 async function loadUnread() {
     try {
