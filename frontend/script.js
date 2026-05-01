@@ -4,7 +4,8 @@
 //  index.js handles rendering / DOM only.
 // ═══════════════════════════════════════════════════════
 
-const API = 'http://localhost:3000';
+
+const API ='http://localhost:3000';
 
 function getToken() {
     return localStorage.getItem('token');

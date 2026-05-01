@@ -4,7 +4,7 @@
 //  are defined in auth.html inline script)
 // ═══════════════════════════════════════════════════════
 
-const API = 'http://localhost:3000';
+const API ='http://localhost:3000';
 
 // ── Decode JWT safely ──
 function getUserFromToken(token) {

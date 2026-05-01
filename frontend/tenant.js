@@ -6,6 +6,7 @@
 //  BEFORE loadProfile() is called)
 // ═══════════════════════════════════════════════════════
 
+
 async function checkMaintenance() {
     try {
         const res  = await fetch(`${API}/maintenance`);
@@ -119,7 +120,7 @@ function showMaintenanceScreen(message) {
 }
 
 
-const API = 'http://localhost:3000';
+const API ='http://localhost:3000';
 
 // ─── State ───
 let _tenant    = null;
