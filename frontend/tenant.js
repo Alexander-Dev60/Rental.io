@@ -120,7 +120,8 @@ function showMaintenanceScreen(message) {
 }
 
 
-const API ='http://localhost:3000';
+
+const API= 'https://affordable-rental-systems.onrender.com';
 
 // ─── State ───
 let _tenant    = null;
