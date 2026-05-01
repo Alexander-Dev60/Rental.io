@@ -3,10 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  
   "scripts": {
     "start": "node app.js",
-    "dev": "nodemon server.js"   
+    "dev": "nodemon server.js"
   },
   "keywords": [],
   "author": "",
@@ -22,6 +21,7 @@
     "mongoose": "^9.5.0",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.5",
-    "pdfkit": "^0.18.0"
+    "pdfkit": "^0.18.0",
+    "resend": "^6.12.2"
   }
 }

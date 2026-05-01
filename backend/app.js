@@ -6,7 +6,10 @@ require('dotenv').config();
 app.use(cors());
 app.use(express.json());
 
-const nodemailer  = require('nodemailer');
+//const nodemailer  = require('nodemailer');
+const { Resend } = require('resend');
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 const PDFDocument = require('pdfkit');
 const bcrypt      = require('bcryptjs');
 const jwt         = require('jsonwebtoken');
@@ -94,13 +97,13 @@ app.put('/maintenance', authMiddleware, adminOnly, async (req, res) => {
 });
 
 // ── Mailer ──
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.GMAIL_USER,   // FIX #9 — use env vars
-        pass: process.env.GMAIL_PASS
-    }
-});
+//const transporter = nodemailer.createTransport({
+   // service: 'gmail',
+   // auth: {
+     //   user: process.env.GMAIL_USER,   // FIX #9 — use env vars
+      //  pass: process.env.GMAIL_PASS
+   // }
+//});
 
 // ═══════════════════════════════════════
 // MIDDLEWARE

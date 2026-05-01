@@ -4,34 +4,11 @@
 //  const { sendWelcomeEmail, sendRentReminder, sendMoveOutEmail } = require('./emails');
 // ═══════════════════════════════════════════════════════
 
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-// REPLACE this:
-function getTransporter() {
-    return nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-            user: process.env.GMAIL_USER,
-            pass: process.env.GMAIL_PASS
-        }
-    });
-}
-
-// WITH this:
-/*function getTransporter() {
-    return nodemailer.createTransport({
-        host:   'smtp.gmail.com',
-        port:   587,
-        secure: false,        // false = TLS (STARTTLS), not SSL
-        auth: {
-            user: process.env.GMAIL_USER,
-            pass: process.env.GMAIL_PASS
-        },
-        tls: {
-            rejectUnauthorized: false  // helps on strict networks
-        }
-    });
-}*/
+// Sender address — use this until you add a custom domain on Resend
+const FROM = 'RentPortal 🏠 <onboarding@resend.dev>';
 
 // ════════════════════════════════════════════════
 // 1. WELCOME EMAIL
@@ -39,10 +16,8 @@ function getTransporter() {
 // ════════════════════════════════════════════════
 
 async function sendWelcomeEmail({ name, email }) {
-    const transporter = getTransporter();
-
-    await transporter.sendMail({
-        from:    `RentPortal 🏠 <${process.env.GMAIL_USER}>`,
+    await resend.emails.send({
+        from:    FROM,
         to:      email,
         subject: `Welcome to RentPortal, ${name.split(' ')[0]}! 🎉`,
         html: `
@@ -100,7 +75,7 @@ async function sendWelcomeEmail({ name, email }) {
 
               <!-- CTA -->
               <div style="text-align:center;margin-bottom:28px">
-                <a href="${process.env.APP_URL || 'http://localhost:3000'}/tenant.html"
+                <a href="${process.env.BASE_URL || 'http://localhost:3000'}/tenant.html"
                    style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:14px 32px;border-radius:8px;letter-spacing:0.02em">
                   Go to My Dashboard →
                 </a>
@@ -133,12 +108,10 @@ async function sendWelcomeEmail({ name, email }) {
 // ════════════════════════════════════════════════
 
 async function sendRentReminder({ name, email, house, rent, month, dueDate, arrears }) {
-    const transporter = getTransporter();
-
     const isOverdue = arrears > 0;
 
-    await transporter.sendMail({
-        from:    `RentPortal 🏠 <${process.env.GMAIL_USER}>`,
+    await resend.emails.send({
+        from:    FROM,
         to:      email,
         subject: isOverdue
             ? `⚠️ Rent Overdue — ${month} | ${house}`
@@ -204,7 +177,7 @@ async function sendRentReminder({ name, email, house, rent, month, dueDate, arre
 
               <!-- CTA -->
               <div style="text-align:center;margin-bottom:28px">
-                <a href="${process.env.APP_URL || 'http://localhost:3000'}/tenant.html"
+                <a href="${process.env.BASE_URL || 'http://localhost:3000'}/tenant.html"
                    style="display:inline-block;background:${isOverdue ? '#dc2626' : '#d97706'};color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:14px 32px;border-radius:8px">
                   Pay Rent Now →
                 </a>
@@ -237,10 +210,8 @@ async function sendRentReminder({ name, email, house, rent, month, dueDate, arre
 // ════════════════════════════════════════════════
 
 async function sendMoveOutEmail({ name, email, house, moveOutDate }) {
-    const transporter = getTransporter();
-
-    await transporter.sendMail({
-        from:    `RentPortal 🏠 <${process.env.GMAIL_USER}>`,
+    await resend.emails.send({
+        from:    FROM,
         to:      email,
         subject: `Goodbye ${name.split(' ')[0]} — Move-out Confirmed 🏠`,
         html: `

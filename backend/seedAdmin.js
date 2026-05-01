@@ -1,7 +1,9 @@
 const bcrypt = require("bcryptjs");
 const User = require("./models/User");
+require('dotenv').config();
 const connectDB = require('./db');
 connectDB();
+
 
 
 
@@ -13,7 +15,7 @@ async function createAdmin() {
         return;
     }
 
-    const hashed = await bcrypt.hash("1234", 10);
+    const hashed = await bcrypt.hash("Alex33366763#", 10);
 
     await User.create({
         name: "Admin",
