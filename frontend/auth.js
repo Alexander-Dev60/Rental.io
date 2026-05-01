@@ -4,7 +4,7 @@
 //  are defined in auth.html inline script)
 // ═══════════════════════════════════════════════════════
 
-const API ='http://localhost:3000';
+ const API= 'https://affordable-rental-systems.onrender.com'; 
 
 // ── Decode JWT safely ──
 function getUserFromToken(token) {
