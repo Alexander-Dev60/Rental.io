@@ -97,13 +97,13 @@ app.put('/maintenance', authMiddleware, adminOnly, async (req, res) => {
 });
 
 // ── Mailer ──
-//const transporter = nodemailer.createTransport({
-   // service: 'gmail',
-   // auth: {
-     //   user: process.env.GMAIL_USER,   // FIX #9 — use env vars
-      //  pass: process.env.GMAIL_PASS
-   // }
-//});
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.GMAIL_USER,   // FIX #9 — use env vars
+        pass: process.env.GMAIL_PASS
+    }
+});
 
 // ═══════════════════════════════════════
 // MIDDLEWARE
