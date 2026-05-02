@@ -4,20 +4,36 @@
 //  const { sendWelcomeEmail, sendRentReminder, sendMoveOutEmail } = require('./emails');
 // ═══════════════════════════════════════════════════════
 
-const { Resend } = require('resend');
-const resend = new Resend(process.env.RESEND_API_KEY);
+const axios = require('axios'); // already installed in your project
 
-// Sender address — use this until you add a custom domain on Resend
-const FROM = 'RentPortal 🏠 <onboarding@resend.dev>';
+const BREVO_API_KEY = process.env.BREVO_API_KEY;
+const FROM = { name: 'RentPortal 🏠', email: 'alexanderbosire60@gmail.com' };
+
+// ── Core send function ──
+async function sendEmail({ to, subject, html }) {
+    await axios.post(
+        'https://api.brevo.com/v3/smtp/email',
+        {
+            sender:      FROM,
+            to:          [{ email: to }],
+            subject,
+            htmlContent: html
+        },
+        {
+            headers: {
+                'api-key':      BREVO_API_KEY,
+                'Content-Type': 'application/json'
+            }
+        }
+    );
+}
 
 // ════════════════════════════════════════════════
 // 1. WELCOME EMAIL
-// Call after tenant registers
 // ════════════════════════════════════════════════
 
 async function sendWelcomeEmail({ name, email }) {
-    await resend.emails.send({
-        from:    FROM,
+    await sendEmail({
         to:      email,
         subject: `Welcome to RentPortal, ${name.split(' ')[0]}! 🎉`,
         html: `
@@ -29,32 +45,18 @@ async function sendWelcomeEmail({ name, email }) {
         </head>
         <body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif">
           <div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
-
-            <!-- Header -->
             <div style="background:linear-gradient(135deg,#7c3aed,#4f46e5);padding:40px 32px;text-align:center">
               <div style="font-size:48px;margin-bottom:12px">🏠</div>
-              <h1 style="color:#ffffff;margin:0;font-size:26px;font-weight:700;letter-spacing:-0.5px">
-                Welcome to RentPortal
-              </h1>
+              <h1 style="color:#ffffff;margin:0;font-size:26px;font-weight:700">Welcome to RentPortal</h1>
               <p style="color:#c4b5fd;margin:8px 0 0;font-size:14px">Your home, managed well.</p>
             </div>
-
-            <!-- Body -->
             <div style="padding:36px 32px">
-              <p style="color:#1e293b;font-size:16px;margin:0 0 16px">
-                Hi <strong>${name.split(' ')[0]}</strong> 👋,
-              </p>
+              <p style="color:#1e293b;font-size:16px;margin:0 0 16px">Hi <strong>${name.split(' ')[0]}</strong> 👋,</p>
               <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">
                 Your account has been successfully created on <strong>RentPortal</strong>.
-                You can now log in to your tenant dashboard to view your house details,
-                make rent payments, download receipts, and chat with your landlord.
+                You can now log in to view your house details, make rent payments, download receipts, and chat with your landlord.
               </p>
-
-              <!-- Info box -->
               <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:20px 24px;margin-bottom:28px">
-                <p style="color:#64748b;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;margin:0 0 12px;font-weight:600">
-                  YOUR ACCOUNT
-                </p>
                 <table style="width:100%;border-collapse:collapse">
                   <tr>
                     <td style="color:#94a3b8;font-size:13px;padding:6px 0">Name</td>
@@ -72,27 +74,16 @@ async function sendWelcomeEmail({ name, email }) {
                   </tr>
                 </table>
               </div>
-
-              <!-- CTA -->
               <div style="text-align:center;margin-bottom:28px">
                 <a href="${process.env.BASE_URL || 'http://localhost:3000'}/tenant.html"
-                   style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:14px 32px;border-radius:8px;letter-spacing:0.02em">
+                   style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:14px 32px;border-radius:8px">
                   Go to My Dashboard →
                 </a>
               </div>
-
-              <p style="color:#94a3b8;font-size:12px;line-height:1.6;margin:0">
-                If you have any questions, reply to this email or use the chat feature in your dashboard to message your landlord directly.
-              </p>
             </div>
-
-            <!-- Footer -->
             <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 32px;text-align:center">
-              <p style="color:#cbd5e1;font-size:11px;margin:0">
-                © ${new Date().getFullYear()} RentPortal · You received this because you registered an account.
-              </p>
+              <p style="color:#cbd5e1;font-size:11px;margin:0">© ${new Date().getFullYear()} RentPortal</p>
             </div>
-
           </div>
         </body>
         </html>`
@@ -104,14 +95,12 @@ async function sendWelcomeEmail({ name, email }) {
 
 // ════════════════════════════════════════════════
 // 2. RENT REMINDER EMAIL
-// Call from checkArrears() cron job
 // ════════════════════════════════════════════════
 
 async function sendRentReminder({ name, email, house, rent, month, dueDate, arrears }) {
     const isOverdue = arrears > 0;
 
-    await resend.emails.send({
-        from:    FROM,
+    await sendEmail({
         to:      email,
         subject: isOverdue
             ? `⚠️ Rent Overdue — ${month} | ${house}`
@@ -121,35 +110,20 @@ async function sendRentReminder({ name, email, house, rent, month, dueDate, arre
         <html>
         <body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif">
           <div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
-
-            <!-- Header -->
             <div style="background:${isOverdue ? 'linear-gradient(135deg,#dc2626,#b91c1c)' : 'linear-gradient(135deg,#d97706,#b45309)'};padding:36px 32px;text-align:center">
               <div style="font-size:44px;margin-bottom:10px">${isOverdue ? '⚠️' : '🔔'}</div>
-              <h1 style="color:#ffffff;margin:0;font-size:22px;font-weight:700">
-                ${isOverdue ? 'Rent Overdue' : 'Rent Due Soon'}
-              </h1>
-              <p style="color:${isOverdue ? '#fca5a5' : '#fde68a'};margin:8px 0 0;font-size:13px">
-                ${month}
-              </p>
+              <h1 style="color:#ffffff;margin:0;font-size:22px;font-weight:700">${isOverdue ? 'Rent Overdue' : 'Rent Due Soon'}</h1>
+              <p style="color:${isOverdue ? '#fca5a5' : '#fde68a'};margin:8px 0 0;font-size:13px">${month}</p>
             </div>
-
-            <!-- Body -->
             <div style="padding:36px 32px">
-              <p style="color:#1e293b;font-size:16px;margin:0 0 16px">
-                Hi <strong>${name.split(' ')[0]}</strong>,
-              </p>
+              <p style="color:#1e293b;font-size:16px;margin:0 0 16px">Hi <strong>${name.split(' ')[0]}</strong>,</p>
               <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">
                 ${isOverdue
-                    ? `This is a reminder that your rent for <strong>${month}</strong> is <strong style="color:#dc2626">overdue</strong>. Please make your payment as soon as possible to avoid any penalties.`
-                    : `This is a friendly reminder that your rent for <strong>${month}</strong> is due on the <strong>${dueDate}${ordinal(dueDate)}</strong>. Please ensure payment is made on time.`
+                    ? `Your rent for <strong>${month}</strong> is <strong style="color:#dc2626">overdue</strong>. Please pay as soon as possible.`
+                    : `Your rent for <strong>${month}</strong> is due on the <strong>${dueDate}${ordinal(dueDate)}</strong>. Please pay on time.`
                 }
               </p>
-
-              <!-- Rent details box -->
               <div style="background:#fefce8;border:1px solid #fde68a;border-radius:10px;padding:20px 24px;margin-bottom:28px">
-                <p style="color:#92400e;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;margin:0 0 12px;font-weight:600">
-                  PAYMENT DETAILS
-                </p>
                 <table style="width:100%;border-collapse:collapse">
                   <tr>
                     <td style="color:#78716c;font-size:13px;padding:6px 0">House</td>
@@ -174,27 +148,16 @@ async function sendRentReminder({ name, email, house, rent, month, dueDate, arre
                   </tr>`}
                 </table>
               </div>
-
-              <!-- CTA -->
               <div style="text-align:center;margin-bottom:28px">
                 <a href="${process.env.BASE_URL || 'http://localhost:3000'}/tenant.html"
                    style="display:inline-block;background:${isOverdue ? '#dc2626' : '#d97706'};color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:14px 32px;border-radius:8px">
                   Pay Rent Now →
                 </a>
               </div>
-
-              <p style="color:#94a3b8;font-size:12px;line-height:1.6;margin:0">
-                If you have already made payment, please ignore this email. Contact your landlord via the dashboard chat if you have any concerns.
-              </p>
             </div>
-
-            <!-- Footer -->
             <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 32px;text-align:center">
-              <p style="color:#cbd5e1;font-size:11px;margin:0">
-                © ${new Date().getFullYear()} RentPortal · Automated rent reminder.
-              </p>
+              <p style="color:#cbd5e1;font-size:11px;margin:0">© ${new Date().getFullYear()} RentPortal · Automated reminder.</p>
             </div>
-
           </div>
         </body>
         </html>`
@@ -206,12 +169,10 @@ async function sendRentReminder({ name, email, house, rent, month, dueDate, arre
 
 // ════════════════════════════════════════════════
 // 3. MOVE-OUT GOODBYE EMAIL
-// Call inside PUT /move-out/:tenantId before clearing house
 // ════════════════════════════════════════════════
 
 async function sendMoveOutEmail({ name, email, house, moveOutDate }) {
-    await resend.emails.send({
-        from:    FROM,
+    await sendEmail({
         to:      email,
         subject: `Goodbye ${name.split(' ')[0]} — Move-out Confirmed 🏠`,
         html: `
@@ -219,31 +180,17 @@ async function sendMoveOutEmail({ name, email, house, moveOutDate }) {
         <html>
         <body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif">
           <div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
-
-            <!-- Header -->
             <div style="background:linear-gradient(135deg,#0f172a,#1e293b);padding:40px 32px;text-align:center">
               <div style="font-size:48px;margin-bottom:12px">🚪</div>
-              <h1 style="color:#ffffff;margin:0;font-size:24px;font-weight:700">
-                Goodbye, ${name.split(' ')[0]}
-              </h1>
+              <h1 style="color:#ffffff;margin:0;font-size:24px;font-weight:700">Goodbye, ${name.split(' ')[0]}</h1>
               <p style="color:#94a3b8;margin:8px 0 0;font-size:13px">We hope to see you again someday.</p>
             </div>
-
-            <!-- Body -->
             <div style="padding:36px 32px">
-              <p style="color:#1e293b;font-size:16px;margin:0 0 16px">
-                Hi <strong>${name.split(' ')[0]}</strong>,
-              </p>
+              <p style="color:#1e293b;font-size:16px;margin:0 0 16px">Hi <strong>${name.split(' ')[0]}</strong>,</p>
               <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">
-                Your move-out from <strong>${house}</strong> has been confirmed.
-                It has been a pleasure having you as a tenant. We wish you all the best in your new place!
+                Your move-out from <strong>${house}</strong> has been confirmed. It has been a pleasure having you as a tenant!
               </p>
-
-              <!-- Move-out summary -->
               <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:20px 24px;margin-bottom:28px">
-                <p style="color:#64748b;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;margin:0 0 12px;font-weight:600">
-                  MOVE-OUT SUMMARY
-                </p>
                 <table style="width:100%;border-collapse:collapse">
                   <tr>
                     <td style="color:#94a3b8;font-size:13px;padding:6px 0">Tenant</td>
@@ -262,36 +209,18 @@ async function sendMoveOutEmail({ name, email, house, moveOutDate }) {
                   <tr>
                     <td style="color:#94a3b8;font-size:13px;padding:6px 0">Status</td>
                     <td style="text-align:right">
-                      <span style="background:#dcfce7;color:#16a34a;font-size:11px;font-weight:600;padding:2px 10px;border-radius:99px">
-                        Moved Out ✓
-                      </span>
+                      <span style="background:#dcfce7;color:#16a34a;font-size:11px;font-weight:600;padding:2px 10px;border-radius:99px">Moved Out ✓</span>
                     </td>
                   </tr>
                 </table>
               </div>
-
-              <!-- Message -->
-              <div style="background:#ede9fe;border-radius:10px;padding:20px 24px;margin-bottom:28px;text-align:center">
-                <p style="color:#5b21b6;font-size:14px;line-height:1.7;margin:0;font-style:italic">
-                  "Thank you for being part of our community. 
-                   Your receipts and payment history remain accessible 
-                   via your account should you ever need them."
-                </p>
-              </div>
-
               <p style="color:#94a3b8;font-size:12px;line-height:1.6;margin:0">
-                Your account remains active and you can still access your payment history and receipts. 
-                If you believe this move-out was processed in error, please contact your landlord immediately.
+                Your account remains active and you can still access your payment history and receipts.
               </p>
             </div>
-
-            <!-- Footer -->
             <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 32px;text-align:center">
-              <p style="color:#cbd5e1;font-size:11px;margin:0">
-                © ${new Date().getFullYear()} RentPortal · Take care out there 🌟
-              </p>
+              <p style="color:#cbd5e1;font-size:11px;margin:0">© ${new Date().getFullYear()} RentPortal · Take care out there 🌟</p>
             </div>
-
           </div>
         </body>
         </html>`
