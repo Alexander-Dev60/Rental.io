@@ -3,6 +3,8 @@
 //  Works with the auth.html tab system (setMode/showToast
 //  are defined in auth.html inline script)
 // ═══════════════════════════════════════════════════════
+const API= 'https://affordable-rental-systems.onrender.com'; 
+
 
 // ── Decode JWT safely ──
 function getUserFromToken(token) {
@@ -67,7 +69,7 @@ async function submitAuth() {
     setLoading(true);
 
     try {
-        const url  = isLogin ? `${CONFIG.API_URL}/login` : `${CONFIG.API_URL}/register`;
+        const url  = isLogin ? `${API}/login` : `${API}/register`;
         const body = isLogin
             ? { email, password }
             : { name, email, password, phone };
