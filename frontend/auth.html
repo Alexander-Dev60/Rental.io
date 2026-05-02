@@ -15,8 +15,8 @@
       --panel:    #12161f;
       --edge:     rgba(255,255,255,0.06);
       --edge2:    rgba(255,255,255,0.12);
-      --accent:   #e8c27a;       /* warm gold */
-      --accent2:  #c4623a;       /* terracotta */
+      --accent:   #e8c27a;
+      --accent2:  #c4623a;
       --accent-g: rgba(232,194,122,0.15);
       --text:     #e8e2d9;
       --muted:    #6a6460;
@@ -44,7 +44,7 @@
       position: relative;
     }
 
-    /* ─── Background: animated geometric constellation ─── */
+    /* ─── Background ─── */
     .bg-canvas {
       position: fixed;
       inset: 0;
@@ -52,7 +52,6 @@
       overflow: hidden;
     }
 
-    /* Large gradient orbs */
     .orb {
       position: absolute;
       border-radius: 50%;
@@ -60,34 +59,15 @@
       opacity: 0.18;
       animation: orbDrift 18s ease-in-out infinite alternate;
     }
-    .orb-1 {
-      width: 500px; height: 500px;
-      background: radial-gradient(circle, #b8922a, transparent 70%);
-      top: -120px; left: -100px;
-      animation-duration: 20s;
-    }
-    .orb-2 {
-      width: 400px; height: 400px;
-      background: radial-gradient(circle, #c4623a, transparent 70%);
-      bottom: -80px; right: -80px;
-      animation-duration: 25s;
-      animation-delay: -8s;
-    }
-    .orb-3 {
-      width: 280px; height: 280px;
-      background: radial-gradient(circle, #e8c27a, transparent 70%);
-      top: 50%; right: 20%;
-      animation-duration: 15s;
-      animation-delay: -4s;
-      opacity: 0.10;
-    }
+    .orb-1 { width: 500px; height: 500px; background: radial-gradient(circle, #b8922a, transparent 70%); top: -120px; left: -100px; animation-duration: 20s; }
+    .orb-2 { width: 400px; height: 400px; background: radial-gradient(circle, #c4623a, transparent 70%); bottom: -80px; right: -80px; animation-duration: 25s; animation-delay: -8s; }
+    .orb-3 { width: 280px; height: 280px; background: radial-gradient(circle, #e8c27a, transparent 70%); top: 50%; right: 20%; animation-duration: 15s; animation-delay: -4s; opacity: 0.10; }
 
     @keyframes orbDrift {
       from { transform: translate(0, 0) scale(1); }
       to   { transform: translate(40px, 30px) scale(1.12); }
     }
 
-    /* Grid lines */
     .bg-canvas::before {
       content: '';
       position: absolute;
@@ -98,7 +78,6 @@
       background-size: 60px 60px;
     }
 
-    /* Diagonal accent line */
     .bg-canvas::after {
       content: '';
       position: absolute;
@@ -109,7 +88,6 @@
       transform: rotate(-12deg) translateY(30vh);
     }
 
-    /* Floating particles */
     .particle {
       position: absolute;
       width: 2px; height: 2px;
@@ -132,7 +110,7 @@
       z-index: 1;
       display: flex;
       width: min(960px, 96vw);
-      height: min(600px, 92vh);
+      height: min(620px, 94vh);
       border-radius: 20px;
       overflow: hidden;
       box-shadow:
@@ -147,7 +125,7 @@
       to   { opacity: 1; transform: scale(1)    translateY(0); }
     }
 
-    /* ─── Left panel: Branding ─── */
+    /* ─── Left panel ─── */
     .brand-panel {
       flex: 1;
       background: var(--panel);
@@ -160,7 +138,6 @@
       overflow: hidden;
     }
 
-    /* Vertical accent bar */
     .brand-panel::before {
       content: '';
       position: absolute;
@@ -170,7 +147,6 @@
       opacity: 0.5;
     }
 
-    /* Big background number */
     .brand-panel::after {
       content: '🏠';
       position: absolute;
@@ -181,13 +157,7 @@
       filter: grayscale(1);
     }
 
-    .brand-logo {
-      display: flex;
-      align-items: center;
-      gap: 0.7rem;
-      animation: fadeUp 0.6s 0.2s var(--ease) both;
-    }
-
+    .brand-logo { display: flex; align-items: center; gap: 0.7rem; animation: fadeUp 0.6s 0.2s var(--ease) both; }
     .brand-icon {
       width: 40px; height: 40px;
       background: linear-gradient(135deg, var(--accent), var(--accent2));
@@ -196,84 +166,31 @@
       font-size: 1.1rem;
       box-shadow: 0 4px 16px rgba(232,194,122,0.3);
     }
+    .brand-name { font-family: var(--font-b); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--text); opacity: 0.7; }
 
-    .brand-name {
-      font-family: var(--font-b);
-      font-size: 0.75rem;
-      font-weight: 700;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      color: var(--text);
-      opacity: 0.7;
-    }
+    .brand-headline { animation: fadeUp 0.6s 0.35s var(--ease) both; }
+    .brand-headline h1 { font-family: var(--font-d); font-style: italic; font-size: clamp(2.2rem, 3.5vw, 3rem); font-weight: 400; line-height: 1.2; color: var(--text); margin-bottom: 1rem; }
+    .brand-headline h1 em { color: var(--accent); font-style: italic; }
+    .brand-headline p { font-size: 0.8rem; font-weight: 400; color: var(--muted); line-height: 1.7; letter-spacing: 0.02em; max-width: 240px; }
 
-    .brand-headline {
-      animation: fadeUp 0.6s 0.35s var(--ease) both;
-    }
+    .brand-features { display: flex; flex-direction: column; gap: 0.7rem; animation: fadeUp 0.6s 0.5s var(--ease) both; }
+    .feat { display: flex; align-items: center; gap: 0.65rem; font-size: 0.75rem; color: var(--muted); font-weight: 400; letter-spacing: 0.03em; }
+    .feat-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; box-shadow: 0 0 6px var(--accent); }
 
-    .brand-headline h1 {
-      font-family: var(--font-d);
-      font-style: italic;
-      font-size: clamp(2.2rem, 3.5vw, 3rem);
-      font-weight: 400;
-      line-height: 1.2;
-      color: var(--text);
-      margin-bottom: 1rem;
-    }
-
-    .brand-headline h1 em {
-      color: var(--accent);
-      font-style: italic;
-    }
-
-    .brand-headline p {
-      font-size: 0.8rem;
-      font-weight: 400;
-      color: var(--muted);
-      line-height: 1.7;
-      letter-spacing: 0.02em;
-      max-width: 240px;
-    }
-
-    .brand-features {
-      display: flex;
-      flex-direction: column;
-      gap: 0.7rem;
-      animation: fadeUp 0.6s 0.5s var(--ease) both;
-    }
-
-    .feat {
-      display: flex;
-      align-items: center;
-      gap: 0.65rem;
-      font-size: 0.75rem;
-      color: var(--muted);
-      font-weight: 400;
-      letter-spacing: 0.03em;
-    }
-
-    .feat-dot {
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: var(--accent);
-      flex-shrink: 0;
-      box-shadow: 0 0 6px var(--accent);
-    }
-
-    /* ─── Right panel: Form ─── */
+    /* ─── Right panel ─── */
     .form-panel {
-      width: 380px;
+      width: 390px;
       flex-shrink: 0;
       background: var(--deep);
-      padding: 2.8rem 2.5rem;
+      padding: 2.4rem 2.5rem;
       display: flex;
       flex-direction: column;
       justify-content: center;
       position: relative;
       overflow: hidden;
+      overflow-y: auto;
     }
 
-    /* Subtle corner decoration */
     .form-panel::before {
       content: '';
       position: absolute;
@@ -296,14 +213,14 @@
       pointer-events: none;
     }
 
-    /* ─── Mode toggle tabs ─── */
+    /* ─── Mode tabs ─── */
     .mode-tabs {
       display: flex;
       background: var(--panel);
       border: 1px solid var(--edge);
       border-radius: 10px;
       padding: 4px;
-      margin-bottom: 2rem;
+      margin-bottom: 1.6rem;
       animation: fadeUp 0.5s 0.4s var(--ease) both;
     }
 
@@ -321,8 +238,7 @@
       border-radius: 7px;
       cursor: pointer;
       transition: background 0.25s var(--ease), color 0.25s var(--ease), box-shadow 0.25s var(--ease);
-      width: auto;
-      margin: 0;
+      width: auto; margin: 0;
     }
 
     .tab-btn.active {
@@ -336,39 +252,23 @@
 
     /* ─── Form title ─── */
     .form-title {
-      margin-bottom: 1.6rem;
+      margin-bottom: 1.4rem;
       animation: fadeUp 0.5s 0.5s var(--ease) both;
     }
 
-    .form-title h2 {
-      font-family: var(--font-d);
-      font-size: 1.8rem;
-      font-style: italic;
-      font-weight: 400;
-      color: var(--text);
-      letter-spacing: 0.01em;
-      margin-bottom: 0.25rem;
-    }
+    .form-title h2 { font-family: var(--font-d); font-size: 1.8rem; font-style: italic; font-weight: 400; color: var(--text); letter-spacing: 0.01em; margin-bottom: 0.25rem; }
+    .form-title p  { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.06em; font-family: var(--font-m); }
 
-    .form-title p {
-      font-size: 0.72rem;
-      color: var(--muted);
-      letter-spacing: 0.06em;
-      font-family: var(--font-m);
-    }
-
-    /* ─── Form fields ─── */
+    /* ─── Fields ─── */
     .field-group {
       display: flex;
       flex-direction: column;
-      gap: 0.65rem;
-      margin-bottom: 1.3rem;
+      gap: 0.6rem;
+      margin-bottom: 1.2rem;
       animation: fadeUp 0.5s 0.55s var(--ease) both;
     }
 
-    .field {
-      position: relative;
-    }
+    .field { position: relative; }
 
     .field-icon {
       position: absolute;
@@ -390,17 +290,15 @@
       font-family: var(--font-b);
       font-size: 0.82rem;
       font-weight: 400;
-      padding: 0.75rem 1rem 0.75rem 2.6rem;
+      /* extra right padding for the eye button */
+      padding: 0.75rem 2.8rem 0.75rem 2.6rem;
       margin: 0;
       outline: none;
       transition: border-color 0.2s var(--ease), background 0.2s var(--ease), box-shadow 0.2s var(--ease);
       letter-spacing: 0.02em;
     }
 
-    .field input::placeholder {
-      color: var(--muted);
-      font-size: 0.78rem;
-    }
+    .field input::placeholder { color: var(--muted); font-size: 0.78rem; }
 
     .field input:focus {
       border-color: var(--accent);
@@ -408,22 +306,50 @@
       box-shadow: 0 0 0 3px rgba(232,194,122,0.1);
     }
 
-    .field input:focus + .field-icon,
-    .field:focus-within .field-icon {
-      opacity: 0.8;
+    .field:focus-within .field-icon { opacity: 0.8; }
+
+    /* ─── Eye toggle button ─── */
+    .eye-btn {
+      position: absolute;
+      right: 0.85rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      margin: 0;
+      width: auto;
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1;
+      transition: color 0.2s;
+      display: flex;
+      align-items: center;
     }
 
-    /* Hidden field animation */
-    .field.hidden {
-      display: none;
-      opacity: 0;
-      transform: translateY(-8px);
-    }
+    .eye-btn:hover { color: var(--accent); }
+    .eye-btn::before, .eye-btn::after { display: none; }
 
-    .field.visible {
-      display: block;
-      animation: fieldReveal 0.35s var(--spring) both;
+    /* SVG eye icons */
+    .eye-open, .eye-closed { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* ─── Password match indicator ─── */
+    .match-indicator {
+      font-family: var(--font-m);
+      font-size: 0.62rem;
+      letter-spacing: 0.08em;
+      margin-top: -0.3rem;
+      padding-left: 0.25rem;
+      height: 14px;
+      transition: color 0.2s;
     }
+    .match-indicator.match   { color: var(--success); }
+    .match-indicator.nomatch { color: var(--error); }
+
+    /* ─── Hidden / visible fields ─── */
+    .field.hidden { display: none; }
+    .field.visible { display: block; animation: fieldReveal 0.35s var(--spring) both; }
 
     @keyframes fieldReveal {
       from { opacity: 0; transform: translateY(-10px); }
@@ -459,7 +385,6 @@
       background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 100%);
     }
 
-    /* Ripple shimmer */
     #submitBtn::after {
       content: '';
       position: absolute;
@@ -470,40 +395,14 @@
     }
 
     #submitBtn:hover::after { left: 100%; }
+    #submitBtn:hover { opacity: 0.92; transform: translateY(-2px); box-shadow: 0 8px 30px rgba(196,98,58,0.4); }
+    #submitBtn:active { transform: translateY(1px); box-shadow: 0 2px 10px rgba(196,98,58,0.2); }
+    #submitBtn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
-    #submitBtn:hover {
-      opacity: 0.92;
-      transform: translateY(-2px);
-      box-shadow: 0 8px 30px rgba(196,98,58,0.4);
-    }
-
-    #submitBtn:active {
-      transform: translateY(1px);
-      box-shadow: 0 2px 10px rgba(196,98,58,0.2);
-    }
-
-    #submitBtn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    /* Loading spinner inside button */
-    #submitBtn.loading::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: inherit;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    /* ─── Toast notification ─── */
+    /* ─── Toast ─── */
     #toast {
       position: fixed;
-      bottom: 2rem;
-      left: 50%;
+      bottom: 2rem; left: 50%;
       transform: translateX(-50%) translateY(20px);
       background: var(--panel);
       border: 1px solid var(--edge2);
@@ -521,15 +420,10 @@
       box-shadow: 0 8px 32px rgba(0,0,0,0.5);
     }
 
-    #toast.show {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
-    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.error   { border-color: rgba(255,90,90,0.5);   color: var(--error); }
+    #toast.success { border-color: rgba(78,204,163,0.5);  color: var(--success); }
 
-    #toast.error  { border-color: rgba(255,90,90,0.5); color: var(--error); }
-    #toast.success { border-color: rgba(78,204,163,0.5); color: var(--success); }
-
-    /* ─── Shared animations ─── */
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(16px); }
       to   { opacity: 1; transform: translateY(0); }
@@ -537,36 +431,16 @@
 
     /* ─── Responsive ─── */
     @media (max-width: 700px) {
-      .auth-wrapper {
-        flex-direction: column;
-        height: auto;
-        min-height: 100vh;
-        border-radius: 0;
-        width: 100%;
-      }
-
-      .brand-panel {
-        border-right: none;
-        border-bottom: 1px solid var(--edge);
-        padding: 2rem 1.5rem 1.8rem;
-        flex: none;
-      }
-
+      .auth-wrapper { flex-direction: column; height: auto; min-height: 100vh; border-radius: 0; width: 100%; }
+      .brand-panel  { border-right: none; border-bottom: 1px solid var(--edge); padding: 2rem 1.5rem 1.8rem; flex: none; }
       .brand-panel::after { display: none; }
-
-      .brand-headline h1 { font-size: 1.8rem; }
-
-      .brand-features { flex-direction: row; flex-wrap: wrap; }
-
-      .form-panel {
-        width: 100%;
-        padding: 2rem 1.5rem;
-        flex: 1;
-      }
+      .brand-headline h1  { font-size: 1.8rem; }
+      .brand-features     { flex-direction: row; flex-wrap: wrap; }
+      .form-panel { width: 100%; padding: 2rem 1.5rem; flex: 1; }
     }
 
     @media (max-width: 400px) {
-      .form-panel { padding: 1.5rem 1.2rem; }
+      .form-panel  { padding: 1.5rem 1.2rem; }
       .brand-panel { padding: 1.5rem 1.2rem; }
     }
   </style>
@@ -631,7 +505,7 @@
           <span class="field-icon">👤</span>
         </div>
 
-        <!-- Email — always visible -->
+        <!-- Email — always -->
         <div class="field">
           <input type="email" id="email" placeholder="Email address">
           <span class="field-icon">✉️</span>
@@ -643,11 +517,33 @@
           <span class="field-icon">📞</span>
         </div>
 
-        <!-- Password — always visible -->
+        <!-- Password — always -->
         <div class="field">
           <input type="password" id="password" placeholder="Password">
           <span class="field-icon">🔑</span>
+          <button class="eye-btn" type="button" onclick="toggleEye('password', this)" title="Show/hide password">
+            <!-- Eye open icon -->
+            <svg class="eye-open" viewBox="0 0 24 24">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
         </div>
+
+        <!-- Confirm password — register only -->
+        <div class="field hidden" id="confirmField">
+          <input type="password" id="confirmPassword" placeholder="Confirm password" oninput="checkMatch()">
+          <span class="field-icon">🔒</span>
+          <button class="eye-btn" type="button" onclick="toggleEye('confirmPassword', this)" title="Show/hide password">
+            <svg class="eye-open" viewBox="0 0 24 24">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Match indicator -->
+        <div class="match-indicator" id="matchIndicator"></div>
 
       </div>
 
@@ -658,7 +554,7 @@
   </div>
 
   <script>
-    // ── Particle generator ──
+    // ── Particles ──
     const bgCanvas = document.querySelector('.bg-canvas');
     for (let i = 0; i < 18; i++) {
       const p = document.createElement('div');
@@ -674,19 +570,21 @@
       bgCanvas.appendChild(p);
     }
 
-    // ── currentMode — read by auth.js submitAuth() ──
+    // ── Mode ──
     let currentMode = 'login';
 
     function setMode(mode) {
       currentMode = mode;
 
-      const nameField  = document.getElementById('nameField');
-      const phoneField = document.getElementById('phoneField'); // FIX: wrapper not input
-      const title      = document.getElementById('title');
-      const subtitle   = document.getElementById('subtitle');
-      const loginTab   = document.getElementById('loginTab');
-      const registerTab= document.getElementById('registerTab');
-      const btn        = document.getElementById('submitBtn');
+      const nameField     = document.getElementById('nameField');
+      const phoneField    = document.getElementById('phoneField');
+      const confirmField  = document.getElementById('confirmField');
+      const matchIndicator= document.getElementById('matchIndicator');
+      const title         = document.getElementById('title');
+      const subtitle      = document.getElementById('subtitle');
+      const loginTab      = document.getElementById('loginTab');
+      const registerTab   = document.getElementById('registerTab');
+      const btn           = document.getElementById('submitBtn');
 
       if (mode === 'login') {
         loginTab.classList.add('active');
@@ -695,11 +593,11 @@
         subtitle.textContent = 'SIGN IN TO YOUR ACCOUNT';
         btn.textContent      = 'Sign In';
 
-        // Hide register-only fields
-        nameField.classList.remove('visible');
-        nameField.classList.add('hidden');
-        phoneField.classList.remove('visible');
-        phoneField.classList.add('hidden');
+        nameField.classList.remove('visible');    nameField.classList.add('hidden');
+        phoneField.classList.remove('visible');   phoneField.classList.add('hidden');
+        confirmField.classList.remove('visible'); confirmField.classList.add('hidden');
+        matchIndicator.textContent = '';
+        matchIndicator.className   = 'match-indicator';
 
       } else {
         registerTab.classList.add('active');
@@ -708,11 +606,58 @@
         subtitle.textContent = 'JOIN THE RENTAL PORTAL';
         btn.textContent      = 'Create Account';
 
-        // Show register-only fields
-        nameField.classList.remove('hidden');
-        nameField.classList.add('visible');
-        phoneField.classList.remove('hidden');
-        phoneField.classList.add('visible');
+        nameField.classList.remove('hidden');    nameField.classList.add('visible');
+        phoneField.classList.remove('hidden');   phoneField.classList.add('visible');
+        confirmField.classList.remove('hidden'); confirmField.classList.add('visible');
+      }
+
+      // Reset all eye buttons back to "hidden" state when switching
+      document.querySelectorAll('[id$="password"], #password').forEach(inp => {
+        inp.type = 'password';
+      });
+      document.querySelectorAll('.eye-btn').forEach(btn => {
+        btn.innerHTML = `<svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+      });
+    }
+
+    // ── Eye toggle ──
+    function toggleEye(inputId, btn) {
+      const input   = document.getElementById(inputId);
+      const showing = input.type === 'text';
+
+      input.type = showing ? 'password' : 'text';
+
+      // Swap icon
+      btn.innerHTML = showing
+        ? `<svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+             <circle cx="12" cy="12" r="3"/>
+           </svg>`
+        : `<svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+             <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+             <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+             <line x1="1" y1="1" x2="23" y2="23"/>
+           </svg>`;
+    }
+
+    // ── Password match checker ──
+    function checkMatch() {
+      const pw      = document.getElementById('password').value;
+      const confirm = document.getElementById('confirmPassword').value;
+      const indicator = document.getElementById('matchIndicator');
+
+      if (!confirm) {
+        indicator.textContent = '';
+        indicator.className   = 'match-indicator';
+        return;
+      }
+
+      if (pw === confirm) {
+        indicator.textContent = '✓ Passwords match';
+        indicator.className   = 'match-indicator match';
+      } else {
+        indicator.textContent = '✗ Passwords do not match';
+        indicator.className   = 'match-indicator nomatch';
       }
     }
 
@@ -738,6 +683,7 @@
     setMode('login');
   </script>
 
+  <script src="config.js"></script>
   <script src="auth.js"></script>
 
 </body>

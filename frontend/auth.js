@@ -4,8 +4,6 @@
 //  are defined in auth.html inline script)
 // ═══════════════════════════════════════════════════════
 
- const API= 'https://affordable-rental-systems.onrender.com'; 
-
 // ── Decode JWT safely ──
 function getUserFromToken(token) {
     try {
@@ -28,10 +26,13 @@ function checkAuthOnLoad() {
 // ── Main submit handler ──
 // Called by onclick="submitAuth()" on the button in auth.html
 async function submitAuth() {
-    const name     = document.getElementById('name').value.trim();
-    const email    = document.getElementById('email').value.trim();
-    const phone    = document.getElementById('phone').value.trim();
-    const password = document.getElementById('password').value;
+    const name            = document.getElementById('name').value.trim();
+    const email           = document.getElementById('email').value.trim();
+    const phone           = document.getElementById('phone').value.trim();
+    const password        = document.getElementById('password').value;
+    const confirmPassword = currentMode === 'register'
+        ? document.getElementById('confirmPassword').value
+        : null;
 
     // currentMode is set by setMode() in auth.html inline script
     const isLogin = currentMode === 'login';
@@ -50,10 +51,23 @@ async function submitAuth() {
         showToast('Phone number is required', 'error'); return;
     }
 
+    // ── Confirm password check (register only) ──
+    if (!isLogin) {
+        if (!confirmPassword) {
+            showToast('Please confirm your password', 'error'); return;
+        }
+        if (password !== confirmPassword) {
+            showToast('Passwords do not match ❌', 'error'); return;
+        }
+        if (password.length < 6) {
+            showToast('Password must be at least 6 characters', 'error'); return;
+        }
+    }
+
     setLoading(true);
 
     try {
-        const url  = isLogin ? `${API}/login` : `${API}/register`;
+        const url  = isLogin ? `${CONFIG.API_URL}/login` : `${CONFIG.API_URL}/register`;
         const body = isLogin
             ? { email, password }
             : { name, email, password, phone };
@@ -75,9 +89,10 @@ async function submitAuth() {
         if (!isLogin) {
             showToast('Account created! Please sign in.', 'success');
             // Clear fields
-            document.getElementById('name').value     = '';
-            document.getElementById('phone').value    = '';
-            document.getElementById('password').value = '';
+            document.getElementById('name').value            = '';
+            document.getElementById('phone').value           = '';
+            document.getElementById('password').value        = '';
+            document.getElementById('confirmPassword').value = '';
             // Switch to login tab
             setTimeout(() => setMode('login'), 1200);
             return;

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,37 +8,92 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 
   <style>
-  /* ─── Variables ─── */
-  :root {
-    --bg:        #111318;
-    --bg2:       #16191f;
-    --bg3:       #1c2029;
-    --panel:     #1e222c;
-    --panel2:    #232837;
-    --border:    rgba(255,255,255,0.07);
-    --border2:   rgba(255,255,255,0.13);
-    --accent:    #a78bfa;        /* soft violet */
-    --accent2:   #7c3aed;
-    --accent-dim:rgba(167,139,250,0.12);
-    --green:     #34d399;
-    --red:       #f87171;
-    --amber:     #fbbf24;
-    --text:      #e2e8f0;
-    --text-dim:  #64748b;
-    --text-muted:#94a3b8;
-    --nav-h:     60px;
-    --font-d:    'Fraunces', Georgia, serif;
-    --font-b:    'DM Sans', sans-serif;
-    --font-m:    'DM Mono', monospace;
-    --ease:      cubic-bezier(0.4,0,0.2,1);
-    --spring:    cubic-bezier(0.34,1.56,0.64,1);
+  /* ═══════════════════════════════════════════
+     THEMES — same system as admin
+  ═══════════════════════════════════════════ */
+  :root, [data-theme="dark"] {
+    --bg:         #111318;
+    --bg2:        #16191f;
+    --bg3:        #1c2029;
+    --panel:      #1e222c;
+    --panel2:     #232837;
+    --border:     rgba(255,255,255,0.07);
+    --border2:    rgba(255,255,255,0.13);
+    --accent:     #a78bfa;
+    --accent2:    #7c3aed;
+    --accent-dim: rgba(167,139,250,0.12);
+    --green:      #34d399;
+    --red:        #f87171;
+    --amber:      #fbbf24;
+    --text:       #e2e8f0;
+    --text-dim:   #64748b;
+    --text-muted: #94a3b8;
+    --nav-h:      60px;
   }
 
+  [data-theme="light"] {
+    --bg:         #f1f5f9;
+    --bg2:        #e8edf5;
+    --bg3:        #dde4f0;
+    --panel:      #ffffff;
+    --panel2:     #f8fafc;
+    --border:     rgba(0,0,0,0.08);
+    --border2:    rgba(0,0,0,0.15);
+    --accent:     #7c3aed;
+    --accent2:    #6d28d9;
+    --accent-dim: rgba(124,58,237,0.08);
+    --green:      #059669;
+    --red:        #dc2626;
+    --amber:      #d97706;
+    --text:       #0f172a;
+    --text-dim:   #94a3b8;
+    --text-muted: #475569;
+  }
+
+  [data-theme="blue"] {
+    --bg:         #050d1a;
+    --bg2:        #071223;
+    --bg3:        #0a1a30;
+    --panel:      #0d2040;
+    --panel2:     #112548;
+    --border:     rgba(59,130,246,0.15);
+    --border2:    rgba(59,130,246,0.3);
+    --accent:     #60a5fa;
+    --accent2:    #3b82f6;
+    --accent-dim: rgba(96,165,250,0.12);
+    --green:      #34d399;
+    --red:        #f87171;
+    --amber:      #fbbf24;
+    --text:       #e0f0ff;
+    --text-dim:   #4a7eb5;
+    --text-muted: #7aadda;
+  }
+
+  [data-theme="orange"] {
+    --bg:         #0f0a05;
+    --bg2:        #180f07;
+    --bg3:        #221509;
+    --panel:      #2a1a0a;
+    --panel2:     #321f0c;
+    --border:     rgba(251,146,60,0.15);
+    --border2:    rgba(251,146,60,0.3);
+    --accent:     #fb923c;
+    --accent2:    #ea580c;
+    --accent-dim: rgba(251,146,60,0.12);
+    --green:      #34d399;
+    --red:        #f87171;
+    --amber:      #fbbf24;
+    --text:       #fff7ed;
+    --text-dim:   #92400e;
+    --text-muted: #c2803a;
+  }
+
+  /* ─── Reset ─── */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; }
 
   body {
-    font-family: var(--font-b);
+    font-family: 'DM Sans', sans-serif;
     background: var(--bg);
     color: var(--text);
     font-size: 14px;
@@ -46,9 +101,7 @@
     overflow-x: hidden;
   }
 
-   
-
-  /* ─── Subtle noise texture ─── */
+  /* ─── Noise texture ─── */
   body::before {
     content: '';
     position: fixed;
@@ -58,14 +111,14 @@
     z-index: 0;
   }
 
-  /* ─── Glow behind header ─── */
+  /* ─── Glow ─── */
   body::after {
     content: '';
     position: fixed;
     top: -60px; left: 50%;
     transform: translateX(-50%);
     width: 600px; height: 200px;
-    background: radial-gradient(ellipse, rgba(167,139,250,0.1), transparent 70%);
+    background: radial-gradient(ellipse, rgba(167,139,250,0.08), transparent 70%);
     pointer-events: none;
     z-index: 0;
   }
@@ -85,57 +138,42 @@
     align-items: center;
     justify-content: space-between;
     padding: 0 1.5rem;
-    animation: slideDown 0.5s var(--ease) both;
+    animation: slideDown 0.5s cubic-bezier(0.4,0,0.2,1) both;
   }
+
+  [data-theme="light"] header { background: rgba(241,245,249,0.9); }
+  [data-theme="blue"]  header { background: rgba(5,13,26,0.9); }
+  [data-theme="orange"] header { background: rgba(15,10,5,0.9); }
 
   @keyframes slideDown {
     from { opacity: 0; transform: translateY(-100%); }
     to   { opacity: 1; transform: translateY(0); }
   }
-  @keyframes spin { to { transform: rotate(360deg); } }
 
-  .header-left {
-    display: flex;
-    align-items: center;
-    gap: 0.85rem;
-  }
+  .header-left { display: flex; align-items: center; gap: 0.85rem; }
 
-  /* Avatar in header */
   .header-avatar {
     width: 36px; height: 36px;
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-family: var(--font-b);
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: #fff;
-    flex-shrink: 0;
-    letter-spacing: 0.04em;
+    font-size: 0.75rem; font-weight: 700; color: #fff;
+    flex-shrink: 0; letter-spacing: 0.04em;
     border: 2px solid rgba(255,255,255,0.15);
   }
 
   .header-name {
-    font-family: var(--font-d);
-    font-style: italic;
-    font-size: 1rem;
+    font-family: 'Fraunces', Georgia, serif;
+    font-style: italic; font-size: 1rem;
     color: var(--text);
   }
 
-  .header-right {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
+  .header-right { display: flex; align-items: center; gap: 0.75rem; }
 
   .status-pill {
-    font-family: var(--font-m);
-    font-size: 0.62rem;
-    letter-spacing: 0.1em;
-    padding: 3px 10px;
-    border-radius: 99px;
-    font-weight: 500;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem; letter-spacing: 0.1em;
+    padding: 3px 10px; border-radius: 99px; font-weight: 500;
   }
-
   .status-pill.paid   { background: rgba(52,211,153,0.12); color: var(--green); border: 1px solid rgba(52,211,153,0.25); }
   .status-pill.unpaid { background: rgba(248,113,113,0.12); color: var(--red);   border: 1px solid rgba(248,113,113,0.25); }
 
@@ -143,61 +181,46 @@
     background: transparent;
     border: 1px solid var(--border2);
     color: var(--text-muted);
-    font-family: var(--font-b);
-    font-size: 0.72rem;
-    font-weight: 500;
-    padding: 0.38rem 0.9rem;
-    border-radius: 99px;
-    cursor: pointer;
-    transition: border-color 0.2s, color 0.2s;
-    width: auto;
-    margin: 0;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.72rem; font-weight: 500;
+    padding: 0.38rem 0.9rem; border-radius: 99px;
+    cursor: pointer; transition: border-color 0.2s, color 0.2s;
+    width: auto; margin: 0;
   }
   .btn-logout:hover { border-color: var(--red); color: var(--red); }
 
   /* ════════════════════════════════
-     BOTTOM NAV (mobile-first)
+     BOTTOM NAV
   ════════════════════════════════ */
   .bottom-nav {
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
+    position: fixed; bottom: 0; left: 0; right: 0;
     z-index: 100;
     background: rgba(17,19,24,0.95);
     backdrop-filter: blur(20px);
     border-top: 1px solid var(--border);
-    display: flex;
-    height: 58px;
+    display: flex; height: 58px;
   }
+
+  [data-theme="light"]  .bottom-nav { background: rgba(241,245,249,0.97); }
+  [data-theme="blue"]   .bottom-nav { background: rgba(5,13,26,0.97); }
+  [data-theme="orange"] .bottom-nav { background: rgba(15,10,5,0.97); }
 
   .bnav-item {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    cursor: pointer;
-    color: var(--text-dim);
-    font-size: 0.58rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    transition: color 0.15s;
-    position: relative;
-    user-select: none;
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 3px;
+    cursor: pointer; color: var(--text-dim);
+    font-size: 0.58rem; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    transition: color 0.15s; position: relative; user-select: none;
   }
 
-  .bnav-item .bnav-icon { font-size: 1.1rem; transition: transform 0.2s var(--spring); }
+  .bnav-item .bnav-icon { font-size: 1.1rem; transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1); }
   .bnav-item:hover .bnav-icon { transform: translateY(-2px); }
-
-  .bnav-item.active {
-    color: var(--accent);
-  }
+  .bnav-item.active { color: var(--accent); }
 
   .bnav-item.active::after {
     content: '';
-    position: absolute;
-    top: 0; left: 50%;
+    position: absolute; top: 0; left: 50%;
     transform: translateX(-50%);
     width: 24px; height: 2px;
     background: var(--accent);
@@ -205,33 +228,31 @@
   }
 
   .bnav-badge {
-    position: absolute;
-    top: 8px; right: calc(50% - 16px);
-    background: var(--red);
-    color: #fff;
-    font-size: 0.5rem;
-    font-weight: 700;
-    width: 14px; height: 14px;
-    border-radius: 50%;
+    position: absolute; top: 8px; right: calc(50% - 16px);
+    background: var(--red); color: #fff;
+    font-size: 0.5rem; font-weight: 700;
+    width: 14px; height: 14px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-family: var(--font-m);
+    font-family: 'DM Mono', monospace;
   }
 
-  /* Desktop: sidebar instead of bottom nav */
+  /* Desktop sidebar */
   @media (min-width: 768px) {
     .bottom-nav { display: none; }
     .sidebar-desktop {
       display: flex !important;
       flex-direction: column;
-      width: 220px;
-      flex-shrink: 0;
+      width: 220px; flex-shrink: 0;
       background: var(--bg2);
       border-right: 1px solid var(--border);
       height: calc(100vh - var(--nav-h));
-      position: sticky;
-      top: var(--nav-h);
+      position: sticky; top: var(--nav-h);
       overflow-y: auto;
-      padding: 1rem 0;
+    }
+    .sidebar-nav { flex: 1; padding: 0.75rem 0; }
+    .sidebar-footer {
+      padding: 1rem 1.25rem;
+      border-top: 1px solid var(--border);
     }
     .page-body { flex-direction: row; }
     .content-area { padding-bottom: 2rem; }
@@ -243,48 +264,53 @@
   .page-body {
     display: flex;
     min-height: calc(100vh - var(--nav-h));
-    position: relative;
-    z-index: 1;
+    position: relative; z-index: 1;
   }
 
-  .sidebar-desktop {
-    display: none;
-  }
+  .sidebar-desktop { display: none; }
 
   .dsk-nav-item {
-    display: flex;
-    align-items: center;
-    gap: 0.65rem;
+    display: flex; align-items: center; gap: 0.65rem;
     padding: 0.6rem 1.25rem;
-    color: var(--text-muted);
-    font-size: 0.82rem;
-    font-weight: 500;
-    cursor: pointer;
-    border-left: 2px solid transparent;
-    transition: all 0.15s;
-    user-select: none;
+    color: var(--text-muted); font-size: 0.82rem; font-weight: 500;
+    cursor: pointer; border-left: 2px solid transparent;
+    transition: all 0.15s; user-select: none;
   }
 
   .dsk-nav-item:hover { background: var(--accent-dim); color: var(--text); }
   .dsk-nav-item.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-dim); }
   .dsk-nav-item .icon { font-size: 0.9rem; width: 18px; text-align: center; }
 
-  .content-area {
-    flex: 1;
-    padding: 1.5rem 1.25rem 80px;
-    max-width: 800px;
-    margin: 0 auto;
-    width: 100%;
+  /* ─── Theme switcher in sidebar ─── */
+  .theme-switcher {
+    display: flex; gap: 6px;
+    padding: 0.75rem 1.25rem 0.5rem;
   }
 
-  @media (min-width: 768px) {
-    .content-area { padding: 2rem; }
+  .theme-dot {
+    width: 18px; height: 18px; border-radius: 50%;
+    cursor: pointer; border: 2px solid transparent;
+    transition: border-color 0.2s, transform 0.2s;
+    flex-shrink: 0;
   }
+  .theme-dot:hover { transform: scale(1.2); }
+  .theme-dot.active { border-color: var(--text); }
+  .theme-dot[data-theme="dark"]   { background: #1e222c; }
+  .theme-dot[data-theme="light"]  { background: #e2e8f0; }
+  .theme-dot[data-theme="blue"]   { background: #1e40af; }
+  .theme-dot[data-theme="orange"] { background: #ea580c; }
+
+  .content-area {
+    flex: 1; padding: 1.5rem 1.25rem 80px;
+    max-width: 800px; margin: 0 auto; width: 100%;
+  }
+
+  @media (min-width: 768px) { .content-area { padding: 2rem; } }
 
   /* ════════════════════════════════
      SECTIONS
   ════════════════════════════════ */
-  .section { display: none; animation: secIn 0.2s var(--ease) both; }
+  .section { display: none; animation: secIn 0.2s cubic-bezier(0.4,0,0.2,1) both; }
   .section.active { display: block; }
 
   @keyframes secIn {
@@ -293,12 +319,9 @@
   }
 
   .sec-title {
-    font-family: var(--font-d);
-    font-style: italic;
-    font-size: 1.7rem;
-    font-weight: 300;
-    color: var(--text);
-    margin-bottom: 1.5rem;
+    font-family: 'Fraunces', Georgia, serif;
+    font-style: italic; font-size: 1.7rem; font-weight: 300;
+    color: var(--text); margin-bottom: 1.5rem;
   }
 
   /* ════════════════════════════════
@@ -307,41 +330,31 @@
   .card {
     background: var(--panel);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 1.4rem;
-    margin-bottom: 1rem;
-    transition: border-color 0.2s;
+    border-radius: 12px; padding: 1.4rem;
+    margin-bottom: 1rem; transition: border-color 0.2s;
   }
-
   .card:hover { border-color: var(--border2); }
 
   .card-label {
-    font-family: var(--font-m);
-    font-size: 0.6rem;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--text-dim);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--text-dim);
     margin-bottom: 0.75rem;
   }
 
-  /* Stat cards */
   .stats-row {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 0.85rem;
-    margin-bottom: 1rem;
+    gap: 0.85rem; margin-bottom: 1rem;
   }
 
-  @media (min-width: 500px) {
-    .stats-row { grid-template-columns: repeat(3, 1fr); }
-  }
+  @media (min-width: 500px) { .stats-row { grid-template-columns: repeat(3, 1fr); } }
 
   .stat-card {
     background: var(--panel);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 1.1rem;
-    animation: cardUp 0.5s var(--ease) both;
+    border-radius: 12px; padding: 1.1rem;
+    animation: cardUp 0.5s cubic-bezier(0.4,0,0.2,1) both;
   }
 
   .stat-card:nth-child(1) { animation-delay: 0.1s; }
@@ -354,20 +367,15 @@
   }
 
   .stat-label {
-    font-family: var(--font-m);
-    font-size: 0.58rem;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    margin-bottom: 0.4rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.58rem; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--text-dim); margin-bottom: 0.4rem;
   }
 
   .stat-value {
-    font-family: var(--font-d);
-    font-size: 1.9rem;
-    font-weight: 300;
-    color: var(--accent);
-    line-height: 1;
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.9rem; font-weight: 300;
+    color: var(--accent); line-height: 1;
   }
 
   /* ════════════════════════════════
@@ -377,13 +385,10 @@
     width: 100%;
     background: var(--bg3);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text);
-    font-family: var(--font-b);
-    font-size: 0.85rem;
-    padding: 0.65rem 0.9rem;
-    margin-bottom: 0.65rem;
-    outline: none;
+    border-radius: 8px; color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem; padding: 0.65rem 0.9rem;
+    margin-bottom: 0.65rem; outline: none;
     transition: border-color 0.15s, box-shadow 0.15s;
   }
 
@@ -393,70 +398,47 @@
   }
 
   input::placeholder, textarea::placeholder { color: var(--text-dim); font-size: 0.82rem; }
+  select option { background: var(--panel); }
 
   .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.4em;
-    border: none;
-    border-radius: 8px;
-    font-family: var(--font-b);
-    font-size: 0.8rem;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    padding: 0.65rem 1.25rem;
-    cursor: pointer;
-    transition: all 0.15s var(--ease);
-    width: 100%;
-    margin-top: 0.1rem;
+    display: inline-flex; align-items: center;
+    justify-content: center; gap: 0.4em;
+    border: none; border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem; font-weight: 600;
+    letter-spacing: 0.05em; padding: 0.65rem 1.25rem;
+    cursor: pointer; transition: all 0.15s cubic-bezier(0.4,0,0.2,1);
+    width: 100%; margin-top: 0.1rem;
   }
 
-  .btn-primary {
-    background: var(--accent);
-    color: #fff;
-  }
-  .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(167,139,250,0.3); }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); box-shadow: 0 6px 20px var(--accent-dim); }
 
-  .btn-secondary {
-    background: transparent;
-    border: 1px solid var(--border2);
-    color: var(--text-muted);
-  }
+  .btn-secondary { background: transparent; border: 1px solid var(--border2); color: var(--text-muted); }
   .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
 
-  .btn-danger {
-    background: rgba(248,113,113,0.1);
-    border: 1px solid rgba(248,113,113,0.25);
-    color: var(--red);
-  }
+  .btn-danger { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.25); color: var(--red); }
   .btn-danger:hover { background: rgba(248,113,113,0.2); }
 
   .btn-sm { padding: 0.4rem 0.9rem; font-size: 0.72rem; width: auto; margin: 0; }
 
   /* ════════════════════════════════
-     PROFILE AVATAR (large)
+     PROFILE AVATAR
   ════════════════════════════════ */
   .profile-avatar-wrap {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 2rem 1rem 1.5rem;
+    display: flex; flex-direction: column;
+    align-items: center; padding: 2rem 1rem 1.5rem;
   }
 
   .profile-avatar {
-    width: 90px; height: 90px;
-    border-radius: 50%;
+    width: 90px; height: 90px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-family: var(--font-b);
-    font-size: 1.8rem;
-    font-weight: 700;
-    color: #fff;
+    font-size: 1.8rem; font-weight: 700; color: #fff;
     letter-spacing: 0.04em;
     border: 3px solid rgba(255,255,255,0.15);
     box-shadow: 0 8px 32px rgba(0,0,0,0.4);
     margin-bottom: 0.85rem;
-    animation: avatarPop 0.5s var(--spring) both;
+    animation: avatarPop 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
   }
 
   @keyframes avatarPop {
@@ -465,43 +447,29 @@
   }
 
   .profile-name {
-    font-family: var(--font-d);
-    font-style: italic;
-    font-size: 1.5rem;
-    font-weight: 300;
-    color: var(--text);
-    text-align: center;
-    margin-bottom: 0.25rem;
+    font-family: 'Fraunces', Georgia, serif;
+    font-style: italic; font-size: 1.5rem; font-weight: 300;
+    color: var(--text); text-align: center; margin-bottom: 0.25rem;
   }
 
   .profile-email {
-    font-family: var(--font-m);
-    font-size: 0.72rem;
-    color: var(--text-dim);
-    text-align: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem; color: var(--text-dim); text-align: center;
   }
 
   /* ════════════════════════════════
-     PAYMENT TABLE
+     TABLE
   ════════════════════════════════ */
   .table-wrap { overflow-x: auto; }
 
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.8rem;
-  }
+  table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
 
   th {
-    text-align: left;
-    padding: 0.55rem 0.75rem;
-    font-family: var(--font-m);
-    font-size: 0.58rem;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    border-bottom: 1px solid var(--border);
-    font-weight: 400;
+    text-align: left; padding: 0.55rem 0.75rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.58rem; letter-spacing: 0.15em;
+    text-transform: uppercase; color: var(--text-dim);
+    border-bottom: 1px solid var(--border); font-weight: 400;
   }
 
   td {
@@ -512,20 +480,16 @@
 
   tr:last-child td { border: none; }
   tr:hover td { color: var(--text); background: var(--panel2); }
-
-  .td-mono { font-family: var(--font-m); font-size: 0.75rem; }
+  .td-mono { font-family: 'DM Mono', monospace; font-size: 0.75rem; }
 
   /* ════════════════════════════════
-     PILL / BADGES
+     PILLS
   ════════════════════════════════ */
   .pill {
     display: inline-block;
-    font-family: var(--font-m);
-    font-size: 0.6rem;
-    padding: 2px 8px;
-    border-radius: 99px;
-    font-weight: 500;
-    letter-spacing: 0.06em;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem; padding: 2px 8px;
+    border-radius: 99px; font-weight: 500; letter-spacing: 0.06em;
   }
 
   .pill-green  { background: rgba(52,211,153,0.12);  color: var(--green); border: 1px solid rgba(52,211,153,0.2);  }
@@ -537,28 +501,19 @@
      CHAT
   ════════════════════════════════ */
   .chat-box {
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 0.85rem;
-    height: 260px;
-    overflow-y: auto;
-    margin-bottom: 0.75rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.6rem;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 10px; padding: 0.85rem;
+    height: 260px; overflow-y: auto; margin-bottom: 0.75rem;
+    display: flex; flex-direction: column; gap: 0.6rem;
   }
 
   .chat-box::-webkit-scrollbar { width: 3px; }
   .chat-box::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 
   .msg-bubble {
-    max-width: 80%;
-    padding: 0.55rem 0.9rem;
-    border-radius: 10px;
-    font-size: 0.8rem;
-    line-height: 1.5;
-    animation: msgIn 0.2s var(--ease) both;
+    max-width: 80%; padding: 0.55rem 0.9rem;
+    border-radius: 10px; font-size: 0.8rem; line-height: 1.5;
+    animation: msgIn 0.2s cubic-bezier(0.4,0,0.2,1) both;
   }
 
   @keyframes msgIn {
@@ -567,172 +522,101 @@
   }
 
   .msg-mine {
-    background: var(--accent-dim);
-    color: var(--accent);
-    align-self: flex-end;
-    border-bottom-right-radius: 2px;
+    background: var(--accent-dim); color: var(--accent);
+    align-self: flex-end; border-bottom-right-radius: 2px;
     border: 1px solid rgba(167,139,250,0.2);
   }
 
   .msg-admin {
-    background: var(--panel2);
-    color: var(--text);
-    align-self: flex-start;
-    border-bottom-left-radius: 2px;
+    background: var(--panel2); color: var(--text);
+    align-self: flex-start; border-bottom-left-radius: 2px;
     border: 1px solid var(--border2);
   }
 
   .msg-meta {
-    font-family: var(--font-m);
-    font-size: 0.58rem;
-    color: var(--text-dim);
-    margin-top: 3px;
-    text-align: right;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.58rem; color: var(--text-dim); margin-top: 3px;
   }
 
   .msg-mine .msg-meta { text-align: right; }
   .msg-admin .msg-meta { text-align: left; }
 
-  .chat-input-row {
-    display: flex;
-    gap: 0.5rem;
-    align-items: flex-end;
-  }
-
-  .chat-input-row input {
-    flex: 1;
-    margin: 0;
-    border-radius: 99px;
-    padding: 0.6rem 1rem;
-  }
+  .chat-input-row { display: flex; gap: 0.5rem; align-items: flex-end; }
+  .chat-input-row input { flex: 1; margin: 0; border-radius: 99px; padding: 0.6rem 1rem; }
 
   /* ════════════════════════════════
-     RULE / ANNOUNCEMENT ITEMS
+     RULES / NOTICES
   ════════════════════════════════ */
-  .info-item {
-    padding: 0.85rem 0;
-    border-bottom: 1px solid var(--border);
-  }
-
+  .info-item { padding: 0.85rem 0; border-bottom: 1px solid var(--border); }
   .info-item:last-child { border: none; }
-
-  .info-title {
-    font-weight: 600;
-    font-size: 0.85rem;
-    color: var(--text);
-    margin-bottom: 0.25rem;
-  }
-
-  .info-body {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    line-height: 1.6;
-  }
-
-  .info-date {
-    font-family: var(--font-m);
-    font-size: 0.6rem;
-    color: var(--text-dim);
-    margin-top: 0.3rem;
-  }
+  .info-title { font-weight: 600; font-size: 0.85rem; color: var(--text); margin-bottom: 0.25rem; }
+  .info-body  { font-size: 0.8rem; color: var(--text-muted); line-height: 1.6; }
+  .info-date  { font-family: 'DM Mono', monospace; font-size: 0.6rem; color: var(--text-dim); margin-top: 0.3rem; }
 
   /* ════════════════════════════════
      SETTINGS
   ════════════════════════════════ */
-  .settings-section {
-    margin-bottom: 1.5rem;
-  }
+  .settings-section { margin-bottom: 1.5rem; }
 
   .settings-label {
-    font-family: var(--font-m);
-    font-size: 0.6rem;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    margin-bottom: 0.75rem;
-    padding-bottom: 0.5rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--text-dim);
+    margin-bottom: 0.75rem; padding-bottom: 0.5rem;
     border-bottom: 1px solid var(--border);
   }
 
   .info-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.55rem 0;
-    border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.55rem 0; border-bottom: 1px solid var(--border);
     font-size: 0.82rem;
   }
-
   .info-row:last-child { border: none; }
   .info-row-label { color: var(--text-dim); }
-  .info-row-value { color: var(--text); font-family: var(--font-m); font-size: 0.75rem; }
+  .info-row-value { color: var(--text); font-family: 'DM Mono', monospace; font-size: 0.75rem; }
 
   /* ════════════════════════════════
      TOAST
   ════════════════════════════════ */
   #toast {
-    position: fixed;
-    bottom: 80px; right: 1.25rem;
-    background: var(--panel2);
-    border: 1px solid var(--border2);
-    border-radius: 8px;
-    padding: 0.6rem 1rem;
-    font-family: var(--font-m);
-    font-size: 0.72rem;
-    color: var(--text);
-    opacity: 0;
-    transform: translateY(8px);
-    transition: all 0.25s var(--ease);
-    z-index: 9999;
-    pointer-events: none;
-    max-width: 280px;
+    position: fixed; bottom: 80px; right: 1.25rem;
+    background: var(--panel2); border: 1px solid var(--border2);
+    border-radius: 8px; padding: 0.6rem 1rem;
+    font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--text);
+    opacity: 0; transform: translateY(8px);
+    transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+    z-index: 9999; pointer-events: none; max-width: 280px;
     box-shadow: 0 8px 30px rgba(0,0,0,0.5);
   }
 
-  #toast.show  { opacity: 1; transform: translateY(0); }
+  #toast.show    { opacity: 1; transform: translateY(0); }
   #toast.success { border-color: var(--green); color: var(--green); }
   #toast.error   { border-color: var(--red);   color: var(--red); }
   #toast.warn    { border-color: var(--amber);  color: var(--amber); }
 
-  @media (min-width: 768px) {
-    #toast { bottom: 1.5rem; right: 2rem; }
-  }
+  @media (min-width: 768px) { #toast { bottom: 1.5rem; right: 2rem; } }
 
   /* ════════════════════════════════
      EMPTY STATE
   ════════════════════════════════ */
-  .empty-state {
-    text-align: center;
-    padding: 2.5rem 1rem;
-    color: var(--text-dim);
-    font-size: 0.8rem;
-  }
-
-  .empty-icon { font-size: 2rem; display: block; margin-bottom: 0.5rem; }
+  .empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--text-dim); font-size: 0.8rem; }
+  .empty-icon  { font-size: 2rem; display: block; margin-bottom: 0.5rem; }
 
   /* ════════════════════════════════
-     MPESA BUTTON SPECIAL
+     MPESA BUTTON
   ════════════════════════════════ */
   .mpesa-btn {
     background: linear-gradient(135deg, #00a651, #007a3d);
-    color: #fff;
-    font-size: 0.85rem;
-    padding: 0.8rem;
-    border-radius: 10px;
-    width: 100%;
-    border: none;
-    cursor: pointer;
-    font-family: var(--font-b);
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    transition: filter 0.15s, transform 0.15s;
-    margin-top: 0.1rem;
+    color: #fff; font-size: 0.85rem; padding: 0.8rem;
+    border-radius: 10px; width: 100%; border: none;
+    cursor: pointer; font-family: 'DM Sans', sans-serif;
+    font-weight: 700; letter-spacing: 0.06em;
+    transition: filter 0.15s, transform 0.15s; margin-top: 0.1rem;
   }
-
   .mpesa-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
   .mpesa-btn:active { transform: translateY(1px); }
 
-  /* Misc */
+  /* Scrollbars */
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
@@ -759,14 +643,27 @@
 
   <!-- Desktop sidebar -->
   <aside class="sidebar-desktop" id="desktopSidebar">
-    <div class="dsk-nav-item active" onclick="showSection('home')">      <span class="icon">🏠</span> Home        </div>
-    <div class="dsk-nav-item"        onclick="showSection('profile')">   <span class="icon">👤</span> Profile     </div>
-    <div class="dsk-nav-item"        onclick="showSection('pay')">       <span class="icon">💳</span> Pay Rent    </div>
-    <div class="dsk-nav-item"        onclick="showSection('receipts')">  <span class="icon">🧾</span> Receipts    </div>
-    <div class="dsk-nav-item"        onclick="showSection('messages')">  <span class="icon">💬</span> Messages    <span class="bnav-badge" id="dskMsgBadge" style="position:static;margin-left:auto;display:none"></span></div>
-    <div class="dsk-nav-item"        onclick="showSection('notices')">   <span class="icon">📢</span> Notices     </div>
-    <div class="dsk-nav-item"        onclick="showSection('rules')">     <span class="icon">📜</span> Rules       </div>
-    <div class="dsk-nav-item"        onclick="showSection('settings')">  <span class="icon">⚙️</span> Settings    </div>
+    <div class="sidebar-nav">
+      <div class="dsk-nav-item active" onclick="showSection('home')">     <span class="icon">🏠</span> Home       </div>
+      <div class="dsk-nav-item"        onclick="showSection('profile')">  <span class="icon">👤</span> Profile    </div>
+      <div class="dsk-nav-item"        onclick="showSection('pay')">      <span class="icon">💳</span> Pay Rent   </div>
+      <div class="dsk-nav-item"        onclick="showSection('receipts')"> <span class="icon">🧾</span> Receipts   </div>
+      <div class="dsk-nav-item"        onclick="showSection('messages')"> <span class="icon">💬</span> Messages   <span class="bnav-badge" id="dskMsgBadge" style="position:static;margin-left:auto;display:none"></span></div>
+      <div class="dsk-nav-item"        onclick="showSection('notices')">  <span class="icon">📢</span> Notices    </div>
+      <div class="dsk-nav-item"        onclick="showSection('rules')">    <span class="icon">📜</span> Rules      </div>
+      <div class="dsk-nav-item"        onclick="showSection('settings')"> <span class="icon">⚙️</span> Settings   </div>
+    </div>
+
+    <!-- Theme switcher in desktop sidebar -->
+    <div class="sidebar-footer">
+      <div style="font-family:'DM Mono',monospace;font-size:0.58rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--text-dim);margin-bottom:0.5rem">Appearance</div>
+      <div class="theme-switcher" style="padding:0">
+        <div class="theme-dot active" data-theme="dark"   onclick="setTheme('dark')"   title="Dark"></div>
+        <div class="theme-dot"        data-theme="light"  onclick="setTheme('light')"  title="Light"></div>
+        <div class="theme-dot"        data-theme="blue"   onclick="setTheme('blue')"   title="Blue"></div>
+        <div class="theme-dot"        data-theme="orange" onclick="setTheme('orange')" title="Orange"></div>
+      </div>
+    </div>
   </aside>
 
   <!-- Content -->
@@ -794,17 +691,15 @@
         </div>
       </div>
 
-      <!-- Current month status -->
       <div class="card" id="monthStatusCard">
         <div class="card-label">This Month</div>
         <div id="monthStatus" style="font-size:0.85rem;color:var(--text-muted)">Loading...</div>
       </div>
 
-      <!-- Quick actions -->
       <div class="card">
         <div class="card-label">Quick Actions</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-top:0.25rem">
-          <button class="btn btn-primary" onclick="showSection('pay')">💳 Pay Rent</button>
+          <button class="btn btn-primary"   onclick="showSection('pay')">💳 Pay Rent</button>
           <button class="btn btn-secondary" onclick="showSection('receipts')">🧾 Receipts</button>
           <button class="btn btn-secondary" onclick="showSection('messages')">💬 Message</button>
           <button class="btn btn-secondary" onclick="showSection('notices')">📢 Notices</button>
@@ -815,19 +710,16 @@
     <!-- ─── PROFILE ─── -->
     <div class="section" id="sec-profile">
       <div class="sec-title">My Profile</div>
-
       <div class="card">
-        <!-- Big avatar -->
         <div class="profile-avatar-wrap">
           <div class="profile-avatar" id="profileAvatar">??</div>
-          <div class="profile-name"  id="profileName">—</div>
-          <div class="profile-email" id="profileEmail">—</div>
+          <div class="profile-name"   id="profileName">—</div>
+          <div class="profile-email"  id="profileEmail">—</div>
         </div>
-
         <div class="card-label" style="margin-top:0.5rem">Account Info</div>
-        <div class="info-row"><span class="info-row-label">Phone</span>     <span class="info-row-value" id="profilePhone">—</span></div>
-        <div class="info-row"><span class="info-row-label">House</span>     <span class="info-row-value" id="profileHouse">—</span></div>
-        <div class="info-row"><span class="info-row-label">Due Date</span>  <span class="info-row-value" id="profileDue">—</span></div>
+        <div class="info-row"><span class="info-row-label">Phone</span>      <span class="info-row-value" id="profilePhone">—</span></div>
+        <div class="info-row"><span class="info-row-label">House</span>      <span class="info-row-value" id="profileHouse">—</span></div>
+        <div class="info-row"><span class="info-row-label">Due Date</span>   <span class="info-row-value" id="profileDue">—</span></div>
         <div class="info-row"><span class="info-row-label">Member Since</span><span class="info-row-value" id="profileSince">—</span></div>
       </div>
 
@@ -835,15 +727,13 @@
         <div class="card-label">Payment History</div>
         <div class="table-wrap">
           <table>
-            <thead>
-              <tr><th>Month</th><th>Amount</th><th>Date</th><th>Status</th></tr>
-            </thead>
+            <thead><tr><th>Month</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead>
             <tbody id="payHistoryTable">
               <tr><td colspan="4"><div class="empty-state">No payments yet</div></td></tr>
             </tbody>
           </table>
         </div>
-        <div style="margin-top:0.75rem;font-family:var(--font-m);font-size:0.72rem;color:var(--text-dim)">
+        <div style="margin-top:0.75rem;font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--text-dim)">
           Total paid: <strong id="profileTotalPaid" style="color:var(--accent)">Ksh 0</strong>
         </div>
       </div>
@@ -852,22 +742,19 @@
     <!-- ─── PAY RENT ─── -->
     <div class="section" id="sec-pay">
       <div class="sec-title">Pay Rent</div>
-
       <div class="card" id="rentSummaryCard">
         <div class="card-label">Rent Summary</div>
         <div id="rentSummary" style="font-size:0.85rem;color:var(--text-muted)">Loading...</div>
       </div>
-
       <div class="card">
         <div class="card-label">M-Pesa STK Push</div>
         <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:0.85rem;line-height:1.6">
           Enter the amount and month. An M-Pesa prompt will be sent to your registered phone number.
         </div>
-        <input type="number" id="payAmount"  placeholder="Amount (Ksh)">
-        <input type="text"   id="payMonth"   placeholder="Month (e.g. April 2026)">
+        <input type="number" id="payAmount" placeholder="Amount (Ksh)">
+        <input type="text"   id="payMonth"  placeholder="Month (e.g. April 2026)">
         <button class="mpesa-btn" onclick="payWithMpesa()">📱 Pay with M-Pesa</button>
       </div>
-
       <div id="payReceipt"></div>
     </div>
 
@@ -929,6 +816,18 @@
         <div class="info-row"><span class="info-row-label">Role</span>  <span class="pill pill-violet" style="font-size:0.6rem">Tenant</span></div>
       </div>
 
+      <!-- Appearance — theme dots (mobile) -->
+      <div class="card settings-section">
+        <div class="settings-label">Appearance</div>
+        <div style="display:flex;gap:10px;align-items:center;padding:0.25rem 0">
+          <div class="theme-dot" data-theme="dark"   onclick="setTheme('dark')"   title="Dark"   style="width:24px;height:24px"></div>
+          <div class="theme-dot" data-theme="light"  onclick="setTheme('light')"  title="Light"  style="width:24px;height:24px"></div>
+          <div class="theme-dot" data-theme="blue"   onclick="setTheme('blue')"   title="Blue"   style="width:24px;height:24px"></div>
+          <div class="theme-dot" data-theme="orange" onclick="setTheme('orange')" title="Orange" style="width:24px;height:24px"></div>
+          <span style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--text-dim);margin-left:0.25rem" id="currentThemeLabel">dark</span>
+        </div>
+      </div>
+
       <!-- Change password -->
       <div class="card settings-section">
         <div class="settings-label">Change Password</div>
@@ -938,7 +837,7 @@
         <button class="btn btn-primary" onclick="changePassword()">Update Password</button>
       </div>
 
-      <!-- Danger zone -->
+      <!-- Danger -->
       <div class="card settings-section" style="border-color:rgba(248,113,113,0.2)">
         <div class="settings-label" style="color:var(--red)">Session</div>
         <button class="btn btn-danger" onclick="logout()">⏻ Sign Out</button>
@@ -950,27 +849,54 @@
 
 <!-- ═══ BOTTOM NAV ═══ -->
 <nav class="bottom-nav">
-  <div class="bnav-item active" onclick="showSection('home')" id="bnav-home">
-    <span class="bnav-icon">🏠</span>Home
-  </div>
-  <div class="bnav-item" onclick="showSection('profile')" id="bnav-profile">
-    <span class="bnav-icon">👤</span>Profile
-  </div>
-  <div class="bnav-item" onclick="showSection('pay')" id="bnav-pay">
-    <span class="bnav-icon">💳</span>Pay
-  </div>
-  <div class="bnav-item" onclick="showSection('messages')" id="bnav-messages">
-    <span class="bnav-icon">💬</span>Chat
-    <span class="bnav-badge" id="msgBadge" style="display:none">!</span>
-  </div>
-  <div class="bnav-item" onclick="showSection('settings')" id="bnav-settings">
-    <span class="bnav-icon">⚙️</span>Settings
-  </div>
+  <div class="bnav-item active" onclick="showSection('home')"     id="bnav-home">    <span class="bnav-icon">🏠</span>Home    </div>
+  <div class="bnav-item"        onclick="showSection('profile')"  id="bnav-profile"> <span class="bnav-icon">👤</span>Profile </div>
+  <div class="bnav-item"        onclick="showSection('pay')"      id="bnav-pay">     <span class="bnav-icon">💳</span>Pay     </div>
+  <div class="bnav-item"        onclick="showSection('messages')" id="bnav-messages"><span class="bnav-icon">💬</span>Chat    <span class="bnav-badge" id="msgBadge" style="display:none">!</span></div>
+  <div class="bnav-item"        onclick="showSection('settings')" id="bnav-settings"><span class="bnav-icon">⚙️</span>Settings</div>
 </nav>
 
 <!-- Toast -->
 <div id="toast"></div>
 
+<script>
+// ═══════════════════════════════════════
+// THEME SYSTEM — matches admin exactly
+// ═══════════════════════════════════════
+
+function setTheme(name) {
+    document.documentElement.setAttribute('data-theme', name);
+    localStorage.setItem('tenant-theme', name);
+
+    // Update active dot — all dots across page
+    document.querySelectorAll('.theme-dot').forEach(d => {
+        d.classList.toggle('active', d.dataset.theme === name);
+    });
+
+    // Update label
+    const label = document.getElementById('currentThemeLabel');
+    if (label) label.textContent = name;
+
+    showToast(`Theme: ${name} ✨`, 'success');
+}
+
+function loadTheme() {
+    const saved = localStorage.getItem('tenant-theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', saved);
+
+    document.querySelectorAll('.theme-dot').forEach(d => {
+        d.classList.toggle('active', d.dataset.theme === saved);
+    });
+
+    const label = document.getElementById('currentThemeLabel');
+    if (label) label.textContent = saved;
+}
+
+// Load immediately before anything renders
+loadTheme();
+</script>
+
+<script src="config.js"></script>
 <script src="tenant.js"></script>
 </body>
 </html>
