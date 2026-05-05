@@ -8,7 +8,7 @@ const { Resend } = require('resend');
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Sender address — use this until you add a custom domain on Resend
-const FROM = 'RentPortal 🏠 <onboarding@resend.dev>';
+const FROM = 'RentPortal 🏠 <noreply@send.affordablerentals.site>';
 
 // ════════════════════════════════════════════════
 // 1. WELCOME EMAIL

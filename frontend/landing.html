@@ -1,0 +1,1469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RentPortal — Modern Rental Management</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <style>
+  /* ═══════════════════════════════════════════
+     RESET & BASE
+  ═══════════════════════════════════════════ */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  :root {
+    --ink:      #050810;
+    --ink2:     #080d1a;
+    --ink3:     #0d1525;
+    --card:     #101828;
+    --card2:    #141f32;
+    --line:     rgba(255,255,255,0.06);
+    --line2:    rgba(255,255,255,0.12);
+    --blue:     #3b82f6;
+    --blue2:    #1d4ed8;
+    --cyan:     #06b6d4;
+    --white:    #f0f4ff;
+    --grey:     #94a3b8;
+    --grey2:    #475569;
+    --red:      #f87171;
+    --green:    #4ade80;
+    --font-d:   'Bebas Neue', sans-serif;
+    --font-b:   'Outfit', sans-serif;
+    --font-m:   'Fira Code', monospace;
+  }
+
+  body {
+    font-family: var(--font-b);
+    background: var(--ink);
+    color: var(--white);
+    overflow-x: hidden;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  /* ═══════════════════════════════════════════
+     SCROLLBAR
+  ═══════════════════════════════════════════ */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--ink); }
+  ::-webkit-scrollbar-thumb { background: var(--blue); border-radius: 2px; }
+
+  /* ═══════════════════════════════════════════
+     NAVBAR
+  ═══════════════════════════════════════════ */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 1000;
+    padding: 1rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(5,8,16,0.8);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--line);
+    transition: all 0.3s ease;
+  }
+
+  nav.scrolled {
+    background: rgba(5,8,16,0.98);
+    box-shadow: 0 4px 30px rgba(0,0,0,0.5);
+  }
+
+  .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    text-decoration: none;
+  }
+
+  .nav-logo-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--blue), var(--cyan));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+    box-shadow: 0 0 20px rgba(59,130,246,0.4);
+  }
+
+  .nav-logo-text {
+    font-family: var(--font-d);
+    font-size: 1.4rem;
+    letter-spacing: 0.1em;
+    color: var(--white);
+  }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    list-style: none;
+  }
+
+  .nav-links a {
+    font-family: var(--font-b);
+    font-size: 0.82rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--grey);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .nav-links a:hover { color: var(--white); }
+
+  .nav-cta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .btn-nav-login {
+    font-family: var(--font-b);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--grey);
+    background: transparent;
+    border: 1px solid var(--line2);
+    padding: 0.5rem 1.2rem;
+    border-radius: 6px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+
+  .btn-nav-login:hover { color: var(--white); border-color: var(--blue); }
+
+  .btn-nav-register {
+    font-family: var(--font-b);
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, var(--blue), var(--cyan));
+    border: none;
+    padding: 0.5rem 1.2rem;
+    border-radius: 6px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+    box-shadow: 0 4px 16px rgba(59,130,246,0.3);
+  }
+
+  .btn-nav-register:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(59,130,246,0.5); }
+
+  .hamburger {
+    display: none;
+    flex-direction: column;
+    gap: 5px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 4px;
+  }
+
+  .hamburger span {
+    display: block;
+    width: 22px; height: 2px;
+    background: var(--white);
+    border-radius: 2px;
+    transition: all 0.3s;
+  }
+
+  /* ═══════════════════════════════════════════
+     HERO
+  ═══════════════════════════════════════════ */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    padding: 8rem 2rem 4rem;
+  }
+
+  /* Grid background */
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 50px 50px;
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%);
+  }
+
+  /* Blue glow orb */
+  .hero::after {
+    content: '';
+    position: absolute;
+    top: 20%; left: 50%;
+    transform: translateX(-50%);
+    width: 700px; height: 500px;
+    background: radial-gradient(ellipse, rgba(59,130,246,0.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* Floating shapes */
+  .hero-shape {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    pointer-events: none;
+    animation: shapeFloat ease-in-out infinite alternate;
+  }
+
+  .hero-shape-1 {
+    width: 300px; height: 300px;
+    background: rgba(59,130,246,0.12);
+    top: 10%; right: 10%;
+    animation-duration: 8s;
+  }
+
+  .hero-shape-2 {
+    width: 200px; height: 200px;
+    background: rgba(6,182,212,0.1);
+    bottom: 20%; left: 5%;
+    animation-duration: 11s;
+    animation-delay: -4s;
+  }
+
+  @keyframes shapeFloat {
+    from { transform: translate(0, 0) scale(1); }
+    to   { transform: translate(20px, -30px) scale(1.1); }
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    max-width: 900px;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(59,130,246,0.1);
+    border: 1px solid rgba(59,130,246,0.3);
+    border-radius: 99px;
+    padding: 0.4rem 1rem;
+    font-family: var(--font-m);
+    font-size: 0.7rem;
+    color: var(--blue);
+    letter-spacing: 0.1em;
+    margin-bottom: 2rem;
+    animation: fadeUp 0.6s 0.1s ease both;
+  }
+
+  .hero-badge-dot {
+    width: 6px; height: 6px;
+    background: var(--blue);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--blue);
+    animation: pulse 2s ease infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  .hero-title {
+    font-family: var(--font-d);
+    font-size: clamp(4rem, 10vw, 9rem);
+    letter-spacing: 0.05em;
+    line-height: 0.9;
+    margin-bottom: 1.5rem;
+    animation: fadeUp 0.6s 0.2s ease both;
+  }
+
+  .hero-title .line1 { display: block; color: var(--white); }
+  .hero-title .line2 {
+    display: block;
+    background: linear-gradient(135deg, var(--blue), var(--cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-sub {
+    font-size: 1.05rem;
+    font-weight: 400;
+    color: var(--grey);
+    max-width: 520px;
+    margin: 0 auto 2.5rem;
+    line-height: 1.8;
+    animation: fadeUp 0.6s 0.35s ease both;
+  }
+
+  .hero-btns {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    animation: fadeUp 0.6s 0.5s ease both;
+  }
+
+  .btn-hero-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: linear-gradient(135deg, var(--blue), var(--cyan));
+    color: #fff;
+    font-family: var(--font-b);
+    font-size: 0.9rem;
+    font-weight: 700;
+    padding: 0.9rem 2rem;
+    border-radius: 8px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 8px 30px rgba(59,130,246,0.4);
+    transition: all 0.2s;
+    letter-spacing: 0.04em;
+  }
+
+  .btn-hero-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(59,130,246,0.6); }
+
+  .btn-hero-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: transparent;
+    color: var(--white);
+    font-family: var(--font-b);
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 0.9rem 2rem;
+    border-radius: 8px;
+    text-decoration: none;
+    border: 1px solid var(--line2);
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.04em;
+  }
+
+  .btn-hero-secondary:hover { border-color: var(--blue); color: var(--blue); }
+
+  /* Hero stats */
+  .hero-stats {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3rem;
+    margin-top: 4rem;
+    padding-top: 3rem;
+    border-top: 1px solid var(--line);
+    animation: fadeUp 0.6s 0.65s ease both;
+    flex-wrap: wrap;
+  }
+
+  .hero-stat-value {
+    font-family: var(--font-d);
+    font-size: 2.5rem;
+    letter-spacing: 0.05em;
+    background: linear-gradient(135deg, var(--white), var(--grey));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+  }
+
+  .hero-stat-label {
+    font-family: var(--font-m);
+    font-size: 0.65rem;
+    color: var(--grey2);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-top: 0.25rem;
+  }
+
+  /* ═══════════════════════════════════════════
+     SECTION SHARED
+  ═══════════════════════════════════════════ */
+  section { padding: 6rem 2rem; }
+
+  .section-tag {
+    font-family: var(--font-m);
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--blue);
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .section-tag::before {
+    content: '';
+    display: inline-block;
+    width: 24px; height: 1px;
+    background: var(--blue);
+  }
+
+  .section-title {
+    font-family: var(--font-d);
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    letter-spacing: 0.05em;
+    line-height: 1;
+    color: var(--white);
+    margin-bottom: 1rem;
+  }
+
+  .section-sub {
+    font-size: 1rem;
+    color: var(--grey);
+    max-width: 500px;
+    line-height: 1.8;
+  }
+
+  .section-header { margin-bottom: 3.5rem; }
+  .section-header.center { text-align: center; }
+  .section-header.center .section-tag { justify-content: center; }
+  .section-header.center .section-tag::before { display: none; }
+  .section-header.center .section-sub { margin: 0 auto; }
+
+  /* Container */
+  .container { max-width: 1100px; margin: 0 auto; }
+
+  /* ═══════════════════════════════════════════
+     FEATURES
+  ═══════════════════════════════════════════ */
+  #features { background: var(--ink2); }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.25rem;
+  }
+
+  .feature-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 2rem;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .feature-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--blue), var(--cyan));
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .feature-card:hover { border-color: rgba(59,130,246,0.3); transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.3); }
+  .feature-card:hover::before { opacity: 1; }
+
+  .feature-icon {
+    width: 48px; height: 48px;
+    background: rgba(59,130,246,0.1);
+    border: 1px solid rgba(59,130,246,0.2);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .feature-title {
+    font-family: var(--font-b);
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.02em;
+  }
+
+  .feature-desc {
+    font-size: 0.85rem;
+    color: var(--grey);
+    line-height: 1.7;
+  }
+
+  /* ═══════════════════════════════════════════
+     HOW IT WORKS
+  ═══════════════════════════════════════════ */
+  #how { background: var(--ink); }
+
+  .steps-wrap {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 2rem;
+    position: relative;
+  }
+
+  /* Connecting line on desktop */
+  .steps-wrap::before {
+    content: '';
+    position: absolute;
+    top: 40px; left: 10%; right: 10%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--blue), var(--cyan), transparent);
+    opacity: 0.3;
+  }
+
+  .step-card {
+    text-align: center;
+    padding: 2rem 1.5rem;
+    position: relative;
+  }
+
+  .step-num {
+    font-family: var(--font-d);
+    font-size: 5rem;
+    letter-spacing: 0.05em;
+    line-height: 1;
+    background: linear-gradient(135deg, rgba(59,130,246,0.3), rgba(6,182,212,0.1));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 1.25rem;
+  }
+
+  .step-icon {
+    width: 64px; height: 64px;
+    background: linear-gradient(135deg, var(--blue), var(--cyan));
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem;
+    margin: 0 auto 1.25rem;
+    box-shadow: 0 0 30px rgba(59,130,246,0.4);
+    position: relative;
+    z-index: 1;
+  }
+
+  .step-title {
+    font-family: var(--font-b);
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 0.5rem;
+  }
+
+  .step-desc { font-size: 0.85rem; color: var(--grey); line-height: 1.7; }
+
+  /* ═══════════════════════════════════════════
+     TESTIMONIALS
+  ═══════════════════════════════════════════ */
+  #testimonials { background: var(--ink2); }
+
+  .testimonials-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.25rem;
+  }
+
+  .testimonial-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 2rem;
+    transition: border-color 0.3s;
+    position: relative;
+  }
+
+  .testimonial-card:hover { border-color: rgba(59,130,246,0.3); }
+
+  .quote-mark {
+    font-family: var(--font-d);
+    font-size: 5rem;
+    line-height: 0.5;
+    color: var(--blue);
+    opacity: 0.3;
+    margin-bottom: 1rem;
+  }
+
+  .testimonial-text {
+    font-size: 0.9rem;
+    color: var(--grey);
+    line-height: 1.8;
+    margin-bottom: 1.5rem;
+    font-style: italic;
+  }
+
+  .testimonial-author {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .author-avatar {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #fff;
+    flex-shrink: 0;
+  }
+
+  .author-name { font-weight: 700; font-size: 0.85rem; color: var(--white); }
+  .author-role { font-family: var(--font-m); font-size: 0.65rem; color: var(--grey2); letter-spacing: 0.08em; }
+
+  .stars {
+    position: absolute;
+    top: 1.5rem; right: 1.5rem;
+    color: #fbbf24;
+    font-size: 0.75rem;
+    letter-spacing: 2px;
+  }
+
+  /* ═══════════════════════════════════════════
+     FAQ
+  ═══════════════════════════════════════════ */
+  #faq { background: var(--ink); }
+
+  .faq-list {
+    max-width: 720px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .faq-item {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .faq-item.open { border-color: rgba(59,130,246,0.3); }
+
+  .faq-q {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.92rem;
+    color: var(--white);
+    user-select: none;
+    gap: 1rem;
+  }
+
+  .faq-q:hover { color: var(--blue); }
+
+  .faq-icon {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: rgba(59,130,246,0.1);
+    border: 1px solid rgba(59,130,246,0.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+    transition: transform 0.3s, background 0.2s;
+    color: var(--blue);
+    font-weight: 700;
+  }
+
+  .faq-item.open .faq-icon { transform: rotate(45deg); background: rgba(59,130,246,0.2); }
+
+  .faq-a {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease, padding 0.3s ease;
+    font-size: 0.85rem;
+    color: var(--grey);
+    line-height: 1.8;
+    padding: 0 1.5rem;
+  }
+
+  .faq-item.open .faq-a { max-height: 200px; padding: 0 1.5rem 1.25rem; }
+
+  /* ═══════════════════════════════════════════
+     CONTACT
+  ═══════════════════════════════════════════ */
+  #contact { background: var(--ink2); }
+
+  .contact-wrap {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    align-items: center;
+  }
+
+  .contact-info { display: flex; flex-direction: column; gap: 1.5rem; }
+
+  .contact-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .contact-icon {
+    width: 44px; height: 44px;
+    background: rgba(59,130,246,0.1);
+    border: 1px solid rgba(59,130,246,0.2);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+
+  .contact-item-label {
+    font-family: var(--font-m);
+    font-size: 0.62rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--grey2);
+    margin-bottom: 0.25rem;
+  }
+
+  .contact-item-value {
+    font-size: 0.9rem;
+    color: var(--white);
+    font-weight: 500;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .contact-item-value:hover { color: var(--blue); }
+
+  .contact-form {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 2.5rem;
+  }
+
+  .contact-form-title {
+    font-family: var(--font-d);
+    font-size: 1.8rem;
+    letter-spacing: 0.05em;
+    color: var(--white);
+    margin-bottom: 1.5rem;
+  }
+
+  .form-field {
+    margin-bottom: 1rem;
+  }
+
+  .form-field label {
+    display: block;
+    font-family: var(--font-m);
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--grey2);
+    margin-bottom: 0.4rem;
+  }
+
+  .form-field input,
+  .form-field textarea {
+    width: 100%;
+    background: var(--ink3);
+    border: 1px solid var(--line2);
+    border-radius: 8px;
+    color: var(--white);
+    font-family: var(--font-b);
+    font-size: 0.85rem;
+    padding: 0.7rem 1rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    resize: none;
+  }
+
+  .form-field input:focus,
+  .form-field textarea:focus {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+  }
+
+  .form-field input::placeholder,
+  .form-field textarea::placeholder { color: var(--grey2); font-size: 0.82rem; }
+
+  .btn-send {
+    width: 100%;
+    background: linear-gradient(135deg, var(--blue), var(--cyan));
+    color: #fff;
+    font-family: var(--font-b);
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.85rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 20px rgba(59,130,246,0.3);
+    margin-top: 0.5rem;
+  }
+
+  .btn-send:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(59,130,246,0.5); }
+
+  /* ═══════════════════════════════════════════
+     CTA BANNER
+  ═══════════════════════════════════════════ */
+  #cta {
+    background: var(--ink);
+    padding: 6rem 2rem;
+  }
+
+  .cta-box {
+    max-width: 800px;
+    margin: 0 auto;
+    text-align: center;
+    background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(6,182,212,0.05));
+    border: 1px solid rgba(59,130,246,0.2);
+    border-radius: 20px;
+    padding: 4rem 3rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cta-box::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--blue), var(--cyan), transparent);
+  }
+
+  .cta-title {
+    font-family: var(--font-d);
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    letter-spacing: 0.05em;
+    line-height: 1;
+    color: var(--white);
+    margin-bottom: 1rem;
+  }
+
+  .cta-sub { font-size: 0.95rem; color: var(--grey); margin-bottom: 2.5rem; max-width: 400px; margin-left: auto; margin-right: auto; }
+
+  /* ═══════════════════════════════════════════
+     FOOTER
+  ═══════════════════════════════════════════ */
+  footer {
+    background: var(--ink2);
+    border-top: 1px solid var(--line);
+    padding: 3rem 2rem 2rem;
+  }
+
+  .footer-wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .footer-top {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 3rem;
+    margin-bottom: 3rem;
+    padding-bottom: 3rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .footer-brand p {
+    font-size: 0.82rem;
+    color: var(--grey2);
+    line-height: 1.8;
+    margin-top: 0.75rem;
+    max-width: 240px;
+  }
+
+  .footer-col-title {
+    font-family: var(--font-m);
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--grey2);
+    margin-bottom: 1rem;
+  }
+
+  .footer-links {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .footer-links a {
+    font-size: 0.82rem;
+    color: var(--grey);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .footer-links a:hover { color: var(--blue); }
+
+  .footer-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .footer-copy {
+    font-family: var(--font-m);
+    font-size: 0.65rem;
+    color: var(--grey2);
+    letter-spacing: 0.08em;
+  }
+
+  .footer-socials {
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  .social-btn {
+    width: 32px; height: 32px;
+    background: var(--card);
+    border: 1px solid var(--line2);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.85rem;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+    color: var(--grey);
+  }
+
+  .social-btn:hover { border-color: var(--blue); color: var(--blue); transform: translateY(-2px); }
+
+  /* ═══════════════════════════════════════════
+     SCROLL ANIMATIONS
+  ═══════════════════════════════════════════ */
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+  .reveal-delay-1 { transition-delay: 0.1s; }
+  .reveal-delay-2 { transition-delay: 0.2s; }
+  .reveal-delay-3 { transition-delay: 0.3s; }
+  .reveal-delay-4 { transition-delay: 0.4s; }
+  .reveal-delay-5 { transition-delay: 0.5s; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ═══════════════════════════════════════════
+     MOBILE NAV MENU
+  ═══════════════════════════════════════════ */
+  .mobile-menu {
+    display: none;
+    position: fixed;
+    top: 65px; left: 0; right: 0;
+    background: rgba(5,8,16,0.98);
+    border-bottom: 1px solid var(--line);
+    padding: 1.5rem 2rem;
+    flex-direction: column;
+    gap: 1.25rem;
+    z-index: 999;
+    backdrop-filter: blur(20px);
+  }
+
+  .mobile-menu.open { display: flex; }
+  .mobile-menu a { font-size: 0.9rem; color: var(--grey); text-decoration: none; font-weight: 500; }
+  .mobile-menu a:hover { color: var(--white); }
+
+  /* ═══════════════════════════════════════════
+     RESPONSIVE
+  ═══════════════════════════════════════════ */
+  @media (max-width: 900px) {
+    .contact-wrap { grid-template-columns: 1fr; gap: 3rem; }
+    .footer-top   { grid-template-columns: 1fr 1fr; gap: 2rem; }
+    .steps-wrap::before { display: none; }
+  }
+
+  @media (max-width: 700px) {
+    .nav-links { display: none; }
+    .hamburger { display: flex; }
+    .footer-top { grid-template-columns: 1fr; gap: 2rem; }
+    .footer-bottom { flex-direction: column; align-items: flex-start; }
+    .cta-box { padding: 3rem 1.5rem; }
+    section { padding: 4rem 1.25rem; }
+    .hero { padding: 7rem 1.25rem 3rem; }
+    .hero-stats { gap: 2rem; }
+  }
+  </style>
+</head>
+
+<body>
+
+<!-- ═══ NAVBAR ═══ -->
+<nav id="navbar">
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-icon">🏠</div>
+    <span class="nav-logo-text">RENTPORTAL</span>
+  </a>
+
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#how">How it Works</a></li>
+    <li><a href="#faq">FAQ</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ul>
+
+  <div class="nav-cta">
+    <a href="auth.html" class="btn-nav-login">Login</a>
+    <a href="auth.html" class="btn-nav-register">Get Started →</a>
+  </div>
+
+  <button class="hamburger" onclick="toggleMenu()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<!-- Mobile menu -->
+<div class="mobile-menu" id="mobileMenu">
+  <a href="#features" onclick="toggleMenu()">Features</a>
+  <a href="#how"      onclick="toggleMenu()">How it Works</a>
+  <a href="#faq"      onclick="toggleMenu()">FAQ</a>
+  <a href="#contact"  onclick="toggleMenu()">Contact</a>
+  <a href="auth.html" style="color:var(--blue);font-weight:700">Login / Register →</a>
+</div>
+
+<!-- ═══ HERO ═══ -->
+<section class="hero" id="home">
+  <div class="hero-shape hero-shape-1"></div>
+  <div class="hero-shape hero-shape-2"></div>
+
+  <div class="hero-content">
+    <div class="hero-badge">
+      <span class="hero-badge-dot"></span>
+      MODERN RENTAL MANAGEMENT PLATFORM
+    </div>
+
+    <h1 class="hero-title">
+      <span class="line1">MANAGE</span>
+      <span class="line2">SMARTER</span>
+    </h1>
+
+    <p class="hero-sub">
+      A complete rental management system for landlords and tenants.
+      Pay rent, track receipts, communicate — all in one beautiful platform.
+    </p>
+
+    <div class="hero-btns">
+      <a href="auth.html" class="btn-hero-primary">🚀 Get Started Free</a>
+      <a href="#how"      class="btn-hero-secondary">See How it Works ↓</a>
+    </div>
+
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="hero-stat-value">100%</div>
+        <div class="hero-stat-label">Paperless</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-value">24/7</div>
+        <div class="hero-stat-label">Accessible</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-value">M-PESA</div>
+        <div class="hero-stat-label">Integrated</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-value">FREE</div>
+        <div class="hero-stat-label">To Get Started</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FEATURES ═══ -->
+<section id="features">
+  <div class="container">
+    <div class="section-header center">
+      <div class="section-tag">Platform Features</div>
+      <h2 class="section-title">EVERYTHING YOU NEED</h2>
+      <p class="section-sub">From rent payments to tenant communication — RentPortal handles it all in one place.</p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card reveal reveal-delay-1">
+        <div class="feature-icon">📱</div>
+        <div class="feature-title">M-Pesa Payments</div>
+        <div class="feature-desc">Pay rent instantly via M-Pesa STK push. Receipts are generated and emailed automatically after every successful payment.</div>
+      </div>
+      <div class="feature-card reveal reveal-delay-2">
+        <div class="feature-icon">🧾</div>
+        <div class="feature-title">Digital Receipts</div>
+        <div class="feature-desc">Every payment generates a PDF receipt sent straight to your email. Access your full payment history anytime.</div>
+      </div>
+      <div class="feature-card reveal reveal-delay-3">
+        <div class="feature-icon">💬</div>
+        <div class="feature-title">Tenant-Landlord Chat</div>
+        <div class="feature-desc">Message your landlord directly from the dashboard. No more phone tag — all communication in one place.</div>
+      </div>
+      <div class="feature-card reveal reveal-delay-1">
+        <div class="feature-icon">📊</div>
+        <div class="feature-title">Arrears Tracking</div>
+        <div class="feature-desc">Know exactly what you owe and when. Landlords can view outstanding balances across all tenants in real time.</div>
+      </div>
+      <div class="feature-card reveal reveal-delay-2">
+        <div class="feature-icon">📢</div>
+        <div class="feature-title">Announcements & Rules</div>
+        <div class="feature-desc">Landlords post announcements and house rules that tenants see instantly on their dashboard.</div>
+      </div>
+      <div class="feature-card reveal reveal-delay-3">
+        <div class="feature-icon">🔒</div>
+        <div class="feature-title">Secure & Private</div>
+        <div class="feature-desc">JWT authentication, encrypted passwords and secure API endpoints keep your data safe at all times.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ HOW IT WORKS ═══ -->
+<section id="how">
+  <div class="container">
+    <div class="section-header center">
+      <div class="section-tag">Simple Process</div>
+      <h2 class="section-title">HOW IT WORKS</h2>
+      <p class="section-sub">Up and running in minutes. No paperwork, no confusion.</p>
+    </div>
+
+    <div class="steps-wrap">
+      <div class="step-card reveal reveal-delay-1">
+        <div class="step-icon">✍️</div>
+        <div class="step-title">1. Register</div>
+        <div class="step-desc">Create your tenant account with your name, email and phone number. Your landlord assigns you a house unit.</div>
+      </div>
+      <div class="step-card reveal reveal-delay-2">
+        <div class="step-icon">🏠</div>
+        <div class="step-title">2. Get Set Up</div>
+        <div class="step-desc">Your landlord assigns your house and sets your monthly rent. You'll receive a welcome email with your details.</div>
+      </div>
+      <div class="step-card reveal reveal-delay-3">
+        <div class="step-icon">💳</div>
+        <div class="step-title">3. Pay & Track</div>
+        <div class="step-desc">Pay rent via M-Pesa with one tap. Track your payment history, download receipts and message your landlord.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ TESTIMONIALS ═══ -->
+<section id="testimonials">
+  <div class="container">
+    <div class="section-header center">
+      <div class="section-tag">Testimonials</div>
+      <h2 class="section-title">WHAT TENANTS SAY</h2>
+      <p class="section-sub">Real feedback from people using RentPortal every day.</p>
+    </div>
+
+    <div class="testimonials-grid">
+      <div class="testimonial-card reveal reveal-delay-1">
+        <div class="stars">★★★★★</div>
+        <div class="quote-mark">"</div>
+        <div class="testimonial-text">Paying rent used to be a hassle. Now I just open the app, tap pay, and I get a receipt in my email within seconds. Absolutely love it.</div>
+        <div class="testimonial-author">
+          <div class="author-avatar" style="background:linear-gradient(135deg,#3b82f6,#06b6d4)">JM</div>
+          <div>
+            <div class="author-name">James Mwangi</div>
+            <div class="author-role">Tenant · Nairobi</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testimonial-card reveal reveal-delay-2">
+        <div class="stars">★★★★★</div>
+        <div class="quote-mark">"</div>
+        <div class="testimonial-text">As a landlord managing multiple units, RentPortal has saved me so much time. I can see who has paid and who hasn't at a glance.</div>
+        <div class="testimonial-author">
+          <div class="author-avatar" style="background:linear-gradient(135deg,#8b5cf6,#ec4899)">AK</div>
+          <div>
+            <div class="author-name">Alice Kamau</div>
+            <div class="author-role">Landlord · Kiambu</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testimonial-card reveal reveal-delay-3">
+        <div class="stars">★★★★★</div>
+        <div class="quote-mark">"</div>
+        <div class="testimonial-text">The chat feature is a game changer. I reported a plumbing issue and my landlord responded within the hour. No more endless phone calls.</div>
+        <div class="testimonial-author">
+          <div class="author-avatar" style="background:linear-gradient(135deg,#f59e0b,#ef4444)">PO</div>
+          <div>
+            <div class="author-name">Peter Otieno</div>
+            <div class="author-role">Tenant · Mombasa</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FAQ ═══ -->
+<section id="faq">
+  <div class="container">
+    <div class="section-header center">
+      <div class="section-tag">FAQ</div>
+      <h2 class="section-title">COMMON QUESTIONS</h2>
+      <p class="section-sub">Everything you need to know before getting started.</p>
+    </div>
+
+    <div class="faq-list">
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">
+          How do I pay rent through RentPortal?
+          <span class="faq-icon">+</span>
+        </div>
+        <div class="faq-a">Go to your tenant dashboard, click "Pay Rent", enter the amount and month, then click "Pay with M-Pesa". You'll receive a prompt on your registered phone number. Enter your M-Pesa PIN and the payment is confirmed. A receipt is emailed to you automatically.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">
+          What happens if my M-Pesa payment fails?
+          <span class="faq-icon">+</span>
+        </div>
+        <div class="faq-a">If a payment fails, it will show as "Failed" in your payment history. No money will be deducted from your account. You can try again immediately or contact your landlord through the dashboard chat for assistance.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">
+          Can I download my rent receipts?
+          <span class="faq-icon">+</span>
+        </div>
+        <div class="faq-a">Yes! Every successful payment generates a PDF receipt that is emailed to you. You can also view and download all your receipts from the Receipts section in your tenant dashboard at any time.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">
+          How do I register as a tenant?
+          <span class="faq-icon">+</span>
+        </div>
+        <div class="faq-a">Click "Get Started" and fill in your name, email, phone number and a password. Once registered, your landlord will assign you to a house unit. You'll receive a welcome email confirming your account.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">
+          Is my data safe on RentPortal?
+          <span class="faq-icon">+</span>
+        </div>
+        <div class="faq-a">Absolutely. All passwords are encrypted using bcrypt hashing. Your session is protected by JWT tokens and all API endpoints require authentication. We never store your M-Pesa PIN — payments are handled directly by Safaricom's secure servers.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">
+          I forgot my password. What do I do?
+          <span class="faq-icon">+</span>
+        </div>
+        <div class="faq-a">Click "Forgot Password" on the login page and enter your registered email. You'll receive a password reset link in your inbox. If you still have trouble, contact your landlord or reach out to our support team.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CONTACT ═══ -->
+<section id="contact">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-tag">Get in Touch</div>
+      <h2 class="section-title">CONTACT & SUPPORT</h2>
+      <p class="section-sub">Have a question or need help? We're here for you.</p>
+    </div>
+
+    <div class="contact-wrap">
+      <div class="contact-info">
+        <div class="contact-item reveal reveal-delay-1">
+          <div class="contact-icon">📧</div>
+          <div>
+            <div class="contact-item-label">Email</div>
+            <a href="mailto:alexanderbosire60@gmail.com" class="contact-item-value">alexanderbosire60@gmail.com</a>
+          </div>
+        </div>
+        <div class="contact-item reveal reveal-delay-2">
+          <div class="contact-icon">💬</div>
+          <div>
+            <div class="contact-item-label">WhatsApp</div>
+            <a href="https://wa.me/254702276609" class="contact-item-value" target="_blank">+254 702 276 609</a>
+          </div>
+        </div>
+        <div class="contact-item reveal reveal-delay-3">
+          <div class="contact-icon">🐙</div>
+          <div>
+            <div class="contact-item-label">GitHub</div>
+            <a href="https://github.com/Alexander-Dev60" class="contact-item-value" target="_blank">github.com/Alexander-Dev60</a>
+          </div>
+        </div>
+        <div class="contact-item reveal reveal-delay-4">
+          <div class="contact-icon">⏰</div>
+          <div>
+            <div class="contact-item-label">Support Hours</div>
+            <span class="contact-item-value">Mon – Fri, 8AM – 6PM EAT</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="contact-form reveal reveal-delay-2">
+        <div class="contact-form-title">SEND A MESSAGE</div>
+        <div class="form-field">
+          <label>Your Name</label>
+          <input type="text" id="contactName" placeholder="Alexander Dev">
+        </div>
+        <div class="form-field">
+          <label>Email Address</label>
+          <input type="email" id="contactEmail" placeholder="aleki@example.com">
+        </div>
+        <div class="form-field">
+          <label>Message</label>
+          <textarea id="contactMsg" rows="4" placeholder="How can we help you?"></textarea>
+        </div>
+        <button class="btn-send" onclick="sendContact()">Send Message →</button>
+        <div id="contactResult" style="margin-top:0.75rem;font-family:'Fira Code',monospace;font-size:0.72rem;text-align:center"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CTA ═══ -->
+<section id="cta">
+  <div class="container">
+    <div class="cta-box reveal">
+      <h2 class="cta-title">READY TO START?</h2>
+      <p class="cta-sub">Join RentPortal today and experience modern rental management for free.</p>
+      <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
+        <a href="auth.html" class="btn-hero-primary">🚀 Create Free Account</a>
+        <a href="#faq"      class="btn-hero-secondary">Read FAQ first</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<footer>
+  <div class="footer-wrap">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a href="#" class="nav-logo" style="margin-bottom:0.5rem;display:inline-flex">
+          <div class="nav-logo-icon">🏠</div>
+          <span class="nav-logo-text">RENTPORTAL</span>
+        </a>
+        <p>A modern rental management platform built for Kenyan landlords and tenants. Pay rent, track receipts, and communicate — all in one place.</p>
+      </div>
+
+      <div>
+        <div class="footer-col-title">Platform</div>
+        <ul class="footer-links">
+          <li><a href="#features">Features</a></li>
+          <li><a href="#how">How it Works</a></li>
+          <li><a href="#faq">FAQ</a></li>
+          <li><a href="auth.html">Login</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="footer-col-title">Legal</div>
+        <ul class="footer-links">
+          <li><a href="terms.html">Terms & Conditions</a></li>
+          <li><a href="privacy.html">Privacy Policy</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="footer-col-title">Developer</div>
+        <ul class="footer-links">
+          <li><a href="https://github.com/Alexander-Dev60" target="_blank">GitHub</a></li>
+          <li><a href="mailto:alexanderbosire60@gmail.com.com" target="_blank">Email Support</a></li>
+          <li><a href="https://wa.me/254702276609" target="_blank">WhatsApp</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <div class="footer-copy">© 2026 RENTPORTAL · BUILT WITH ❤️ IN KENYA</div>
+      <div class="footer-socials">
+        <a href="https://github.com/Alexander-Dev60" target="_blank" class="social-btn" title="GitHub">🐙</a>
+        <a href="https://wa.me/254702276609"         target="_blank" class="social-btn" title="WhatsApp">💬</a>
+        <a href="mailto:alexanderbosire60@gmail.com.com"                      class="social-btn" title="Email">📧</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+// ── Navbar scroll effect ──
+window.addEventListener('scroll', () => {
+  document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 50);
+});
+
+// ── Mobile menu ──
+function toggleMenu() {
+  document.getElementById('mobileMenu').classList.toggle('open');
+}
+
+// Close menu on outside click
+document.addEventListener('click', e => {
+  const menu = document.getElementById('mobileMenu');
+  const hamburger = document.querySelector('.hamburger');
+  if (!menu.contains(e.target) && !hamburger.contains(e.target)) {
+    menu.classList.remove('open');
+  }
+});
+
+// ── FAQ accordion ──
+function toggleFaq(el) {
+  const item = el.parentElement;
+  const isOpen = item.classList.contains('open');
+
+  // Close all
+  document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+
+  // Open clicked if it was closed
+  if (!isOpen) item.classList.add('open');
+}
+
+// ── Scroll reveal ──
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+      observer.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// ── Contact form ──
+function sendContact() {
+  const name  = document.getElementById('contactName').value.trim();
+  const email = document.getElementById('contactEmail').value.trim();
+  const msg   = document.getElementById('contactMsg').value.trim();
+  const result= document.getElementById('contactResult');
+
+  if (!name || !email || !msg) {
+    result.style.color = '#f87171';
+    result.textContent = '⚠ Please fill in all fields';
+    return;
+  }
+
+  // For now — just show success (wire to backend later)
+  result.style.color = '#4ade80';
+  result.textContent = '✓ Message sent! We\'ll get back to you shortly.';
+
+  document.getElementById('contactName').value  = '';
+  document.getElementById('contactEmail').value = '';
+  document.getElementById('contactMsg').value   = '';
+
+  setTimeout(() => { result.textContent = ''; }, 4000);
+}
+</script>
+
+</body>
+</html>
