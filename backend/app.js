@@ -1,8 +1,4 @@
-'use strict';
-
 const express = require('express');
-const app     = express();
-const cors    = require('cors');
 const app     = express();
 const cors    = require('cors');
 require('dotenv').config();
@@ -34,37 +30,10 @@ const Rule         = require('./models/Rule');
 const Announcement = require('./models/Announcement');
 const Message      = require('./models/Message');
 const Settings     = require('./models/Settings');
-const Settings     = require('./models/Settings');
 
 // ── DB ──
 const connectDB = require('./db');
 connectDB();
-
-
-// ═══════════════════════════════════════
-// MIDDLEWARE
-// ═══════════════════════════════════════
-
-function authMiddleware(req, res, next) {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ message: 'No token' });
-
-    try {
-        const token   = authHeader.split(' ')[1];
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = decoded;
-        next();
-    } catch (err) {
-        res.status(401).json({ message: 'Invalid token' });
-    }
-}
-
-function adminOnly(req, res, next) {
-    if (req.user.role !== 'admin') {
-        return res.status(403).json({ message: 'Admins only' });
-    }
-    next();
-}
 
 // ── In-memory OTP store { email: { code, expiresAt, name } } ──
 // For production scale, replace with a Redis store or DB collection
@@ -95,9 +64,6 @@ function adminOnly(req, res, next) {
     next();
 }
 
-// ═══════════════════════════════════════
-// MAINTENANCE MODE
-// ═══════════════════════════════════════
 // ═══════════════════════════════════════
 // MAINTENANCE MODE
 // ═══════════════════════════════════════
@@ -403,17 +369,13 @@ app.post('/reset-password-confirm', async (req, res) => {
 // ═══════════════════════════════════════
 
 // GET /tenant/:id
-// GET /tenant/:id
 app.get('/tenant/:id', authMiddleware, async (req, res) => {
     try {
-        if (req.user.role === 'tenant' && req.user.tenantId != req.params.id) {
-            return res.status(403).json({ message: 'Forbidden' });
         if (req.user.role === 'tenant' && req.user.tenantId != req.params.id) {
             return res.status(403).json({ message: 'Forbidden' });
         }
 
         const tenant = await Tenant.findById(req.params.id).populate('house');
-        if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
         if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
 
         const payments      = await Payment.find({ tenant: tenant._id });
@@ -423,7 +385,6 @@ app.get('/tenant/:id', authMiddleware, async (req, res) => {
             ? new Set(payments.map(p => p.month)).size
             : 1;
         const expectedTotal = rent * monthsOccupied;
-        const arrears       = Math.max(0, expectedTotal - totalPaid);
         const arrears       = Math.max(0, expectedTotal - totalPaid);
 
         res.json({ tenant, payments, totalPaid, arrears });
@@ -445,7 +406,6 @@ app.post('/tenants', authMiddleware, adminOnly, async (req, res) => {
 });
 
 // GET /tenants
-// GET /tenants
 app.get('/tenants', async (req, res) => {
     try {
         const tenants = await Tenant.find();
@@ -455,7 +415,6 @@ app.get('/tenants', async (req, res) => {
     }
 });
 
-// PUT /tenants/:id
 // PUT /tenants/:id
 app.put('/tenants/:id', authMiddleware, adminOnly, async (req, res) => {
     try {
@@ -468,15 +427,11 @@ app.put('/tenants/:id', authMiddleware, adminOnly, async (req, res) => {
 
 // DELETE /tenant/:id
 app.delete('/tenant/:id', authMiddleware, adminOnly, async (req, res) => {
-// DELETE /tenant/:id
-app.delete('/tenant/:id', authMiddleware, adminOnly, async (req, res) => {
     try {
         const tenant = await Tenant.findById(req.params.id);
         if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
-        if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
 
         if (tenant.house) {
-            await House.findByIdAndUpdate(tenant.house, { status: 'available' });
             await House.findByIdAndUpdate(tenant.house, { status: 'available' });
         }
 
@@ -484,10 +439,8 @@ app.delete('/tenant/:id', authMiddleware, adminOnly, async (req, res) => {
         await Tenant.findByIdAndDelete(req.params.id);
 
         res.json({ message: 'Tenant deleted ✅' });
-        res.json({ message: 'Tenant deleted ✅' });
 
     } catch (err) {
-        res.status(500).json({ message: 'Error deleting tenant ❌' });
         res.status(500).json({ message: 'Error deleting tenant ❌' });
     }
 });
@@ -496,7 +449,6 @@ app.delete('/tenant/:id', authMiddleware, adminOnly, async (req, res) => {
 // HOUSES
 // ═══════════════════════════════════════
 
-// POST /houses
 // POST /houses
 app.post('/houses', authMiddleware, adminOnly, async (req, res) => {
     try {
@@ -509,7 +461,6 @@ app.post('/houses', authMiddleware, adminOnly, async (req, res) => {
 });
 
 // GET /houses
-// GET /houses
 app.get('/houses', async (req, res) => {
     try {
         const houses = await House.find();
@@ -519,7 +470,6 @@ app.get('/houses', async (req, res) => {
     }
 });
 
-// PUT /houses/:id
 // PUT /houses/:id
 app.put('/houses/:id', authMiddleware, adminOnly, async (req, res) => {
     try {
@@ -532,31 +482,23 @@ app.put('/houses/:id', authMiddleware, adminOnly, async (req, res) => {
 
 // DELETE /house/:id
 app.delete('/house/:id', authMiddleware, adminOnly, async (req, res) => {
-// DELETE /house/:id
-app.delete('/house/:id', authMiddleware, adminOnly, async (req, res) => {
     try {
         const house = await House.findById(req.params.id);
         if (!house) return res.status(404).json({ message: 'House not found' });
-        if (!house) return res.status(404).json({ message: 'House not found' });
 
-        if (house.status === 'occupied') {
-            return res.status(400).json({ message: 'Cannot delete occupied house 🚫' });
         if (house.status === 'occupied') {
             return res.status(400).json({ message: 'Cannot delete occupied house 🚫' });
         }
 
         await House.findByIdAndDelete(req.params.id);
         res.json({ message: 'House deleted 🏡' });
-        res.json({ message: 'House deleted 🏡' });
 
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Error deleting house ❌' });
-        res.status(500).json({ message: 'Error deleting house ❌' });
     }
 });
 
-// PUT /assign-house/:tenantId/:houseId
 // PUT /assign-house/:tenantId/:houseId
 app.put('/assign-house/:tenantId/:houseId', authMiddleware, adminOnly, async (req, res) => {
     try {
@@ -565,29 +507,22 @@ app.put('/assign-house/:tenantId/:houseId', authMiddleware, adminOnly, async (re
 
         if (!tenant || !house) {
             return res.status(404).json({ message: 'Tenant or House not found' });
-            return res.status(404).json({ message: 'Tenant or House not found' });
         }
 
-        if (house.status === 'occupied') {
-            return res.status(400).json({ message: 'This house is already occupied ❌' });
         if (house.status === 'occupied') {
             return res.status(400).json({ message: 'This house is already occupied ❌' });
         }
 
         if (tenant.house) {
             return res.status(400).json({ message: 'Tenant already has a house assigned ❌' });
-            return res.status(400).json({ message: 'Tenant already has a house assigned ❌' });
         }
 
-        tenant.house = house._id;
-        house.status = 'occupied';
         tenant.house = house._id;
         house.status = 'occupied';
 
         await tenant.save();
         await house.save();
 
-        res.json({ message: 'House assigned successfully ✅', tenant, house });
         res.json({ message: 'House assigned successfully ✅', tenant, house });
 
     } catch (err) {
@@ -596,19 +531,14 @@ app.put('/assign-house/:tenantId/:houseId', authMiddleware, adminOnly, async (re
 });
 
 // PUT /move-out/:tenantId
-// PUT /move-out/:tenantId
 app.put('/move-out/:tenantId', authMiddleware, adminOnly, async (req, res) => {
     try {
         const tenant = await Tenant.findById(req.params.tenantId);
         if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
 
-        if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
-
         if (!tenant.house) {
             return res.status(400).json({ message: 'This tenant is not assigned to any house' });
-            return res.status(400).json({ message: 'This tenant is not assigned to any house' });
         }
-
 
         const house = await House.findById(tenant.house);
         if (!house) return res.status(404).json({ message: 'House not found' });
@@ -623,22 +553,17 @@ app.put('/move-out/:tenantId', authMiddleware, adminOnly, async (req, res) => {
             console.error('Move-out email failed:', err.message)
         );
 
-
         house.status = 'available';
         tenant.house = null;
-
 
         await house.save();
         await tenant.save();
 
-
         res.json({
-            message: 'Tenant moved out successfully 🏠➡️🚪',
             message: 'Tenant moved out successfully 🏠➡️🚪',
             tenant,
             house
         });
-
 
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -657,12 +582,9 @@ app.post('/payments', authMiddleware, adminOnly, async (req, res) => {
         const tenant = await Tenant.findById(tenantId).populate('house');
         if (!tenant)       return res.status(404).json({ message: 'Tenant not found' });
         if (!tenant.house) return res.status(400).json({ message: 'Tenant has no house' });
-        if (!tenant)       return res.status(404).json({ message: 'Tenant not found' });
-        if (!tenant.house) return res.status(400).json({ message: 'Tenant has no house' });
 
         const existingPayment = await Payment.findOne({ tenant: tenantId, month });
         if (existingPayment) {
-            return res.status(400).json({ message: 'Payment for this month already exists ❌' });
             return res.status(400).json({ message: 'Payment for this month already exists ❌' });
         }
 
@@ -679,12 +601,9 @@ app.post('/payments', authMiddleware, adminOnly, async (req, res) => {
         // Generate PDF receipt
         const doc     = new PDFDocument();
         const buffers = [];
-        const buffers = [];
 
         doc.on('data', chunk => buffers.push(chunk));
-        doc.on('data', chunk => buffers.push(chunk));
 
-        doc.fontSize(20).text('RENT RECEIPT', { align: 'center' });
         doc.fontSize(20).text('RENT RECEIPT', { align: 'center' });
         doc.moveDown();
         doc.fontSize(12).text(`Tenant: ${tenant.name}`);
@@ -698,7 +617,7 @@ app.post('/payments', authMiddleware, adminOnly, async (req, res) => {
         doc.end();
 
         doc.on('end', async () => {
-            const pdfBuffer = Buffer.concat(buffers);
+            const pdfData = Buffer.concat(buffers);
 
             // Send receipt email via Resend with PDF attachment
             try {
@@ -751,7 +670,6 @@ app.post('/payments', authMiddleware, adminOnly, async (req, res) => {
 
             res.json({
                 message:   'Payment saved + PDF emailed 📧📄',
-                message:   'Payment saved + PDF emailed 📧📄',
                 paymentId: payment._id,
                 payment
             });
@@ -763,7 +681,6 @@ app.post('/payments', authMiddleware, adminOnly, async (req, res) => {
 });
 
 // GET /payments
-// GET /payments
 app.get('/payments', async (req, res) => {
     try {
         const payments = await Payment.find().populate('tenant').populate('house');
@@ -774,7 +691,6 @@ app.get('/payments', async (req, res) => {
 });
 
 // GET /payments/tenant/:tenantId
-// GET /payments/tenant/:tenantId
 app.get('/payments/tenant/:tenantId', async (req, res) => {
     try {
         const payments = await Payment.find({ tenant: req.params.tenantId });
@@ -783,7 +699,6 @@ app.get('/payments/tenant/:tenantId', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
-
 
 // ═══════════════════════════════════════
 // RECEIPTS
@@ -812,7 +727,6 @@ app.get('/receipt/pdf/:paymentId', async (req, res) => {
             .populate('house');
 
         if (!payment) return res.status(404).json({ message: 'Payment not found' });
-        if (!payment) return res.status(404).json({ message: 'Payment not found' });
 
         const doc = new PDFDocument();
 
@@ -821,7 +735,6 @@ app.get('/receipt/pdf/:paymentId', async (req, res) => {
 
         doc.pipe(res);
 
-        doc.fontSize(20).text('RENT RECEIPT', { align: 'center' });
         doc.fontSize(20).text('RENT RECEIPT', { align: 'center' });
         doc.moveDown();
         doc.fontSize(12).text(`Tenant: ${payment.tenant.name}`);
@@ -840,7 +753,6 @@ app.get('/receipt/pdf/:paymentId', async (req, res) => {
     }
 });
 
-
 // ═══════════════════════════════════════
 // ARREARS
 // ═══════════════════════════════════════
@@ -850,18 +762,13 @@ app.get('/arrears', async (req, res) => {
     try {
         const tenants     = await Tenant.find().populate('house');
         const arrearsList = [];
-        const arrearsList = [];
 
-        for (const tenant of tenants) {
         for (const tenant of tenants) {
             if (!tenant.house) continue;
 
             const rent      = tenant.house.rent;
             const payments  = await Payment.find({ tenant: tenant._id });
-            const rent      = tenant.house.rent;
-            const payments  = await Payment.find({ tenant: tenant._id });
             const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-            const arrears   = Math.max(0, rent - totalPaid);
             const arrears   = Math.max(0, rent - totalPaid);
 
             if (arrears > 0) {
@@ -888,16 +795,13 @@ app.get('/arrears/:month', async (req, res) => {
         const month   = req.params.month;
         const tenants = await Tenant.find().populate('house');
         const result  = [];
-        const result  = [];
 
-        for (const tenant of tenants) {
         for (const tenant of tenants) {
             if (!tenant.house) continue;
 
             const rent    = tenant.house.rent;
             const payment = await Payment.findOne({ tenant: tenant._id, month });
             const paid    = payment ? payment.amount : 0;
-            const arrears = Math.max(0, rent - paid);
             const arrears = Math.max(0, rent - paid);
 
             if (arrears > 0) {
@@ -919,12 +823,10 @@ app.get('/arrears/:month', async (req, res) => {
     }
 });
 
-
 // ═══════════════════════════════════════
 // DASHBOARD
 // ═══════════════════════════════════════
 
-// GET /dashboard/:month
 // GET /dashboard/:month
 app.get('/dashboard/:month', authMiddleware, adminOnly, async (req, res) => {
     try {
@@ -939,16 +841,13 @@ app.get('/dashboard/:month', authMiddleware, adminOnly, async (req, res) => {
 
         payments.forEach(p => { totalIncome += p.amount; });
         houses.forEach(h => { if (h.status === 'occupied') occupied++; });
-        houses.forEach(h => { if (h.status === 'occupied') occupied++; });
 
-        for (const tenant of tenants) {
         for (const tenant of tenants) {
             if (!tenant.house) continue;
 
             const rent    = tenant.house.rent;
             const payment = payments.find(p => p.tenant.toString() === tenant._id.toString());
             const paid    = payment ? payment.amount : 0;
-            const arrears = Math.max(0, rent - paid);
             const arrears = Math.max(0, rent - paid);
 
             if (arrears > 0) totalArrears += arrears;
@@ -960,10 +859,7 @@ app.get('/dashboard/:month', authMiddleware, adminOnly, async (req, res) => {
             totalArrears,
             totalTenants:   tenants.length,
             totalHouses:    houses.length,
-            totalTenants:   tenants.length,
-            totalHouses:    houses.length,
             occupiedHouses: occupied,
-            vacantHouses:   houses.length - occupied
             vacantHouses:   houses.length - occupied
         });
 
@@ -971,7 +867,6 @@ app.get('/dashboard/:month', authMiddleware, adminOnly, async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
-
 
 // ═══════════════════════════════════════
 // STK PUSH (M-PESA)
@@ -1208,9 +1103,7 @@ async function checkArrears() {
     const currentDay = today.getDate();
     const month      = today.toLocaleString('default', { month: 'long', year: 'numeric' });
 
-
     console.log(`🕘 Running rent check for ${month}...`);
-
 
     try {
         const tenants = await Tenant.find().populate('house');
@@ -1224,22 +1117,14 @@ async function checkArrears() {
             if (!paid) {
                 const arrears = Math.max(0, tenant.house.rent);
 
-                const arrears = Math.max(0, tenant.house.rent);
-
                 console.log(`⚠️  ${tenant.name} has not paid for ${month} — Ksh ${arrears} owed`);
-
 
                 sendRentReminder({
                     name:    tenant.name,
                     email:   tenant.email,
                     house:   tenant.house.name,
                     rent:    tenant.house.rent,
-                    name:    tenant.name,
-                    email:   tenant.email,
-                    house:   tenant.house.name,
-                    rent:    tenant.house.rent,
                     month,
-                    dueDate: tenant.dueDate,
                     dueDate: tenant.dueDate,
                     arrears
                 }).catch(err =>
@@ -1248,9 +1133,7 @@ async function checkArrears() {
             }
         }
 
-
         console.log('✅ Rent check complete');
-
 
     } catch (err) {
         console.error('checkArrears error:', err.message);
@@ -1269,7 +1152,6 @@ app.post('/rules', authMiddleware, adminOnly, async (req, res) => {
         res.json(rule);
     } catch (err) {
         res.status(500).json({ message: 'Error adding rule' });
-        res.status(500).json({ message: 'Error adding rule' });
     }
 });
 
@@ -1279,7 +1161,6 @@ app.get('/rules', async (req, res) => {
         res.json(rules);
     } catch (err) {
         res.status(500).json({ message: 'Error fetching rules' });
-        res.status(500).json({ message: 'Error fetching rules' });
     }
 });
 
@@ -1288,10 +1169,7 @@ app.delete('/rules/:id', authMiddleware, adminOnly, async (req, res) => {
         const rule = await Rule.findByIdAndDelete(req.params.id);
         if (!rule) return res.status(404).json({ message: 'Rule not found' });
         res.json({ message: 'Rule deleted ✅' });
-        if (!rule) return res.status(404).json({ message: 'Rule not found' });
-        res.json({ message: 'Rule deleted ✅' });
     } catch (err) {
-        res.status(500).json({ message: 'Error deleting rule' });
         res.status(500).json({ message: 'Error deleting rule' });
     }
 });
@@ -1299,14 +1177,12 @@ app.delete('/rules/:id', authMiddleware, adminOnly, async (req, res) => {
 // ═══════════════════════════════════════
 // ANNOUNCEMENTS
 // ═══════════════════════════════════════
-// ═══════════════════════════════════════
 
 app.post('/announcements', authMiddleware, adminOnly, async (req, res) => {
     try {
         const a = await Announcement.create(req.body);
         res.json(a);
     } catch (err) {
-        res.status(500).json({ message: 'Error creating announcement' });
         res.status(500).json({ message: 'Error creating announcement' });
     }
 });
@@ -1317,7 +1193,6 @@ app.get('/announcements', async (req, res) => {
         res.json(list);
     } catch (err) {
         res.status(500).json({ message: 'Error fetching announcements' });
-        res.status(500).json({ message: 'Error fetching announcements' });
     }
 });
 
@@ -1326,10 +1201,7 @@ app.delete('/announcements/:id', authMiddleware, adminOnly, async (req, res) => 
         const a = await Announcement.findByIdAndDelete(req.params.id);
         if (!a) return res.status(404).json({ message: 'Announcement not found' });
         res.json({ message: 'Announcement deleted ✅' });
-        if (!a) return res.status(404).json({ message: 'Announcement not found' });
-        res.json({ message: 'Announcement deleted ✅' });
     } catch (err) {
-        res.status(500).json({ message: 'Error deleting announcement' });
         res.status(500).json({ message: 'Error deleting announcement' });
     }
 });
@@ -1347,8 +1219,6 @@ app.post('/messages', authMiddleware, async (req, res) => {
         const msg = await Message.create({
             tenant: req.user.tenantId,
             sender: 'tenant',
-            tenant: req.user.tenantId,
-            sender: 'tenant',
             text:   text.trim(),
             isRead: false
         });
@@ -1356,7 +1226,6 @@ app.post('/messages', authMiddleware, async (req, res) => {
         res.json(msg);
 
     } catch (err) {
-        res.status(500).json({ message: 'Error sending message' });
         res.status(500).json({ message: 'Error sending message' });
     }
 });
@@ -1367,12 +1236,9 @@ app.post('/messages/reply', authMiddleware, adminOnly, async (req, res) => {
         const { tenantId, text } = req.body;
         if (!tenantId || !text || !text.trim()) {
             return res.status(400).json({ message: 'tenantId and text are required' });
-            return res.status(400).json({ message: 'tenantId and text are required' });
         }
 
         const msg = await Message.create({
-            tenant: tenantId,
-            sender: 'admin',
             tenant: tenantId,
             sender: 'admin',
             text:   text.trim(),
@@ -1382,7 +1248,6 @@ app.post('/messages/reply', authMiddleware, adminOnly, async (req, res) => {
         res.json(msg);
 
     } catch (err) {
-        res.status(500).json({ message: 'Error sending reply' });
         res.status(500).json({ message: 'Error sending reply' });
     }
 });
@@ -1394,7 +1259,6 @@ app.get('/messages/my', authMiddleware, async (req, res) => {
         res.json(messages);
     } catch (err) {
         res.status(500).json({ message: 'Error fetching messages' });
-        res.status(500).json({ message: 'Error fetching messages' });
     }
 });
 
@@ -1405,7 +1269,6 @@ app.get('/messages/thread/:tenantId', authMiddleware, adminOnly, async (req, res
         res.json(messages);
     } catch (err) {
         res.status(500).json({ message: 'Error fetching thread' });
-        res.status(500).json({ message: 'Error fetching thread' });
     }
 });
 
@@ -1414,13 +1277,10 @@ app.put('/messages/read/:tenantId', authMiddleware, adminOnly, async (req, res) 
     try {
         await Message.updateMany(
             { tenant: req.params.tenantId, sender: 'tenant', isRead: false },
-            { tenant: req.params.tenantId, sender: 'tenant', isRead: false },
             { isRead: true }
         );
         res.json({ message: 'Marked as read' });
-        res.json({ message: 'Marked as read' });
     } catch (err) {
-        res.status(500).json({ message: 'Error marking as read' });
         res.status(500).json({ message: 'Error marking as read' });
     }
 });
@@ -1431,12 +1291,9 @@ app.get('/messages/unread', authMiddleware, adminOnly, async (req, res) => {
         const unread = await Message.aggregate([
             { $match: { sender: 'tenant', isRead: false } },
             { $group: { _id: '$tenant', count: { $sum: 1 } } }
-            { $match: { sender: 'tenant', isRead: false } },
-            { $group: { _id: '$tenant', count: { $sum: 1 } } }
         ]);
         res.json(unread);
     } catch (err) {
-        res.status(500).json({ message: 'Error fetching unread messages' });
         res.status(500).json({ message: 'Error fetching unread messages' });
     }
 });
@@ -1447,12 +1304,10 @@ app.get('/messages/unread-mine', authMiddleware, async (req, res) => {
         const count = await Message.countDocuments({
             tenant: req.user.tenantId,
             sender: 'admin',
-            sender: 'admin',
             isRead: false
         });
         res.json({ count });
     } catch (err) {
-        res.status(500).json({ message: 'Error fetching unread count' });
         res.status(500).json({ message: 'Error fetching unread count' });
     }
 });
