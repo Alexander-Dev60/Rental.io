@@ -574,44 +574,114 @@ app.put('/move-out/:tenantId', authMiddleware, adminOnly, async (req, res) => {
 // PAYMENTS
 // ═══════════════════════════════════════
 
-// POST /payments — admin records manual payment + emails PDF receipt via Resend
+// ═══════════════════════════════════════════════════════
+//  PAYMENT ROUTES — Partial Payment Support
+//  Replace your existing payment routes in app.js with these
+// ═══════════════════════════════════════════════════════
+
+// ─────────────────────────────────────────────────────
+// HELPER — Get monthly summary for a tenant
+// Returns: { rentAmount, totalPaid, balance, status, payments[] }
+// ─────────────────────────────────────────────────────
+async function getMonthSummary(tenantId, month, rent) {
+    const payments = await Payment.find({
+        tenant: tenantId,
+        month,
+        status: { $in: ['paid', 'partial'] }
+    }).sort({ createdAt: 1 });
+
+    const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+    const balance   = Math.max(0, rent - totalPaid);
+
+    let status = 'unpaid';
+    if (totalPaid >= rent)       status = 'paid';
+    else if (totalPaid > 0)      status = 'partial';
+
+    return { rentAmount: rent, totalPaid, balance, status, payments };
+}
+
+
+// ─────────────────────────────────────────────────────
+// POST /payments — Admin records a manual payment
+// Body: { tenantId, amount, month, method?, note? }
+// Auth: admin only
+// ─────────────────────────────────────────────────────
 app.post('/payments', authMiddleware, adminOnly, async (req, res) => {
     try {
-        const { tenantId, amount, month } = req.body;
+        const { tenantId, amount, month, method = 'cash', note = '' } = req.body;
+
+        // ── Validation ──
+        if (!tenantId || !amount || !month) {
+            return res.status(400).json({ message: 'tenantId, amount and month are required' });
+        }
+
+        if (amount <= 0) {
+            return res.status(400).json({ message: 'Amount must be greater than 0' });
+        }
 
         const tenant = await Tenant.findById(tenantId).populate('house');
         if (!tenant)       return res.status(404).json({ message: 'Tenant not found' });
-        if (!tenant.house) return res.status(400).json({ message: 'Tenant has no house' });
+        if (!tenant.house) return res.status(400).json({ message: 'Tenant has no house assigned' });
 
-        const existingPayment = await Payment.findOne({ tenant: tenantId, month });
-        if (existingPayment) {
-            return res.status(400).json({ message: 'Payment for this month already exists ❌' });
+        const rent = tenant.house.rent;
+
+        // ── Get current month summary ──
+        const summary = await getMonthSummary(tenantId, month, rent);
+
+        // ── Block if already fully paid ──
+        if (summary.status === 'paid') {
+            return res.status(400).json({
+                message: `Rent for ${month} is already fully paid ✅`,
+                summary
+            });
         }
 
-        const payment = new Payment({
-            tenant: tenant._id,
-            house:  tenant.house._id,
+        // ── Overpayment check ──
+        if (amount > summary.balance) {
+            return res.status(400).json({
+                message: `Overpayment detected. Balance remaining is Ksh ${summary.balance}. You cannot pay more than the balance.`,
+                balance: summary.balance,
+                summary
+            });
+        }
+
+        // ── Calculate new totals ──
+        const newTotalPaid = summary.totalPaid + amount;
+        const newBalance   = Math.max(0, rent - newTotalPaid);
+        const newStatus    = newBalance === 0 ? 'paid' : 'partial';
+
+        // ── Save payment record ──
+        const payment = await Payment.create({
+            tenant:     tenant._id,
+            house:      tenant.house._id,
             amount,
             month,
-            status: 'paid'
+            rentAmount: rent,
+            totalPaid:  newTotalPaid,
+            balance:    newBalance,
+            status:     newStatus,
+            method,
+            note,
+            datePaid:   new Date()
         });
 
-        await payment.save();
-
-        // Generate PDF receipt
+        // ── Generate PDF receipt ──
         const doc     = new PDFDocument();
         const buffers = [];
-
         doc.on('data', chunk => buffers.push(chunk));
 
         doc.fontSize(20).text('RENT RECEIPT', { align: 'center' });
         doc.moveDown();
-        doc.fontSize(12).text(`Tenant: ${tenant.name}`);
-        doc.text(`House:  ${tenant.house.name}`);
-        doc.text(`Amount: Ksh ${amount}`);
-        doc.text(`Month:  ${month}`);
-        doc.text(`Date:   ${new Date().toDateString()}`);
-        doc.text(`Receipt ID: ${payment._id}`);
+        doc.fontSize(12).text(`Tenant:       ${tenant.name}`);
+        doc.text(`House:        ${tenant.house.name}`);
+        doc.text(`Month:        ${month}`);
+        doc.text(`This Payment: Ksh ${Number(amount).toLocaleString()}`);
+        doc.text(`Total Paid:   Ksh ${Number(newTotalPaid).toLocaleString()}`);
+        doc.text(`Rent Amount:  Ksh ${Number(rent).toLocaleString()}`);
+        doc.text(`Balance:      Ksh ${Number(newBalance).toLocaleString()}`);
+        doc.text(`Status:       ${newStatus.toUpperCase()}`);
+        doc.text(`Date:         ${new Date().toDateString()}`);
+        doc.text(`Receipt ID:   ${payment._id}`);
         doc.moveDown();
         doc.text('Thank you for your payment — Affordable Rentals');
         doc.end();
@@ -619,37 +689,48 @@ app.post('/payments', authMiddleware, adminOnly, async (req, res) => {
         doc.on('end', async () => {
             const pdfData = Buffer.concat(buffers);
 
-            // Send receipt email via Resend with PDF attachment
+            // ── Send receipt email via Resend ──
             try {
                 const { Resend } = require('resend');
-                const resend = new Resend(process.env.RESEND_API_KEY);
+                const resend     = new Resend(process.env.RESEND_API_KEY);
+
+                const statusColor  = newStatus === 'paid' ? '#16a34a' : '#d97706';
+                const statusLabel  = newStatus === 'paid' ? 'Fully Paid ✓' : 'Partial Payment';
+                const statusBg     = newStatus === 'paid' ? '#dcfce7' : '#fef3c7';
 
                 await resend.emails.send({
                     from:    'Affordable Rentals 🏠 <support@affordablerentals.site>',
                     to:      tenant.email,
-                    subject: `Rent Receipt — ${month} | ${tenant.house.name}`,
+                    subject: `${newStatus === 'paid' ? '✅' : '🔔'} Rent Receipt — ${month} | ${tenant.house.name}`,
                     html: `
                     <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:560px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
                       <div style="background:linear-gradient(135deg,#1d4ed8,#0ea5e9);padding:32px;text-align:center">
                         <div style="font-size:40px;margin-bottom:8px">🧾</div>
-                        <h1 style="color:#fff;margin:0;font-size:22px;font-weight:700">Rent Receipt</h1>
+                        <h1 style="color:#fff;margin:0;font-size:22px;font-weight:700">Payment Received</h1>
                         <p style="color:#bae6fd;margin:6px 0 0;font-size:13px">${month}</p>
                       </div>
                       <div style="padding:32px">
                         <p style="color:#1e293b;font-size:15px;margin:0 0 16px">Hi <strong>${tenant.name.split(' ')[0]}</strong>,</p>
                         <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">
-                          Your rent payment for <strong>${month}</strong> has been recorded. Please find your receipt attached as a PDF.
+                          Your payment of <strong>Ksh ${Number(amount).toLocaleString()}</strong> for <strong>${month}</strong> has been recorded successfully.
                         </p>
                         <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:20px 24px;margin-bottom:24px">
+                          <p style="color:#64748b;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;margin:0 0 12px;font-weight:600">PAYMENT BREAKDOWN</p>
                           <table style="width:100%;border-collapse:collapse">
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Tenant</td><td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${tenant.name}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">House</td><td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${tenant.house.name}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Month</td><td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${month}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Amount</td><td style="color:#1d4ed8;font-size:15px;font-weight:700;text-align:right">Ksh ${Number(amount).toLocaleString()}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Status</td><td style="text-align:right"><span style="background:#dcfce7;color:#16a34a;font-size:11px;font-weight:600;padding:2px 10px;border-radius:99px">Paid ✓</span></td></tr>
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">House</td>              <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${tenant.house.name}</td></tr>
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Month</td>              <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${month}</td></tr>
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Monthly Rent</td>       <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">Ksh ${Number(rent).toLocaleString()}</td></tr>
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">This Payment</td>       <td style="color:#1d4ed8;font-size:15px;font-weight:700;text-align:right">Ksh ${Number(amount).toLocaleString()}</td></tr>
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Total Paid</td>         <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">Ksh ${Number(newTotalPaid).toLocaleString()}</td></tr>
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Balance Remaining</td>  <td style="color:${newBalance > 0 ? '#d97706' : '#16a34a'};font-size:13px;font-weight:700;text-align:right">Ksh ${Number(newBalance).toLocaleString()}</td></tr>
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Status</td>             <td style="text-align:right"><span style="background:${statusBg};color:${statusColor};font-size:11px;font-weight:600;padding:2px 10px;border-radius:99px">${statusLabel}</span></td></tr>
                           </table>
                         </div>
-                        <p style="color:#94a3b8;font-size:12px;margin:0">Thank you for your payment. Contact us at <a href="mailto:support@affordablerentals.site" style="color:#1d4ed8">support@affordablerentals.site</a> if you have any questions.</p>
+                        ${newBalance > 0 ? `
+                        <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:14px 18px;margin-bottom:20px">
+                          <p style="color:#92400e;font-size:13px;margin:0">⚠️ You still have a balance of <strong>Ksh ${Number(newBalance).toLocaleString()}</strong> for ${month}. Please pay the remaining amount before your due date.</p>
+                        </div>` : ''}
+                        <p style="color:#94a3b8;font-size:12px;margin:0">PDF receipt is attached. Contact us at <a href="mailto:support@affordablerentals.site" style="color:#1d4ed8">support@affordablerentals.site</a> for queries.</p>
                       </div>
                       <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 32px;text-align:center">
                         <p style="color:#cbd5e1;font-size:11px;margin:0">© ${new Date().getFullYear()} Affordable Rentals · <a href="https://affordablerentals.site" style="color:#94a3b8;text-decoration:none">affordablerentals.site</a></p>
@@ -665,40 +746,438 @@ app.post('/payments', authMiddleware, adminOnly, async (req, res) => {
 
             } catch (emailErr) {
                 console.error('Receipt email failed:', emailErr.message);
-                // Don't fail the request — payment is already saved
             }
 
             res.json({
-                message:   'Payment saved + PDF emailed 📧📄',
-                paymentId: payment._id,
-                payment
+                message:    `Payment recorded — ${newStatus.toUpperCase()} 📄`,
+                paymentId:  payment._id,
+                payment,
+                summary: {
+                    rentAmount: rent,
+                    totalPaid:  newTotalPaid,
+                    balance:    newBalance,
+                    status:     newStatus
+                }
             });
         });
 
     } catch (err) {
+        console.error('Payment error:', err.message);
         res.status(500).json({ error: err.message });
     }
 });
 
-// GET /payments
+
+// ─────────────────────────────────────────────────────
+// GET /payments — All payments (admin)
+// ─────────────────────────────────────────────────────
 app.get('/payments', async (req, res) => {
     try {
-        const payments = await Payment.find().populate('tenant').populate('house');
+        const payments = await Payment.find()
+            .populate('tenant')
+            .populate('house')
+            .sort({ createdAt: -1 });
         res.json(payments);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-// GET /payments/tenant/:tenantId
+
+// ─────────────────────────────────────────────────────
+// GET /payments/tenant/:tenantId — All payments for a tenant
+// ─────────────────────────────────────────────────────
 app.get('/payments/tenant/:tenantId', async (req, res) => {
     try {
-        const payments = await Payment.find({ tenant: req.params.tenantId });
+        const payments = await Payment.find({ tenant: req.params.tenantId })
+            .sort({ createdAt: -1 });
         res.json(payments);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
+
+
+// ─────────────────────────────────────────────────────
+// GET /payments/summary/:tenantId/:month — Monthly summary
+// Returns rent, total paid, balance, status, all transactions
+// ─────────────────────────────────────────────────────
+app.get('/payments/summary/:tenantId/:month', authMiddleware, async (req, res) => {
+    try {
+        const { tenantId, month } = req.params;
+
+        // Tenants can only see their own data
+        if (req.user.role === 'tenant' && req.user.tenantId != tenantId) {
+            return res.status(403).json({ message: 'Forbidden' });
+        }
+
+        const tenant = await Tenant.findById(tenantId).populate('house');
+        if (!tenant)       return res.status(404).json({ message: 'Tenant not found' });
+        if (!tenant.house) return res.status(400).json({ message: 'Tenant has no house' });
+
+        const summary = await getMonthSummary(tenantId, month, tenant.house.rent);
+
+        res.json(summary);
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+// ─────────────────────────────────────────────────────
+// GET /payments/months/:tenantId — All months summary for a tenant
+// Returns each month with rent, paid, balance and status
+// ─────────────────────────────────────────────────────
+app.get('/payments/months/:tenantId', authMiddleware, async (req, res) => {
+    try {
+        const { tenantId } = req.params;
+
+        if (req.user.role === 'tenant' && req.user.tenantId != tenantId) {
+            return res.status(403).json({ message: 'Forbidden' });
+        }
+
+        const tenant = await Tenant.findById(tenantId).populate('house');
+        if (!tenant)       return res.status(404).json({ message: 'Tenant not found' });
+        if (!tenant.house) return res.status(400).json({ message: 'Tenant has no house' });
+
+        const rent = tenant.house.rent;
+
+        // Get all distinct months this tenant has payments for
+        const months = await Payment.distinct('month', {
+            tenant: tenantId,
+            status: { $in: ['paid', 'partial'] }
+        });
+
+        const results = await Promise.all(
+            months.map(async month => {
+                const s = await getMonthSummary(tenantId, month, rent);
+                return { month, ...s };
+            })
+        );
+
+        // Sort by most recent month first
+        results.sort((a, b) => new Date('1 ' + b.month) - new Date('1 ' + a.month));
+
+        res.json(results);
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+// ─────────────────────────────────────────────────────
+// GET /arrears — All tenants with outstanding balances
+// ─────────────────────────────────────────────────────
+app.get('/arrears', async (req, res) => {
+    try {
+        const tenants     = await Tenant.find().populate('house');
+        const arrearsList = [];
+        const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+
+        for (const tenant of tenants) {
+            if (!tenant.house) continue;
+
+            const rent    = tenant.house.rent;
+            const summary = await getMonthSummary(tenant._id, currentMonth, rent);
+
+            if (summary.balance > 0) {
+                arrearsList.push({
+                    tenantId: tenant._id,
+                    tenant:   tenant.name,
+                    email:    tenant.email,
+                    house:    tenant.house.name,
+                    month:    currentMonth,
+                    rent,
+                    totalPaid: summary.totalPaid,
+                    balance:   summary.balance,
+                    status:    summary.status
+                });
+            }
+        }
+
+        res.json(arrearsList);
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+// ─────────────────────────────────────────────────────
+// GET /arrears/:month — Arrears for a specific month
+// ─────────────────────────────────────────────────────
+app.get('/arrears/:month', async (req, res) => {
+    try {
+        const month   = req.params.month;
+        const tenants = await Tenant.find().populate('house');
+        const result  = [];
+
+        for (const tenant of tenants) {
+            if (!tenant.house) continue;
+
+            const rent    = tenant.house.rent;
+            const summary = await getMonthSummary(tenant._id, month, rent);
+
+            if (summary.balance > 0) {
+                result.push({
+                    tenantId:  tenant._id,
+                    tenant:    tenant.name,
+                    email:     tenant.email,
+                    house:     tenant.house.name,
+                    month,
+                    rent,
+                    totalPaid: summary.totalPaid,
+                    balance:   summary.balance,
+                    status:    summary.status
+                });
+            }
+        }
+
+        res.json(result);
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+// ─────────────────────────────────────────────────────
+// STK PUSH — Updated for partial payment support
+// POST /stkpush
+// Body: { phone, amount, month }
+// ─────────────────────────────────────────────────────
+app.post('/stkpush', authMiddleware, async (req, res) => {
+    try {
+        const { phone, amount, month } = req.body;
+
+        if (!phone || !amount || !month) {
+            return res.status(400).json({ message: 'phone, amount and month are required' });
+        }
+
+        if (amount <= 0) {
+            return res.status(400).json({ message: 'Amount must be greater than 0' });
+        }
+
+        let payPhone = phone;
+        const tenantId = req.user.tenantId || req.body.tenantId;
+
+        const tenant = await Tenant.findById(tenantId).populate('house');
+        if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
+
+        // Always use registered phone for security
+        if (req.user.role === 'tenant') payPhone = tenant.phone;
+
+        const rent = tenant.house ? tenant.house.rent : 0;
+
+        // ── Check if already fully paid ──
+        const summary = await getMonthSummary(tenantId, month, rent);
+        if (summary.status === 'paid') {
+            return res.status(400).json({
+                message: `Rent for ${month} is already fully paid ✅`,
+                summary
+            });
+        }
+
+        // ── Overpayment check ──
+        if (amount > summary.balance) {
+            return res.status(400).json({
+                message: `Amount exceeds balance. Remaining balance is Ksh ${summary.balance}.`,
+                balance: summary.balance,
+                summary
+            });
+        }
+
+        // ── Initiate STK push ──
+        const token     = await getToken();
+        const timestamp = new Date().toISOString().replace(/[-T:.Z]/g, '').slice(0, 14);
+        const password  = Buffer.from(
+            process.env.MPESA_SHORTCODE + process.env.MPESA_PASSKEY + timestamp
+        ).toString('base64');
+
+        const stkRes = await axios.post(
+            'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest',
+            {
+                BusinessShortCode: process.env.MPESA_SHORTCODE,
+                Password:          password,
+                Timestamp:         timestamp,
+                TransactionType:   'CustomerPayBillOnline',
+                Amount:            amount,
+                PartyA:            payPhone,
+                PartyB:            process.env.MPESA_SHORTCODE,
+                PhoneNumber:       payPhone,
+                CallBackURL:       process.env.MPESA_CALLBACK_URL,
+                AccountReference:  `Rent-${month}`,
+                TransactionDesc:   `Rent payment for ${month}`
+            },
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        const data = stkRes.data;
+
+        if (data.ResponseCode !== '0') {
+            return res.status(400).json({
+                message: data.ResponseDescription || 'STK push failed',
+                data
+            });
+        }
+
+        // ── Save pending payment record ──
+        if (tenant.house) {
+            const newTotalPaid = summary.totalPaid + amount;
+            const newBalance   = Math.max(0, rent - newTotalPaid);
+
+            await Payment.create({
+                tenant:            tenant._id,
+                house:             tenant.house._id,
+                amount,
+                month,
+                rentAmount:        rent,
+                totalPaid:         newTotalPaid,
+                balance:           newBalance,
+                status:            'pending',
+                method:            'mpesa',
+                checkoutRequestId: data.CheckoutRequestID,
+                merchantRequestId: data.MerchantRequestID
+            });
+        }
+
+        res.json({
+            message:           'M-Pesa prompt sent to your phone 📱',
+            checkoutRequestId: data.CheckoutRequestID,
+            merchantRequestId: data.MerchantRequestID,
+            summary: {
+                currentlyPaid: summary.totalPaid,
+                balance:       summary.balance,
+                thisPayment:   amount
+            }
+        });
+
+    } catch (err) {
+        console.error('🔥 STK Push error:', err.response?.data || err.message);
+        res.status(500).json({
+            error:   'STK Push failed',
+            details: err.response?.data || err.message
+        });
+    }
+});
+
+
+// ─────────────────────────────────────────────────────
+// POST /callback — Safaricom M-Pesa callback
+// Updated to handle partial payment totals correctly
+// ─────────────────────────────────────────────────────
+app.post('/callback', async (req, res) => {
+    res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+
+    try {
+        const stk = req.body?.Body?.stkCallback;
+        if (!stk) return;
+
+        const checkoutRequestId = stk.CheckoutRequestID;
+        const resultCode        = stk.ResultCode;
+
+        const payment = await Payment.findOne({ checkoutRequestId })
+            .populate('tenant')
+            .populate('house');
+
+        if (!payment) {
+            console.log('Callback: no pending payment found for', checkoutRequestId);
+            return;
+        }
+
+        if (resultCode === 0) {
+            // ── Payment successful ──
+            const items   = stk.CallbackMetadata?.Item || [];
+            const getItem = name => items.find(i => i.Name === name)?.Value;
+
+            const mpesaCode = getItem('MpesaReceiptNumber') || '';
+
+            // Recalculate totals from DB (source of truth)
+            const rent          = payment.house?.rent || payment.rentAmount;
+            const previousTotal = await Payment.aggregate([
+                {
+                    $match: {
+                        tenant:  payment.tenant._id,
+                        month:   payment.month,
+                        status:  { $in: ['paid', 'partial'] },
+                        _id:     { $ne: payment._id }
+                    }
+                },
+                { $group: { _id: null, total: { $sum: '$amount' } } }
+            ]);
+
+            const prevPaid     = previousTotal[0]?.total || 0;
+            const newTotalPaid = prevPaid + payment.amount;
+            const newBalance   = Math.max(0, rent - newTotalPaid);
+            const newStatus    = newBalance === 0 ? 'paid' : 'partial';
+
+            payment.status    = newStatus;
+            payment.mpesaCode = mpesaCode;
+            payment.totalPaid = newTotalPaid;
+            payment.balance   = newBalance;
+            payment.datePaid  = new Date();
+            await payment.save();
+
+            console.log(`✅ M-Pesa payment confirmed: ${mpesaCode} | ${payment.month} | Status: ${newStatus}`);
+
+            // ── Send confirmation email ──
+            if (payment.tenant?.email) {
+                const { Resend } = require('resend');
+                const resend     = new Resend(process.env.RESEND_API_KEY);
+                const statusColor = newStatus === 'paid' ? '#16a34a' : '#d97706';
+                const statusLabel = newStatus === 'paid' ? 'Fully Paid ✓' : 'Partial Payment';
+                const statusBg    = newStatus === 'paid' ? '#dcfce7' : '#fef3c7';
+
+                resend.emails.send({
+                    from:    'Affordable Rentals 🏠 <support@affordablerentals.site>',
+                    to:      payment.tenant.email,
+                    subject: `${newStatus === 'paid' ? '✅' : '🔔'} M-Pesa Payment Confirmed — ${payment.month}`,
+                    html: `
+                    <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:560px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+                      <div style="background:linear-gradient(135deg,#16a34a,#15803d);padding:32px;text-align:center">
+                        <div style="font-size:40px;margin-bottom:8px">✅</div>
+                        <h1 style="color:#fff;margin:0;font-size:22px;font-weight:700">Payment Confirmed</h1>
+                        <p style="color:#bbf7d0;margin:6px 0 0;font-size:13px">${payment.month}</p>
+                      </div>
+                      <div style="padding:32px">
+                        <p style="color:#1e293b;font-size:15px;margin:0 0 16px">Hi <strong>${payment.tenant.name.split(' ')[0]}</strong>,</p>
+                        <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">Your M-Pesa payment has been received and confirmed.</p>
+                        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:20px 24px;margin-bottom:24px">
+                          <table style="width:100%;border-collapse:collapse">
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">House</td>             <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${payment.house?.name || '—'}</td></tr>
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Month</td>             <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${payment.month}</td></tr>
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">This Payment</td>      <td style="color:#16a34a;font-size:15px;font-weight:700;text-align:right">Ksh ${Number(payment.amount).toLocaleString()}</td></tr>
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Total Paid</td>        <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">Ksh ${Number(newTotalPaid).toLocaleString()}</td></tr>
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Balance</td>           <td style="color:${newBalance > 0 ? '#d97706' : '#16a34a'};font-size:13px;font-weight:700;text-align:right">Ksh ${Number(newBalance).toLocaleString()}</td></tr>
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">M-Pesa Code</td>       <td style="color:#1e293b;font-size:13px;font-weight:700;text-align:right;font-family:monospace">${mpesaCode}</td></tr>
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Status</td>            <td style="text-align:right"><span style="background:${statusBg};color:${statusColor};font-size:11px;font-weight:600;padding:2px 10px;border-radius:99px">${statusLabel}</span></td></tr>
+                          </table>
+                        </div>
+                        ${newBalance > 0 ? `<div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:14px 18px;margin-bottom:20px"><p style="color:#92400e;font-size:13px;margin:0">⚠️ Balance remaining: <strong>Ksh ${Number(newBalance).toLocaleString()}</strong>. Please pay before your due date.</p></div>` : ''}
+                        <p style="color:#94a3b8;font-size:12px;margin:0">Keep this as your receipt. Contact <a href="mailto:support@affordablerentals.site" style="color:#16a34a">support@affordablerentals.site</a> for queries.</p>
+                      </div>
+                      <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 32px;text-align:center">
+                        <p style="color:#cbd5e1;font-size:11px;margin:0">© ${new Date().getFullYear()} Affordable Rentals · <a href="https://affordablerentals.site" style="color:#94a3b8;text-decoration:none">affordablerentals.site</a></p>
+                      </div>
+                    </div>`
+                }).catch(err => console.error('Confirmation email failed:', err.message));
+            }
+
+        } else {
+            // ── Payment failed or cancelled ──
+            payment.status = 'failed';
+            await payment.save();
+            console.log(`❌ Payment failed — ResultCode: ${resultCode}`);
+        }
+
+    } catch (err) {
+        console.error('Callback processing error:', err.message);
+    }
+});
+
+
 
 // ═══════════════════════════════════════
 // RECEIPTS
@@ -757,71 +1236,8 @@ app.get('/receipt/pdf/:paymentId', async (req, res) => {
 // ARREARS
 // ═══════════════════════════════════════
 
-// GET /arrears
-app.get('/arrears', async (req, res) => {
-    try {
-        const tenants     = await Tenant.find().populate('house');
-        const arrearsList = [];
 
-        for (const tenant of tenants) {
-            if (!tenant.house) continue;
 
-            const rent      = tenant.house.rent;
-            const payments  = await Payment.find({ tenant: tenant._id });
-            const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-            const arrears   = Math.max(0, rent - totalPaid);
-
-            if (arrears > 0) {
-                arrearsList.push({
-                    tenant: tenant.name,
-                    house:  tenant.house.name,
-                    rent,
-                    paid:   totalPaid,
-                    arrears
-                });
-            }
-        }
-
-        res.json(arrearsList);
-
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// GET /arrears/:month
-app.get('/arrears/:month', async (req, res) => {
-    try {
-        const month   = req.params.month;
-        const tenants = await Tenant.find().populate('house');
-        const result  = [];
-
-        for (const tenant of tenants) {
-            if (!tenant.house) continue;
-
-            const rent    = tenant.house.rent;
-            const payment = await Payment.findOne({ tenant: tenant._id, month });
-            const paid    = payment ? payment.amount : 0;
-            const arrears = Math.max(0, rent - paid);
-
-            if (arrears > 0) {
-                result.push({
-                    tenant: tenant.name,
-                    house:  tenant.house.name,
-                    month,
-                    rent,
-                    paid,
-                    arrears
-                });
-            }
-        }
-
-        res.json(result);
-
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
 
 // ═══════════════════════════════════════
 // DASHBOARD
@@ -868,170 +1284,10 @@ app.get('/dashboard/:month', authMiddleware, adminOnly, async (req, res) => {
     }
 });
 
-// ═══════════════════════════════════════
-// STK PUSH (M-PESA)
-// ═══════════════════════════════════════
 
-// POST /stkpush
-app.post('/stkpush', authMiddleware, async (req, res) => {
-    try {
-        const { phone, amount, month } = req.body;
 
-        if (!phone || !amount || !month) {
-            return res.status(400).json({ message: 'phone, amount and month are required' });
-        }
 
-        let payPhone = phone;
-        if (req.user.role === 'tenant') {
-            const tenant = await Tenant.findById(req.user.tenantId);
-            if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
-            payPhone = tenant.phone;
-        }
 
-        const token     = await getToken();
-        const timestamp = new Date().toISOString().replace(/[-T:.Z]/g, '').slice(0, 14);
-        const password  = Buffer.from(
-            process.env.MPESA_SHORTCODE + process.env.MPESA_PASSKEY + timestamp
-        ).toString('base64');
-
-        const stkRes = await axios.post(
-            'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest',
-            {
-                BusinessShortCode: process.env.MPESA_SHORTCODE,
-                Password:          password,
-                Timestamp:         timestamp,
-                TransactionType:   'CustomerPayBillOnline',
-                Amount:            amount,
-                PartyA:            payPhone,
-                PartyB:            process.env.MPESA_SHORTCODE,
-                PhoneNumber:       payPhone,
-                CallBackURL:       process.env.MPESA_CALLBACK_URL,
-                AccountReference:  `Rent-${month}`,
-                TransactionDesc:   `Rent payment for ${month}`
-            },
-            { headers: { Authorization: `Bearer ${token}` } }
-        );
-
-        const data = stkRes.data;
-
-        if (data.ResponseCode !== '0') {
-            return res.status(400).json({
-                message: data.ResponseDescription || 'STK push failed',
-                data
-            });
-        }
-
-        // Save a pending payment record
-        const tenantId = req.user.tenantId || req.body.tenantId;
-        const tenant   = await Tenant.findById(tenantId).populate('house');
-
-        if (tenant && tenant.house) {
-            await Payment.create({
-                tenant:            tenant._id,
-                house:             tenant.house._id,
-                amount,
-                month,
-                status:            'pending',
-                checkoutRequestId: data.CheckoutRequestID,
-                merchantRequestId: data.MerchantRequestID
-            });
-        }
-
-        res.json({
-            message:           'M-Pesa prompt sent to your phone 📱',
-            checkoutRequestId: data.CheckoutRequestID,
-            merchantRequestId: data.MerchantRequestID
-        });
-
-    } catch (err) {
-        console.error('🔥 STK Push error:', err.response?.data || err.message);
-        res.status(500).json({
-            error:   'STK Push failed',
-            details: err.response?.data || err.message
-        });
-    }
-});
-
-// POST /callback — Safaricom calls this after payment
-app.post('/callback', async (req, res) => {
-    // Always respond 200 immediately
-    res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
-
-    try {
-        const body     = req.body;
-        const stk      = body?.Body?.stkCallback;
-        if (!stk) return;
-
-        const checkoutRequestId = stk.CheckoutRequestID;
-        const resultCode        = stk.ResultCode;
-
-        // Find the pending payment
-        const payment = await Payment.findOne({ checkoutRequestId }).populate('tenant').populate('house');
-        if (!payment) {
-            console.log('Callback: no pending payment found for', checkoutRequestId);
-            return;
-        }
-
-        if (resultCode === 0) {
-            // Payment successful
-            const items   = stk.CallbackMetadata?.Item || [];
-            const getItem = name => items.find(i => i.Name === name)?.Value;
-
-            payment.status    = 'paid';
-            payment.mpesaCode = getItem('MpesaReceiptNumber') || '';
-            payment.datePaid  = new Date();
-            await payment.save();
-
-            console.log(`✅ Payment confirmed: ${payment.mpesaCode} for ${payment.month}`);
-
-            // Send receipt email — non-blocking
-            if (payment.tenant && payment.house) {
-                const { Resend } = require('resend');
-                const resend = new Resend(process.env.RESEND_API_KEY);
-
-                resend.emails.send({
-                    from:    'Affordable Rentals 🏠 <support@affordablerentals.site>',
-                    to:      payment.tenant.email,
-                    subject: `✅ Payment Confirmed — ${payment.month} | ${payment.house.name}`,
-                    html: `
-                    <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:560px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
-                      <div style="background:linear-gradient(135deg,#16a34a,#15803d);padding:32px;text-align:center">
-                        <div style="font-size:40px;margin-bottom:8px">✅</div>
-                        <h1 style="color:#fff;margin:0;font-size:22px;font-weight:700">Payment Confirmed</h1>
-                        <p style="color:#bbf7d0;margin:6px 0 0;font-size:13px">${payment.month}</p>
-                      </div>
-                      <div style="padding:32px">
-                        <p style="color:#1e293b;font-size:15px;margin:0 0 16px">Hi <strong>${payment.tenant.name.split(' ')[0]}</strong>,</p>
-                        <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">Your M-Pesa payment has been received and confirmed. Here are your payment details:</p>
-                        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:20px 24px;margin-bottom:24px">
-                          <table style="width:100%;border-collapse:collapse">
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">House</td><td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${payment.house.name}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Month</td><td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${payment.month}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Amount</td><td style="color:#16a34a;font-size:15px;font-weight:700;text-align:right">Ksh ${Number(payment.amount).toLocaleString()}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">M-Pesa Code</td><td style="color:#1e293b;font-size:13px;font-weight:700;text-align:right;font-family:monospace">${payment.mpesaCode}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Status</td><td style="text-align:right"><span style="background:#dcfce7;color:#16a34a;font-size:11px;font-weight:600;padding:2px 10px;border-radius:99px">Paid ✓</span></td></tr>
-                          </table>
-                        </div>
-                        <p style="color:#94a3b8;font-size:12px;margin:0">Keep this email as your receipt. Contact us at <a href="mailto:support@affordablerentals.site" style="color:#16a34a">support@affordablerentals.site</a> if you have any questions.</p>
-                      </div>
-                      <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 32px;text-align:center">
-                        <p style="color:#cbd5e1;font-size:11px;margin:0">© ${new Date().getFullYear()} Affordable Rentals · <a href="https://affordablerentals.site" style="color:#94a3b8;text-decoration:none">affordablerentals.site</a></p>
-                      </div>
-                    </div>`
-                }).catch(err => console.error('Confirmation email failed:', err.message));
-            }
-
-        } else {
-            // Payment failed or cancelled
-            payment.status = 'failed';
-            await payment.save();
-            console.log(`❌ Payment failed for ${checkoutRequestId} — ResultCode: ${resultCode}`);
-        }
-
-    } catch (err) {
-        console.error('Callback processing error:', err.message);
-    }
-});
 
 // GET /payment-status/:checkoutRequestId
 app.get('/payment-status/:checkoutRequestId', authMiddleware, async (req, res) => {
