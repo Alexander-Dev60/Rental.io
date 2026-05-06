@@ -387,6 +387,7 @@ function renderPaySection(data) {
     // Pre-fill month field
     document.getElementById('payMonth').value  = currentMonth;
     document.getElementById('payAmount').value = house.rent;
+    
 
     summaryEl.innerHTML = `
         <div style="display:flex;flex-direction:column;gap:0.5rem">
