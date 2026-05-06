@@ -1,13 +1,15 @@
 // ═══════════════════════════════════════════════════════
-//  emails.js — All transactional email templates
-//  Require this in server.js:
-//  const { sendWelcomeEmail, sendRentReminder, sendMoveOutEmail } = require('./emails');
+//  emails.js — All transactional email templates (Resend)
+//  Usage in app.js:
+//  const { sendWelcomeEmail, sendRentReminder, sendMoveOutEmail, sendReceiptEmail } = require('./emails');
 // ═══════════════════════════════════════════════════════
+
+'use strict';
 
 const { Resend } = require('resend');
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Sender address — use this until you add a custom domain on Resend
+// Sender address — matches your verified Resend domain
 const FROM = 'RentPortal 🏠 <noreply@send.affordablerentals.site>';
 
 // ════════════════════════════════════════════════
@@ -16,13 +18,13 @@ const FROM = 'RentPortal 🏠 <noreply@send.affordablerentals.site>';
 // ════════════════════════════════════════════════
 
 async function sendWelcomeEmail({ name, email }) {
-    await resend.emails.send({
+    const { error } = await resend.emails.send({
         from:    FROM,
         to:      email,
         subject: `Welcome to RentPortal, ${name.split(' ')[0]}! 🎉`,
         html: `
         <!DOCTYPE html>
-        <html>
+        <html lang="en">
         <head>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -98,6 +100,7 @@ async function sendWelcomeEmail({ name, email }) {
         </html>`
     });
 
+    if (error) throw new Error(`Welcome email failed: ${error.message}`);
     console.log(`📧 Welcome email sent to ${email}`);
 }
 
@@ -110,7 +113,7 @@ async function sendWelcomeEmail({ name, email }) {
 async function sendRentReminder({ name, email, house, rent, month, dueDate, arrears }) {
     const isOverdue = arrears > 0;
 
-    await resend.emails.send({
+    const { error } = await resend.emails.send({
         from:    FROM,
         to:      email,
         subject: isOverdue
@@ -118,7 +121,7 @@ async function sendRentReminder({ name, email, house, rent, month, dueDate, arre
             : `🔔 Rent Reminder — ${month} | ${house}`,
         html: `
         <!DOCTYPE html>
-        <html>
+        <html lang="en">
         <body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif">
           <div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
 
@@ -200,6 +203,7 @@ async function sendRentReminder({ name, email, house, rent, month, dueDate, arre
         </html>`
     });
 
+    if (error) throw new Error(`Rent reminder failed: ${error.message}`);
     console.log(`📧 Rent reminder sent to ${email} for ${month}`);
 }
 
@@ -210,13 +214,13 @@ async function sendRentReminder({ name, email, house, rent, month, dueDate, arre
 // ════════════════════════════════════════════════
 
 async function sendMoveOutEmail({ name, email, house, moveOutDate }) {
-    await resend.emails.send({
+    const { error } = await resend.emails.send({
         from:    FROM,
         to:      email,
         subject: `Goodbye ${name.split(' ')[0]} — Move-out Confirmed 🏠`,
         html: `
         <!DOCTYPE html>
-        <html>
+        <html lang="en">
         <body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif">
           <div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
 
@@ -256,7 +260,7 @@ async function sendMoveOutEmail({ name, email, house, moveOutDate }) {
                   <tr>
                     <td style="color:#94a3b8;font-size:13px;padding:6px 0">Move-out Date</td>
                     <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">
-                      ${new Date(moveOutDate).toLocaleDateString('en-GB', {day:'numeric', month:'long', year:'numeric'})}
+                      ${new Date(moveOutDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
                     </td>
                   </tr>
                   <tr>
@@ -273,14 +277,14 @@ async function sendMoveOutEmail({ name, email, house, moveOutDate }) {
               <!-- Message -->
               <div style="background:#ede9fe;border-radius:10px;padding:20px 24px;margin-bottom:28px;text-align:center">
                 <p style="color:#5b21b6;font-size:14px;line-height:1.7;margin:0;font-style:italic">
-                  "Thank you for being part of our community. 
-                   Your receipts and payment history remain accessible 
+                  "Thank you for being part of our community.
+                   Your receipts and payment history remain accessible
                    via your account should you ever need them."
                 </p>
               </div>
 
               <p style="color:#94a3b8;font-size:12px;line-height:1.6;margin:0">
-                Your account remains active and you can still access your payment history and receipts. 
+                Your account remains active and you can still access your payment history and receipts.
                 If you believe this move-out was processed in error, please contact your landlord immediately.
               </p>
             </div>
@@ -297,16 +301,133 @@ async function sendMoveOutEmail({ name, email, house, moveOutDate }) {
         </html>`
     });
 
+    if (error) throw new Error(`Move-out email failed: ${error.message}`);
     console.log(`📧 Move-out email sent to ${email}`);
+}
+
+
+// ════════════════════════════════════════════════
+// 4. RECEIPT EMAIL  ← NEW: replaces the old nodemailer
+// Call from POST /payments after PDF is generated
+// pdfBuffer must be a Buffer (the raw PDF bytes)
+// ════════════════════════════════════════════════
+
+async function sendReceiptEmail({ name, email, house, amount, month, paymentId, pdfBuffer }) {
+    const { error } = await resend.emails.send({
+        from:    FROM,
+        to:      email,
+        subject: `🧾 Rent Receipt — ${month} | ${house}`,
+        attachments: [
+            {
+                filename:    `receipt-${paymentId}.pdf`,
+                content:     pdfBuffer.toString('base64'),
+                contentType: 'application/pdf'
+            }
+        ],
+        html: `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif">
+          <div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+
+            <!-- Header -->
+            <div style="background:linear-gradient(135deg,#16a34a,#15803d);padding:40px 32px;text-align:center">
+              <div style="font-size:48px;margin-bottom:12px">🧾</div>
+              <h1 style="color:#ffffff;margin:0;font-size:26px;font-weight:700;letter-spacing:-0.5px">
+                Payment Received
+              </h1>
+              <p style="color:#bbf7d0;margin:8px 0 0;font-size:14px">Your rent has been recorded successfully.</p>
+            </div>
+
+            <!-- Body -->
+            <div style="padding:36px 32px">
+              <p style="color:#1e293b;font-size:16px;margin:0 0 16px">
+                Hi <strong>${name.split(' ')[0]}</strong> 👋,
+              </p>
+              <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">
+                Your rent payment for <strong>${month}</strong> has been recorded. Please find your receipt attached to this email.
+              </p>
+
+              <!-- Payment summary -->
+              <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:20px 24px;margin-bottom:28px">
+                <p style="color:#14532d;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;margin:0 0 12px;font-weight:600">
+                  PAYMENT SUMMARY
+                </p>
+                <table style="width:100%;border-collapse:collapse">
+                  <tr>
+                    <td style="color:#4ade80;font-size:13px;padding:6px 0">Tenant</td>
+                    <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${name}</td>
+                  </tr>
+                  <tr>
+                    <td style="color:#4ade80;font-size:13px;padding:6px 0">House</td>
+                    <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${house}</td>
+                  </tr>
+                  <tr>
+                    <td style="color:#4ade80;font-size:13px;padding:6px 0">Month</td>
+                    <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${month}</td>
+                  </tr>
+                  <tr>
+                    <td style="color:#4ade80;font-size:13px;padding:6px 0">Amount Paid</td>
+                    <td style="color:#16a34a;font-size:15px;font-weight:700;text-align:right">Ksh ${Number(amount).toLocaleString()}</td>
+                  </tr>
+                  <tr>
+                    <td style="color:#4ade80;font-size:13px;padding:6px 0">Receipt No.</td>
+                    <td style="color:#1e293b;font-size:12px;font-weight:600;text-align:right;font-family:monospace">${paymentId}</td>
+                  </tr>
+                  <tr>
+                    <td style="color:#4ade80;font-size:13px;padding:6px 0">Date</td>
+                    <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</td>
+                  </tr>
+                </table>
+              </div>
+
+              <!-- PDF notice -->
+              <div style="background:#f8fafc;border:1px dashed #cbd5e1;border-radius:10px;padding:16px 24px;margin-bottom:28px;text-align:center">
+                <p style="color:#64748b;font-size:13px;margin:0">
+                  📎 Your PDF receipt is attached to this email. Keep it for your records.
+                </p>
+              </div>
+
+              <!-- CTA -->
+              <div style="text-align:center;margin-bottom:28px">
+                <a href="${process.env.BASE_URL || 'http://localhost:3000'}/tenant.html"
+                   style="display:inline-block;background:linear-gradient(135deg,#16a34a,#15803d);color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:14px 32px;border-radius:8px;letter-spacing:0.02em">
+                  View Dashboard →
+                </a>
+              </div>
+
+              <p style="color:#94a3b8;font-size:12px;line-height:1.6;margin:0">
+                If you believe this receipt was sent in error or the amount is incorrect, please contact your landlord via the dashboard chat immediately.
+              </p>
+            </div>
+
+            <!-- Footer -->
+            <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 32px;text-align:center">
+              <p style="color:#cbd5e1;font-size:11px;margin:0">
+                © ${new Date().getFullYear()} RentPortal · Automated payment receipt.
+              </p>
+            </div>
+
+          </div>
+        </body>
+        </html>`
+    });
+
+    if (error) throw new Error(`Receipt email failed: ${error.message}`);
+    console.log(`📧 Receipt email sent to ${email} for ${month}`);
 }
 
 
 // ── Helper: ordinal suffix (1st, 2nd, 3rd...) ──
 function ordinal(n) {
-    const s = ['th','st','nd','rd'];
+    const s = ['th', 'st', 'nd', 'rd'];
     const v = n % 100;
     return s[(v - 20) % 10] || s[v] || s[0];
 }
 
 
-module.exports = { sendWelcomeEmail, sendRentReminder, sendMoveOutEmail };
+module.exports = { sendWelcomeEmail, sendRentReminder, sendMoveOutEmail, sendReceiptEmail };
