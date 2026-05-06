@@ -26,7 +26,7 @@ function logout() {
 // ─── Guard: redirect if not logged in or not admin ───
 (function guardAdmin() {
     const token = getToken();
-    if (!token) { window.location.href = 'auth.html'; return; }
+    if (!token) { window.location.href = 'landing.html'; return; }
 
     try {
         const payload = JSON.parse(atob(token.split('.')[1]));
