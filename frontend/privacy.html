@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — RentPortal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Bebas+Neue&family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink:    #050810;
+      --ink2:   #080d1a;
+      --card:   #101828;
+      --line:   rgba(255,255,255,0.06);
+      --line2:  rgba(255,255,255,0.12);
+      --blue:   #3b82f6;
+      --cyan:   #06b6d4;
+      --white:  #f0f4ff;
+      --grey:   #94a3b8;
+      --grey2:  #475569;
+      --font-d: 'Bebas Neue', sans-serif;
+      --font-b: 'Outfit', sans-serif;
+      --font-m: 'Fira Code', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body { font-family: var(--font-b); background: var(--ink); color: var(--white); font-size: 15px; line-height: 1.7; }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: var(--cyan); border-radius: 2px; }
+
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(5,8,16,0.95);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--line);
+      padding: 1rem 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .nav-logo { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; }
+    .nav-logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--blue), var(--cyan)); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; }
+    .nav-logo-text { font-family: var(--font-d); font-size: 1.2rem; letter-spacing: 0.1em; color: var(--white); }
+    .nav-back { font-family: var(--font-m); font-size: 0.68rem; color: var(--grey); text-decoration: none; letter-spacing: 0.08em; transition: color 0.2s; }
+    .nav-back:hover { color: var(--cyan); }
+
+    .doc-hero {
+      background: linear-gradient(180deg, var(--ink2), var(--ink));
+      border-bottom: 1px solid var(--line);
+      padding: 4rem 2rem 3rem;
+      text-align: center;
+      position: relative; overflow: hidden;
+    }
+
+    .doc-hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+      background-size: 40px 40px;
+      mask-image: radial-gradient(ellipse 60% 100% at 50% 0%, black, transparent);
+    }
+
+    .doc-hero-tag {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      font-family: var(--font-m); font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase;
+      color: var(--cyan);
+      background: rgba(6,182,212,0.08); border: 1px solid rgba(6,182,212,0.2);
+      padding: 0.35rem 0.9rem; border-radius: 99px;
+      margin-bottom: 1.25rem; position: relative; z-index: 1;
+    }
+
+    .doc-hero h1 { font-family: var(--font-d); font-size: clamp(3rem, 7vw, 5rem); letter-spacing: 0.05em; color: var(--white); margin-bottom: 0.75rem; position: relative; z-index: 1; }
+    .doc-hero p  { font-family: var(--font-m); font-size: 0.7rem; color: var(--grey); letter-spacing: 0.1em; position: relative; z-index: 1; }
+
+    .doc-wrap { max-width: 760px; margin: 0 auto; padding: 3rem 2rem 5rem; }
+
+    .toc { background: var(--card); border: 1px solid var(--line2); border-radius: 12px; padding: 1.5rem 2rem; margin-bottom: 3rem; }
+    .toc-title { font-family: var(--font-m); font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--grey); margin-bottom: 1rem; }
+    .toc ol { list-style: none; display: flex; flex-direction: column; gap: 0.4rem; counter-reset: toc; }
+    .toc ol li { counter-increment: toc; }
+    .toc ol li a { display: flex; align-items: center; gap: 0.75rem; font-size: 0.82rem; color: var(--grey); text-decoration: none; transition: color 0.2s; }
+    .toc ol li a::before { content: counter(toc, decimal-leading-zero); font-family: var(--font-m); font-size: 0.6rem; color: var(--cyan); flex-shrink: 0; width: 24px; }
+    .toc ol li a:hover { color: var(--cyan); }
+
+    .doc-section { margin-bottom: 3rem; }
+    .doc-section-num { font-family: var(--font-m); font-size: 0.62rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--cyan); margin-bottom: 0.4rem; }
+    .doc-section h2 { font-family: var(--font-d); font-size: 2rem; letter-spacing: 0.05em; color: var(--white); margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--line); }
+    .doc-section p  { color: var(--grey); margin-bottom: 0.85rem; font-size: 0.9rem; }
+    .doc-section ul { color: var(--grey); font-size: 0.9rem; padding-left: 1.5rem; margin-bottom: 0.85rem; }
+    .doc-section li { margin-bottom: 0.4rem; }
+    .doc-section strong { color: var(--white); font-weight: 600; }
+
+    .data-table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem; font-size: 0.85rem; }
+    .data-table th { text-align: left; padding: 0.6rem 0.85rem; font-family: var(--font-m); font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--grey2); border-bottom: 1px solid var(--line2); }
+    .data-table td { padding: 0.65rem 0.85rem; border-bottom: 1px solid var(--line); color: var(--grey); }
+    .data-table tr:last-child td { border: none; }
+    .data-table tr:hover td { background: rgba(255,255,255,0.02); color: var(--white); }
+
+    .highlight-box { background: rgba(6,182,212,0.06); border: 1px solid rgba(6,182,212,0.15); border-left: 3px solid var(--cyan); border-radius: 0 8px 8px 0; padding: 1rem 1.25rem; margin: 1rem 0; font-size: 0.85rem; color: var(--grey); }
+
+    .doc-footer { background: var(--ink2); border-top: 1px solid var(--line); padding: 2rem; text-align: center; font-family: var(--font-m); font-size: 0.65rem; color: var(--grey); letter-spacing: 0.08em; }
+    .doc-footer a { color: var(--cyan); text-decoration: none; }
+    .doc-footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="landing.html" class="nav-logo">
+    <div class="nav-logo-icon">🏠</div>
+    <span class="nav-logo-text">RENTPORTAL</span>
+  </a>
+  <a href="landing.html" class="nav-back">← Back to Home</a>
+</nav>
+
+<div class="doc-hero">
+  <div class="doc-hero-tag">Legal Document</div>
+  <h1>PRIVACY POLICY</h1>
+  <p>LAST UPDATED: JANUARY 2026 · KENYA DATA PROTECTION ACT COMPLIANT</p>
+</div>
+
+<div class="doc-wrap">
+
+  <div class="toc">
+    <div class="toc-title">Table of Contents</div>
+    <ol>
+      <li><a href="#p1">Introduction</a></li>
+      <li><a href="#p2">Data We Collect</a></li>
+      <li><a href="#p3">How We Use Your Data</a></li>
+      <li><a href="#p4">Data Storage & Security</a></li>
+      <li><a href="#p5">Third-Party Services</a></li>
+      <li><a href="#p6">Your Rights</a></li>
+      <li><a href="#p7">Cookies</a></li>
+      <li><a href="#p8">Children's Privacy</a></li>
+      <li><a href="#p9">Changes to this Policy</a></li>
+      <li><a href="#p10">Contact Us</a></li>
+    </ol>
+  </div>
+
+  <div class="doc-section" id="p1">
+    <div class="doc-section-num">01</div>
+    <h2>INTRODUCTION</h2>
+    <p>RentPortal ("we", "us", "our") is committed to protecting your personal information. This Privacy Policy explains what data we collect, how we use it, and your rights as a user.</p>
+    <p>This policy is compliant with the <strong>Kenya Data Protection Act 2019</strong>. By using RentPortal, you consent to the data practices described in this policy.</p>
+    <div class="highlight-box">🔒 We never sell your personal data. Your information is only used to provide and improve our service.</div>
+  </div>
+
+  <div class="doc-section" id="p2">
+    <div class="doc-section-num">02</div>
+    <h2>DATA WE COLLECT</h2>
+    <p>We collect the following categories of personal data:</p>
+    <table class="data-table">
+      <thead>
+        <tr><th>Category</th><th>Data Collected</th><th>When</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Identity</td><td>Full name, email address</td><td>On registration</td></tr>
+        <tr><td>Contact</td><td>Phone number (for M-Pesa)</td><td>On registration</td></tr>
+        <tr><td>Financial</td><td>Payment amounts, months, M-Pesa transaction codes</td><td>On payment</td></tr>
+        <tr><td>Communication</td><td>In-app messages between tenant and landlord</td><td>When messages are sent</td></tr>
+        <tr><td>Technical</td><td>Login timestamps, session tokens</td><td>On login</td></tr>
+      </tbody>
+    </table>
+    <p>We do <strong>not</strong> collect your M-Pesa PIN, national ID number, or bank account details.</p>
+  </div>
+
+  <div class="doc-section" id="p3">
+    <div class="doc-section-num">03</div>
+    <h2>HOW WE USE YOUR DATA</h2>
+    <p>Your data is used for the following purposes:</p>
+    <ul>
+      <li>To create and manage your account</li>
+      <li>To process rent payments via M-Pesa</li>
+      <li>To generate and email payment receipts</li>
+      <li>To send rent reminders and system notifications</li>
+      <li>To enable communication between tenants and landlords</li>
+      <li>To calculate and display arrears and payment history</li>
+      <li>To improve platform performance and fix bugs</li>
+    </ul>
+    <p>We will never use your data for marketing, advertising or any purpose not listed above without your explicit consent.</p>
+  </div>
+
+  <div class="doc-section" id="p4">
+    <div class="doc-section-num">04</div>
+    <h2>DATA STORAGE & SECURITY</h2>
+    <p>Your data is stored securely in MongoDB Atlas cloud database hosted on AWS servers. We implement the following security measures:</p>
+    <ul>
+      <li><strong>Password encryption</strong> — all passwords are hashed using bcrypt (salt rounds: 10)</li>
+      <li><strong>JWT authentication</strong> — sessions are protected by signed JSON Web Tokens</li>
+      <li><strong>HTTPS only</strong> — all data in transit is encrypted using TLS/SSL</li>
+      <li><strong>Access control</strong> — only authorized admins can access tenant data</li>
+      <li><strong>Environment variables</strong> — all secrets are stored securely and never exposed in code</li>
+    </ul>
+    <div class="highlight-box">🛡️ Despite our best efforts, no system is 100% secure. Please use a strong unique password and keep your credentials private.</div>
+  </div>
+
+  <div class="doc-section" id="p5">
+    <div class="doc-section-num">05</div>
+    <h2>THIRD-PARTY SERVICES</h2>
+    <p>RentPortal integrates with the following third-party services:</p>
+    <ul>
+      <li><strong>Safaricom M-Pesa</strong> — for payment processing. Their privacy policy applies to all payment transactions.</li>
+      <li><strong>MongoDB Atlas</strong> — for database hosting. Data is stored in compliance with their data protection policies.</li>
+      <li><strong>Resend / Brevo</strong> — for transactional email delivery (receipts, reminders).</li>
+      <li><strong>Railway / Render</strong> — for backend hosting infrastructure.</li>
+    </ul>
+    <p>We are not responsible for the privacy practices of these third-party services. We recommend reviewing their individual privacy policies.</p>
+  </div>
+
+  <div class="doc-section" id="p6">
+    <div class="doc-section-num">06</div>
+    <h2>YOUR RIGHTS</h2>
+    <p>Under the Kenya Data Protection Act 2019, you have the following rights:</p>
+    <ul>
+      <li><strong>Right to access</strong> — request a copy of the data we hold about you</li>
+      <li><strong>Right to correction</strong> — request correction of inaccurate data</li>
+      <li><strong>Right to deletion</strong> — request deletion of your account and personal data</li>
+      <li><strong>Right to object</strong> — object to how we process your data</li>
+      <li><strong>Right to portability</strong> — receive your data in a portable format</li>
+    </ul>
+    <p>To exercise any of these rights, contact us at <strong>support@rentportal.com</strong>. We will respond within 30 days.</p>
+  </div>
+
+  <div class="doc-section" id="p7">
+    <div class="doc-section-num">07</div>
+    <h2>COOKIES</h2>
+    <p>RentPortal uses <strong>localStorage</strong> (not cookies) to store your session token and theme preference on your device. This data is:</p>
+    <ul>
+      <li>Stored only on your device — not sent to our servers except as part of API requests</li>
+      <li>Cleared when you sign out</li>
+      <li>Never used for advertising or tracking</li>
+    </ul>
+    <p>We do not use third-party tracking cookies or analytics tools that collect personal data.</p>
+  </div>
+
+  <div class="doc-section" id="p8">
+    <div class="doc-section-num">08</div>
+    <h2>CHILDREN'S PRIVACY</h2>
+    <p>RentPortal is not intended for use by persons under the age of 18. We do not knowingly collect personal data from minors. If you believe a minor has created an account, please contact us immediately and we will delete the account.</p>
+  </div>
+
+  <div class="doc-section" id="p9">
+    <div class="doc-section-num">09</div>
+    <h2>CHANGES TO THIS POLICY</h2>
+    <p>We may update this Privacy Policy from time to time. When we do, we will update the "Last Updated" date at the top of this page and notify registered users via email.</p>
+    <p>Continued use of RentPortal after changes are posted constitutes acceptance of the updated policy.</p>
+  </div>
+
+  <div class="doc-section" id="p10">
+    <div class="doc-section-num">10</div>
+    <h2>CONTACT US</h2>
+    <p>For any privacy-related questions or to exercise your data rights, contact us:</p>
+    <ul>
+      <li><strong>Email:</strong> alexanderbosire60@gmail.com</li>
+      <li><strong>WhatsApp:</strong> +254 702 276 609</li>
+      <li><strong>Response time:</strong> Within 30 business days</li>
+    </ul>
+  </div>
+
+</div>
+
+<div class="doc-footer">
+  © 2026 RENTPORTAL · <a href="terms.html">Terms & Conditions</a> · <a href="landing.html">Home</a> · Kenya Data Protection Act 2019 Compliant
+</div>
+
+</body>
+</html>

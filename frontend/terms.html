@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terms & Conditions — RentPortal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Bebas+Neue&family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink:    #050810;
+      --ink2:   #080d1a;
+      --card:   #101828;
+      --line:   rgba(255,255,255,0.06);
+      --line2:  rgba(255,255,255,0.12);
+      --blue:   #3b82f6;
+      --cyan:   #06b6d4;
+      --white:  #f0f4ff;
+      --grey:   #94a3b8;
+      --grey2:  #475569;
+      --font-d: 'Bebas Neue', sans-serif;
+      --font-b: 'Outfit', sans-serif;
+      --font-m: 'Fira Code', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-b);
+      background: var(--ink);
+      color: var(--white);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: var(--blue); border-radius: 2px; }
+
+    /* Navbar */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(5,8,16,0.95);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--line);
+      padding: 1rem 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .nav-logo {
+      display: flex; align-items: center; gap: 0.6rem;
+      text-decoration: none;
+    }
+
+    .nav-logo-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--blue), var(--cyan));
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.9rem;
+    }
+
+    .nav-logo-text {
+      font-family: var(--font-d);
+      font-size: 1.2rem;
+      letter-spacing: 0.1em;
+      color: var(--white);
+    }
+
+    .nav-back {
+      font-family: var(--font-m);
+      font-size: 0.68rem;
+      color: var(--grey);
+      text-decoration: none;
+      letter-spacing: 0.08em;
+      transition: color 0.2s;
+    }
+
+    .nav-back:hover { color: var(--blue); }
+
+    /* Hero */
+    .doc-hero {
+      background: linear-gradient(180deg, var(--ink2), var(--ink));
+      border-bottom: 1px solid var(--line);
+      padding: 4rem 2rem 3rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .doc-hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(var(--line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--line) 1px, transparent 1px);
+      background-size: 40px 40px;
+      mask-image: radial-gradient(ellipse 60% 100% at 50% 0%, black, transparent);
+    }
+
+    .doc-hero-tag {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      font-family: var(--font-m);
+      font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase;
+      color: var(--blue);
+      background: rgba(59,130,246,0.08);
+      border: 1px solid rgba(59,130,246,0.2);
+      padding: 0.35rem 0.9rem; border-radius: 99px;
+      margin-bottom: 1.25rem;
+      position: relative; z-index: 1;
+    }
+
+    .doc-hero h1 {
+      font-family: var(--font-d);
+      font-size: clamp(3rem, 7vw, 5rem);
+      letter-spacing: 0.05em;
+      color: var(--white);
+      margin-bottom: 0.75rem;
+      position: relative; z-index: 1;
+    }
+
+    .doc-hero p {
+      font-family: var(--font-m);
+      font-size: 0.7rem; color: var(--grey);
+      letter-spacing: 0.1em;
+      position: relative; z-index: 1;
+    }
+
+    /* Content */
+    .doc-wrap {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 3rem 2rem 5rem;
+    }
+
+    /* TOC */
+    .toc {
+      background: var(--card);
+      border: 1px solid var(--line2);
+      border-radius: 12px;
+      padding: 1.5rem 2rem;
+      margin-bottom: 3rem;
+    }
+
+    .toc-title {
+      font-family: var(--font-m);
+      font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--grey); margin-bottom: 1rem;
+    }
+
+    .toc ol {
+      list-style: none;
+      display: flex; flex-direction: column; gap: 0.4rem;
+      counter-reset: toc;
+    }
+
+    .toc ol li { counter-increment: toc; }
+
+    .toc ol li a {
+      display: flex; align-items: center; gap: 0.75rem;
+      font-size: 0.82rem; color: var(--grey);
+      text-decoration: none; transition: color 0.2s;
+    }
+
+    .toc ol li a::before {
+      content: counter(toc, decimal-leading-zero);
+      font-family: var(--font-m);
+      font-size: 0.6rem; color: var(--blue);
+      flex-shrink: 0; width: 24px;
+    }
+
+    .toc ol li a:hover { color: var(--blue); }
+
+    /* Sections */
+    .doc-section { margin-bottom: 3rem; }
+
+    .doc-section-num {
+      font-family: var(--font-m);
+      font-size: 0.62rem; letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--blue); margin-bottom: 0.4rem;
+    }
+
+    .doc-section h2 {
+      font-family: var(--font-d);
+      font-size: 2rem; letter-spacing: 0.05em;
+      color: var(--white); margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .doc-section p {
+      color: var(--grey); margin-bottom: 0.85rem; font-size: 0.9rem;
+    }
+
+    .doc-section ul, .doc-section ol {
+      color: var(--grey); font-size: 0.9rem;
+      padding-left: 1.5rem; margin-bottom: 0.85rem;
+    }
+
+    .doc-section li { margin-bottom: 0.4rem; }
+
+    .doc-section strong { color: var(--white); font-weight: 600; }
+
+    .highlight-box {
+      background: rgba(59,130,246,0.06);
+      border: 1px solid rgba(59,130,246,0.15);
+      border-left: 3px solid var(--blue);
+      border-radius: 0 8px 8px 0;
+      padding: 1rem 1.25rem;
+      margin: 1rem 0;
+      font-size: 0.85rem; color: var(--grey);
+    }
+
+    /* Footer */
+    .doc-footer {
+      background: var(--ink2);
+      border-top: 1px solid var(--line);
+      padding: 2rem;
+      text-align: center;
+      font-family: var(--font-m);
+      font-size: 0.65rem; color: var(--grey);
+      letter-spacing: 0.08em;
+    }
+
+    .doc-footer a { color: var(--blue); text-decoration: none; }
+    .doc-footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="landing.html" class="nav-logo">
+    <div class="nav-logo-icon">🏠</div>
+    <span class="nav-logo-text">RENTPORTAL</span>
+  </a>
+  <a href="landing.html" class="nav-back">← Back to Home</a>
+</nav>
+
+<div class="doc-hero">
+  <div class="doc-hero-tag">Legal Document</div>
+  <h1>TERMS & CONDITIONS</h1>
+  <p>LAST UPDATED: JANUARY 2026 · EFFECTIVE IMMEDIATELY</p>
+</div>
+
+<div class="doc-wrap">
+
+  <!-- TOC -->
+  <div class="toc">
+    <div class="toc-title">Table of Contents</div>
+    <ol>
+      <li><a href="#s1">Acceptance of Terms</a></li>
+      <li><a href="#s2">Description of Service</a></li>
+      <li><a href="#s3">User Accounts</a></li>
+      <li><a href="#s4">Payments & M-Pesa</a></li>
+      <li><a href="#s5">Tenant Responsibilities</a></li>
+      <li><a href="#s6">Landlord Responsibilities</a></li>
+      <li><a href="#s7">Data & Privacy</a></li>
+      <li><a href="#s8">Prohibited Conduct</a></li>
+      <li><a href="#s9">Limitation of Liability</a></li>
+      <li><a href="#s10">Termination</a></li>
+      <li><a href="#s11">Contact</a></li>
+    </ol>
+  </div>
+
+  <div class="doc-section" id="s1">
+    <div class="doc-section-num">01</div>
+    <h2>ACCEPTANCE OF TERMS</h2>
+    <p>By accessing or using RentPortal ("the Platform", "we", "us"), you agree to be bound by these Terms and Conditions. If you do not agree to these terms, please do not use the platform.</p>
+    <p>These terms apply to all users of the platform including tenants, landlords and administrators. Use of the platform constitutes full acceptance of these terms.</p>
+    <div class="highlight-box">⚠️ Please read these terms carefully before registering or making any payments through RentPortal.</div>
+  </div>
+
+  <div class="doc-section" id="s2">
+    <div class="doc-section-num">02</div>
+    <h2>DESCRIPTION OF SERVICE</h2>
+    <p>RentPortal is a rental management platform that provides the following services:</p>
+    <ul>
+      <li>Tenant registration and account management</li>
+      <li>Rent payment processing via M-Pesa (Safaricom)</li>
+      <li>Digital receipt generation and delivery</li>
+      <li>Tenant-landlord communication through in-app messaging</li>
+      <li>Arrears and payment history tracking</li>
+      <li>Announcements and house rules management</li>
+    </ul>
+    <p>We reserve the right to modify, suspend or discontinue any part of the service at any time with or without notice.</p>
+  </div>
+
+  <div class="doc-section" id="s3">
+    <div class="doc-section-num">03</div>
+    <h2>USER ACCOUNTS</h2>
+    <p>To use RentPortal, you must create an account with accurate and complete information. You are responsible for:</p>
+    <ul>
+      <li>Maintaining the confidentiality of your password</li>
+      <li>All activities that occur under your account</li>
+      <li>Notifying us immediately of any unauthorized access</li>
+      <li>Ensuring your registered email and phone are valid and active</li>
+    </ul>
+    <p>We reserve the right to suspend or terminate accounts that violate these terms or provide false information.</p>
+  </div>
+
+  <div class="doc-section" id="s4">
+    <div class="doc-section-num">04</div>
+    <h2>PAYMENTS & M-PESA</h2>
+    <p>RentPortal processes rent payments through Safaricom's M-Pesa platform. By making a payment you agree to the following:</p>
+    <ul>
+      <li>All payments are processed in Kenyan Shillings (KES)</li>
+      <li>Payment amounts are set by your landlord and cannot be altered by RentPortal</li>
+      <li>Once a payment is confirmed by Safaricom, it is <strong>final and non-refundable</strong> unless the landlord explicitly authorizes a refund</li>
+      <li>RentPortal is not responsible for failed transactions caused by insufficient M-Pesa balance, network issues or Safaricom service outages</li>
+      <li>Your M-Pesa PIN is never stored or seen by RentPortal — all PIN entry happens directly on Safaricom's secure platform</li>
+    </ul>
+    <div class="highlight-box">💡 Always verify the payment amount before entering your M-Pesa PIN. Contact your landlord immediately if you suspect an incorrect charge.</div>
+  </div>
+
+  <div class="doc-section" id="s5">
+    <div class="doc-section-num">05</div>
+    <h2>TENANT RESPONSIBILITIES</h2>
+    <p>As a tenant using RentPortal, you agree to:</p>
+    <ul>
+      <li>Pay rent on or before the agreed due date</li>
+      <li>Use the messaging feature respectfully and professionally</li>
+      <li>Report any payment errors to your landlord promptly</li>
+      <li>Keep your registered phone number active for M-Pesa payments</li>
+      <li>Not share your account credentials with any other person</li>
+      <li>Not attempt to manipulate or falsify payment records</li>
+    </ul>
+  </div>
+
+  <div class="doc-section" id="s6">
+    <div class="doc-section-num">06</div>
+    <h2>LANDLORD RESPONSIBILITIES</h2>
+    <p>Landlords and administrators using RentPortal agree to:</p>
+    <ul>
+      <li>Provide accurate house and rent information</li>
+      <li>Treat all tenants fairly and without discrimination</li>
+      <li>Respond to tenant messages within a reasonable time</li>
+      <li>Not use the platform to harass or intimidate tenants</li>
+      <li>Ensure all listed properties comply with applicable Kenyan housing laws</li>
+    </ul>
+  </div>
+
+  <div class="doc-section" id="s7">
+    <div class="doc-section-num">07</div>
+    <h2>DATA & PRIVACY</h2>
+    <p>We collect and store the following user data to provide our services:</p>
+    <ul>
+      <li>Name, email address and phone number</li>
+      <li>Payment history and receipt records</li>
+      <li>In-app messages between tenants and landlords</li>
+    </ul>
+    <p>We do not sell your personal data to third parties. All passwords are encrypted using industry-standard bcrypt hashing. For full details, please read our <a href="privacy.html" style="color:var(--blue)">Privacy Policy</a>.</p>
+  </div>
+
+  <div class="doc-section" id="s8">
+    <div class="doc-section-num">08</div>
+    <h2>PROHIBITED CONDUCT</h2>
+    <p>The following actions are strictly prohibited on RentPortal:</p>
+    <ul>
+      <li>Attempting to hack, reverse engineer or exploit the platform</li>
+      <li>Creating fake accounts or impersonating other users</li>
+      <li>Submitting fraudulent payment claims</li>
+      <li>Using the messaging system to send spam or abusive content</li>
+      <li>Any activity that violates Kenyan law</li>
+    </ul>
+    <p>Violation of these rules will result in immediate account termination and may be reported to relevant authorities.</p>
+  </div>
+
+  <div class="doc-section" id="s9">
+    <div class="doc-section-num">09</div>
+    <h2>LIMITATION OF LIABILITY</h2>
+    <p>RentPortal is provided "as is" without warranties of any kind. We are not liable for:</p>
+    <ul>
+      <li>Payment failures caused by Safaricom or network issues</li>
+      <li>Data loss caused by unforeseen technical failures</li>
+      <li>Disputes between tenants and landlords</li>
+      <li>Any indirect, incidental or consequential damages</li>
+    </ul>
+    <p>Our total liability to any user shall not exceed the amount paid by that user through the platform in the preceding 30 days.</p>
+  </div>
+
+  <div class="doc-section" id="s10">
+    <div class="doc-section-num">10</div>
+    <h2>TERMINATION</h2>
+    <p>We reserve the right to suspend or terminate your account at any time if you violate these terms. You may also delete your account at any time by contacting support.</p>
+    <p>Upon termination, your access to the platform will be revoked. Payment history and receipts may be retained for legal and audit purposes.</p>
+  </div>
+
+  <div class="doc-section" id="s11">
+    <div class="doc-section-num">11</div>
+    <h2>CONTACT</h2>
+    <p>If you have any questions about these Terms and Conditions, please contact us:</p>
+    <ul>
+      <li><strong>Email:</strong> alexanderbosire60@gmail.com</li>
+      <li><strong>WhatsApp:</strong> +254 702 276 609</li>
+      <li><strong>GitHub:</strong> github.com/Alexander-Dev60</li>
+    </ul>
+  </div>
+
+</div>
+
+<div class="doc-footer">
+  © 2026 RENTPORTAL · <a href="privacy.html">Privacy Policy</a> · <a href="landing.html">Home</a> · Built with ❤️ in Kenya
+</div>
+
+</body>
+</html>
