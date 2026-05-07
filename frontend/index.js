@@ -220,11 +220,49 @@ function renderProfile(data) {
 // ARREARS TABLE
 // ═══════════════════════════════════════════
 
+async function loadArrears() {
+    const monthInput = document.getElementById('arrearsMonth');
+    const month = monthInput ? monthInput.value.trim() : '';
+
+    const url = month
+        ? `${API}/arrears/${encodeURIComponent(month)}`
+        : `${API}/arrears`;
+
+    try {
+        const res = await fetch(url, { headers: authHeaders() });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            showToast(err.message || `Failed to load arrears (${res.status})`, 'error');
+            return;
+        }
+
+        const data = await res.json();
+
+        if (!Array.isArray(data)) {
+            showToast('Unexpected response from server', 'error');
+            return;
+        }
+
+        renderArrearsTable(data);
+
+        const badge = document.getElementById('arrearsBadge');
+        if (badge) {
+            badge.textContent   = data.length;
+            badge.style.display = data.length > 0 ? 'inline-block' : 'none';
+        }
+
+    } catch (err) {
+        showToast('Failed to load arrears', 'error');
+        console.error('loadArrears error:', err);
+    }
+}
+
 function renderArrearsTable(data) {
     const tbody = document.getElementById('arrearsTable');
 
     if (!data.length) {
-        tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state">🎉 No arrears found</div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state">🎉 No arrears found</div></td></tr>';
         return;
     }
 
@@ -233,19 +271,19 @@ function renderArrearsTable(data) {
             <td><strong style="color:var(--text)">${r.tenant}</strong></td>
             <td class="td-mono">${r.house}</td>
             <td class="td-mono">Ksh ${r.rent.toLocaleString()}</td>
-            <td class="td-mono">Ksh ${r.paid.toLocaleString()}</td>
-            <td><span class="pill pill-red">Ksh ${r.arrears.toLocaleString()}</span></td>
+            <td class="td-mono">Ksh ${r.totalPaid.toLocaleString()}</td>
+            <td><span class="pill pill-red">Ksh ${r.balance.toLocaleString()}</span></td>
+            <td><span class="pill pill-yellow">${r.status.toUpperCase()}</span></td>
             <td>
-                <button class="btn btn-primary btn-sm" onclick="quickPay('${r.tenant}')">Pay Now</button>
+                <button class="btn btn-primary btn-sm" onclick="quickPay('${r.tenantId}')">Pay Now</button>
             </td>
         </tr>`).join('');
 }
 
-function quickPay(tenantName) {
-    const tenant = _allTenants.find(t => t.name === tenantName);
+function quickPay(tenantId) {
+    const tenant = _allTenants.find(t => t._id === tenantId);
     if (tenant) openPayModal(tenant);
 }
-
 // ═══════════════════════════════════════════
 // HOUSE GRID
 // ═══════════════════════════════════════════

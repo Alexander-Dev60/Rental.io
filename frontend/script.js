@@ -188,36 +188,7 @@ async function resetTenantPassword(tenantId, newPassword) {
     }
 }
 
-// ═══════════════════════════════════════════
-// ARREARS
-// ═══════════════════════════════════════════
 
-async function loadArrears() {
-    const month = document.getElementById('arrearsMonth').value.trim();
-    const url   = month
-        ? `${API}/arrears/${encodeURIComponent(month)}`
-        : `${API}/arrears`;
-
-    try {
-        const res  = await fetch(url, { headers: authHeaders() });
-        const data = await res.json();
-
-        renderArrearsTable(data);
-
-        // Update sidebar badge
-        const badge = document.getElementById('arrearsBadge');
-        if (data.length > 0) {
-            badge.textContent    = data.length;
-            badge.style.display  = 'inline-block';
-        } else {
-            badge.style.display  = 'none';
-        }
-
-    } catch (err) {
-        showToast('Failed to load arrears', 'error');
-        console.error(err);
-    }
-}
 
 // ═══════════════════════════════════════════
 // HOUSES
