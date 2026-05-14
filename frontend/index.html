@@ -10,22 +10,11 @@
 
   <style>
   :root, [data-theme="dark"] {
-    --bg:         #0a0c10;
-    --bg2:        #0f1218;
-    --bg3:        #151922;
-    --panel:      #1a1f2b;
-    --panel2:     #1f2535;
-    --border:     rgba(255,255,255,0.07);
-    --border2:    rgba(255,255,255,0.13);
-    --accent:     #6ee7b7;
-    --accent2:    #3b82f6;
-    --accent-dim: rgba(110,231,183,0.12);
-    --danger:     #f87171;
-    --warn:       #fbbf24;
-    --text:       #e2e8f0;
-    --text-dim:   #64748b;
-    --text-muted: #94a3b8;
-    --sidebar-w:  260px;
+    --bg:#0a0c10;--bg2:#0f1218;--bg3:#151922;--panel:#1a1f2b;--panel2:#1f2535;
+    --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+    --accent:#6ee7b7;--accent2:#3b82f6;--accent-dim:rgba(110,231,183,0.12);
+    --danger:#f87171;--warn:#fbbf24;--text:#e2e8f0;--text-dim:#64748b;--text-muted:#94a3b8;
+    --sidebar-w:260px;
   }
   [data-theme="light"] {
     --bg:#f1f5f9;--bg2:#e8edf5;--bg3:#dde4f0;--panel:#ffffff;--panel2:#f8fafc;
@@ -50,13 +39,67 @@
   html { height: 100%; }
   body { font-family: 'Space Grotesk', sans-serif; background: var(--bg); color: var(--text); height: 100%; display: flex; overflow: hidden; font-size: 14px; }
 
+  /* ── SUBSCRIPTION BANNER ── */
+  .sub-banner {
+    display: none;
+    position: fixed; top: 0; left: var(--sidebar-w); right: 0;
+    z-index: 200; padding: 0.6rem 2rem;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;
+    letter-spacing: 0.06em; text-align: center;
+    animation: bannerSlide 0.4s ease both;
+  }
+
+  @keyframes bannerSlide {
+    from { opacity: 0; transform: translateY(-100%); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .sub-banner.grace    { background: rgba(251,191,36,0.15); color: var(--warn); border-bottom: 1px solid rgba(251,191,36,0.3); }
+  .sub-banner.expired  { background: rgba(248,113,113,0.15); color: var(--danger); border-bottom: 1px solid rgba(248,113,113,0.3); }
+  .sub-banner.trial    { background: rgba(59,130,246,0.12); color: #60a5fa; border-bottom: 1px solid rgba(59,130,246,0.25); }
+  .sub-banner.suspended{ background: rgba(248,113,113,0.2); color: var(--danger); border-bottom: 2px solid var(--danger); }
+
+  .sub-banner a {
+    color: inherit; text-decoration: underline; cursor: pointer;
+    margin-left: 0.75rem; font-weight: 700;
+  }
+
+  /* ── EXPIRED OVERLAY ── */
+  .expired-overlay {
+    display: none; position: fixed; inset: 0; z-index: 400;
+    background: rgba(0,0,0,0.92); backdrop-filter: blur(8px);
+    align-items: center; justify-content: center;
+  }
+
+  .expired-overlay.show { display: flex; }
+
+  .expired-box {
+    background: var(--panel); border: 1px solid rgba(248,113,113,0.3);
+    border-radius: 16px; padding: 3rem 2.5rem; text-align: center;
+    max-width: 440px; width: 92vw;
+    box-shadow: 0 0 60px rgba(248,113,113,0.15);
+  }
+
+  .expired-icon { font-size: 3.5rem; margin-bottom: 1rem; display: block; }
+
+  .expired-title {
+    font-family: 'Instrument Serif', serif; font-style: italic;
+    font-size: 1.8rem; color: var(--danger); margin-bottom: 0.75rem;
+  }
+
+  .expired-desc {
+    font-size: 0.85rem; color: var(--text-muted); line-height: 1.7;
+    margin-bottom: 2rem;
+  }
+
+  /* ── SIDEBAR ── */
   .sidebar { width: var(--sidebar-w); flex-shrink: 0; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; height: 100vh; position: fixed; left: 0; top: 0; z-index: 100; transition: transform 0.3s ease; }
   .sidebar-header { padding: 1.5rem 1.25rem 1rem; border-bottom: 1px solid var(--border); }
   .sidebar-logo { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.3rem; color: var(--accent); display: flex; align-items: center; gap: 0.5rem; }
   .sidebar-role { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); margin-top: 0.25rem; }
   .sidebar-nav { flex: 1; overflow-y: auto; padding: 0.75rem 0; }
   .nav-section { padding: 0.5rem 1.25rem 0.25rem; font-size: 0.58rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); margin-top: 0.5rem; }
-  .nav-item { display: flex; align-items: center; gap: 0.65rem; padding: 0.6rem 1.25rem; cursor: pointer; color: var(--text-muted); font-size: 0.82rem; font-weight: 500; transition: all 0.15s ease; border-left: 2px solid transparent; user-select: none; }
+  .nav-item { display: flex; align-items: center; gap: 0.65rem; padding: 0.6rem 1.25rem; cursor: pointer; color: var(--text-muted); font-size: 0.82rem; font-weight: 500; transition: all 0.15s; border-left: 2px solid transparent; user-select: none; }
   .nav-item:hover { background: var(--accent-dim); color: var(--text); border-left-color: var(--border2); }
   .nav-item.active { background: var(--accent-dim); color: var(--accent); border-left-color: var(--accent); }
   .nav-item .icon { font-size: 0.95rem; width: 18px; text-align: center; }
@@ -70,7 +113,7 @@
   .theme-dot[data-theme="light"]  { background: #e2e8f0; }
   .theme-dot[data-theme="blue"]   { background: #1e40af; }
   .theme-dot[data-theme="orange"] { background: #ea580c; }
-  .btn-logout { width: 100%; background: transparent; border: 1px solid var(--border2); color: var(--text-muted); font-family: 'Space Grotesk', sans-serif; font-size: 0.75rem; font-weight: 500; letter-spacing: 0.08em; padding: 0.5rem; border-radius: 6px; cursor: pointer; transition: all 0.15s ease; }
+  .btn-logout { width: 100%; background: transparent; border: 1px solid var(--border2); color: var(--text-muted); font-family: 'Space Grotesk', sans-serif; font-size: 0.75rem; font-weight: 500; letter-spacing: 0.08em; padding: 0.5rem; border-radius: 6px; cursor: pointer; transition: all 0.15s; }
   .btn-logout:hover { border-color: var(--danger); color: var(--danger); }
   .maintenance-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; padding: 0.5rem 0.75rem; background: var(--bg3); border-radius: 6px; border: 1px solid var(--border); }
   .maintenance-label { font-size: 0.72rem; color: var(--text-muted); font-weight: 500; }
@@ -81,6 +124,35 @@
   .toggle-switch input:checked + .slider { background: var(--warn); }
   .toggle-switch input:checked + .slider::before { transform: translateX(16px); }
 
+  /* ── SUBSCRIPTION STATUS CARD in sidebar ── */
+  .sub-status-card {
+    margin-bottom: 0.75rem;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.65rem 0.85rem;
+    cursor: pointer; transition: border-color 0.2s;
+  }
+  .sub-status-card:hover { border-color: var(--border2); }
+  .sub-status-card-top {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 0.35rem;
+  }
+  .sub-status-label { font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-dim); }
+  .sub-status-badge { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; font-weight: 700; padding: 2px 7px; border-radius: 99px; }
+  .sub-status-badge.trial    { background: rgba(59,130,246,0.12);  color: #60a5fa; border: 1px solid rgba(59,130,246,0.25); }
+  .sub-status-badge.active   { background: rgba(110,231,183,0.12); color: var(--accent); border: 1px solid rgba(110,231,183,0.2); }
+  .sub-status-badge.grace    { background: rgba(251,191,36,0.12);  color: var(--warn); border: 1px solid rgba(251,191,36,0.25); }
+  .sub-status-badge.expired  { background: rgba(248,113,113,0.12); color: var(--danger); border: 1px solid rgba(248,113,113,0.25); }
+  .sub-status-badge.suspended{ background: rgba(248,113,113,0.2);  color: var(--danger); border: 1px solid var(--danger); }
+  .sub-progress-track { background: var(--border); border-radius: 99px; height: 4px; overflow: hidden; }
+  .sub-progress-fill  { height: 100%; border-radius: 99px; transition: width 0.5s ease; }
+  .sub-progress-fill.active   { background: var(--accent); }
+  .sub-progress-fill.trial    { background: #60a5fa; }
+  .sub-progress-fill.grace    { background: var(--warn); }
+  .sub-progress-fill.expired  { background: var(--danger); width: 100% !important; }
+  .sub-progress-fill.suspended{ background: var(--danger); width: 100% !important; }
+  .sub-days-label { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: var(--text-dim); margin-top: 0.3rem; }
+
+  /* ── MAIN ── */
   .main { margin-left: var(--sidebar-w); flex: 1; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; }
   .topbar { position: sticky; top: 0; z-index: 50; background: var(--bg); border-bottom: 1px solid var(--border); padding: 0.85rem 2rem; display: flex; align-items: center; justify-content: space-between; backdrop-filter: blur(8px); }
   .topbar-title { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.3rem; color: var(--text); }
@@ -102,8 +174,7 @@
   .stat-card:hover { border-color: var(--border2); transform: translateY(-2px); }
   .stat-label { font-size: 0.62rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 0.5rem; }
   .stat-value { font-family: 'Instrument Serif', serif; font-size: 2.2rem; color: var(--accent); line-height: 1; }
-  .stat-sub { font-size: 0.7rem; color: var(--text-dim); margin-top: 0.25rem; }
-
+  .stat-sub   { font-size: 0.7rem; color: var(--text-dim); margin-top: 0.25rem; }
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
   .grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.25rem; }
 
@@ -113,17 +184,17 @@
   textarea { resize: vertical; min-height: 80px; }
   select option { background: var(--panel); }
 
-  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4em; border: none; border-radius: 7px; font-family: 'Space Grotesk', sans-serif; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; padding: 0.55rem 1.1rem; cursor: pointer; transition: all 0.15s ease; white-space: nowrap; }
-  .btn-primary { background: var(--accent); color: #0a0c10; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4em; border: none; border-radius: 7px; font-family: 'Space Grotesk', sans-serif; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; padding: 0.55rem 1.1rem; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .btn-primary   { background: var(--accent); color: #0a0c10; }
   .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
   .btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border2); }
   .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
-  .btn-danger { background: rgba(248,113,113,0.12); color: var(--danger); border: 1px solid rgba(248,113,113,0.25); }
+  .btn-danger    { background: rgba(248,113,113,0.12); color: var(--danger); border: 1px solid rgba(248,113,113,0.25); }
   .btn-danger:hover { background: rgba(248,113,113,0.2); }
-  .btn-warn { background: rgba(251,191,36,0.12); color: var(--warn); border: 1px solid rgba(251,191,36,0.25); }
+  .btn-warn      { background: rgba(251,191,36,0.12); color: var(--warn); border: 1px solid rgba(251,191,36,0.25); }
   .btn-warn:hover { background: rgba(251,191,36,0.2); }
-  .btn-sm { padding: 0.3rem 0.65rem; font-size: 0.72rem; }
-  .btn-full { width: 100%; }
+  .btn-sm  { padding: 0.3rem 0.65rem; font-size: 0.72rem; }
+  .btn-full{ width: 100%; }
 
   .tenant-list { display: flex; flex-direction: column; gap: 4px; max-height: 500px; overflow-y: auto; }
   .tenant-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 0.85rem; border-radius: 7px; cursor: pointer; transition: background 0.15s; border: 1px solid transparent; position: relative; }
@@ -134,7 +205,7 @@
   .tenant-name { font-size: 0.83rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tenant-meta { font-size: 0.68rem; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; }
   .arrears-badge { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; font-weight: 700; background: rgba(248,113,113,0.15); color: var(--danger); border: 1px solid rgba(248,113,113,0.25); padding: 2px 7px; border-radius: 99px; flex-shrink: 0; }
-  .paid-badge { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; font-weight: 700; background: rgba(110,231,183,0.12); color: var(--accent); border: 1px solid rgba(110,231,183,0.2); padding: 2px 7px; border-radius: 99px; flex-shrink: 0; }
+  .paid-badge    { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; font-weight: 700; background: rgba(110,231,183,0.12); color: var(--accent); border: 1px solid rgba(110,231,183,0.2); padding: 2px 7px; border-radius: 99px; flex-shrink: 0; }
   .partial-badge { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; font-weight: 700; background: rgba(251,191,36,0.12); color: var(--warn); border: 1px solid rgba(251,191,36,0.25); padding: 2px 7px; border-radius: 99px; flex-shrink: 0; }
 
   .ctx-menu { position: absolute; right: 8px; top: 100%; background: var(--panel2); border: 1px solid var(--border2); border-radius: 8px; padding: 4px; z-index: 999; min-width: 180px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); animation: menuPop 0.15s cubic-bezier(0.34,1.56,0.64,1) both; }
@@ -148,46 +219,26 @@
   .table-wrap { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
   th { text-align: left; padding: 0.6rem 0.85rem; font-size: 0.6rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-dim); border-bottom: 1px solid var(--border); }
-  td { padding: 0.65rem 0.85rem; border-bottom: 1px solid var(--border); color: var(--text-muted); font-size: 0.8rem; }
+  td { padding: 0.65rem 0.85rem; border-bottom: 1px solid var(--border); color: var(--text-muted); }
   tr:last-child td { border-bottom: none; }
   tr:hover td { background: var(--panel2); color: var(--text); }
   .td-mono { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; }
 
-  /* ── Payment progress bar ── */
-  .payment-progress {
-    background: var(--bg3);
-    border-radius: 99px;
-    height: 6px;
-    overflow: hidden;
-    margin-top: 0.5rem;
-  }
-  .payment-progress-bar {
-    height: 100%;
-    border-radius: 99px;
-    transition: width 0.4s ease;
-  }
-  .payment-progress-bar.paid    { background: var(--accent); }
-  .payment-progress-bar.partial { background: var(--warn); }
-  .payment-progress-bar.unpaid  { background: var(--danger); width: 0% !important; }
-
-  /* ── Payment summary box ── */
-  .pay-summary {
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 1rem;
-    margin-bottom: 1rem;
-    font-size: 0.82rem;
-  }
+  /* ── Payment progress ── */
+  .pay-summary { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; font-size: 0.82rem; }
   .pay-summary-row { display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid var(--border); }
   .pay-summary-row:last-child { border: none; font-weight: 600; }
   .pay-summary-label { color: var(--text-dim); }
   .pay-summary-value { color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; }
+  .payment-progress { background: var(--bg3); border-radius: 99px; height: 6px; overflow: hidden; margin-top: 0.5rem; }
+  .payment-progress-bar { height: 100%; border-radius: 99px; transition: width 0.4s ease; }
+  .payment-progress-bar.paid    { background: var(--accent); }
+  .payment-progress-bar.partial { background: var(--warn); }
 
   .house-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.85rem; }
   .house-card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; cursor: pointer; transition: all 0.15s; position: relative; }
   .house-card:hover { border-color: var(--border2); transform: translateY(-2px); }
-  .house-card.occupied { border-left: 3px solid var(--danger); }
+  .house-card.occupied  { border-left: 3px solid var(--danger); }
   .house-card.available { border-left: 3px solid var(--accent); }
   .house-name { font-weight: 700; font-size: 1rem; color: var(--text); margin-bottom: 0.25rem; }
   .house-rent { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--text-dim); }
@@ -199,39 +250,48 @@
   .msg-bubble { max-width: 78%; padding: 0.5rem 0.85rem; border-radius: 8px; font-size: 0.78rem; line-height: 1.5; animation: msgIn 0.2s ease both; }
   @keyframes msgIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: translateY(0); } }
   .msg-tenant { background: var(--panel2); color: var(--text); align-self: flex-start; border-bottom-left-radius: 2px; }
-  .msg-admin { background: var(--accent-dim); color: var(--accent); align-self: flex-end; border-bottom-right-radius: 2px; border: 1px solid rgba(110,231,183,0.2); }
-  .msg-meta { font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; color: var(--text-dim); margin-top: 2px; }
+  .msg-admin  { background: var(--accent-dim); color: var(--accent); align-self: flex-end; border-bottom-right-radius: 2px; border: 1px solid rgba(110,231,183,0.2); }
+  .msg-meta   { font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; color: var(--text-dim); margin-top: 2px; }
 
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px); z-index: 500; align-items: center; justify-content: center; }
   .modal-overlay.open { display: flex; }
   .modal { background: var(--panel); border: 1px solid var(--border2); border-radius: 12px; padding: 2rem; width: min(500px, 92vw); max-height: 90vh; overflow-y: auto; animation: modalIn 0.25s cubic-bezier(0.34,1.2,0.64,1) both; box-shadow: 0 24px 80px rgba(0,0,0,0.6); }
   @keyframes modalIn { from { opacity:0; transform: scale(0.93) translateY(10px); } to { opacity:1; transform: scale(1) translateY(0); } }
   .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
-  .modal-title { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.3rem; color: var(--text); }
-  .modal-close { background: transparent; border: none; color: var(--text-dim); font-size: 1.1rem; cursor: pointer; width: auto; padding: 0; margin: 0; line-height: 1; transition: color 0.15s; }
+  .modal-title  { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.3rem; color: var(--text); }
+  .modal-close  { background: transparent; border: none; color: var(--text-dim); font-size: 1.1rem; cursor: pointer; width: auto; padding: 0; margin: 0; line-height: 1; transition: color 0.15s; }
   .modal-close:hover { color: var(--danger); }
 
+  /* ── Subscription renewal modal plan cards ── */
+  .plan-option {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1rem; margin-bottom: 0.65rem;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .plan-option:hover { border-color: var(--accent); }
+  .plan-option.selected { border-color: var(--accent); background: var(--accent-dim); }
+  .plan-option-name  { font-weight: 600; color: var(--text); font-size: 0.88rem; }
+  .plan-option-price { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--accent); }
+  .plan-option-dur   { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--text-dim); }
+
   #toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--panel2); border: 1px solid var(--border2); border-radius: 8px; padding: 0.65rem 1.1rem; font-size: 0.78rem; font-family: 'JetBrains Mono', monospace; color: var(--text); opacity: 0; transform: translateY(10px); transition: all 0.25s ease; z-index: 9999; pointer-events: none; max-width: 320px; box-shadow: 0 8px 30px rgba(0,0,0,0.4); }
-  #toast.show { opacity: 1; transform: translateY(0); }
+  #toast.show    { opacity: 1; transform: translateY(0); }
   #toast.success { border-color: var(--accent); color: var(--accent); }
   #toast.error   { border-color: var(--danger); color: var(--danger); }
   #toast.warn    { border-color: var(--warn);   color: var(--warn); }
 
   .empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--text-dim); font-size: 0.8rem; }
   .empty-state .icon { font-size: 2rem; margin-bottom: 0.5rem; display: block; }
-
   .pill { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; padding: 2px 8px; border-radius: 99px; font-weight: 600; }
   .pill-green  { background: rgba(110,231,183,0.12); color: var(--accent); border: 1px solid rgba(110,231,183,0.2); }
   .pill-red    { background: rgba(248,113,113,0.12); color: var(--danger); border: 1px solid rgba(248,113,113,0.2); }
   .pill-yellow { background: rgba(251,191,36,0.12);  color: var(--warn);   border: 1px solid rgba(251,191,36,0.2); }
-
   .divider { border: none; border-top: 1px solid var(--border); margin: 1.25rem 0; }
   .mb-1 { margin-bottom: 0.5rem; }
   .mb-2 { margin-bottom: 1rem; }
   .mb-3 { margin-bottom: 1.5rem; }
   .flex  { display: flex; align-items: center; gap: 0.75rem; }
   .flex-between { display: flex; align-items: center; justify-content: space-between; }
-
   ::-webkit-scrollbar { width: 4px; height: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
@@ -242,6 +302,7 @@
     .sidebar { transform: translateX(-260px); width: 260px; }
     .sidebar.open { transform: translateX(0); }
     .main { margin-left: 0; }
+    .sub-banner { left: 0; }
     .mobile-menu-btn { display: flex !important; background: transparent; border: 1px solid var(--border2); color: var(--text); padding: 0.4rem 0.6rem; border-radius: 6px; cursor: pointer; font-size: 0.9rem; width: auto; margin: 0; }
   }
   .mobile-menu-btn { display: none; }
@@ -249,11 +310,27 @@
 </head>
 <body>
 
+<!-- ═══ SUBSCRIPTION BANNER ═══ -->
+<div class="sub-banner" id="subBanner"></div>
+
+<!-- ═══ EXPIRED OVERLAY ═══ -->
+<div class="expired-overlay" id="expiredOverlay">
+  <div class="expired-box">
+    <span class="expired-icon">🔒</span>
+    <div class="expired-title" id="expiredTitle">Subscription Expired</div>
+    <div class="expired-desc" id="expiredDesc">Your subscription has expired. Please renew to continue accessing your dashboard.</div>
+    <button class="btn btn-primary btn-full" onclick="openModal('modal-subscribe')" style="margin-bottom:0.75rem">🔄 Renew Subscription</button>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--text-dim)">Contact support@affordablerentals.site for help</div>
+  </div>
+</div>
+
+<!-- ═══ SIDEBAR ═══ -->
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-header">
     <div class="sidebar-logo">🏠 Affordable Rentals</div>
     <div class="sidebar-role">// admin console</div>
   </div>
+
   <nav class="sidebar-nav">
     <div class="nav-section">Overview</div>
     <div class="nav-item active" onclick="showSection('dashboard')"><span class="icon">📊</span> Dashboard</div>
@@ -272,7 +349,21 @@
     <div class="nav-item" onclick="showSection('announcements')"><span class="icon">📢</span> Announcements</div>
     <div class="nav-item" onclick="showSection('rules')"><span class="icon">📜</span> Rules</div>
   </nav>
+
   <div class="sidebar-footer">
+    <!-- Subscription status card -->
+    <div class="sub-status-card" onclick="openModal('modal-subscribe')" id="subStatusCard" title="Click to manage subscription">
+      <div class="sub-status-card-top">
+        <span class="sub-status-label">Subscription</span>
+        <span class="sub-status-badge" id="subStatusBadge">—</span>
+      </div>
+      <div class="sub-progress-track">
+        <div class="sub-progress-fill" id="subProgressFill" style="width:0%"></div>
+      </div>
+      <div class="sub-days-label" id="subDaysLabel">Loading...</div>
+    </div>
+
+    <!-- Maintenance mode -->
     <div class="maintenance-row">
       <span class="maintenance-label">🔧 Maintenance</span>
       <label class="toggle-switch">
@@ -280,16 +371,20 @@
         <span class="slider"></span>
       </label>
     </div>
+
+    <!-- Themes -->
     <div class="theme-switcher">
       <div class="theme-dot active" data-theme="dark"   onclick="setTheme('dark')"   title="Dark"></div>
       <div class="theme-dot"        data-theme="light"  onclick="setTheme('light')"  title="Light"></div>
       <div class="theme-dot"        data-theme="blue"   onclick="setTheme('blue')"   title="Blue"></div>
       <div class="theme-dot"        data-theme="orange" onclick="setTheme('orange')" title="Orange"></div>
     </div>
+
     <button class="btn-logout" onclick="logout()">⏻ Sign Out</button>
   </div>
 </aside>
 
+<!-- ═══ MAIN ═══ -->
 <main class="main">
   <div class="topbar">
     <div class="flex">
@@ -313,10 +408,10 @@
     </div>
     <div class="stats-grid">
       <div class="stat-card"><div class="stat-label">💰 Total Collected</div><div class="stat-value" id="income">0</div><div class="stat-sub">Ksh this month</div></div>
-      <div class="stat-card"><div class="stat-label">📉 Total Arrears</div><div class="stat-value" id="arrears" style="color:var(--danger)">0</div><div class="stat-sub">Ksh outstanding</div></div>
-      <div class="stat-card"><div class="stat-label">🏠 Occupied</div><div class="stat-value" id="occupied">0</div><div class="stat-sub">Houses</div></div>
-      <div class="stat-card"><div class="stat-label">🚪 Vacant</div><div class="stat-value" id="vacant" style="color:var(--warn)">0</div><div class="stat-sub">Houses available</div></div>
-      <div class="stat-card"><div class="stat-label">👥 Tenants</div><div class="stat-value" id="totalTenants">0</div><div class="stat-sub">Registered</div></div>
+      <div class="stat-card"><div class="stat-label">📉 Total Arrears</div> <div class="stat-value" id="arrears" style="color:var(--danger)">0</div><div class="stat-sub">Ksh outstanding</div></div>
+      <div class="stat-card"><div class="stat-label">🏠 Occupied</div>      <div class="stat-value" id="occupied">0</div><div class="stat-sub">Houses</div></div>
+      <div class="stat-card"><div class="stat-label">🚪 Vacant</div>        <div class="stat-value" id="vacant" style="color:var(--warn)">0</div><div class="stat-sub">Houses available</div></div>
+      <div class="stat-card"><div class="stat-label">👥 Tenants</div>       <div class="stat-value" id="totalTenants">0</div><div class="stat-sub">Registered</div></div>
     </div>
     <div class="grid-2">
       <div class="card"><div class="card-title">Income vs Arrears</div><canvas id="financeChart" height="200"></canvas></div>
@@ -334,9 +429,7 @@
       <div class="card">
         <div class="card-title">Tenant List — click for options</div>
         <input type="text" id="tenantSearch" placeholder="Search by name..." oninput="filterTenants()" style="margin-bottom:0.75rem">
-        <div class="tenant-list" id="tenantList">
-          <div class="empty-state"><span class="icon">👥</span>Click Refresh to load tenants</div>
-        </div>
+        <div class="tenant-list" id="tenantList"><div class="empty-state"><span class="icon">👥</span>Click Refresh to load tenants</div></div>
       </div>
       <div class="card" id="profilePanel">
         <div class="card-title">Tenant Profile</div>
@@ -357,14 +450,8 @@
     <div class="card">
       <div class="table-wrap">
         <table>
-          <thead>
-            <tr>
-              <th>Tenant</th><th>House</th><th>Rent</th><th>Paid</th><th>Balance</th><th>Status</th><th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="arrearsTable">
-            <tr><td colspan="7"><div class="empty-state">No data — click Load</div></td></tr>
-          </tbody>
+          <thead><tr><th>Tenant</th><th>House</th><th>Rent</th><th>Paid</th><th>Balance</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="arrearsTable"><tr><td colspan="7"><div class="empty-state">No data — click Load</div></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -405,9 +492,7 @@
         <button class="btn btn-warn btn-full" onclick="moveOutTenant()" style="margin-top:0.25rem">Move Out</button>
       </div>
     </div>
-    <div class="house-grid" id="houseGrid">
-      <div class="empty-state" style="grid-column:1/-1">Click Refresh to load houses</div>
-    </div>
+    <div class="house-grid" id="houseGrid"><div class="empty-state" style="grid-column:1/-1">Click Refresh to load houses</div></div>
   </div>
 
   <!-- ─── ASSIGN HOUSE ─── -->
@@ -430,9 +515,7 @@
       <div class="card">
         <div class="card-title">Payment Details</div>
         <select id="payTenantSelect" onchange="loadPaymentSummary()"></select>
-        <input type="text"   id="month"  placeholder="Month (e.g. May 2026)" oninput="loadPaymentSummary()">
-
-        <!-- Payment summary — shows after tenant + month selected -->
+        <input type="text" id="month" placeholder="Month (e.g. May 2026)" oninput="loadPaymentSummary()">
         <div id="paymentSummaryBox" style="display:none;margin-bottom:0.75rem">
           <div class="pay-summary">
             <div class="pay-summary-row"><span class="pay-summary-label">Monthly Rent</span>    <span class="pay-summary-value" id="sumRent">—</span></div>
@@ -443,9 +526,8 @@
           <div class="payment-progress"><div class="payment-progress-bar" id="progressBar" style="width:0%"></div></div>
           <div style="font-size:0.68rem;color:var(--text-dim);text-align:right;margin-top:0.3rem" id="progressLabel"></div>
         </div>
-
         <input type="number" id="amount" placeholder="Amount to record (Ksh)" min="1">
-        <select id="payMethod" style="margin-bottom:0.6rem">
+        <select id="payMethod">
           <option value="cash">Cash</option>
           <option value="mpesa">M-Pesa (manual)</option>
           <option value="bank">Bank Transfer</option>
@@ -516,8 +598,8 @@
     <div class="grid-2">
       <div class="card">
         <div class="card-title">Add Rule</div>
-        <input    type="text" id="ruleTitle"   placeholder="Rule title *">
-        <textarea             id="ruleContent" placeholder="Rule description *"></textarea>
+        <input type="text" id="ruleTitle"   placeholder="Rule title *">
+        <textarea          id="ruleContent" placeholder="Rule description *"></textarea>
         <button class="btn btn-primary btn-full" onclick="addRule()">Add Rule</button>
       </div>
       <div class="card">
@@ -531,7 +613,41 @@
 
 <!-- ═══ MODALS ═══ -->
 
-<!-- Record Payment Modal (from tenant profile) -->
+<!-- Subscription Renewal Modal -->
+<div class="modal-overlay" id="modal-subscribe">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🔄 Renew Subscription</div>
+      <button class="modal-close" onclick="closeModal('modal-subscribe')">✕</button>
+    </div>
+
+    <!-- Current status -->
+    <div id="subModalStatus" style="margin-bottom:1.25rem;padding:0.85rem;background:var(--bg3);border-radius:8px;border:1px solid var(--border);font-size:0.82rem;color:var(--text-muted)">
+      Loading subscription status...
+    </div>
+
+    <!-- Plan selection -->
+    <div class="card-title" style="margin-bottom:0.75rem">Select Plan</div>
+    <div id="subModalPlans">
+      <div style="text-align:center;color:var(--text-dim);font-size:0.82rem;padding:1rem">Loading plans...</div>
+    </div>
+
+    <!-- Phone input -->
+    <div style="margin-top:1rem">
+      <div class="card-title" style="margin-bottom:0.5rem">M-Pesa Phone Number</div>
+      <input type="tel" id="subPhone" placeholder="07XXXXXXXX">
+    </div>
+
+    <button class="btn btn-primary btn-full" onclick="initiateSubscription()" style="margin-top:0.25rem">
+      📱 Pay with M-Pesa
+    </button>
+
+    <!-- Polling status -->
+    <div id="subPayStatus" style="margin-top:1rem;display:none;text-align:center;font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--text-dim)"></div>
+  </div>
+</div>
+
+<!-- Record Payment Modal -->
 <div class="modal-overlay" id="modal-pay">
   <div class="modal">
     <div class="modal-header">
@@ -540,8 +656,6 @@
     </div>
     <div class="card-title" id="payModalTenantName"></div>
     <input type="hidden" id="payModalTenantId">
-
-    <!-- Monthly summary inside modal -->
     <div id="modalSummaryBox" style="margin-bottom:0.75rem;display:none">
       <div class="pay-summary">
         <div class="pay-summary-row"><span class="pay-summary-label">Monthly Rent</span>    <span class="pay-summary-value" id="modalSumRent">—</span></div>
@@ -551,7 +665,6 @@
       </div>
       <div class="payment-progress"><div class="payment-progress-bar" id="modalProgressBar" style="width:0%"></div></div>
     </div>
-
     <input type="number" id="payModalAmount" placeholder="Amount (Ksh)" min="1">
     <input type="text"   id="payModalMonth"  placeholder="Month (e.g. May 2026)" oninput="loadModalSummary()">
     <select id="payModalMethod">
@@ -599,9 +712,291 @@
 
 <div id="toast"></div>
 
+<script>
+// ═══════════════════════════════════════
+// THEME SYSTEM
+// ═══════════════════════════════════════
+function setTheme(name) {
+  document.documentElement.setAttribute('data-theme', name);
+  localStorage.setItem('admin-theme', name);
+  document.querySelectorAll('.theme-dot').forEach(d => d.classList.toggle('active', d.dataset.theme === name));
+}
+
+(function () {
+  const saved = localStorage.getItem('admin-theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  document.querySelectorAll('.theme-dot').forEach(d => d.classList.toggle('active', d.dataset.theme === saved));
+})();
+
+// ═══════════════════════════════════════
+// SUBSCRIPTION UI
+// ═══════════════════════════════════════
+
+let selectedPlanId   = null;
+let subPollingTimer  = null;
+let subCountdownTimer = null;
+
+async function loadSubscriptionStatus() {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const res  = await fetch(`${CONFIG.API_URL}/subscription-status`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (!res.ok) return;
+    const data = await res.json();
+
+    updateSubSidebarCard(data);
+    updateSubBanner(data);
+    handleExpiredOverlay(data);
+
+  } catch (err) {
+    console.error('Subscription status error:', err.message);
+  }
+}
+
+function updateSubSidebarCard(data) {
+  const badge = document.getElementById('subStatusBadge');
+  const fill  = document.getElementById('subProgressFill');
+  const label = document.getElementById('subDaysLabel');
+
+  badge.textContent  = data.subscriptionStatus;
+  badge.className    = `sub-status-badge ${data.subscriptionStatus}`;
+  fill.className     = `sub-progress-fill ${data.subscriptionStatus}`;
+
+  const pct = Math.min(100, Math.round((data.daysRemaining / 30) * 100));
+  fill.style.width   = `${pct}%`;
+
+  if (data.subscriptionStatus === 'suspended') {
+    label.textContent = 'Account suspended';
+    label.style.color = 'var(--danger)';
+  } else if (data.daysRemaining > 0) {
+    label.textContent = `${data.daysRemaining} days remaining`;
+    label.style.color = data.daysRemaining <= 7 ? 'var(--danger)' : data.daysRemaining <= 14 ? 'var(--warn)' : 'var(--text-dim)';
+  } else {
+    label.textContent = 'Expired — renew now';
+    label.style.color = 'var(--danger)';
+  }
+}
+
+function updateSubBanner(data) {
+  const banner = document.getElementById('subBanner');
+
+  const messages = {
+    trial:    `⏳ Trial period — ${data.daysRemaining} days remaining. <a onclick="openModal('modal-subscribe')">Subscribe now →</a>`,
+    grace:    `⚠️ Subscription expired — grace period ends in ${data.daysRemaining} days. <a onclick="openModal('modal-subscribe')">Renew now →</a>`,
+    expired:  `🔒 Subscription expired. <a onclick="openModal('modal-subscribe')">Renew to restore access →</a>`,
+    suspended:`🚫 Account suspended: ${data.suspendedReason || 'Contact support'}. support@affordablerentals.site`
+  };
+
+  if (messages[data.subscriptionStatus]) {
+    banner.innerHTML   = messages[data.subscriptionStatus];
+    banner.className   = `sub-banner ${data.subscriptionStatus}`;
+    banner.style.display = 'block';
+  } else {
+    // Active — only show banner if expiring soon
+    if (data.daysRemaining <= 7) {
+      banner.innerHTML   = `⚠️ Subscription expiring in ${data.daysRemaining} days. <a onclick="openModal('modal-subscribe')">Renew now →</a>`;
+      banner.className   = 'sub-banner grace';
+      banner.style.display = 'block';
+    } else {
+      banner.style.display = 'none';
+    }
+  }
+}
+
+function handleExpiredOverlay(data) {
+  const overlay = document.getElementById('expiredOverlay');
+
+  if (data.subscriptionStatus === 'expired') {
+    document.getElementById('expiredTitle').textContent = 'Subscription Expired';
+    document.getElementById('expiredDesc').textContent  = 'Your subscription has expired. Please renew to continue managing your properties.';
+    overlay.classList.add('show');
+  } else if (data.subscriptionStatus === 'suspended') {
+    document.getElementById('expiredTitle').textContent = 'Account Suspended';
+    document.getElementById('expiredDesc').innerHTML    = `Your account has been suspended.<br><strong>Reason:</strong> ${data.suspendedReason || 'Contact support'}<br><br>Email: support@affordablerentals.site`;
+    document.querySelector('.expired-box .btn-primary').style.display = 'none';
+    overlay.classList.add('show');
+  } else {
+    overlay.classList.remove('show');
+    document.querySelector('.expired-box .btn-primary').style.display = '';
+  }
+}
+
+async function openSubscribeModal() {
+  openModal('modal-subscribe');
+  selectedPlanId = null;
+
+  // Load current status
+  try {
+    const token = localStorage.getItem('token');
+    const res   = await fetch(`${CONFIG.API_URL}/subscription-status`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+
+    document.getElementById('subModalStatus').innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem">
+        <div>
+          <div style="font-size:0.7rem;color:var(--text-dim);margin-bottom:0.2rem;font-family:'JetBrains Mono',monospace;letter-spacing:0.1em;text-transform:uppercase">Current Status</div>
+          <span class="sub-status-badge ${data.subscriptionStatus}" style="font-size:0.68rem">${data.subscriptionStatus}</span>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:0.7rem;color:var(--text-dim);font-family:'JetBrains Mono',monospace">Days remaining</div>
+          <div style="font-size:1.1rem;font-weight:700;color:${data.daysRemaining <= 7 ? 'var(--danger)' : 'var(--accent)'}">${data.daysRemaining}</div>
+        </div>
+      </div>
+    `;
+
+    // Pre-fill phone
+    if (data.landlordPhone) {
+      document.getElementById('subPhone').value = data.landlordPhone;
+    }
+
+  } catch (err) {
+    document.getElementById('subModalStatus').textContent = 'Could not load status.';
+  }
+
+  // Load plans
+  try {
+    const res   = await fetch(`${CONFIG.API_URL}/subscription-plans`);
+    const plans = await res.json();
+
+    if (!plans.length) {
+      document.getElementById('subModalPlans').innerHTML = `<div style="text-align:center;color:var(--text-dim);font-size:0.82rem;padding:1rem">No plans available. Contact Stacklord.</div>`;
+      return;
+    }
+
+    document.getElementById('subModalPlans').innerHTML = plans.map(p => `
+      <div class="plan-option" id="plan-opt-${p._id}" onclick="selectPlan('${p._id}')">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div class="plan-option-name">${p.name}</div>
+            <div class="plan-option-dur">${p.durationDays} days</div>
+          </div>
+          <div class="plan-option-price">Ksh ${Number(p.price).toLocaleString()}</div>
+        </div>
+        ${p.description ? `<div style="font-size:0.75rem;color:var(--text-dim);margin-top:0.35rem">${p.description}</div>` : ''}
+      </div>
+    `).join('');
+
+  } catch (err) {
+    document.getElementById('subModalPlans').innerHTML = `<div style="color:var(--danger);font-size:0.8rem">Failed to load plans</div>`;
+  }
+}
+
+function selectPlan(planId) {
+  selectedPlanId = planId;
+  document.querySelectorAll('.plan-option').forEach(el => el.classList.remove('selected'));
+  document.getElementById('plan-opt-' + planId)?.classList.add('selected');
+}
+
+async function initiateSubscription() {
+  if (!selectedPlanId) { showToast('Please select a plan first', 'warn'); return; }
+
+  const phone = document.getElementById('subPhone').value.trim();
+  if (!phone)  { showToast('Enter your M-Pesa phone number', 'error'); return; }
+
+  try {
+    const token = localStorage.getItem('token');
+    const res   = await fetch(`${CONFIG.API_URL}/subscribe`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body:    JSON.stringify({ planId: selectedPlanId, phone })
+    });
+
+    const data = await res.json();
+    if (!res.ok) { showToast(data.message || 'Payment failed', 'error'); return; }
+
+    showToast('M-Pesa prompt sent! Enter your PIN 📱', 'success');
+
+    // Show polling status
+    const statusEl = document.getElementById('subPayStatus');
+    statusEl.style.display = 'block';
+    statusEl.textContent   = '⏳ Waiting for payment confirmation...';
+
+    // Poll for payment confirmation
+    pollSubscriptionPayment(data.checkoutRequestId);
+
+  } catch (err) {
+    showToast('Network error', 'error');
+  }
+}
+
+function pollSubscriptionPayment(checkoutRequestId) {
+  let attempts = 0;
+  const maxAttempts = 20; // 60 seconds
+
+  clearInterval(subPollingTimer);
+
+  subPollingTimer = setInterval(async () => {
+    attempts++;
+    if (attempts > maxAttempts) {
+      clearInterval(subPollingTimer);
+      document.getElementById('subPayStatus').textContent = '⚠️ Payment timeout. Check your M-Pesa messages.';
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const res   = await fetch(`${CONFIG.API_URL}/subscription-status-poll/${checkoutRequestId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      const data = await res.json();
+
+      if (data.status === 'paid') {
+        clearInterval(subPollingTimer);
+        document.getElementById('subPayStatus').innerHTML = `✅ Payment confirmed! Plan: ${data.plan?.name} · Expires: ${new Date(data.expiresAt).toDateString()}`;
+        document.getElementById('subPayStatus').style.color = 'var(--accent)';
+        showToast('Subscription renewed successfully! 🎉', 'success');
+        setTimeout(() => {
+          closeModal('modal-subscribe');
+          loadSubscriptionStatus();
+        }, 2500);
+      } else if (data.status === 'failed') {
+        clearInterval(subPollingTimer);
+        document.getElementById('subPayStatus').textContent = '❌ Payment failed. Please try again.';
+        document.getElementById('subPayStatus').style.color = 'var(--danger)';
+      }
+
+    } catch (err) {
+      console.error('Polling error:', err.message);
+    }
+  }, 3000);
+}
+
+// Override openModal to handle subscribe modal
+const _openModal = window.openModal;
+window.openModal = function(id) {
+  if (id === 'modal-subscribe') {
+    openSubscribeModal();
+  } else {
+    document.getElementById(id).classList.add('open');
+  }
+};
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  if (id === 'modal-subscribe') {
+    clearInterval(subPollingTimer);
+    document.getElementById('subPayStatus').style.display = 'none';
+    document.getElementById('subPayStatus').textContent   = '';
+    selectedPlanId = null;
+  }
+}
+
+// Load subscription status on page load and every 5 minutes
+window.addEventListener('load', () => {
+  setTimeout(loadSubscriptionStatus, 1000);
+  setInterval(loadSubscriptionStatus, 5 * 60 * 1000);
+});
+</script>
+
 <script src="config.js"></script>
 <script src="script.js"></script>
 <script src="index.js"></script>
-
 </body>
 </html>
