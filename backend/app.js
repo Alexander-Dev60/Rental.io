@@ -30,6 +30,8 @@ const Rule         = require('./models/Rule');
 const Announcement = require('./models/Announcement');
 const Message      = require('./models/Message');
 const Settings     = require('./models/Settings');
+const SubscriptionPlan    = require('./models/SubscriptionPlan');
+const SubscriptionPayment = require('./models/SubscriptionPayment');
 
 // ── DB ──
 const connectDB = require('./db');
@@ -1237,7 +1239,721 @@ app.get('/receipt/pdf/:paymentId', async (req, res) => {
 // ═══════════════════════════════════════
 
 
+// ═══════════════════════════════════════════════════════
+//  SUBSCRIPTION SYSTEM — Add to app.js
+//  Place this block AFTER your existing middleware
+//  and BEFORE your existing routes.
+//
+//  Also add these requires at the top of app.js:
+//    const SubscriptionPlan    = require('./models/SubscriptionPlan');
+//    const SubscriptionPayment = require('./models/SubscriptionPayment');
+// ═══════════════════════════════════════════════════════
 
+
+// ═══════════════════════════════════════════════════════
+//  SYSTEM M-PESA TOKEN (for subscription payments)
+//  Uses YOUR system credentials — not landlord credentials
+// ═══════════════════════════════════════════════════════
+
+async function getSystemToken() {
+    const auth = Buffer.from(
+        `${process.env.SYSTEM_CONSUMER_KEY}:${process.env.SYSTEM_CONSUMER_SECRET}`
+    ).toString('base64');
+
+    const res = await axios.get(
+        'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials',
+        { headers: { Authorization: `Basic ${auth}` } }
+    );
+
+    return res.data.access_token;
+}
+
+
+// ═══════════════════════════════════════════════════════
+//  STACKLORD MIDDLEWARE
+//  Protects all /stacklord/* routes
+//  Uses master key from .env — no JWT, no DB lookup
+// ═══════════════════════════════════════════════════════
+
+function stacklordAuth(req, res, next) {
+    const key = req.headers['x-stacklord-key'] || req.query.key;
+    if (!key || key !== process.env.STACKLORD_KEY) {
+        return res.status(401).json({ message: 'Unauthorized — Stacklord access only 🔒' });
+    }
+    next();
+}
+
+
+// ═══════════════════════════════════════════════════════
+//  SUBSCRIPTION GUARD MIDDLEWARE
+//  Add to any admin route you want to protect:
+//    app.get('/dashboard/:month', authMiddleware, adminOnly, checkSubscription, ...)
+//
+//  Tenants bypass this check entirely.
+// ═══════════════════════════════════════════════════════
+
+async function checkSubscription(req, res, next) {
+    // Tenants are never affected
+    if (req.user.role !== 'admin') return next();
+
+    try {
+        const admin = await User.findById(req.user.id).select(
+            'subscriptionStatus subscriptionExpiry trialEndsAt gracePeriodUntil suspendedReason'
+        );
+
+        if (!admin) return res.status(404).json({ message: 'Admin not found' });
+
+        const now = new Date();
+
+        // ── Auto-update status based on dates ──
+        if (admin.subscriptionStatus === 'trial' && admin.trialEndsAt && now > admin.trialEndsAt) {
+            admin.subscriptionStatus  = 'expired';
+            admin.gracePeriodUntil    = null;
+            await admin.save();
+        }
+
+        if (admin.subscriptionStatus === 'active' && admin.subscriptionExpiry && now > admin.subscriptionExpiry) {
+            // Move to grace period — 7 days
+            admin.subscriptionStatus = 'grace';
+            admin.gracePeriodUntil   = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+            await admin.save();
+        }
+
+        if (admin.subscriptionStatus === 'grace' && admin.gracePeriodUntil && now > admin.gracePeriodUntil) {
+            admin.subscriptionStatus = 'expired';
+            await admin.save();
+        }
+
+        // ── Check access ──
+        switch (admin.subscriptionStatus) {
+            case 'trial':
+            case 'active':
+                return next(); // full access
+
+            case 'grace':
+                // Allow access but attach warning to response
+                req.subscriptionWarning = {
+                    status:  'grace',
+                    message: `Your subscription has expired. You have until ${admin.gracePeriodUntil.toDateString()} to renew before losing access.`,
+                    until:   admin.gracePeriodUntil
+                };
+                return next();
+
+            case 'expired':
+                return res.status(403).json({
+                    message:            'Subscription expired. Please renew to continue.',
+                    subscriptionStatus: 'expired',
+                    code:               'SUBSCRIPTION_EXPIRED'
+                });
+
+            case 'suspended':
+                return res.status(403).json({
+                    message:            `Your account has been suspended. Reason: ${admin.suspendedReason || 'Contact Stacklord for details.'}`,
+                    subscriptionStatus: 'suspended',
+                    code:               'ACCOUNT_SUSPENDED'
+                });
+
+            default:
+                return res.status(403).json({ message: 'Subscription status unknown.' });
+        }
+
+    } catch (err) {
+        console.error('checkSubscription error:', err.message);
+        next(); // fail open — don't lock out on DB error
+    }
+}
+
+
+// ═══════════════════════════════════════════════════════
+//  SUBSCRIPTION STATUS
+//  GET /subscription-status
+//  Auth: admin only
+//  Returns landlord's full subscription info
+// ═══════════════════════════════════════════════════════
+
+app.get('/subscription-status', authMiddleware, adminOnly, async (req, res) => {
+    try {
+        const admin = await User.findById(req.user.id)
+            .select('-password -mpesaConsumerKey -mpesaConsumerSecret -paybillPasskey')
+            .populate('subscriptionPlan');
+
+        if (!admin) return res.status(404).json({ message: 'Admin not found' });
+
+        const now          = new Date();
+        let   expiryDate   = null;
+        let   daysRemaining = 0;
+
+        if (admin.subscriptionStatus === 'trial')  expiryDate = admin.trialEndsAt;
+        if (admin.subscriptionStatus === 'active') expiryDate = admin.subscriptionExpiry;
+        if (admin.subscriptionStatus === 'grace')  expiryDate = admin.gracePeriodUntil;
+
+        if (expiryDate) {
+            daysRemaining = Math.max(0, Math.ceil((new Date(expiryDate) - now) / (1000 * 60 * 60 * 24)));
+        }
+
+        // Last payment
+        const lastPayment = await SubscriptionPayment.findOne({
+            landlord: admin._id,
+            status:   'paid'
+        }).sort({ paidAt: -1 }).populate('plan', 'name price');
+
+        res.json({
+            subscriptionStatus:      admin.subscriptionStatus,
+            subscriptionPlan:        admin.subscriptionPlan,
+            subscriptionExpiry:      admin.subscriptionExpiry,
+            trialEndsAt:             admin.trialEndsAt,
+            gracePeriodUntil:        admin.gracePeriodUntil,
+            lastSubscriptionPayment: admin.lastSubscriptionPayment,
+            suspendedReason:         admin.suspendedReason,
+            daysRemaining,
+            lastPayment:             lastPayment || null,
+            warning:                 req.subscriptionWarning || null
+        });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+// ═══════════════════════════════════════════════════════
+//  GET AVAILABLE SUBSCRIPTION PLANS
+//  GET /subscription-plans
+//  Public — landlord needs to see plans before paying
+// ═══════════════════════════════════════════════════════
+
+app.get('/subscription-plans', async (req, res) => {
+    try {
+        const plans = await SubscriptionPlan.find({ isActive: true }).sort({ sortOrder: 1, price: 1 });
+        res.json(plans);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+// ═══════════════════════════════════════════════════════
+//  INITIATE SUBSCRIPTION PAYMENT
+//  POST /subscribe
+//  Auth: admin only
+//  Body: { planId, phone }
+//
+//  Uses SYSTEM credentials — NOT landlord credentials
+//  This is FLOW 2 — completely separate from rent STK Push
+// ═══════════════════════════════════════════════════════
+
+app.post('/subscribe', authMiddleware, adminOnly, async (req, res) => {
+    try {
+        const { planId, phone } = req.body;
+
+        if (!planId || !phone) {
+            return res.status(400).json({ message: 'planId and phone are required' });
+        }
+
+        // ── Validate plan ──
+        const plan = await SubscriptionPlan.findById(planId);
+        if (!plan || !plan.isActive) {
+            return res.status(404).json({ message: 'Plan not found or inactive' });
+        }
+
+        const admin = await User.findById(req.user.id);
+        if (!admin) return res.status(404).json({ message: 'Admin not found' });
+
+        // ── Save phone to admin profile if not already set ──
+        if (!admin.landlordPhone) {
+            admin.landlordPhone = phone;
+            await admin.save();
+        }
+
+        // ── Get SYSTEM M-Pesa token ──
+        const token     = await getSystemToken();
+        const timestamp = new Date().toISOString().replace(/[-T:.Z]/g, '').slice(0, 14);
+        const password  = Buffer.from(
+            process.env.SYSTEM_PAYBILL + process.env.SYSTEM_PASSKEY + timestamp
+        ).toString('base64');
+
+        // ── Initiate STK Push to SYSTEM Paybill ──
+        const stkRes = await axios.post(
+            'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest',
+            {
+                BusinessShortCode: process.env.SYSTEM_PAYBILL,
+                Password:          password,
+                Timestamp:         timestamp,
+                TransactionType:   'CustomerPayBillOnline',
+                Amount:            plan.price,
+                PartyA:            phone,
+                PartyB:            process.env.SYSTEM_PAYBILL,
+                PhoneNumber:       phone,
+                CallBackURL:       `${process.env.BASE_URL}/subscription-callback`,
+                AccountReference:  `Sub-${plan.name}`,
+                TransactionDesc:   `${plan.name} subscription — Affordable Rentals`
+            },
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        const data = stkRes.data;
+
+        if (data.ResponseCode !== '0') {
+            return res.status(400).json({
+                message: data.ResponseDescription || 'STK push failed',
+                data
+            });
+        }
+
+        // ── Save pending subscription payment ──
+        const subPayment = await SubscriptionPayment.create({
+            landlord:          admin._id,
+            plan:              plan._id,
+            amount:            plan.price,
+            durationDays:      plan.durationDays,
+            status:            'pending',
+            phone,
+            checkoutRequestId: data.CheckoutRequestID,
+            merchantRequestId: data.MerchantRequestID
+        });
+
+        res.json({
+            message:           `M-Pesa prompt sent to ${phone} 📱`,
+            checkoutRequestId: data.CheckoutRequestID,
+            plan: {
+                name:         plan.name,
+                price:        plan.price,
+                durationDays: plan.durationDays
+            }
+        });
+
+    } catch (err) {
+        console.error('🔥 Subscribe STK error:', err.response?.data || err.message);
+        res.status(500).json({
+            error:   'Subscription payment failed',
+            details: err.response?.data || err.message
+        });
+    }
+});
+
+
+// ═══════════════════════════════════════════════════════
+//  SUBSCRIPTION CALLBACK
+//  POST /subscription-callback
+//  Called by Safaricom after landlord pays subscription
+//  Completely separate from /callback (rent payments)
+// ═══════════════════════════════════════════════════════
+
+app.post('/subscription-callback', async (req, res) => {
+    // Always respond 200 immediately
+    res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+
+    try {
+        const stk = req.body?.Body?.stkCallback;
+        if (!stk) return;
+
+        const checkoutRequestId = stk.CheckoutRequestID;
+        const resultCode        = stk.ResultCode;
+
+        // Find the pending subscription payment
+        const subPayment = await SubscriptionPayment.findOne({ checkoutRequestId })
+            .populate('plan')
+            .populate('landlord');
+
+        if (!subPayment) {
+            console.log('Subscription callback: no pending payment for', checkoutRequestId);
+            return;
+        }
+
+        if (resultCode === 0) {
+            // ── Payment successful ──
+            const items     = stk.CallbackMetadata?.Item || [];
+            const getItem   = name => items.find(i => i.Name === name)?.Value;
+            const mpesaCode = getItem('MpesaReceiptNumber') || '';
+
+            const now        = new Date();
+            const admin      = subPayment.landlord;
+            const plan       = subPayment.plan;
+
+            // Calculate new expiry:
+            // If currently active → extend from current expiry
+            // Otherwise → start from now
+            let baseDate = now;
+            if (
+                admin.subscriptionStatus === 'active' &&
+                admin.subscriptionExpiry &&
+                admin.subscriptionExpiry > now
+            ) {
+                baseDate = admin.subscriptionExpiry;
+            }
+
+            const newExpiry = new Date(baseDate.getTime() + plan.durationDays * 24 * 60 * 60 * 1000);
+
+            // ── Update subscription payment record ──
+            subPayment.status    = 'paid';
+            subPayment.mpesaCode = mpesaCode;
+            subPayment.paidAt    = now;
+            subPayment.expiresAt = newExpiry;
+            await subPayment.save();
+
+            // ── Update admin user subscription ──
+            await User.findByIdAndUpdate(admin._id, {
+                subscriptionStatus:      'active',
+                subscriptionPlan:        plan._id,
+                subscriptionExpiry:      newExpiry,
+                gracePeriodUntil:        null,
+                lastSubscriptionPayment: now
+            });
+
+            console.log(`✅ Subscription payment confirmed: ${mpesaCode} | Plan: ${plan.name} | Expires: ${newExpiry.toDateString()}`);
+
+            // ── Send confirmation email ──
+            try {
+                const { Resend } = require('resend');
+                const resend     = new Resend(process.env.RESEND_API_KEY);
+
+                await resend.emails.send({
+                    from:    'Affordable Rentals 🏠 <support@affordablerentals.site>',
+                    to:      admin.email,
+                    subject: `✅ Subscription Renewed — ${plan.name} Plan`,
+                    html: `
+                    <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:560px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+                      <div style="background:linear-gradient(135deg,#1d4ed8,#0ea5e9);padding:32px;text-align:center">
+                        <div style="font-size:40px;margin-bottom:8px">🎉</div>
+                        <h1 style="color:#fff;margin:0;font-size:22px;font-weight:700">Subscription Renewed!</h1>
+                        <p style="color:#bae6fd;margin:6px 0 0;font-size:13px">${plan.name} Plan</p>
+                      </div>
+                      <div style="padding:32px">
+                        <p style="color:#1e293b;font-size:15px;margin:0 0 16px">Hi <strong>${admin.name.split(' ')[0]}</strong>,</p>
+                        <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">
+                          Your subscription has been renewed successfully. You have full access to your dashboard.
+                        </p>
+                        <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:20px 24px;margin-bottom:24px">
+                          <table style="width:100%;border-collapse:collapse">
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Plan</td>           <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${plan.name}</td></tr>
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Amount Paid</td>    <td style="color:#1d4ed8;font-size:15px;font-weight:700;text-align:right">Ksh ${Number(plan.price).toLocaleString()}</td></tr>
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Duration</td>       <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${plan.durationDays} days</td></tr>
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Valid Until</td>    <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${newExpiry.toDateString()}</td></tr>
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">M-Pesa Code</td>   <td style="color:#1e293b;font-size:13px;font-weight:700;text-align:right;font-family:monospace">${mpesaCode}</td></tr>
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Status</td>         <td style="text-align:right"><span style="background:#dcfce7;color:#16a34a;font-size:11px;font-weight:600;padding:2px 10px;border-radius:99px">Active ✓</span></td></tr>
+                          </table>
+                        </div>
+                        <p style="color:#94a3b8;font-size:12px;margin:0">Thank you for using Affordable Rentals Platform. Contact <a href="mailto:support@affordablerentals.site" style="color:#1d4ed8">support@affordablerentals.site</a> for any queries.</p>
+                      </div>
+                      <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 32px;text-align:center">
+                        <p style="color:#cbd5e1;font-size:11px;margin:0">© ${new Date().getFullYear()} Affordable Rentals · <a href="https://affordablerentals.site" style="color:#94a3b8;text-decoration:none">affordablerentals.site</a></p>
+                      </div>
+                    </div>`
+                });
+
+            } catch (emailErr) {
+                console.error('Subscription confirmation email failed:', emailErr.message);
+            }
+
+        } else {
+            // ── Payment failed ──
+            subPayment.status = 'failed';
+            await subPayment.save();
+            console.log(`❌ Subscription payment failed — ResultCode: ${resultCode}`);
+        }
+
+    } catch (err) {
+        console.error('Subscription callback error:', err.message);
+    }
+});
+
+
+// ═══════════════════════════════════════════════════════
+//  SUBSCRIPTION PAYMENT STATUS POLLING
+//  GET /subscription-status-poll/:checkoutRequestId
+//  Auth: admin only
+//  Frontend polls this after STK Push
+// ═══════════════════════════════════════════════════════
+
+app.get('/subscription-status-poll/:checkoutRequestId', authMiddleware, adminOnly, async (req, res) => {
+    try {
+        const payment = await SubscriptionPayment.findOne({
+            checkoutRequestId: req.params.checkoutRequestId
+        }).populate('plan', 'name price durationDays');
+
+        if (!payment) return res.status(404).json({ status: 'not_found' });
+
+        res.json({
+            status:    payment.status,
+            mpesaCode: payment.mpesaCode || null,
+            plan:      payment.plan,
+            expiresAt: payment.expiresAt || null,
+            paidAt:    payment.paidAt || null
+        });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+// ═══════════════════════════════════════════════════════
+//  STACKLORD ROUTES
+//  All protected by stacklordAuth middleware
+//  These are YOUR routes as platform owner
+// ═══════════════════════════════════════════════════════
+
+// ── GET /stacklord/stats — Platform overview ──
+app.get('/stacklord/stats', stacklordAuth, async (req, res) => {
+    try {
+        const admin = await User.findOne({ role: 'admin' })
+            .select('-password -mpesaConsumerKey -mpesaConsumerSecret -paybillPasskey')
+            .populate('subscriptionPlan');
+
+        const totalTenants  = await User.countDocuments({ role: 'tenant' });
+        const totalHouses   = await House.countDocuments();
+        const totalPayments = await SubscriptionPayment.countDocuments({ status: 'paid' });
+
+        const revenueResult = await SubscriptionPayment.aggregate([
+            { $match: { status: 'paid' } },
+            { $group: { _id: null, total: { $sum: '$amount' } } }
+        ]);
+
+        const totalRevenue = revenueResult[0]?.total || 0;
+
+        const now            = new Date();
+        let   daysRemaining  = 0;
+        let   expiryDate     = null;
+
+        if (admin) {
+            if (admin.subscriptionStatus === 'trial')  expiryDate = admin.trialEndsAt;
+            if (admin.subscriptionStatus === 'active') expiryDate = admin.subscriptionExpiry;
+            if (admin.subscriptionStatus === 'grace')  expiryDate = admin.gracePeriodUntil;
+            if (expiryDate) daysRemaining = Math.max(0, Math.ceil((new Date(expiryDate) - now) / (1000 * 60 * 60 * 24)));
+        }
+
+        res.json({
+            landlord: admin,
+            stats: {
+                totalTenants,
+                totalHouses,
+                totalRevenue,
+                totalPayments,
+                daysRemaining,
+                subscriptionStatus: admin?.subscriptionStatus || 'unknown'
+            }
+        });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+// ── GET /stacklord/subscription-payments — All subscription payments ──
+app.get('/stacklord/subscription-payments', stacklordAuth, async (req, res) => {
+    try {
+        const payments = await SubscriptionPayment.find()
+            .populate('plan', 'name price durationDays')
+            .populate('landlord', 'name email')
+            .sort({ createdAt: -1 });
+
+        res.json(payments);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+// ── POST /stacklord/suspend — Suspend the landlord ──
+// Body: { reason }
+app.post('/stacklord/suspend', stacklordAuth, async (req, res) => {
+    try {
+        const { reason } = req.body;
+        if (!reason) return res.status(400).json({ message: 'Suspension reason is required' });
+
+        const admin = await User.findOneAndUpdate(
+            { role: 'admin' },
+            {
+                subscriptionStatus: 'suspended',
+                suspendedReason:    reason,
+                suspendedAt:        new Date(),
+                suspendedBy:        'stacklord'
+            },
+            { new: true }
+        );
+
+        if (!admin) return res.status(404).json({ message: 'Admin not found' });
+
+        res.json({ message: `Landlord suspended ✅`, reason, admin: admin.name });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+// ── POST /stacklord/unsuspend — Restore landlord access ──
+app.post('/stacklord/unsuspend', stacklordAuth, async (req, res) => {
+    try {
+        const admin = await User.findOne({ role: 'admin' });
+        if (!admin) return res.status(404).json({ message: 'Admin not found' });
+
+        // Restore to active if they have a valid expiry, otherwise trial
+        const now           = new Date();
+        let   newStatus     = 'trial';
+
+        if (admin.subscriptionExpiry && admin.subscriptionExpiry > now) {
+            newStatus = 'active';
+        } else if (admin.trialEndsAt && admin.trialEndsAt > now) {
+            newStatus = 'trial';
+        } else {
+            newStatus = 'expired';
+        }
+
+        await User.findOneAndUpdate(
+            { role: 'admin' },
+            {
+                subscriptionStatus: newStatus,
+                suspendedReason:    null,
+                suspendedAt:        null,
+                suspendedBy:        null
+            }
+        );
+
+        res.json({ message: `Landlord unsuspended ✅ — Status restored to: ${newStatus}` });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+// ── POST /stacklord/extend — Manually extend subscription ──
+// Body: { days, note }
+app.post('/stacklord/extend', stacklordAuth, async (req, res) => {
+    try {
+        const { days, note } = req.body;
+        if (!days || days < 1) return res.status(400).json({ message: 'days must be a positive number' });
+
+        const admin = await User.findOne({ role: 'admin' });
+        if (!admin) return res.status(404).json({ message: 'Admin not found' });
+
+        const now       = new Date();
+        const base      = (admin.subscriptionExpiry && admin.subscriptionExpiry > now)
+                          ? admin.subscriptionExpiry
+                          : now;
+        const newExpiry = new Date(base.getTime() + days * 24 * 60 * 60 * 1000);
+
+        await User.findOneAndUpdate(
+            { role: 'admin' },
+            {
+                subscriptionStatus: 'active',
+                subscriptionExpiry: newExpiry,
+                gracePeriodUntil:   null,
+                suspendedReason:    null
+            }
+        );
+
+        // Log as a manual subscription payment
+        await SubscriptionPayment.create({
+            landlord:         admin._id,
+            plan:             admin.subscriptionPlan || null,
+            amount:           0,
+            durationDays:     days,
+            status:           'paid',
+            paidAt:           now,
+            expiresAt:        newExpiry,
+            manuallyExtended: true,
+            manualNote:       note || `Manually extended by Stacklord for ${days} days`
+        });
+
+        res.json({
+            message:    `Subscription extended by ${days} days ✅`,
+            newExpiry:  newExpiry.toDateString(),
+            note:       note || null
+        });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+// ── GET /stacklord/plans — Get all plans (for Stacklord Console) ──
+app.get('/stacklord/plans', stacklordAuth, async (req, res) => {
+    try {
+        const plans = await SubscriptionPlan.find().sort({ sortOrder: 1 });
+        res.json(plans);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+// ── POST /stacklord/plans — Create new plan ──
+// Body: { name, price, durationDays, description, features[], sortOrder }
+app.post('/stacklord/plans', stacklordAuth, async (req, res) => {
+    try {
+        const { name, price, durationDays, description, features, sortOrder } = req.body;
+
+        if (!name || !price || !durationDays) {
+            return res.status(400).json({ message: 'name, price and durationDays are required' });
+        }
+
+        const plan = await SubscriptionPlan.create({
+            name,
+            price,
+            durationDays,
+            description: description || '',
+            features:    features    || [],
+            sortOrder:   sortOrder   || 0,
+            createdBy:   'stacklord'
+        });
+
+        res.status(201).json({ message: 'Plan created ✅', plan });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+// ── PUT /stacklord/plans/:id — Update plan ──
+app.put('/stacklord/plans/:id', stacklordAuth, async (req, res) => {
+    try {
+        const plan = await SubscriptionPlan.findByIdAndUpdate(
+            req.params.id,
+            req.body,
+            { new: true }
+        );
+        if (!plan) return res.status(404).json({ message: 'Plan not found' });
+        res.json({ message: 'Plan updated ✅', plan });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+// ── DELETE /stacklord/plans/:id — Delete plan ──
+app.delete('/stacklord/plans/:id', stacklordAuth, async (req, res) => {
+    try {
+        const plan = await SubscriptionPlan.findByIdAndDelete(req.params.id);
+        if (!plan) return res.status(404).json({ message: 'Plan not found' });
+        res.json({ message: 'Plan deleted ✅' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+// ── POST /stacklord/plans/:id/toggle — Toggle plan active/inactive ──
+app.post('/stacklord/plans/:id/toggle', stacklordAuth, async (req, res) => {
+    try {
+        const plan = await SubscriptionPlan.findById(req.params.id);
+        if (!plan) return res.status(404).json({ message: 'Plan not found' });
+
+        plan.isActive = !plan.isActive;
+        await plan.save();
+
+        res.json({
+            message:  `Plan ${plan.isActive ? 'activated' : 'deactivated'} ✅`,
+            isActive: plan.isActive
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 // ═══════════════════════════════════════
 // DASHBOARD

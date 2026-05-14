@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stacklord Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+  :root {
+    --bg:         #060812;
+    --bg2:        #0a0e1a;
+    --bg3:        #0f1425;
+    --panel:      #131928;
+    --panel2:     #18202f;
+    --border:     rgba(139,92,246,0.12);
+    --border2:    rgba(139,92,246,0.25);
+    --accent:     #8b5cf6;
+    --accent2:    #6d28d9;
+    --accent-dim: rgba(139,92,246,0.12);
+    --cyan:       #06b6d4;
+    --green:      #34d399;
+    --red:        #f87171;
+    --amber:      #fbbf24;
+    --text:       #e2e8f0;
+    --text-dim:   #4a5568;
+    --text-muted: #718096;
+    --sidebar-w:  260px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { height: 100%; }
+
+  body {
+    font-family: 'Space Grotesk', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100%;
+    display: flex;
+    overflow: hidden;
+    font-size: 14px;
+  }
+
+  /* Grid bg */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(139,92,246,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(139,92,246,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none; z-index: 0;
+  }
+
+  /* ── Login Screen ── */
+  #loginScreen {
+    position: fixed; inset: 0; z-index: 1000;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .login-box {
+    width: min(420px, 92vw);
+    background: var(--panel);
+    border: 1px solid var(--border2);
+    border-radius: 16px;
+    padding: 2.5rem;
+    box-shadow: 0 0 60px rgba(139,92,246,0.15);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .login-box::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--cyan));
+  }
+
+  .login-logo {
+    text-align: center; margin-bottom: 2rem;
+  }
+
+  .login-logo-icon {
+    font-size: 3rem; display: block; margin-bottom: 0.75rem;
+    filter: drop-shadow(0 0 20px rgba(139,92,246,0.5));
+  }
+
+  .login-title {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic; font-size: 1.8rem;
+    color: var(--accent); letter-spacing: 0.02em;
+  }
+
+  .login-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.62rem; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--text-dim);
+    margin-top: 0.25rem;
+  }
+
+  .login-field {
+    position: relative; margin-bottom: 1rem;
+  }
+
+  .login-field input {
+    width: 100%; background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem; padding: 0.75rem 1rem;
+    outline: none; letter-spacing: 0.1em;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    margin: 0;
+  }
+
+  .login-field input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+  }
+
+  .login-field input::placeholder { color: var(--text-dim); letter-spacing: 0.05em; }
+
+  .btn-login {
+    width: 100%; background: linear-gradient(135deg, var(--accent), var(--cyan));
+    border: none; border-radius: 8px; color: #fff;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.82rem; font-weight: 700;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    padding: 0.85rem; cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 20px rgba(139,92,246,0.3);
+  }
+
+  .btn-login:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(139,92,246,0.5); }
+
+  .login-error {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem; color: var(--red);
+    text-align: center; margin-top: 0.75rem;
+    letter-spacing: 0.06em;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: var(--sidebar-w); flex-shrink: 0;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    height: 100vh; position: fixed;
+    left: 0; top: 0; z-index: 100;
+  }
+
+  .sidebar-header {
+    padding: 1.5rem 1.25rem 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-logo {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic; font-size: 1.4rem;
+    color: var(--accent);
+    display: flex; align-items: center; gap: 0.5rem;
+    filter: drop-shadow(0 0 8px rgba(139,92,246,0.4));
+  }
+
+  .sidebar-role {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.58rem; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--cyan);
+    margin-top: 0.25rem;
+  }
+
+  .sidebar-nav { flex: 1; overflow-y: auto; padding: 0.75rem 0; }
+
+  .nav-section {
+    padding: 0.5rem 1.25rem 0.25rem;
+    font-size: 0.58rem; font-weight: 600;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--text-dim); margin-top: 0.5rem;
+  }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 0.65rem;
+    padding: 0.6rem 1.25rem; cursor: pointer;
+    color: var(--text-muted); font-size: 0.82rem; font-weight: 500;
+    transition: all 0.15s; border-left: 2px solid transparent;
+    user-select: none;
+  }
+
+  .nav-item:hover { background: var(--accent-dim); color: var(--text); border-left-color: var(--border2); }
+  .nav-item.active { background: var(--accent-dim); color: var(--accent); border-left-color: var(--accent); }
+  .nav-item .icon { font-size: 0.95rem; width: 18px; text-align: center; }
+
+  .sidebar-footer {
+    padding: 1rem 1.25rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .stacklord-badge {
+    display: flex; align-items: center; gap: 0.5rem;
+    background: var(--accent-dim); border: 1px solid var(--border2);
+    border-radius: 8px; padding: 0.6rem 0.85rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .stacklord-badge-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    animation: pulse 2s ease infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  .stacklord-badge-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem; letter-spacing: 0.1em;
+    color: var(--accent); text-transform: uppercase;
+  }
+
+  .btn-logout {
+    width: 100%; background: transparent;
+    border: 1px solid var(--border2); color: var(--text-muted);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.75rem; font-weight: 500;
+    letter-spacing: 0.08em; padding: 0.5rem;
+    border-radius: 6px; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-logout:hover { border-color: var(--red); color: var(--red); }
+
+  /* ── MAIN ── */
+  .main {
+    margin-left: var(--sidebar-w); flex: 1;
+    height: 100vh; overflow-y: auto;
+    display: flex; flex-direction: column;
+    position: relative; z-index: 1;
+  }
+
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(6,8,18,0.9);
+    border-bottom: 1px solid var(--border);
+    padding: 0.85rem 2rem;
+    display: flex; align-items: center; justify-content: space-between;
+    backdrop-filter: blur(12px);
+  }
+
+  .topbar-title {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic; font-size: 1.3rem; color: var(--text);
+  }
+
+  .topbar-right { display: flex; align-items: center; gap: 1rem; }
+
+  .stacklord-chip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase;
+    background: var(--accent-dim); color: var(--accent);
+    border: 1px solid var(--border2);
+    padding: 0.3rem 0.7rem; border-radius: 99px;
+  }
+
+  /* ── SECTIONS ── */
+  .section { display: none; padding: 2rem; animation: fadeIn 0.2s ease both; }
+  .section.active { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 1.75rem;
+  }
+
+  .section-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: 1.6rem; font-style: italic; color: var(--text);
+  }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.5rem; transition: border-color 0.2s;
+  }
+  .card:hover { border-color: var(--border2); }
+  .card-title {
+    font-size: 0.65rem; font-weight: 600; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--text-dim); margin-bottom: 1.1rem;
+  }
+
+  /* ── STAT CARDS ── */
+  .stats-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem; margin-bottom: 1.5rem;
+  }
+
+  .stat-card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.25rem 1.5rem;
+    transition: border-color 0.2s, transform 0.2s; position: relative; overflow: hidden;
+  }
+
+  .stat-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+
+  .stat-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--cyan));
+    opacity: 0; transition: opacity 0.2s;
+  }
+
+  .stat-card:hover::before { opacity: 1; }
+
+  .stat-label {
+    font-size: 0.62rem; font-weight: 600; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--text-dim); margin-bottom: 0.5rem;
+  }
+
+  .stat-value {
+    font-family: 'Instrument Serif', serif;
+    font-size: 2.2rem; color: var(--accent); line-height: 1;
+  }
+
+  .stat-sub { font-size: 0.7rem; color: var(--text-dim); margin-top: 0.25rem; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+
+  /* ── STATUS BADGE ── */
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem; font-weight: 600;
+    padding: 4px 10px; border-radius: 99px; letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .status-badge-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+  .badge-trial    { background: rgba(6,182,212,0.12);  color: var(--cyan);  border: 1px solid rgba(6,182,212,0.3); }
+  .badge-trial    .status-badge-dot { background: var(--cyan); box-shadow: 0 0 6px var(--cyan); }
+  .badge-active   { background: rgba(52,211,153,0.12); color: var(--green); border: 1px solid rgba(52,211,153,0.3); }
+  .badge-active   .status-badge-dot { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s ease infinite; }
+  .badge-grace    { background: rgba(251,191,36,0.12); color: var(--amber); border: 1px solid rgba(251,191,36,0.3); }
+  .badge-grace    .status-badge-dot { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+  .badge-expired  { background: rgba(248,113,113,0.12);color: var(--red);   border: 1px solid rgba(248,113,113,0.3); }
+  .badge-expired  .status-badge-dot { background: var(--red); }
+  .badge-suspended{ background: rgba(248,113,113,0.2); color: var(--red);   border: 2px solid var(--red); }
+  .badge-suspended .status-badge-dot { background: var(--red); animation: pulse 1s ease infinite; }
+
+  /* ── INPUTS & BUTTONS ── */
+  input, textarea, select {
+    width: 100%; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 7px; color: var(--text);
+    font-family: 'Space Grotesk', sans-serif; font-size: 0.83rem;
+    padding: 0.6rem 0.85rem; margin-bottom: 0.6rem; outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  input:focus, textarea:focus, select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+  }
+
+  input::placeholder, textarea::placeholder { color: var(--text-dim); }
+  textarea { resize: vertical; min-height: 80px; }
+  select option { background: var(--panel); }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.4em;
+    border: none; border-radius: 7px;
+    font-family: 'Space Grotesk', sans-serif; font-size: 0.78rem;
+    font-weight: 600; letter-spacing: 0.06em; padding: 0.55rem 1.1rem;
+    cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  }
+
+  .btn-primary   { background: var(--accent); color: #fff; }
+  .btn-primary:hover { filter: brightness(1.15); transform: translateY(-1px); }
+  .btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border2); }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-danger    { background: rgba(248,113,113,0.12); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+  .btn-danger:hover { background: rgba(248,113,113,0.22); }
+  .btn-success   { background: rgba(52,211,153,0.12); color: var(--green); border: 1px solid rgba(52,211,153,0.3); }
+  .btn-success:hover { background: rgba(52,211,153,0.22); }
+  .btn-warn      { background: rgba(251,191,36,0.12); color: var(--amber); border: 1px solid rgba(251,191,36,0.3); }
+  .btn-warn:hover { background: rgba(251,191,36,0.22); }
+  .btn-cyan      { background: rgba(6,182,212,0.12); color: var(--cyan); border: 1px solid rgba(6,182,212,0.3); }
+  .btn-cyan:hover { background: rgba(6,182,212,0.22); }
+  .btn-sm  { padding: 0.3rem 0.65rem; font-size: 0.72rem; }
+  .btn-full{ width: 100%; }
+
+  /* ── SUBSCRIPTION CARD ── */
+  .sub-card {
+    background: var(--panel2);
+    border: 1px solid var(--border2);
+    border-radius: 12px; padding: 1.5rem;
+    position: relative; overflow: hidden;
+  }
+
+  .sub-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--cyan));
+  }
+
+  .sub-card-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.5rem 0; border-bottom: 1px solid var(--border);
+    font-size: 0.82rem;
+  }
+  .sub-card-row:last-child { border: none; }
+  .sub-card-label { color: var(--text-dim); }
+  .sub-card-value { color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; }
+
+  /* ── PROGRESS ── */
+  .progress-track { background: var(--bg3); border-radius: 99px; height: 6px; overflow: hidden; margin: 0.5rem 0; }
+  .progress-fill  { height: 100%; border-radius: 99px; transition: width 0.6s ease; }
+  .progress-fill.green  { background: linear-gradient(90deg, var(--green), var(--cyan)); }
+  .progress-fill.amber  { background: linear-gradient(90deg, var(--amber), var(--red)); }
+  .progress-fill.red    { background: var(--red); width: 100% !important; }
+
+  /* ── PLANS GRID ── */
+  .plans-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1rem; margin-top: 1rem;
+  }
+
+  .plan-card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.25rem;
+    transition: all 0.2s; position: relative;
+  }
+
+  .plan-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+  .plan-card.inactive { opacity: 0.5; }
+
+  .plan-card-name {
+    font-family: 'Instrument Serif', serif; font-style: italic;
+    font-size: 1.3rem; color: var(--accent); margin-bottom: 0.25rem;
+  }
+
+  .plan-card-price {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.5rem; font-weight: 700; color: var(--text);
+    margin-bottom: 0.25rem;
+  }
+
+  .plan-card-duration {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem; color: var(--text-dim); letter-spacing: 0.1em;
+    margin-bottom: 0.75rem;
+  }
+
+  .plan-card-desc { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem; line-height: 1.6; }
+
+  .plan-features { list-style: none; margin-bottom: 1rem; }
+  .plan-features li {
+    font-size: 0.78rem; color: var(--text-muted);
+    padding: 0.2rem 0; display: flex; align-items: center; gap: 0.5rem;
+  }
+  .plan-features li::before { content: '✓'; color: var(--green); font-weight: 700; }
+
+  .plan-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+  /* ── TABLE ── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  th {
+    text-align: left; padding: 0.6rem 0.85rem;
+    font-size: 0.6rem; font-weight: 600; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--text-dim);
+    border-bottom: 1px solid var(--border);
+  }
+  td { padding: 0.65rem 0.85rem; border-bottom: 1px solid var(--border); color: var(--text-muted); }
+  tr:last-child td { border: none; }
+  tr:hover td { background: var(--panel2); color: var(--text); }
+  .td-mono { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; }
+
+  /* ── MODAL ── */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 500; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--panel); border: 1px solid var(--border2); border-radius: 12px; padding: 2rem; width: min(480px, 92vw); max-height: 90vh; overflow-y: auto; animation: modalIn 0.25s cubic-bezier(0.34,1.2,0.64,1) both; box-shadow: 0 24px 80px rgba(0,0,0,0.7), 0 0 40px rgba(139,92,246,0.1); }
+  @keyframes modalIn { from { opacity:0; transform: scale(0.93) translateY(10px); } to { opacity:1; transform: scale(1) translateY(0); } }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+  .modal-title { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.3rem; color: var(--text); }
+  .modal-close { background: transparent; border: none; color: var(--text-dim); font-size: 1.1rem; cursor: pointer; width: auto; padding: 0; margin: 0; line-height: 1; transition: color 0.15s; }
+  .modal-close:hover { color: var(--red); }
+
+  /* ── TOAST ── */
+  #toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--panel2); border: 1px solid var(--border2); border-radius: 8px; padding: 0.65rem 1.1rem; font-size: 0.78rem; font-family: 'JetBrains Mono', monospace; color: var(--text); opacity: 0; transform: translateY(10px); transition: all 0.25s ease; z-index: 9999; pointer-events: none; max-width: 320px; box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
+  #toast.show    { opacity: 1; transform: translateY(0); }
+  #toast.success { border-color: var(--green); color: var(--green); }
+  #toast.error   { border-color: var(--red);   color: var(--red); }
+  #toast.warn    { border-color: var(--amber);  color: var(--amber); }
+
+  /* ── MISC ── */
+  .empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--text-dim); font-size: 0.8rem; }
+  .empty-state .icon { font-size: 2rem; margin-bottom: 0.5rem; display: block; }
+  .pill { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; padding: 2px 8px; border-radius: 99px; font-weight: 600; }
+  .pill-green  { background: rgba(52,211,153,0.12); color: var(--green); border: 1px solid rgba(52,211,153,0.2); }
+  .pill-red    { background: rgba(248,113,113,0.12); color: var(--red);   border: 1px solid rgba(248,113,113,0.2); }
+  .pill-yellow { background: rgba(251,191,36,0.12);  color: var(--amber); border: 1px solid rgba(251,191,36,0.2); }
+  .pill-cyan   { background: rgba(6,182,212,0.12);   color: var(--cyan);  border: 1px solid rgba(6,182,212,0.2); }
+  .flex  { display: flex; align-items: center; gap: 0.75rem; }
+  .mb-2  { margin-bottom: 1rem; }
+  .mb-3  { margin-bottom: 1.5rem; }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 1.25rem 0; }
+
+  /* ── DANGER ZONE ── */
+  .danger-zone {
+    background: rgba(248,113,113,0.05);
+    border: 1px solid rgba(248,113,113,0.2);
+    border-radius: 10px; padding: 1.5rem;
+  }
+
+  .danger-zone-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--red);
+    margin-bottom: 1rem; padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(248,113,113,0.2);
+  }
+
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  @media (max-width: 768px) {
+    :root { --sidebar-w: 0px; }
+    .sidebar { display: none; }
+    .main { margin-left: 0; }
+    .grid-2 { grid-template-columns: 1fr; }
+  }
+  </style>
+</head>
+<body>
+
+<!-- ═══ LOGIN SCREEN ═══ -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">
+      <span class="login-logo-icon">⚡</span>
+      <div class="login-title">Stacklord</div>
+      <div class="login-sub">// super admin console</div>
+    </div>
+    <div class="login-field">
+      <input type="password" id="masterKey" placeholder="Enter master key..." onkeydown="if(event.key==='Enter') login()">
+    </div>
+    <button class="btn-login" onclick="login()">Access Console →</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<!-- ═══ SIDEBAR ═══ -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">⚡ Stacklord</div>
+    <div class="sidebar-role">// super admin console</div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section">Platform</div>
+    <div class="nav-item active" onclick="showSection('overview')">  <span class="icon">📊</span> Overview     </div>
+    <div class="nav-item"        onclick="showSection('landlord')">  <span class="icon">🏠</span> Landlord     </div>
+    <div class="nav-item"        onclick="showSection('payments')">  <span class="icon">💳</span> Sub Payments </div>
+
+    <div class="nav-section">Plans</div>
+    <div class="nav-item"        onclick="showSection('plans')">     <span class="icon">📦</span> Manage Plans </div>
+
+    <div class="nav-section">Control</div>
+    <div class="nav-item"        onclick="showSection('controls')">  <span class="icon">🎛️</span> Controls     </div>
+    <div class="nav-item"        onclick="showSection('danger')">    <span class="icon">⚠️</span> Danger Zone  </div>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="stacklord-badge">
+      <div class="stacklord-badge-dot"></div>
+      <span class="stacklord-badge-text">Stacklord Active</span>
+    </div>
+    <button class="btn-logout" onclick="logout()">⏻ Exit Console</button>
+  </div>
+</aside>
+
+<!-- ═══ MAIN ═══ -->
+<main class="main" id="mainApp" style="display:none">
+
+  <div class="topbar">
+    <span class="topbar-title" id="topbarTitle">Overview</span>
+    <div class="topbar-right">
+      <span class="stacklord-chip">⚡ Stacklord</span>
+    </div>
+  </div>
+
+  <!-- ─── OVERVIEW ─── -->
+  <div class="section active" id="sec-overview">
+    <div class="section-header">
+      <div class="section-title">Platform Overview</div>
+      <button class="btn btn-secondary btn-sm" onclick="loadOverview()">↻ Refresh</button>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">💰 Total Revenue</div>
+        <div class="stat-value" id="statRevenue">0</div>
+        <div class="stat-sub">Ksh subscription income</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">👥 Total Tenants</div>
+        <div class="stat-value" id="statTenants">0</div>
+        <div class="stat-sub">Registered on platform</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">🏡 Total Houses</div>
+        <div class="stat-value" id="statHouses">0</div>
+        <div class="stat-sub">Listed properties</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">📋 Sub Payments</div>
+        <div class="stat-value" id="statSubPayments">0</div>
+        <div class="stat-sub">Total transactions</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">⏳ Days Remaining</div>
+        <div class="stat-value" id="statDays" style="color:var(--cyan)">—</div>
+        <div class="stat-sub">Landlord subscription</div>
+      </div>
+    </div>
+
+    <!-- Landlord subscription quick view -->
+    <div class="card">
+      <div class="card-title">Landlord Subscription Status</div>
+      <div id="overviewSubStatus">Loading...</div>
+    </div>
+  </div>
+
+  <!-- ─── LANDLORD ─── -->
+  <div class="section" id="sec-landlord">
+    <div class="section-header">
+      <div class="section-title">Landlord Details</div>
+      <button class="btn btn-secondary btn-sm" onclick="loadLandlord()">↻ Refresh</button>
+    </div>
+
+    <div class="grid-2">
+      <div class="sub-card" id="landlordSubCard">
+        <div style="color:var(--text-dim);font-size:0.8rem">Loading...</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Subscription Timeline</div>
+        <canvas id="subChart" height="180"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── SUBSCRIPTION PAYMENTS ─── -->
+  <div class="section" id="sec-payments">
+    <div class="section-header">
+      <div class="section-title">Subscription Payments</div>
+      <button class="btn btn-secondary btn-sm" onclick="loadSubPayments()">↻ Refresh</button>
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Date</th><th>Plan</th><th>Amount</th><th>M-Pesa Code</th><th>Expires</th><th>Status</th><th>Type</th></tr>
+          </thead>
+          <tbody id="paymentsTable">
+            <tr><td colspan="7"><div class="empty-state">Click Refresh to load payments</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── PLANS ─── -->
+  <div class="section" id="sec-plans">
+    <div class="section-header">
+      <div class="section-title">Subscription Plans</div>
+      <button class="btn btn-primary btn-sm" onclick="openModal('modal-plan')">＋ New Plan</button>
+    </div>
+
+    <div class="plans-grid" id="plansGrid">
+      <div class="empty-state" style="grid-column:1/-1"><span class="icon">📦</span>No plans yet — create one</div>
+    </div>
+  </div>
+
+  <!-- ─── CONTROLS ─── -->
+  <div class="section" id="sec-controls">
+    <div class="section-header">
+      <div class="section-title">Subscription Controls</div>
+    </div>
+
+    <div class="grid-2">
+      <!-- Extend subscription -->
+      <div class="card">
+        <div class="card-title">Extend Subscription</div>
+        <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1rem;line-height:1.6">
+          Manually add days to the landlord's subscription. Use this for compensation or testing.
+        </p>
+        <input type="number" id="extendDays" placeholder="Number of days to add" min="1">
+        <input type="text"   id="extendNote" placeholder="Reason / note (optional)">
+        <button class="btn btn-success btn-full" onclick="extendSubscription()">✚ Extend Subscription</button>
+      </div>
+
+      <!-- Subscription info -->
+      <div class="card">
+        <div class="card-title">Current Status</div>
+        <div id="controlsSubInfo">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── DANGER ZONE ─── -->
+  <div class="section" id="sec-danger">
+    <div class="section-header">
+      <div class="section-title">Danger Zone</div>
+    </div>
+
+    <div class="danger-zone mb-3">
+      <div class="danger-zone-title">⚠️ Suspend Landlord</div>
+      <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1rem;line-height:1.6">
+        Suspending the landlord will immediately block their access to the admin dashboard.
+        They will see a suspension message with your reason. Tenants are NOT affected.
+      </p>
+      <input type="text" id="suspendReason" placeholder="Suspension reason (required)">
+      <button class="btn btn-danger btn-full" onclick="suspendLandlord()">🔒 Suspend Landlord Access</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Restore Access</div>
+      <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1rem;line-height:1.6">
+        Unsuspend the landlord and restore their access. Status will be restored based on their subscription expiry.
+      </p>
+      <button class="btn btn-success btn-full" onclick="unsuspendLandlord()">🔓 Restore Landlord Access</button>
+    </div>
+  </div>
+
+</main>
+
+<!-- ═══ MODALS ═══ -->
+
+<!-- Create / Edit Plan Modal -->
+<div class="modal-overlay" id="modal-plan">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="planModalTitle">Create Plan</div>
+      <button class="modal-close" onclick="closeModal('modal-plan')">✕</button>
+    </div>
+    <input type="hidden" id="planModalId">
+    <input type="text"   id="planName"        placeholder="Plan name (e.g. Basic, Pro) *">
+    <input type="number" id="planPrice"       placeholder="Price in Ksh *" min="1">
+    <input type="number" id="planDuration"    placeholder="Duration in days (e.g. 30) *" min="1">
+    <textarea            id="planDescription" placeholder="Short description (optional)" style="min-height:60px"></textarea>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--text-dim);margin-bottom:0.4rem;letter-spacing:0.1em">FEATURES (one per line)</div>
+    <textarea id="planFeatures" placeholder="Unlimited tenants&#10;M-Pesa integration&#10;Email receipts" style="min-height:80px"></textarea>
+    <input type="number" id="planSortOrder" placeholder="Sort order (0 = first)" min="0" value="0">
+    <button class="btn btn-primary btn-full" onclick="savePlan()">💾 Save Plan</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="config.js"></script>
+<script src="stacklord.js"></script>
+</body>
+</html>

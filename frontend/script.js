@@ -5,7 +5,7 @@
 // ═══════════════════════════════════════════════════════
 
 
-const API= 'https://affordable-rental-systems.onrender.com';
+const API= window.API;
 
 function getToken() {
     return localStorage.getItem('token');
