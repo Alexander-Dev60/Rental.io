@@ -1,5 +1,5 @@
 const CONFIG = {
-  API_URL: 'https://affordable-rental-systems.onrender.com/api'
+  API_URL: 'https://affordable-rental-systems.onrender.com'
 };
 
 window.CONFIG = CONFIG;

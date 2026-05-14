@@ -22,14 +22,14 @@ const {
 } = require('./emails');
 
 // ── Models ──
-const Tenant       = require('./models/Tenant');
-const House        = require('./models/House');
-const Payment      = require('./models/Payment');
-const User         = require('./models/User');
-const Rule         = require('./models/Rule');
-const Announcement = require('./models/Announcement');
-const Message      = require('./models/Message');
-const Settings     = require('./models/Settings');
+const Tenant              = require('./models/Tenant');
+const House               = require('./models/House');
+const Payment             = require('./models/Payment');
+const User                = require('./models/User');
+const Rule                = require('./models/Rule');
+const Announcement        = require('./models/Announcement');
+const Message             = require('./models/Message');
+const Settings            = require('./models/Settings');
 const SubscriptionPlan    = require('./models/SubscriptionPlan');
 const SubscriptionPayment = require('./models/SubscriptionPayment');
 
@@ -38,8 +38,9 @@ const connectDB = require('./db');
 connectDB();
 
 // ── In-memory OTP store { email: { code, expiresAt, name } } ──
-// For production scale, replace with a Redis store or DB collection
+// For production scale, replace with Redis
 const otpStore = new Map();
+
 
 // ═══════════════════════════════════════
 // MIDDLEWARE
@@ -66,11 +67,123 @@ function adminOnly(req, res, next) {
     next();
 }
 
+// ── FIX 3: Apply subscription guard to admin-only routes ──
+// Tenants bypass entirely. Admins in grace get a warning header but still proceed.
+async function checkSubscription(req, res, next) {
+    if (req.user.role !== 'admin') return next();
+
+    try {
+        const admin = await User.findById(req.user.id).select(
+            'subscriptionStatus subscriptionExpiry trialEndsAt gracePeriodUntil suspendedReason'
+        );
+
+        if (!admin) return res.status(404).json({ message: 'Admin not found' });
+
+        const now = new Date();
+
+        // Auto-advance status based on dates
+        if (admin.subscriptionStatus === 'trial' && admin.trialEndsAt && now > admin.trialEndsAt) {
+            admin.subscriptionStatus = 'expired';
+            admin.gracePeriodUntil   = null;
+            await admin.save();
+        }
+
+        if (admin.subscriptionStatus === 'active' && admin.subscriptionExpiry && now > admin.subscriptionExpiry) {
+            admin.subscriptionStatus = 'grace';
+            admin.gracePeriodUntil   = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+            await admin.save();
+        }
+
+        if (admin.subscriptionStatus === 'grace' && admin.gracePeriodUntil && now > admin.gracePeriodUntil) {
+            admin.subscriptionStatus = 'expired';
+            await admin.save();
+        }
+
+        switch (admin.subscriptionStatus) {
+            case 'trial':
+            case 'active':
+                return next();
+
+            case 'grace':
+                req.subscriptionWarning = {
+                    status:  'grace',
+                    message: `Your subscription has expired. You have until ${admin.gracePeriodUntil.toDateString()} to renew before losing access.`,
+                    until:   admin.gracePeriodUntil
+                };
+                return next();
+
+            case 'expired':
+                return res.status(403).json({
+                    message:            'Subscription expired. Please renew to continue.',
+                    subscriptionStatus: 'expired',
+                    code:               'SUBSCRIPTION_EXPIRED'
+                });
+
+            case 'suspended':
+                return res.status(403).json({
+                    message:            `Your account has been suspended. Reason: ${admin.suspendedReason || 'Contact support.'}`,
+                    subscriptionStatus: 'suspended',
+                    code:               'ACCOUNT_SUSPENDED'
+                });
+
+            default:
+                return res.status(403).json({ message: 'Subscription status unknown.' });
+        }
+    } catch (err) {
+        console.error('checkSubscription error:', err.message);
+        next(); // fail open — never lock out on DB error
+    }
+}
+
+// ── Stacklord key auth ──
+function stacklordAuth(req, res, next) {
+    const key = req.headers['x-stacklord-key'] || req.query.key;
+    if (!key || key !== process.env.STACKLORD_KEY) {
+        return res.status(401).json({ message: 'Unauthorized — Stacklord access only 🔒' });
+    }
+    next();
+}
+
+
+// ═══════════════════════════════════════
+// M-PESA HELPERS
+// ═══════════════════════════════════════
+
+// Rent payments — uses landlord's Paybill credentials
+async function getRentToken() {
+    const auth = Buffer.from(
+        `${process.env.MPESA_CONSUMER_KEY}:${process.env.MPESA_CONSUMER_SECRET}`
+    ).toString('base64');
+
+    const res = await axios.get(
+        'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials',
+        { headers: { Authorization: `Basic ${auth}` } }
+    );
+    return res.data.access_token;
+}
+
+// Subscription payments — uses platform's own credentials
+async function getSystemToken() {
+    const auth = Buffer.from(
+        `${process.env.SYSTEM_CONSUMER_KEY}:${process.env.SYSTEM_CONSUMER_SECRET}`
+    ).toString('base64');
+
+    const res = await axios.get(
+        'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials',
+        { headers: { Authorization: `Basic ${auth}` } }
+    );
+    return res.data.access_token;
+}
+
+// ── Keep legacy alias so nothing inside breaks ──
+const getToken = getRentToken;
+
+
 // ═══════════════════════════════════════
 // MAINTENANCE MODE
 // ═══════════════════════════════════════
 
-// GET /maintenance — PUBLIC
+// GET /maintenance — public (tenants check this on load)
 app.get('/maintenance', async (req, res) => {
     try {
         const settings = await Settings.findOne();
@@ -84,7 +197,7 @@ app.get('/maintenance', async (req, res) => {
     }
 });
 
-// PUT /maintenance — ADMIN ONLY
+// PUT /maintenance — admin only
 app.put('/maintenance', authMiddleware, adminOnly, async (req, res) => {
     try {
         const { maintenanceMode, maintenanceMessage } = req.body;
@@ -108,28 +221,12 @@ app.put('/maintenance', authMiddleware, adminOnly, async (req, res) => {
     }
 });
 
-// ═══════════════════════════════════════
-// M-PESA HELPER
-// ═══════════════════════════════════════
-
-async function getToken() {
-    const auth = Buffer.from(
-        `${process.env.MPESA_CONSUMER_KEY}:${process.env.MPESA_CONSUMER_SECRET}`
-    ).toString('base64');
-
-    const res = await axios.get(
-        'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials',
-        { headers: { Authorization: `Basic ${auth}` } }
-    );
-
-    return res.data.access_token;
-}
 
 // ═══════════════════════════════════════
 // AUTH
 // ═══════════════════════════════════════
 
-// POST /register
+// POST /register — creates a tenant user + tenant record
 app.post('/register', async (req, res) => {
     try {
         const { name, email, password, phone, dueDate } = req.body;
@@ -145,12 +242,7 @@ app.post('/register', async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const tenant = await Tenant.create({
-            name,
-            email,
-            phone,
-            dueDate: dueDate || 5
-        });
+        const tenant = await Tenant.create({ name, email, phone, dueDate: dueDate || 5 });
 
         const user = await User.create({
             name,
@@ -160,7 +252,6 @@ app.post('/register', async (req, res) => {
             tenantId: tenant._id
         });
 
-        // Send welcome email — non-blocking
         sendWelcomeEmail({ name, email }).catch(err =>
             console.error('Welcome email failed:', err.message)
         );
@@ -184,10 +275,18 @@ app.post('/login', async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ message: 'Wrong password' });
 
+        // FIX: block suspended admins at login
+        if (user.role === 'admin' && user.subscriptionStatus === 'suspended') {
+            return res.status(403).json({
+                message: `Your account has been suspended. Reason: ${user.suspendedReason || 'Contact support.'}`,
+                code:    'ACCOUNT_SUSPENDED'
+            });
+        }
+
         const token = jwt.sign(
             { id: user._id, role: user.role, tenantId: user.tenantId },
             process.env.JWT_SECRET,
-            { expiresIn: '1d' }
+            { expiresIn: '7d' }
         );
 
         res.json({ token });
@@ -197,7 +296,7 @@ app.post('/login', async (req, res) => {
     }
 });
 
-// POST /change-password — logged in user changes own password
+// POST /change-password — logged-in user changes own password
 app.post('/change-password', authMiddleware, async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
@@ -205,7 +304,6 @@ app.post('/change-password', authMiddleware, async (req, res) => {
         if (!currentPassword || !newPassword) {
             return res.status(400).json({ message: 'Both fields required' });
         }
-
         if (newPassword.length < 6) {
             return res.status(400).json({ message: 'Password must be at least 6 characters' });
         }
@@ -226,15 +324,15 @@ app.post('/change-password', authMiddleware, async (req, res) => {
     }
 });
 
-// POST /admin-reset-password — admin resets a tenant's password
-app.post('/admin-reset-password', authMiddleware, adminOnly, async (req, res) => {
+// POST /reset-password — FIX 2 & 13: renamed to match script.js call
+// Admin resets a tenant's password by tenantId
+app.post('/reset-password', authMiddleware, adminOnly, async (req, res) => {
     try {
         const { tenantId, newPassword } = req.body;
 
         if (!tenantId || !newPassword) {
             return res.status(400).json({ message: 'tenantId and newPassword required' });
         }
-
         if (newPassword.length < 6) {
             return res.status(400).json({ message: 'Password must be at least 6 characters' });
         }
@@ -252,13 +350,12 @@ app.post('/admin-reset-password', authMiddleware, adminOnly, async (req, res) =>
     }
 });
 
+
 // ═══════════════════════════════════════
 // FORGOT PASSWORD (3-step OTP flow)
 // ═══════════════════════════════════════
 
 // STEP 1 — POST /forgot-password
-// Body: { email }
-// Generates a 6-digit OTP, stores it in memory with 15min expiry, emails it
 app.post('/forgot-password', async (req, res) => {
     try {
         const { email } = req.body;
@@ -266,18 +363,14 @@ app.post('/forgot-password', async (req, res) => {
 
         const user = await User.findOne({ email });
         if (!user) {
-            // Return generic message — don't reveal whether email exists
             return res.json({ message: 'If this email exists, a reset code has been sent.' });
         }
 
-        // Generate 6-digit code
         const code      = crypto.randomInt(100000, 999999).toString();
-        const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutes
+        const expiresAt = Date.now() + 15 * 60 * 1000;
 
-        // Store OTP
         otpStore.set(email, { code, expiresAt, name: user.name });
 
-        // Send email
         await sendPasswordResetEmail({ name: user.name, email, code });
 
         res.json({ message: 'Reset code sent to your email 📧' });
@@ -289,24 +382,17 @@ app.post('/forgot-password', async (req, res) => {
 });
 
 // STEP 2 — POST /verify-reset-code
-// Body: { email, code }
-// Validates OTP without consuming it (so user can still reset password)
 app.post('/verify-reset-code', async (req, res) => {
     try {
         const { email, code } = req.body;
         if (!email || !code) return res.status(400).json({ message: 'Email and code are required' });
 
         const entry = otpStore.get(email);
-
-        if (!entry) {
-            return res.status(400).json({ message: 'No reset code found. Please request a new one.' });
-        }
-
+        if (!entry) return res.status(400).json({ message: 'No reset code found. Please request a new one.' });
         if (Date.now() > entry.expiresAt) {
             otpStore.delete(email);
             return res.status(400).json({ message: 'Reset code has expired. Please request a new one.' });
         }
-
         if (entry.code !== code.toString()) {
             return res.status(400).json({ message: 'Invalid code. Please try again.' });
         }
@@ -319,8 +405,6 @@ app.post('/verify-reset-code', async (req, res) => {
 });
 
 // STEP 3 — POST /reset-password-confirm
-// Body: { email, code, newPassword }
-// Verifies OTP again then resets password
 app.post('/reset-password-confirm', async (req, res) => {
     try {
         const { email, code, newPassword } = req.body;
@@ -328,34 +412,26 @@ app.post('/reset-password-confirm', async (req, res) => {
         if (!email || !code || !newPassword) {
             return res.status(400).json({ message: 'Email, code and new password are required' });
         }
-
         if (newPassword.length < 6) {
             return res.status(400).json({ message: 'Password must be at least 6 characters' });
         }
 
         const entry = otpStore.get(email);
-
-        if (!entry) {
-            return res.status(400).json({ message: 'No reset code found. Please request a new one.' });
-        }
-
+        if (!entry) return res.status(400).json({ message: 'No reset code found. Please request a new one.' });
         if (Date.now() > entry.expiresAt) {
             otpStore.delete(email);
-            return res.status(400).json({ message: 'Reset code has expired. Please request a new one.' });
+            return res.status(400).json({ message: 'Reset code has expired.' });
         }
-
         if (entry.code !== code.toString()) {
             return res.status(400).json({ message: 'Invalid code.' });
         }
 
-        // Find and update user password
         const user = await User.findOne({ email });
         if (!user) return res.status(404).json({ message: 'User not found' });
 
         user.password = await bcrypt.hash(newPassword, 10);
         await user.save();
 
-        // Consume OTP — delete after successful reset
         otpStore.delete(email);
 
         res.json({ message: 'Password reset successfully ✅' });
@@ -366,31 +442,46 @@ app.post('/reset-password-confirm', async (req, res) => {
     }
 });
 
+
 // ═══════════════════════════════════════
 // TENANTS
 // ═══════════════════════════════════════
 
-// GET /tenant/:id
+// GET /tenant/:id — tenant sees own data; admin sees any
 app.get('/tenant/:id', authMiddleware, async (req, res) => {
     try {
-        if (req.user.role === 'tenant' && req.user.tenantId != req.params.id) {
+        if (req.user.role === 'tenant' && String(req.user.tenantId) !== req.params.id) {
             return res.status(403).json({ message: 'Forbidden' });
         }
 
         const tenant = await Tenant.findById(req.params.id).populate('house');
         if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
 
-        const payments      = await Payment.find({ tenant: tenant._id });
+        const payments      = await Payment.find({ tenant: tenant._id, status: { $in: ['paid', 'partial'] } });
         const totalPaid     = payments.reduce((sum, p) => sum + p.amount, 0);
         const rent          = tenant.house ? tenant.house.rent : 0;
-        const monthsOccupied = payments.length > 0
-            ? new Set(payments.map(p => p.month)).size
-            : 1;
-        const expectedTotal = rent * monthsOccupied;
+        const months        = new Set(payments.map(p => p.month)).size || 1;
+        const expectedTotal = rent * months;
         const arrears       = Math.max(0, expectedTotal - totalPaid);
 
         res.json({ tenant, payments, totalPaid, arrears });
 
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /tenants — FIX 1: auth required; admin gets all, tenant gets own record only
+app.get('/tenants', authMiddleware, async (req, res) => {
+    try {
+        if (req.user.role === 'admin') {
+            const tenants = await Tenant.find().populate('house');
+            return res.json(tenants);
+        }
+        // Tenant: return only their own record
+        const tenant = await Tenant.findById(req.user.tenantId).populate('house');
+        if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
+        return res.json([tenant]);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -407,17 +498,7 @@ app.post('/tenants', authMiddleware, adminOnly, async (req, res) => {
     }
 });
 
-// GET /tenants
-app.get('/tenants', async (req, res) => {
-    try {
-        const tenants = await Tenant.find();
-        res.json(tenants);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// PUT /tenants/:id
+// PUT /tenants/:id — admin only
 app.put('/tenants/:id', authMiddleware, adminOnly, async (req, res) => {
     try {
         const updated = await Tenant.findByIdAndUpdate(req.params.id, req.body, { new: true });
@@ -427,7 +508,7 @@ app.put('/tenants/:id', authMiddleware, adminOnly, async (req, res) => {
     }
 });
 
-// DELETE /tenant/:id
+// DELETE /tenant/:id — admin only
 app.delete('/tenant/:id', authMiddleware, adminOnly, async (req, res) => {
     try {
         const tenant = await Tenant.findById(req.params.id);
@@ -447,11 +528,12 @@ app.delete('/tenant/:id', authMiddleware, adminOnly, async (req, res) => {
     }
 });
 
+
 // ═══════════════════════════════════════
 // HOUSES
 // ═══════════════════════════════════════
 
-// POST /houses
+// POST /houses — admin only
 app.post('/houses', authMiddleware, adminOnly, async (req, res) => {
     try {
         const house = new House(req.body);
@@ -462,17 +544,24 @@ app.post('/houses', authMiddleware, adminOnly, async (req, res) => {
     }
 });
 
-// GET /houses
-app.get('/houses', async (req, res) => {
+// GET /houses — FIX 1: auth required
+// Admin sees all; tenant sees only their assigned house
+app.get('/houses', authMiddleware, async (req, res) => {
     try {
-        const houses = await House.find();
-        res.json(houses);
+        if (req.user.role === 'admin') {
+            const houses = await House.find();
+            return res.json(houses);
+        }
+        // Tenant: return only their house
+        const tenant = await Tenant.findById(req.user.tenantId).populate('house');
+        if (!tenant || !tenant.house) return res.json([]);
+        return res.json([tenant.house]);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-// PUT /houses/:id
+// PUT /houses/:id — admin only
 app.put('/houses/:id', authMiddleware, adminOnly, async (req, res) => {
     try {
         const updated = await House.findByIdAndUpdate(req.params.id, req.body, { new: true });
@@ -482,7 +571,7 @@ app.put('/houses/:id', authMiddleware, adminOnly, async (req, res) => {
     }
 });
 
-// DELETE /house/:id
+// DELETE /house/:id — admin only, cannot delete occupied house
 app.delete('/house/:id', authMiddleware, adminOnly, async (req, res) => {
     try {
         const house = await House.findById(req.params.id);
@@ -496,12 +585,11 @@ app.delete('/house/:id', authMiddleware, adminOnly, async (req, res) => {
         res.json({ message: 'House deleted 🏡' });
 
     } catch (err) {
-        console.error(err);
         res.status(500).json({ message: 'Error deleting house ❌' });
     }
 });
 
-// PUT /assign-house/:tenantId/:houseId
+// PUT /assign-house/:tenantId/:houseId — admin only
 app.put('/assign-house/:tenantId/:houseId', authMiddleware, adminOnly, async (req, res) => {
     try {
         const tenant = await Tenant.findById(req.params.tenantId);
@@ -510,11 +598,9 @@ app.put('/assign-house/:tenantId/:houseId', authMiddleware, adminOnly, async (re
         if (!tenant || !house) {
             return res.status(404).json({ message: 'Tenant or House not found' });
         }
-
         if (house.status === 'occupied') {
             return res.status(400).json({ message: 'This house is already occupied ❌' });
         }
-
         if (tenant.house) {
             return res.status(400).json({ message: 'Tenant already has a house assigned ❌' });
         }
@@ -532,28 +618,22 @@ app.put('/assign-house/:tenantId/:houseId', authMiddleware, adminOnly, async (re
     }
 });
 
-// PUT /move-out/:tenantId
+// PUT /move-out/:tenantId — admin only
 app.put('/move-out/:tenantId', authMiddleware, adminOnly, async (req, res) => {
     try {
         const tenant = await Tenant.findById(req.params.tenantId);
         if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
-
-        if (!tenant.house) {
-            return res.status(400).json({ message: 'This tenant is not assigned to any house' });
-        }
+        if (!tenant.house) return res.status(400).json({ message: 'This tenant is not assigned to any house' });
 
         const house = await House.findById(tenant.house);
         if (!house) return res.status(404).json({ message: 'House not found' });
 
-        // Send goodbye email BEFORE clearing house link
         sendMoveOutEmail({
             name:        tenant.name,
             email:       tenant.email,
             house:       house.name,
             moveOutDate: new Date()
-        }).catch(err =>
-            console.error('Move-out email failed:', err.message)
-        );
+        }).catch(err => console.error('Move-out email failed:', err.message));
 
         house.status = 'available';
         tenant.house = null;
@@ -561,30 +641,19 @@ app.put('/move-out/:tenantId', authMiddleware, adminOnly, async (req, res) => {
         await house.save();
         await tenant.save();
 
-        res.json({
-            message: 'Tenant moved out successfully 🏠➡️🚪',
-            tenant,
-            house
-        });
+        res.json({ message: 'Tenant moved out successfully 🏠➡️🚪', tenant, house });
 
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
+
 // ═══════════════════════════════════════
-// PAYMENTS
+// PAYMENT HELPER
 // ═══════════════════════════════════════
 
-// ═══════════════════════════════════════════════════════
-//  PAYMENT ROUTES — Partial Payment Support
-//  Replace your existing payment routes in app.js with these
-// ═══════════════════════════════════════════════════════
-
-// ─────────────────────────────────────────────────────
-// HELPER — Get monthly summary for a tenant
-// Returns: { rentAmount, totalPaid, balance, status, payments[] }
-// ─────────────────────────────────────────────────────
+// Returns { rentAmount, totalPaid, balance, status, payments[] }
 async function getMonthSummary(tenantId, month, rent) {
     const payments = await Payment.find({
         tenant: tenantId,
@@ -596,27 +665,26 @@ async function getMonthSummary(tenantId, month, rent) {
     const balance   = Math.max(0, rent - totalPaid);
 
     let status = 'unpaid';
-    if (totalPaid >= rent)       status = 'paid';
-    else if (totalPaid > 0)      status = 'partial';
+    if (totalPaid >= rent)  status = 'paid';
+    else if (totalPaid > 0) status = 'partial';
 
     return { rentAmount: rent, totalPaid, balance, status, payments };
 }
 
 
-// ─────────────────────────────────────────────────────
-// POST /payments — Admin records a manual payment
-// Body: { tenantId, amount, month, method?, note? }
-// Auth: admin only
-// ─────────────────────────────────────────────────────
-app.post('/payments', authMiddleware, adminOnly, async (req, res) => {
+// ═══════════════════════════════════════
+// PAYMENTS
+// ═══════════════════════════════════════
+
+// POST /payments — FIX 3: admin + checkSubscription
+// Admin records a manual payment
+app.post('/payments', authMiddleware, adminOnly, checkSubscription, async (req, res) => {
     try {
         const { tenantId, amount, month, method = 'cash', note = '' } = req.body;
 
-        // ── Validation ──
         if (!tenantId || !amount || !month) {
             return res.status(400).json({ message: 'tenantId, amount and month are required' });
         }
-
         if (amount <= 0) {
             return res.status(400).json({ message: 'Amount must be greater than 0' });
         }
@@ -625,12 +693,9 @@ app.post('/payments', authMiddleware, adminOnly, async (req, res) => {
         if (!tenant)       return res.status(404).json({ message: 'Tenant not found' });
         if (!tenant.house) return res.status(400).json({ message: 'Tenant has no house assigned' });
 
-        const rent = tenant.house.rent;
-
-        // ── Get current month summary ──
+        const rent    = tenant.house.rent;
         const summary = await getMonthSummary(tenantId, month, rent);
 
-        // ── Block if already fully paid ──
         if (summary.status === 'paid') {
             return res.status(400).json({
                 message: `Rent for ${month} is already fully paid ✅`,
@@ -638,21 +703,18 @@ app.post('/payments', authMiddleware, adminOnly, async (req, res) => {
             });
         }
 
-        // ── Overpayment check ──
         if (amount > summary.balance) {
             return res.status(400).json({
-                message: `Overpayment detected. Balance remaining is Ksh ${summary.balance}. You cannot pay more than the balance.`,
+                message: `Overpayment detected. Balance remaining is Ksh ${summary.balance}.`,
                 balance: summary.balance,
                 summary
             });
         }
 
-        // ── Calculate new totals ──
         const newTotalPaid = summary.totalPaid + amount;
         const newBalance   = Math.max(0, rent - newTotalPaid);
         const newStatus    = newBalance === 0 ? 'paid' : 'partial';
 
-        // ── Save payment record ──
         const payment = await Payment.create({
             tenant:     tenant._id,
             house:      tenant.house._id,
@@ -667,7 +729,7 @@ app.post('/payments', authMiddleware, adminOnly, async (req, res) => {
             datePaid:   new Date()
         });
 
-        // ── Generate PDF receipt ──
+        // Generate PDF receipt
         const doc     = new PDFDocument();
         const buffers = [];
         doc.on('data', chunk => buffers.push(chunk));
@@ -691,14 +753,13 @@ app.post('/payments', authMiddleware, adminOnly, async (req, res) => {
         doc.on('end', async () => {
             const pdfData = Buffer.concat(buffers);
 
-            // ── Send receipt email via Resend ──
             try {
                 const { Resend } = require('resend');
                 const resend     = new Resend(process.env.RESEND_API_KEY);
 
-                const statusColor  = newStatus === 'paid' ? '#16a34a' : '#d97706';
-                const statusLabel  = newStatus === 'paid' ? 'Fully Paid ✓' : 'Partial Payment';
-                const statusBg     = newStatus === 'paid' ? '#dcfce7' : '#fef3c7';
+                const statusColor = newStatus === 'paid' ? '#16a34a' : '#d97706';
+                const statusLabel = newStatus === 'paid' ? 'Fully Paid ✓' : 'Partial Payment';
+                const statusBg    = newStatus === 'paid' ? '#dcfce7' : '#fef3c7';
 
                 await resend.emails.send({
                     from:    'Affordable Rentals 🏠 <support@affordablerentals.site>',
@@ -730,7 +791,7 @@ app.post('/payments', authMiddleware, adminOnly, async (req, res) => {
                         </div>
                         ${newBalance > 0 ? `
                         <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:14px 18px;margin-bottom:20px">
-                          <p style="color:#92400e;font-size:13px;margin:0">⚠️ You still have a balance of <strong>Ksh ${Number(newBalance).toLocaleString()}</strong> for ${month}. Please pay the remaining amount before your due date.</p>
+                          <p style="color:#92400e;font-size:13px;margin:0">⚠️ You still have a balance of <strong>Ksh ${Number(newBalance).toLocaleString()}</strong> for ${month}. Please pay before your due date.</p>
                         </div>` : ''}
                         <p style="color:#94a3b8;font-size:12px;margin:0">PDF receipt is attached. Contact us at <a href="mailto:support@affordablerentals.site" style="color:#1d4ed8">support@affordablerentals.site</a> for queries.</p>
                       </div>
@@ -751,15 +812,10 @@ app.post('/payments', authMiddleware, adminOnly, async (req, res) => {
             }
 
             res.json({
-                message:    `Payment recorded — ${newStatus.toUpperCase()} 📄`,
-                paymentId:  payment._id,
+                message:   `Payment recorded — ${newStatus.toUpperCase()} 📄`,
+                paymentId: payment._id,
                 payment,
-                summary: {
-                    rentAmount: rent,
-                    totalPaid:  newTotalPaid,
-                    balance:    newBalance,
-                    status:     newStatus
-                }
+                summary: { rentAmount: rent, totalPaid: newTotalPaid, balance: newBalance, status: newStatus }
             });
         });
 
@@ -769,11 +825,8 @@ app.post('/payments', authMiddleware, adminOnly, async (req, res) => {
     }
 });
 
-
-// ─────────────────────────────────────────────────────
-// GET /payments — All payments (admin)
-// ─────────────────────────────────────────────────────
-app.get('/payments', async (req, res) => {
+// GET /payments — FIX 1: admin only
+app.get('/payments', authMiddleware, adminOnly, async (req, res) => {
     try {
         const payments = await Payment.find()
             .populate('tenant')
@@ -785,12 +838,13 @@ app.get('/payments', async (req, res) => {
     }
 });
 
-
-// ─────────────────────────────────────────────────────
-// GET /payments/tenant/:tenantId — All payments for a tenant
-// ─────────────────────────────────────────────────────
-app.get('/payments/tenant/:tenantId', async (req, res) => {
+// GET /payments/tenant/:tenantId — FIX 1: auth required; tenant sees own only
+app.get('/payments/tenant/:tenantId', authMiddleware, async (req, res) => {
     try {
+        if (req.user.role === 'tenant' && String(req.user.tenantId) !== req.params.tenantId) {
+            return res.status(403).json({ message: 'Forbidden' });
+        }
+
         const payments = await Payment.find({ tenant: req.params.tenantId })
             .sort({ createdAt: -1 });
         res.json(payments);
@@ -799,17 +853,12 @@ app.get('/payments/tenant/:tenantId', async (req, res) => {
     }
 });
 
-
-// ─────────────────────────────────────────────────────
-// GET /payments/summary/:tenantId/:month — Monthly summary
-// Returns rent, total paid, balance, status, all transactions
-// ─────────────────────────────────────────────────────
+// GET /payments/summary/:tenantId/:month — auth required, tenant sees own only
 app.get('/payments/summary/:tenantId/:month', authMiddleware, async (req, res) => {
     try {
         const { tenantId, month } = req.params;
 
-        // Tenants can only see their own data
-        if (req.user.role === 'tenant' && req.user.tenantId != tenantId) {
+        if (req.user.role === 'tenant' && String(req.user.tenantId) !== tenantId) {
             return res.status(403).json({ message: 'Forbidden' });
         }
 
@@ -818,7 +867,6 @@ app.get('/payments/summary/:tenantId/:month', authMiddleware, async (req, res) =
         if (!tenant.house) return res.status(400).json({ message: 'Tenant has no house' });
 
         const summary = await getMonthSummary(tenantId, month, tenant.house.rent);
-
         res.json(summary);
 
     } catch (err) {
@@ -826,16 +874,12 @@ app.get('/payments/summary/:tenantId/:month', authMiddleware, async (req, res) =
     }
 });
 
-
-// ─────────────────────────────────────────────────────
-// GET /payments/months/:tenantId — All months summary for a tenant
-// Returns each month with rent, paid, balance and status
-// ─────────────────────────────────────────────────────
+// GET /payments/months/:tenantId — auth required, tenant sees own only
 app.get('/payments/months/:tenantId', authMiddleware, async (req, res) => {
     try {
         const { tenantId } = req.params;
 
-        if (req.user.role === 'tenant' && req.user.tenantId != tenantId) {
+        if (req.user.role === 'tenant' && String(req.user.tenantId) !== tenantId) {
             return res.status(403).json({ message: 'Forbidden' });
         }
 
@@ -843,9 +887,7 @@ app.get('/payments/months/:tenantId', authMiddleware, async (req, res) => {
         if (!tenant)       return res.status(404).json({ message: 'Tenant not found' });
         if (!tenant.house) return res.status(400).json({ message: 'Tenant has no house' });
 
-        const rent = tenant.house.rent;
-
-        // Get all distinct months this tenant has payments for
+        const rent   = tenant.house.rent;
         const months = await Payment.distinct('month', {
             tenant: tenantId,
             status: { $in: ['paid', 'partial'] }
@@ -858,9 +900,7 @@ app.get('/payments/months/:tenantId', authMiddleware, async (req, res) => {
             })
         );
 
-        // Sort by most recent month first
         results.sort((a, b) => new Date('1 ' + b.month) - new Date('1 ' + a.month));
-
         res.json(results);
 
     } catch (err) {
@@ -868,14 +908,11 @@ app.get('/payments/months/:tenantId', authMiddleware, async (req, res) => {
     }
 });
 
-
-// ─────────────────────────────────────────────────────
-// GET /arrears — All tenants with outstanding balances
-// ─────────────────────────────────────────────────────
-app.get('/arrears', async (req, res) => {
+// GET /arrears — FIX 1: admin only
+app.get('/arrears', authMiddleware, adminOnly, async (req, res) => {
     try {
-        const tenants     = await Tenant.find().populate('house');
-        const arrearsList = [];
+        const tenants      = await Tenant.find().populate('house');
+        const arrearsList  = [];
         const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
 
         for (const tenant of tenants) {
@@ -886,11 +923,11 @@ app.get('/arrears', async (req, res) => {
 
             if (summary.balance > 0) {
                 arrearsList.push({
-                    tenantId: tenant._id,
-                    tenant:   tenant.name,
-                    email:    tenant.email,
-                    house:    tenant.house.name,
-                    month:    currentMonth,
+                    tenantId:  tenant._id,
+                    tenant:    tenant.name,
+                    email:     tenant.email,
+                    house:     tenant.house.name,
+                    month:     currentMonth,
                     rent,
                     totalPaid: summary.totalPaid,
                     balance:   summary.balance,
@@ -906,11 +943,8 @@ app.get('/arrears', async (req, res) => {
     }
 });
 
-
-// ─────────────────────────────────────────────────────
-// GET /arrears/:month — Arrears for a specific month
-// ─────────────────────────────────────────────────────
-app.get('/arrears/:month', async (req, res) => {
+// GET /arrears/:month — FIX 1: admin only
+app.get('/arrears/:month', authMiddleware, adminOnly, async (req, res) => {
     try {
         const month   = req.params.month;
         const tenants = await Tenant.find().populate('house');
@@ -945,35 +979,37 @@ app.get('/arrears/:month', async (req, res) => {
 });
 
 
-// ─────────────────────────────────────────────────────
-// STK PUSH — Updated for partial payment support
-// POST /stkpush
-// Body: { phone, amount, month }
-// ─────────────────────────────────────────────────────
+// ═══════════════════════════════════════
+// M-PESA STK PUSH (RENT)
+// ═══════════════════════════════════════
+
+// POST /stkpush — FIX 8: tenant-only (phone always from their own record)
 app.post('/stkpush', authMiddleware, async (req, res) => {
     try {
-        const { phone, amount, month } = req.body;
-
-        if (!phone || !amount || !month) {
-            return res.status(400).json({ message: 'phone, amount and month are required' });
+        // Only tenants initiate rent payments on their own behalf
+        if (req.user.role !== 'tenant') {
+            return res.status(403).json({ message: 'Tenants only. Use POST /payments to record cash/manual payments.' });
         }
 
+        const { amount, month } = req.body;
+
+        if (!amount || !month) {
+            return res.status(400).json({ message: 'amount and month are required' });
+        }
         if (amount <= 0) {
             return res.status(400).json({ message: 'Amount must be greater than 0' });
         }
 
-        let payPhone = phone;
-        const tenantId = req.user.tenantId || req.body.tenantId;
+        const tenantId = req.user.tenantId;
+        if (!tenantId) return res.status(400).json({ message: 'No tenant linked to this account' });
 
         const tenant = await Tenant.findById(tenantId).populate('house');
-        if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
+        if (!tenant)       return res.status(404).json({ message: 'Tenant not found' });
+        if (!tenant.phone) return res.status(400).json({ message: 'No phone number on your account' });
+        if (!tenant.house) return res.status(400).json({ message: 'No house assigned — contact your landlord' });
 
-        // Always use registered phone for security
-        if (req.user.role === 'tenant') payPhone = tenant.phone;
+        const rent = tenant.house.rent;
 
-        const rent = tenant.house ? tenant.house.rent : 0;
-
-        // ── Check if already fully paid ──
         const summary = await getMonthSummary(tenantId, month, rent);
         if (summary.status === 'paid') {
             return res.status(400).json({
@@ -981,8 +1017,6 @@ app.post('/stkpush', authMiddleware, async (req, res) => {
                 summary
             });
         }
-
-        // ── Overpayment check ──
         if (amount > summary.balance) {
             return res.status(400).json({
                 message: `Amount exceeds balance. Remaining balance is Ksh ${summary.balance}.`,
@@ -991,8 +1025,7 @@ app.post('/stkpush', authMiddleware, async (req, res) => {
             });
         }
 
-        // ── Initiate STK push ──
-        const token     = await getToken();
+        const token     = await getRentToken();
         const timestamp = new Date().toISOString().replace(/[-T:.Z]/g, '').slice(0, 14);
         const password  = Buffer.from(
             process.env.MPESA_SHORTCODE + process.env.MPESA_PASSKEY + timestamp
@@ -1006,9 +1039,9 @@ app.post('/stkpush', authMiddleware, async (req, res) => {
                 Timestamp:         timestamp,
                 TransactionType:   'CustomerPayBillOnline',
                 Amount:            amount,
-                PartyA:            payPhone,
+                PartyA:            tenant.phone,
                 PartyB:            process.env.MPESA_SHORTCODE,
-                PhoneNumber:       payPhone,
+                PhoneNumber:       tenant.phone,
                 CallBackURL:       process.env.MPESA_CALLBACK_URL,
                 AccountReference:  `Rent-${month}`,
                 TransactionDesc:   `Rent payment for ${month}`
@@ -1025,25 +1058,22 @@ app.post('/stkpush', authMiddleware, async (req, res) => {
             });
         }
 
-        // ── Save pending payment record ──
-        if (tenant.house) {
-            const newTotalPaid = summary.totalPaid + amount;
-            const newBalance   = Math.max(0, rent - newTotalPaid);
+        const newTotalPaid = summary.totalPaid + amount;
+        const newBalance   = Math.max(0, rent - newTotalPaid);
 
-            await Payment.create({
-                tenant:            tenant._id,
-                house:             tenant.house._id,
-                amount,
-                month,
-                rentAmount:        rent,
-                totalPaid:         newTotalPaid,
-                balance:           newBalance,
-                status:            'pending',
-                method:            'mpesa',
-                checkoutRequestId: data.CheckoutRequestID,
-                merchantRequestId: data.MerchantRequestID
-            });
-        }
+        await Payment.create({
+            tenant:            tenant._id,
+            house:             tenant.house._id,
+            amount,
+            month,
+            rentAmount:        rent,
+            totalPaid:         newTotalPaid,
+            balance:           newBalance,
+            status:            'pending',
+            method:            'mpesa',
+            checkoutRequestId: data.CheckoutRequestID,
+            merchantRequestId: data.MerchantRequestID
+        });
 
         res.json({
             message:           'M-Pesa prompt sent to your phone 📱',
@@ -1065,11 +1095,7 @@ app.post('/stkpush', authMiddleware, async (req, res) => {
     }
 });
 
-
-// ─────────────────────────────────────────────────────
-// POST /callback — Safaricom M-Pesa callback
-// Updated to handle partial payment totals correctly
-// ─────────────────────────────────────────────────────
+// POST /callback — Safaricom rent payment callback
 app.post('/callback', async (req, res) => {
     res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
 
@@ -1090,27 +1116,24 @@ app.post('/callback', async (req, res) => {
         }
 
         if (resultCode === 0) {
-            // ── Payment successful ──
-            const items   = stk.CallbackMetadata?.Item || [];
-            const getItem = name => items.find(i => i.Name === name)?.Value;
-
+            const items     = stk.CallbackMetadata?.Item || [];
+            const getItem   = name => items.find(i => i.Name === name)?.Value;
             const mpesaCode = getItem('MpesaReceiptNumber') || '';
 
-            // Recalculate totals from DB (source of truth)
-            const rent          = payment.house?.rent || payment.rentAmount;
-            const previousTotal = await Payment.aggregate([
+            const rent         = payment.house?.rent || payment.rentAmount;
+            const previousAgg  = await Payment.aggregate([
                 {
                     $match: {
-                        tenant:  payment.tenant._id,
-                        month:   payment.month,
-                        status:  { $in: ['paid', 'partial'] },
-                        _id:     { $ne: payment._id }
+                        tenant: payment.tenant._id,
+                        month:  payment.month,
+                        status: { $in: ['paid', 'partial'] },
+                        _id:    { $ne: payment._id }
                     }
                 },
                 { $group: { _id: null, total: { $sum: '$amount' } } }
             ]);
 
-            const prevPaid     = previousTotal[0]?.total || 0;
+            const prevPaid     = previousAgg[0]?.total || 0;
             const newTotalPaid = prevPaid + payment.amount;
             const newBalance   = Math.max(0, rent - newTotalPaid);
             const newStatus    = newBalance === 0 ? 'paid' : 'partial';
@@ -1122,9 +1145,8 @@ app.post('/callback', async (req, res) => {
             payment.datePaid  = new Date();
             await payment.save();
 
-            console.log(`✅ M-Pesa payment confirmed: ${mpesaCode} | ${payment.month} | Status: ${newStatus}`);
+            console.log(`✅ M-Pesa confirmed: ${mpesaCode} | ${payment.month} | ${newStatus}`);
 
-            // ── Send confirmation email ──
             if (payment.tenant?.email) {
                 const { Resend } = require('resend');
                 const resend     = new Resend(process.env.RESEND_API_KEY);
@@ -1148,27 +1170,26 @@ app.post('/callback', async (req, res) => {
                         <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">Your M-Pesa payment has been received and confirmed.</p>
                         <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:20px 24px;margin-bottom:24px">
                           <table style="width:100%;border-collapse:collapse">
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">House</td>             <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${payment.house?.name || '—'}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Month</td>             <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${payment.month}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">This Payment</td>      <td style="color:#16a34a;font-size:15px;font-weight:700;text-align:right">Ksh ${Number(payment.amount).toLocaleString()}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Total Paid</td>        <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">Ksh ${Number(newTotalPaid).toLocaleString()}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Balance</td>           <td style="color:${newBalance > 0 ? '#d97706' : '#16a34a'};font-size:13px;font-weight:700;text-align:right">Ksh ${Number(newBalance).toLocaleString()}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">M-Pesa Code</td>       <td style="color:#1e293b;font-size:13px;font-weight:700;text-align:right;font-family:monospace">${mpesaCode}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Status</td>            <td style="text-align:right"><span style="background:${statusBg};color:${statusColor};font-size:11px;font-weight:600;padding:2px 10px;border-radius:99px">${statusLabel}</span></td></tr>
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">House</td>        <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${payment.house?.name || '—'}</td></tr>
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Month</td>        <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${payment.month}</td></tr>
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">This Payment</td> <td style="color:#16a34a;font-size:15px;font-weight:700;text-align:right">Ksh ${Number(payment.amount).toLocaleString()}</td></tr>
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Total Paid</td>   <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">Ksh ${Number(newTotalPaid).toLocaleString()}</td></tr>
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Balance</td>      <td style="color:${newBalance > 0 ? '#d97706' : '#16a34a'};font-size:13px;font-weight:700;text-align:right">Ksh ${Number(newBalance).toLocaleString()}</td></tr>
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">M-Pesa Code</td>  <td style="color:#1e293b;font-size:13px;font-weight:700;text-align:right;font-family:monospace">${mpesaCode}</td></tr>
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Status</td>       <td style="text-align:right"><span style="background:${statusBg};color:${statusColor};font-size:11px;font-weight:600;padding:2px 10px;border-radius:99px">${statusLabel}</span></td></tr>
                           </table>
                         </div>
                         ${newBalance > 0 ? `<div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:14px 18px;margin-bottom:20px"><p style="color:#92400e;font-size:13px;margin:0">⚠️ Balance remaining: <strong>Ksh ${Number(newBalance).toLocaleString()}</strong>. Please pay before your due date.</p></div>` : ''}
                         <p style="color:#94a3b8;font-size:12px;margin:0">Keep this as your receipt. Contact <a href="mailto:support@affordablerentals.site" style="color:#16a34a">support@affordablerentals.site</a> for queries.</p>
                       </div>
                       <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 32px;text-align:center">
-                        <p style="color:#cbd5e1;font-size:11px;margin:0">© ${new Date().getFullYear()} Affordable Rentals · <a href="https://affordablerentals.site" style="color:#94a3b8;text-decoration:none">affordablerentals.site</a></p>
+                        <p style="color:#cbd5e1;font-size:11px;margin:0">© ${new Date().getFullYear()} Affordable Rentals</p>
                       </div>
                     </div>`
                 }).catch(err => console.error('Confirmation email failed:', err.message));
             }
 
         } else {
-            // ── Payment failed or cancelled ──
             payment.status = 'failed';
             await payment.save();
             console.log(`❌ Payment failed — ResultCode: ${resultCode}`);
@@ -1179,20 +1200,95 @@ app.post('/callback', async (req, res) => {
     }
 });
 
+// GET /payment-status/:checkoutRequestId — FIX 9: return 'confirmed' when paid/partial
+// tenant.js polls for status === 'confirmed'
+app.get('/payment-status/:checkoutRequestId', authMiddleware, async (req, res) => {
+    try {
+        const payment = await Payment.findOne({
+            checkoutRequestId: req.params.checkoutRequestId
+        });
+
+        if (!payment) return res.status(404).json({ status: 'not_found' });
+
+        // FIX 9: Map internal status to what the frontend expects
+        // 'paid' or 'partial' → 'confirmed' (payment went through)
+        // 'pending' → 'pending' (still waiting)
+        // 'failed' → 'failed'
+        let clientStatus = payment.status;
+        if (payment.status === 'paid' || payment.status === 'partial') {
+            clientStatus = 'confirmed';
+        }
+
+        res.json({
+            status:    clientStatus,
+            paymentId: payment._id,
+            mpesaCode: payment.mpesaCode || null,
+            amount:    payment.amount,
+            month:     payment.month
+        });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /stk-query — manual fallback query to Safaricom
+app.post('/stk-query', authMiddleware, async (req, res) => {
+    try {
+        const { checkoutRequestId } = req.body;
+        if (!checkoutRequestId) return res.status(400).json({ message: 'checkoutRequestId required' });
+
+        const token     = await getRentToken();
+        const timestamp = new Date().toISOString().replace(/[-T:.Z]/g, '').slice(0, 14);
+        const password  = Buffer.from(
+            process.env.MPESA_SHORTCODE + process.env.MPESA_PASSKEY + timestamp
+        ).toString('base64');
+
+        const response = await axios.post(
+            'https://sandbox.safaricom.co.ke/mpesa/stkpushquery/v1/query',
+            {
+                BusinessShortCode: process.env.MPESA_SHORTCODE,
+                Password:          password,
+                Timestamp:         timestamp,
+                CheckoutRequestID: checkoutRequestId
+            },
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        const data = response.data;
+        res.json({
+            resultCode: data.ResultCode,
+            resultDesc: data.ResultDesc,
+            success:    data.ResultCode === '0' || data.ResultCode === 0
+        });
+
+    } catch (err) {
+        res.status(500).json({
+            error:   'STK query failed',
+            details: err.response?.data || err.message
+        });
+    }
+});
 
 
 // ═══════════════════════════════════════
 // RECEIPTS
 // ═══════════════════════════════════════
 
-// GET /receipt/:paymentId — JSON
-app.get('/receipt/:paymentId', async (req, res) => {
+// GET /receipt/:paymentId — FIX 1: auth required; tenant sees own only
+app.get('/receipt/:paymentId', authMiddleware, async (req, res) => {
     try {
         const payment = await Payment.findById(req.params.paymentId)
             .populate('tenant')
             .populate('house');
 
         if (!payment) return res.status(404).json({ message: 'Payment not found' });
+
+        // Tenant can only access their own receipt
+        if (req.user.role === 'tenant' && String(payment.tenant?._id) !== String(req.user.tenantId)) {
+            return res.status(403).json({ message: 'Forbidden' });
+        }
+
         res.json(payment);
 
     } catch (err) {
@@ -1200,8 +1296,8 @@ app.get('/receipt/:paymentId', async (req, res) => {
     }
 });
 
-// GET /receipt/pdf/:paymentId — PDF download
-app.get('/receipt/pdf/:paymentId', async (req, res) => {
+// GET /receipt/pdf/:paymentId — FIX 1: auth required; tenant sees own only
+app.get('/receipt/pdf/:paymentId', authMiddleware, async (req, res) => {
     try {
         const payment = await Payment.findById(req.params.paymentId)
             .populate('tenant')
@@ -1209,24 +1305,29 @@ app.get('/receipt/pdf/:paymentId', async (req, res) => {
 
         if (!payment) return res.status(404).json({ message: 'Payment not found' });
 
+        if (req.user.role === 'tenant' && String(payment.tenant?._id) !== String(req.user.tenantId)) {
+            return res.status(403).json({ message: 'Forbidden' });
+        }
+
         const doc = new PDFDocument();
 
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename=receipt-${payment._id}.pdf`);
 
         doc.pipe(res);
-
         doc.fontSize(20).text('RENT RECEIPT', { align: 'center' });
         doc.moveDown();
-        doc.fontSize(12).text(`Tenant: ${payment.tenant.name}`);
-        doc.text(`House:  ${payment.house.name}`);
-        doc.text(`Amount Paid: Ksh ${payment.amount}`);
-        doc.text(`Month:  ${payment.month}`);
-        doc.text(`Date:   ${payment.datePaid.toDateString()}`);
-        doc.text(`Receipt ID: ${payment._id}`);
+        doc.fontSize(12).text(`Tenant:      ${payment.tenant.name}`);
+        doc.text(`House:       ${payment.house.name}`);
+        doc.text(`Amount Paid: Ksh ${Number(payment.amount).toLocaleString()}`);
+        doc.text(`Total Paid:  Ksh ${Number(payment.totalPaid || payment.amount).toLocaleString()}`);
+        doc.text(`Balance:     Ksh ${Number(payment.balance || 0).toLocaleString()}`);
+        doc.text(`Month:       ${payment.month}`);
+        doc.text(`Status:      ${(payment.status || 'paid').toUpperCase()}`);
+        doc.text(`Date:        ${new Date(payment.datePaid).toDateString()}`);
+        doc.text(`Receipt ID:  ${payment._id}`);
         doc.moveDown();
         doc.text('Thank you for your payment — Affordable Rentals');
-
         doc.end();
 
     } catch (err) {
@@ -1234,143 +1335,57 @@ app.get('/receipt/pdf/:paymentId', async (req, res) => {
     }
 });
 
+
 // ═══════════════════════════════════════
-// ARREARS
+// DASHBOARD
 // ═══════════════════════════════════════
 
-
-// ═══════════════════════════════════════════════════════
-//  SUBSCRIPTION SYSTEM — Add to app.js
-//  Place this block AFTER your existing middleware
-//  and BEFORE your existing routes.
-//
-//  Also add these requires at the top of app.js:
-//    const SubscriptionPlan    = require('./models/SubscriptionPlan');
-//    const SubscriptionPayment = require('./models/SubscriptionPayment');
-// ═══════════════════════════════════════════════════════
-
-
-// ═══════════════════════════════════════════════════════
-//  SYSTEM M-PESA TOKEN (for subscription payments)
-//  Uses YOUR system credentials — not landlord credentials
-// ═══════════════════════════════════════════════════════
-
-async function getSystemToken() {
-    const auth = Buffer.from(
-        `${process.env.SYSTEM_CONSUMER_KEY}:${process.env.SYSTEM_CONSUMER_SECRET}`
-    ).toString('base64');
-
-    const res = await axios.get(
-        'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials',
-        { headers: { Authorization: `Basic ${auth}` } }
-    );
-
-    return res.data.access_token;
-}
-
-
-// ═══════════════════════════════════════════════════════
-//  STACKLORD MIDDLEWARE
-//  Protects all /stacklord/* routes
-//  Uses master key from .env — no JWT, no DB lookup
-// ═══════════════════════════════════════════════════════
-
-function stacklordAuth(req, res, next) {
-    const key = req.headers['x-stacklord-key'] || req.query.key;
-    if (!key || key !== process.env.STACKLORD_KEY) {
-        return res.status(401).json({ message: 'Unauthorized — Stacklord access only 🔒' });
-    }
-    next();
-}
-
-
-// ═══════════════════════════════════════════════════════
-//  SUBSCRIPTION GUARD MIDDLEWARE
-//  Add to any admin route you want to protect:
-//    app.get('/dashboard/:month', authMiddleware, adminOnly, checkSubscription, ...)
-//
-//  Tenants bypass this check entirely.
-// ═══════════════════════════════════════════════════════
-
-async function checkSubscription(req, res, next) {
-    // Tenants are never affected
-    if (req.user.role !== 'admin') return next();
-
+// GET /dashboard/:month — FIX 3 & 4: subscription guard + fixed arrears calc
+app.get('/dashboard/:month', authMiddleware, adminOnly, checkSubscription, async (req, res) => {
     try {
-        const admin = await User.findById(req.user.id).select(
-            'subscriptionStatus subscriptionExpiry trialEndsAt gracePeriodUntil suspendedReason'
-        );
+        const month   = req.params.month;
+        const tenants = await Tenant.find().populate('house');
+        const houses  = await House.find();
 
-        if (!admin) return res.status(404).json({ message: 'Admin not found' });
+        let totalIncome  = 0;
+        let totalArrears = 0;
+        let occupied     = 0;
 
-        const now = new Date();
+        houses.forEach(h => { if (h.status === 'occupied') occupied++; });
 
-        // ── Auto-update status based on dates ──
-        if (admin.subscriptionStatus === 'trial' && admin.trialEndsAt && now > admin.trialEndsAt) {
-            admin.subscriptionStatus  = 'expired';
-            admin.gracePeriodUntil    = null;
-            await admin.save();
+        // FIX 4: use getMonthSummary for each tenant so partial payments are counted correctly
+        for (const tenant of tenants) {
+            if (!tenant.house) continue;
+
+            const rent    = tenant.house.rent;
+            const summary = await getMonthSummary(tenant._id, month, rent);
+
+            totalIncome  += summary.totalPaid;
+            totalArrears += summary.balance;
         }
 
-        if (admin.subscriptionStatus === 'active' && admin.subscriptionExpiry && now > admin.subscriptionExpiry) {
-            // Move to grace period — 7 days
-            admin.subscriptionStatus = 'grace';
-            admin.gracePeriodUntil   = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-            await admin.save();
-        }
-
-        if (admin.subscriptionStatus === 'grace' && admin.gracePeriodUntil && now > admin.gracePeriodUntil) {
-            admin.subscriptionStatus = 'expired';
-            await admin.save();
-        }
-
-        // ── Check access ──
-        switch (admin.subscriptionStatus) {
-            case 'trial':
-            case 'active':
-                return next(); // full access
-
-            case 'grace':
-                // Allow access but attach warning to response
-                req.subscriptionWarning = {
-                    status:  'grace',
-                    message: `Your subscription has expired. You have until ${admin.gracePeriodUntil.toDateString()} to renew before losing access.`,
-                    until:   admin.gracePeriodUntil
-                };
-                return next();
-
-            case 'expired':
-                return res.status(403).json({
-                    message:            'Subscription expired. Please renew to continue.',
-                    subscriptionStatus: 'expired',
-                    code:               'SUBSCRIPTION_EXPIRED'
-                });
-
-            case 'suspended':
-                return res.status(403).json({
-                    message:            `Your account has been suspended. Reason: ${admin.suspendedReason || 'Contact Stacklord for details.'}`,
-                    subscriptionStatus: 'suspended',
-                    code:               'ACCOUNT_SUSPENDED'
-                });
-
-            default:
-                return res.status(403).json({ message: 'Subscription status unknown.' });
-        }
+        res.json({
+            month,
+            totalIncome,
+            totalArrears,
+            totalTenants:   tenants.length,
+            totalHouses:    houses.length,
+            occupiedHouses: occupied,
+            vacantHouses:   houses.length - occupied,
+            warning:        req.subscriptionWarning || null
+        });
 
     } catch (err) {
-        console.error('checkSubscription error:', err.message);
-        next(); // fail open — don't lock out on DB error
+        res.status(500).json({ error: err.message });
     }
-}
+});
 
 
-// ═══════════════════════════════════════════════════════
-//  SUBSCRIPTION STATUS
-//  GET /subscription-status
-//  Auth: admin only
-//  Returns landlord's full subscription info
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
+// SUBSCRIPTION SYSTEM
+// ═══════════════════════════════════════
 
+// GET /subscription-status — admin only (no subscription guard — this IS the status endpoint)
 app.get('/subscription-status', authMiddleware, adminOnly, async (req, res) => {
     try {
         const admin = await User.findById(req.user.id)
@@ -1391,7 +1406,6 @@ app.get('/subscription-status', authMiddleware, adminOnly, async (req, res) => {
             daysRemaining = Math.max(0, Math.ceil((new Date(expiryDate) - now) / (1000 * 60 * 60 * 24)));
         }
 
-        // Last payment
         const lastPayment = await SubscriptionPayment.findOne({
             landlord: admin._id,
             status:   'paid'
@@ -1405,6 +1419,7 @@ app.get('/subscription-status', authMiddleware, adminOnly, async (req, res) => {
             gracePeriodUntil:        admin.gracePeriodUntil,
             lastSubscriptionPayment: admin.lastSubscriptionPayment,
             suspendedReason:         admin.suspendedReason,
+            landlordPhone:           admin.landlordPhone,
             daysRemaining,
             lastPayment:             lastPayment || null,
             warning:                 req.subscriptionWarning || null
@@ -1415,13 +1430,7 @@ app.get('/subscription-status', authMiddleware, adminOnly, async (req, res) => {
     }
 });
 
-
-// ═══════════════════════════════════════════════════════
-//  GET AVAILABLE SUBSCRIPTION PLANS
-//  GET /subscription-plans
-//  Public — landlord needs to see plans before paying
-// ═══════════════════════════════════════════════════════
-
+// GET /subscription-plans — public (landlord needs to see plans before paying)
 app.get('/subscription-plans', async (req, res) => {
     try {
         const plans = await SubscriptionPlan.find({ isActive: true }).sort({ sortOrder: 1, price: 1 });
@@ -1431,17 +1440,7 @@ app.get('/subscription-plans', async (req, res) => {
     }
 });
 
-
-// ═══════════════════════════════════════════════════════
-//  INITIATE SUBSCRIPTION PAYMENT
-//  POST /subscribe
-//  Auth: admin only
-//  Body: { planId, phone }
-//
-//  Uses SYSTEM credentials — NOT landlord credentials
-//  This is FLOW 2 — completely separate from rent STK Push
-// ═══════════════════════════════════════════════════════
-
+// POST /subscribe — admin initiates subscription payment via M-Pesa
 app.post('/subscribe', authMiddleware, adminOnly, async (req, res) => {
     try {
         const { planId, phone } = req.body;
@@ -1450,7 +1449,6 @@ app.post('/subscribe', authMiddleware, adminOnly, async (req, res) => {
             return res.status(400).json({ message: 'planId and phone are required' });
         }
 
-        // ── Validate plan ──
         const plan = await SubscriptionPlan.findById(planId);
         if (!plan || !plan.isActive) {
             return res.status(404).json({ message: 'Plan not found or inactive' });
@@ -1459,20 +1457,17 @@ app.post('/subscribe', authMiddleware, adminOnly, async (req, res) => {
         const admin = await User.findById(req.user.id);
         if (!admin) return res.status(404).json({ message: 'Admin not found' });
 
-        // ── Save phone to admin profile if not already set ──
         if (!admin.landlordPhone) {
             admin.landlordPhone = phone;
             await admin.save();
         }
 
-        // ── Get SYSTEM M-Pesa token ──
         const token     = await getSystemToken();
         const timestamp = new Date().toISOString().replace(/[-T:.Z]/g, '').slice(0, 14);
         const password  = Buffer.from(
             process.env.SYSTEM_PAYBILL + process.env.SYSTEM_PASSKEY + timestamp
         ).toString('base64');
 
-        // ── Initiate STK Push to SYSTEM Paybill ──
         const stkRes = await axios.post(
             'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest',
             {
@@ -1500,8 +1495,7 @@ app.post('/subscribe', authMiddleware, adminOnly, async (req, res) => {
             });
         }
 
-        // ── Save pending subscription payment ──
-        const subPayment = await SubscriptionPayment.create({
+        await SubscriptionPayment.create({
             landlord:          admin._id,
             plan:              plan._id,
             amount:            plan.price,
@@ -1515,11 +1509,7 @@ app.post('/subscribe', authMiddleware, adminOnly, async (req, res) => {
         res.json({
             message:           `M-Pesa prompt sent to ${phone} 📱`,
             checkoutRequestId: data.CheckoutRequestID,
-            plan: {
-                name:         plan.name,
-                price:        plan.price,
-                durationDays: plan.durationDays
-            }
+            plan: { name: plan.name, price: plan.price, durationDays: plan.durationDays }
         });
 
     } catch (err) {
@@ -1531,16 +1521,8 @@ app.post('/subscribe', authMiddleware, adminOnly, async (req, res) => {
     }
 });
 
-
-// ═══════════════════════════════════════════════════════
-//  SUBSCRIPTION CALLBACK
-//  POST /subscription-callback
-//  Called by Safaricom after landlord pays subscription
-//  Completely separate from /callback (rent payments)
-// ═══════════════════════════════════════════════════════
-
+// POST /subscription-callback — Safaricom subscription payment callback
 app.post('/subscription-callback', async (req, res) => {
-    // Always respond 200 immediately
     res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
 
     try {
@@ -1550,7 +1532,6 @@ app.post('/subscription-callback', async (req, res) => {
         const checkoutRequestId = stk.CheckoutRequestID;
         const resultCode        = stk.ResultCode;
 
-        // Find the pending subscription payment
         const subPayment = await SubscriptionPayment.findOne({ checkoutRequestId })
             .populate('plan')
             .populate('landlord');
@@ -1561,18 +1542,14 @@ app.post('/subscription-callback', async (req, res) => {
         }
 
         if (resultCode === 0) {
-            // ── Payment successful ──
             const items     = stk.CallbackMetadata?.Item || [];
             const getItem   = name => items.find(i => i.Name === name)?.Value;
             const mpesaCode = getItem('MpesaReceiptNumber') || '';
 
-            const now        = new Date();
-            const admin      = subPayment.landlord;
-            const plan       = subPayment.plan;
+            const now    = new Date();
+            const admin  = subPayment.landlord;
+            const plan   = subPayment.plan;
 
-            // Calculate new expiry:
-            // If currently active → extend from current expiry
-            // Otherwise → start from now
             let baseDate = now;
             if (
                 admin.subscriptionStatus === 'active' &&
@@ -1584,25 +1561,23 @@ app.post('/subscription-callback', async (req, res) => {
 
             const newExpiry = new Date(baseDate.getTime() + plan.durationDays * 24 * 60 * 60 * 1000);
 
-            // ── Update subscription payment record ──
             subPayment.status    = 'paid';
             subPayment.mpesaCode = mpesaCode;
             subPayment.paidAt    = now;
             subPayment.expiresAt = newExpiry;
             await subPayment.save();
 
-            // ── Update admin user subscription ──
             await User.findByIdAndUpdate(admin._id, {
                 subscriptionStatus:      'active',
                 subscriptionPlan:        plan._id,
                 subscriptionExpiry:      newExpiry,
                 gracePeriodUntil:        null,
+                suspendedReason:         null,
                 lastSubscriptionPayment: now
             });
 
-            console.log(`✅ Subscription payment confirmed: ${mpesaCode} | Plan: ${plan.name} | Expires: ${newExpiry.toDateString()}`);
+            console.log(`✅ Subscription confirmed: ${mpesaCode} | ${plan.name} | Expires: ${newExpiry.toDateString()}`);
 
-            // ── Send confirmation email ──
             try {
                 const { Resend } = require('resend');
                 const resend     = new Resend(process.env.RESEND_API_KEY);
@@ -1620,33 +1595,29 @@ app.post('/subscription-callback', async (req, res) => {
                       </div>
                       <div style="padding:32px">
                         <p style="color:#1e293b;font-size:15px;margin:0 0 16px">Hi <strong>${admin.name.split(' ')[0]}</strong>,</p>
-                        <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">
-                          Your subscription has been renewed successfully. You have full access to your dashboard.
-                        </p>
+                        <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">Your subscription has been renewed. You have full access to your dashboard.</p>
                         <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:20px 24px;margin-bottom:24px">
                           <table style="width:100%;border-collapse:collapse">
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Plan</td>           <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${plan.name}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Amount Paid</td>    <td style="color:#1d4ed8;font-size:15px;font-weight:700;text-align:right">Ksh ${Number(plan.price).toLocaleString()}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Duration</td>       <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${plan.durationDays} days</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Valid Until</td>    <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${newExpiry.toDateString()}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">M-Pesa Code</td>   <td style="color:#1e293b;font-size:13px;font-weight:700;text-align:right;font-family:monospace">${mpesaCode}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Status</td>         <td style="text-align:right"><span style="background:#dcfce7;color:#16a34a;font-size:11px;font-weight:600;padding:2px 10px;border-radius:99px">Active ✓</span></td></tr>
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Plan</td>         <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${plan.name}</td></tr>
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Amount Paid</td>  <td style="color:#1d4ed8;font-size:15px;font-weight:700;text-align:right">Ksh ${Number(plan.price).toLocaleString()}</td></tr>
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Duration</td>     <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${plan.durationDays} days</td></tr>
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Valid Until</td>  <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${newExpiry.toDateString()}</td></tr>
+                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">M-Pesa Code</td> <td style="color:#1e293b;font-size:13px;font-weight:700;text-align:right;font-family:monospace">${mpesaCode}</td></tr>
                           </table>
                         </div>
-                        <p style="color:#94a3b8;font-size:12px;margin:0">Thank you for using Affordable Rentals Platform. Contact <a href="mailto:support@affordablerentals.site" style="color:#1d4ed8">support@affordablerentals.site</a> for any queries.</p>
+                        <p style="color:#94a3b8;font-size:12px;margin:0">Contact <a href="mailto:support@affordablerentals.site" style="color:#1d4ed8">support@affordablerentals.site</a> for any queries.</p>
                       </div>
                       <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 32px;text-align:center">
-                        <p style="color:#cbd5e1;font-size:11px;margin:0">© ${new Date().getFullYear()} Affordable Rentals · <a href="https://affordablerentals.site" style="color:#94a3b8;text-decoration:none">affordablerentals.site</a></p>
+                        <p style="color:#cbd5e1;font-size:11px;margin:0">© ${new Date().getFullYear()} Affordable Rentals</p>
                       </div>
                     </div>`
                 });
 
             } catch (emailErr) {
-                console.error('Subscription confirmation email failed:', emailErr.message);
+                console.error('Subscription email failed:', emailErr.message);
             }
 
         } else {
-            // ── Payment failed ──
             subPayment.status = 'failed';
             await subPayment.save();
             console.log(`❌ Subscription payment failed — ResultCode: ${resultCode}`);
@@ -1657,14 +1628,7 @@ app.post('/subscription-callback', async (req, res) => {
     }
 });
 
-
-// ═══════════════════════════════════════════════════════
-//  SUBSCRIPTION PAYMENT STATUS POLLING
-//  GET /subscription-status-poll/:checkoutRequestId
-//  Auth: admin only
-//  Frontend polls this after STK Push
-// ═══════════════════════════════════════════════════════
-
+// GET /subscription-status-poll/:checkoutRequestId — admin polls after STK push
 app.get('/subscription-status-poll/:checkoutRequestId', authMiddleware, adminOnly, async (req, res) => {
     try {
         const payment = await SubscriptionPayment.findOne({
@@ -1687,13 +1651,219 @@ app.get('/subscription-status-poll/:checkoutRequestId', authMiddleware, adminOnl
 });
 
 
-// ═══════════════════════════════════════════════════════
-//  STACKLORD ROUTES
-//  All protected by stacklordAuth middleware
-//  These are YOUR routes as platform owner
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════
+// RULES
+// ═══════════════════════════════════════
 
-// ── GET /stacklord/stats — Platform overview ──
+// POST /rules — admin only
+app.post('/rules', authMiddleware, adminOnly, async (req, res) => {
+    try {
+        const rule = await Rule.create(req.body);
+        res.json(rule);
+    } catch (err) {
+        res.status(500).json({ message: 'Error adding rule' });
+    }
+});
+
+// GET /rules — public (tenants and guests can read rules)
+app.get('/rules', async (req, res) => {
+    try {
+        const rules = await Rule.find().sort({ createdAt: 1 });
+        res.json(rules);
+    } catch (err) {
+        res.status(500).json({ message: 'Error fetching rules' });
+    }
+});
+
+// DELETE /rules/:id — admin only
+app.delete('/rules/:id', authMiddleware, adminOnly, async (req, res) => {
+    try {
+        const rule = await Rule.findByIdAndDelete(req.params.id);
+        if (!rule) return res.status(404).json({ message: 'Rule not found' });
+        res.json({ message: 'Rule deleted ✅' });
+    } catch (err) {
+        res.status(500).json({ message: 'Error deleting rule' });
+    }
+});
+
+
+// ═══════════════════════════════════════
+// ANNOUNCEMENTS
+// ═══════════════════════════════════════
+
+// POST /announcements — admin only
+app.post('/announcements', authMiddleware, adminOnly, async (req, res) => {
+    try {
+        const a = await Announcement.create(req.body);
+        res.json(a);
+    } catch (err) {
+        res.status(500).json({ message: 'Error creating announcement' });
+    }
+});
+
+// GET /announcements — public (tenants read announcements)
+app.get('/announcements', async (req, res) => {
+    try {
+        const list = await Announcement.find().sort({ createdAt: -1 });
+        res.json(list);
+    } catch (err) {
+        res.status(500).json({ message: 'Error fetching announcements' });
+    }
+});
+
+// DELETE /announcements/:id — admin only
+app.delete('/announcements/:id', authMiddleware, adminOnly, async (req, res) => {
+    try {
+        const a = await Announcement.findByIdAndDelete(req.params.id);
+        if (!a) return res.status(404).json({ message: 'Announcement not found' });
+        res.json({ message: 'Announcement deleted ✅' });
+    } catch (err) {
+        res.status(500).json({ message: 'Error deleting announcement' });
+    }
+});
+
+
+// ═══════════════════════════════════════
+// MESSAGES
+// ═══════════════════════════════════════
+
+// POST /messages — FIX 11: tenant only (guards against admin or null tenantId)
+app.post('/messages', authMiddleware, async (req, res) => {
+    try {
+        if (req.user.role !== 'tenant') {
+            return res.status(403).json({ message: 'Tenants only. Admins use POST /messages/reply.' });
+        }
+        if (!req.user.tenantId) {
+            return res.status(400).json({ message: 'No tenant linked to this account' });
+        }
+
+        const { text } = req.body;
+        if (!text || !text.trim()) return res.status(400).json({ message: 'Message text is required' });
+
+        const msg = await Message.create({
+            tenant: req.user.tenantId,
+            sender: 'tenant',
+            text:   text.trim(),
+            isRead: false
+        });
+
+        res.json(msg);
+
+    } catch (err) {
+        res.status(500).json({ message: 'Error sending message' });
+    }
+});
+
+// POST /messages/reply — admin replies to a tenant
+app.post('/messages/reply', authMiddleware, adminOnly, async (req, res) => {
+    try {
+        const { tenantId, text } = req.body;
+        if (!tenantId || !text || !text.trim()) {
+            return res.status(400).json({ message: 'tenantId and text are required' });
+        }
+
+        const msg = await Message.create({
+            tenant: tenantId,
+            sender: 'admin',
+            text:   text.trim(),
+            isRead: false
+        });
+
+        res.json(msg);
+
+    } catch (err) {
+        res.status(500).json({ message: 'Error sending reply' });
+    }
+});
+
+// GET /messages/my — tenant's own thread
+app.get('/messages/my', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user.tenantId) {
+            return res.status(400).json({ message: 'No tenant linked to this account' });
+        }
+        const messages = await Message.find({ tenant: req.user.tenantId }).sort({ createdAt: 1 });
+        res.json(messages);
+    } catch (err) {
+        res.status(500).json({ message: 'Error fetching messages' });
+    }
+});
+
+// GET /messages/thread/:tenantId — admin views a tenant's thread
+app.get('/messages/thread/:tenantId', authMiddleware, adminOnly, async (req, res) => {
+    try {
+        const messages = await Message.find({ tenant: req.params.tenantId }).sort({ createdAt: 1 });
+        res.json(messages);
+    } catch (err) {
+        res.status(500).json({ message: 'Error fetching thread' });
+    }
+});
+
+// PUT /messages/read/:tenantId — FIX 12: admin OR tenant can call this
+// Admin: marks tenant→admin messages as read
+// Tenant: marks admin→tenant messages as read (own thread only)
+app.put('/messages/read/:tenantId', authMiddleware, async (req, res) => {
+    try {
+        if (req.user.role === 'tenant') {
+            // Tenant can only mark their own thread
+            if (String(req.user.tenantId) !== req.params.tenantId) {
+                return res.status(403).json({ message: 'Forbidden' });
+            }
+            // Mark admin messages in their thread as read
+            await Message.updateMany(
+                { tenant: req.params.tenantId, sender: 'admin', isRead: false },
+                { isRead: true }
+            );
+        } else {
+            // Admin: mark tenant messages as read
+            await Message.updateMany(
+                { tenant: req.params.tenantId, sender: 'tenant', isRead: false },
+                { isRead: true }
+            );
+        }
+
+        res.json({ message: 'Marked as read' });
+
+    } catch (err) {
+        res.status(500).json({ message: 'Error marking as read' });
+    }
+});
+
+// GET /messages/unread — admin: unread counts per tenant
+app.get('/messages/unread', authMiddleware, adminOnly, async (req, res) => {
+    try {
+        const unread = await Message.aggregate([
+            { $match: { sender: 'tenant', isRead: false } },
+            { $group: { _id: '$tenant', count: { $sum: 1 } } }
+        ]);
+        res.json(unread);
+    } catch (err) {
+        res.status(500).json({ message: 'Error fetching unread messages' });
+    }
+});
+
+// GET /messages/unread-mine — tenant: their unread count from admin
+app.get('/messages/unread-mine', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user.tenantId) return res.json({ count: 0 });
+
+        const count = await Message.countDocuments({
+            tenant: req.user.tenantId,
+            sender: 'admin',
+            isRead: false
+        });
+        res.json({ count });
+    } catch (err) {
+        res.status(500).json({ message: 'Error fetching unread count' });
+    }
+});
+
+
+// ═══════════════════════════════════════
+// STACKLORD ROUTES
+// ═══════════════════════════════════════
+
+// GET /stacklord/stats — platform overview
 app.get('/stacklord/stats', stacklordAuth, async (req, res) => {
     try {
         const admin = await User.findOne({ role: 'admin' })
@@ -1708,18 +1878,19 @@ app.get('/stacklord/stats', stacklordAuth, async (req, res) => {
             { $match: { status: 'paid' } },
             { $group: { _id: null, total: { $sum: '$amount' } } }
         ]);
-
         const totalRevenue = revenueResult[0]?.total || 0;
 
-        const now            = new Date();
-        let   daysRemaining  = 0;
-        let   expiryDate     = null;
+        const now           = new Date();
+        let   daysRemaining = 0;
+        let   expiryDate    = null;
 
         if (admin) {
             if (admin.subscriptionStatus === 'trial')  expiryDate = admin.trialEndsAt;
             if (admin.subscriptionStatus === 'active') expiryDate = admin.subscriptionExpiry;
             if (admin.subscriptionStatus === 'grace')  expiryDate = admin.gracePeriodUntil;
-            if (expiryDate) daysRemaining = Math.max(0, Math.ceil((new Date(expiryDate) - now) / (1000 * 60 * 60 * 24)));
+            if (expiryDate) {
+                daysRemaining = Math.max(0, Math.ceil((new Date(expiryDate) - now) / (1000 * 60 * 60 * 24)));
+            }
         }
 
         res.json({
@@ -1739,24 +1910,20 @@ app.get('/stacklord/stats', stacklordAuth, async (req, res) => {
     }
 });
 
-
-// ── GET /stacklord/subscription-payments — All subscription payments ──
+// GET /stacklord/subscription-payments
 app.get('/stacklord/subscription-payments', stacklordAuth, async (req, res) => {
     try {
         const payments = await SubscriptionPayment.find()
             .populate('plan', 'name price durationDays')
             .populate('landlord', 'name email')
             .sort({ createdAt: -1 });
-
         res.json(payments);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-
-// ── POST /stacklord/suspend — Suspend the landlord ──
-// Body: { reason }
+// POST /stacklord/suspend
 app.post('/stacklord/suspend', stacklordAuth, async (req, res) => {
     try {
         const { reason } = req.body;
@@ -1775,23 +1942,21 @@ app.post('/stacklord/suspend', stacklordAuth, async (req, res) => {
 
         if (!admin) return res.status(404).json({ message: 'Admin not found' });
 
-        res.json({ message: `Landlord suspended ✅`, reason, admin: admin.name });
+        res.json({ message: 'Landlord suspended ✅', reason, admin: admin.name });
 
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-
-// ── POST /stacklord/unsuspend — Restore landlord access ──
+// POST /stacklord/unsuspend
 app.post('/stacklord/unsuspend', stacklordAuth, async (req, res) => {
     try {
         const admin = await User.findOne({ role: 'admin' });
         if (!admin) return res.status(404).json({ message: 'Admin not found' });
 
-        // Restore to active if they have a valid expiry, otherwise trial
-        const now           = new Date();
-        let   newStatus     = 'trial';
+        const now       = new Date();
+        let   newStatus = 'trial';
 
         if (admin.subscriptionExpiry && admin.subscriptionExpiry > now) {
             newStatus = 'active';
@@ -1803,12 +1968,7 @@ app.post('/stacklord/unsuspend', stacklordAuth, async (req, res) => {
 
         await User.findOneAndUpdate(
             { role: 'admin' },
-            {
-                subscriptionStatus: newStatus,
-                suspendedReason:    null,
-                suspendedAt:        null,
-                suspendedBy:        null
-            }
+            { subscriptionStatus: newStatus, suspendedReason: null, suspendedAt: null, suspendedBy: null }
         );
 
         res.json({ message: `Landlord unsuspended ✅ — Status restored to: ${newStatus}` });
@@ -1818,9 +1978,7 @@ app.post('/stacklord/unsuspend', stacklordAuth, async (req, res) => {
     }
 });
 
-
-// ── POST /stacklord/extend — Manually extend subscription ──
-// Body: { days, note }
+// POST /stacklord/extend
 app.post('/stacklord/extend', stacklordAuth, async (req, res) => {
     try {
         const { days, note } = req.body;
@@ -1845,7 +2003,6 @@ app.post('/stacklord/extend', stacklordAuth, async (req, res) => {
             }
         );
 
-        // Log as a manual subscription payment
         await SubscriptionPayment.create({
             landlord:         admin._id,
             plan:             admin.subscriptionPlan || null,
@@ -1859,9 +2016,9 @@ app.post('/stacklord/extend', stacklordAuth, async (req, res) => {
         });
 
         res.json({
-            message:    `Subscription extended by ${days} days ✅`,
-            newExpiry:  newExpiry.toDateString(),
-            note:       note || null
+            message:   `Subscription extended by ${days} days ✅`,
+            newExpiry: newExpiry.toDateString(),
+            note:      note || null
         });
 
     } catch (err) {
@@ -1869,8 +2026,7 @@ app.post('/stacklord/extend', stacklordAuth, async (req, res) => {
     }
 });
 
-
-// ── GET /stacklord/plans — Get all plans (for Stacklord Console) ──
+// GET /stacklord/plans
 app.get('/stacklord/plans', stacklordAuth, async (req, res) => {
     try {
         const plans = await SubscriptionPlan.find().sort({ sortOrder: 1 });
@@ -1880,9 +2036,7 @@ app.get('/stacklord/plans', stacklordAuth, async (req, res) => {
     }
 });
 
-
-// ── POST /stacklord/plans — Create new plan ──
-// Body: { name, price, durationDays, description, features[], sortOrder }
+// POST /stacklord/plans
 app.post('/stacklord/plans', stacklordAuth, async (req, res) => {
     try {
         const { name, price, durationDays, description, features, sortOrder } = req.body;
@@ -1908,15 +2062,10 @@ app.post('/stacklord/plans', stacklordAuth, async (req, res) => {
     }
 });
 
-
-// ── PUT /stacklord/plans/:id — Update plan ──
+// PUT /stacklord/plans/:id
 app.put('/stacklord/plans/:id', stacklordAuth, async (req, res) => {
     try {
-        const plan = await SubscriptionPlan.findByIdAndUpdate(
-            req.params.id,
-            req.body,
-            { new: true }
-        );
+        const plan = await SubscriptionPlan.findByIdAndUpdate(req.params.id, req.body, { new: true });
         if (!plan) return res.status(404).json({ message: 'Plan not found' });
         res.json({ message: 'Plan updated ✅', plan });
     } catch (err) {
@@ -1924,8 +2073,7 @@ app.put('/stacklord/plans/:id', stacklordAuth, async (req, res) => {
     }
 });
 
-
-// ── DELETE /stacklord/plans/:id — Delete plan ──
+// DELETE /stacklord/plans/:id
 app.delete('/stacklord/plans/:id', stacklordAuth, async (req, res) => {
     try {
         const plan = await SubscriptionPlan.findByIdAndDelete(req.params.id);
@@ -1936,8 +2084,7 @@ app.delete('/stacklord/plans/:id', stacklordAuth, async (req, res) => {
     }
 });
 
-
-// ── POST /stacklord/plans/:id/toggle — Toggle plan active/inactive ──
+// POST /stacklord/plans/:id/toggle
 app.post('/stacklord/plans/:id/toggle', stacklordAuth, async (req, res) => {
     try {
         const plan = await SubscriptionPlan.findById(req.params.id);
@@ -1946,128 +2093,15 @@ app.post('/stacklord/plans/:id/toggle', stacklordAuth, async (req, res) => {
         plan.isActive = !plan.isActive;
         await plan.save();
 
-        res.json({
-            message:  `Plan ${plan.isActive ? 'activated' : 'deactivated'} ✅`,
-            isActive: plan.isActive
-        });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// ═══════════════════════════════════════
-// DASHBOARD
-// ═══════════════════════════════════════
-
-// GET /dashboard/:month
-app.get('/dashboard/:month', authMiddleware, adminOnly, async (req, res) => {
-    try {
-        const month    = req.params.month;
-        const tenants  = await Tenant.find().populate('house');
-        const houses   = await House.find();
-        const payments = await Payment.find({ month });
-
-        let totalIncome  = 0;
-        let totalArrears = 0;
-        let occupied     = 0;
-
-        payments.forEach(p => { totalIncome += p.amount; });
-        houses.forEach(h => { if (h.status === 'occupied') occupied++; });
-
-        for (const tenant of tenants) {
-            if (!tenant.house) continue;
-
-            const rent    = tenant.house.rent;
-            const payment = payments.find(p => p.tenant.toString() === tenant._id.toString());
-            const paid    = payment ? payment.amount : 0;
-            const arrears = Math.max(0, rent - paid);
-
-            if (arrears > 0) totalArrears += arrears;
-        }
-
-        res.json({
-            month,
-            totalIncome,
-            totalArrears,
-            totalTenants:   tenants.length,
-            totalHouses:    houses.length,
-            occupiedHouses: occupied,
-            vacantHouses:   houses.length - occupied
-        });
-
+        res.json({ message: `Plan ${plan.isActive ? 'activated' : 'deactivated'} ✅`, isActive: plan.isActive });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
 
-
-
-
-
-// GET /payment-status/:checkoutRequestId
-app.get('/payment-status/:checkoutRequestId', authMiddleware, async (req, res) => {
-    try {
-        const payment = await Payment.findOne({
-            checkoutRequestId: req.params.checkoutRequestId
-        });
-
-        if (!payment) return res.status(404).json({ status: 'not_found' });
-
-        res.json({
-            status:    payment.status,
-            paymentId: payment._id,
-            mpesaCode: payment.mpesaCode || null,
-            amount:    payment.amount,
-            month:     payment.month
-        });
-
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// POST /stk-query — manual fallback query to Safaricom
-app.post('/stk-query', authMiddleware, async (req, res) => {
-    try {
-        const { checkoutRequestId } = req.body;
-        if (!checkoutRequestId) return res.status(400).json({ message: 'checkoutRequestId required' });
-
-        const token     = await getToken();
-        const timestamp = new Date().toISOString().replace(/[-T:.Z]/g, '').slice(0, 14);
-        const password  = Buffer.from(
-            process.env.MPESA_SHORTCODE + process.env.MPESA_PASSKEY + timestamp
-        ).toString('base64');
-
-        const response = await axios.post(
-            'https://sandbox.safaricom.co.ke/mpesa/stkpushquery/v1/query',
-            {
-                BusinessShortCode: process.env.MPESA_SHORTCODE,
-                Password:          password,
-                Timestamp:         timestamp,
-                CheckoutRequestID: checkoutRequestId
-            },
-            { headers: { Authorization: `Bearer ${token}` } }
-        );
-
-        const data = response.data;
-
-        res.json({
-            resultCode: data.ResultCode,
-            resultDesc: data.ResultDesc,
-            success:    data.ResultCode === '0' || data.ResultCode === 0
-        });
-
-    } catch (err) {
-        res.status(500).json({
-            error:   'STK query failed',
-            details: err.response?.data || err.message
-        });
-    }
-});
-
 // ═══════════════════════════════════════
-// CRON — RENT REMINDERS (runs daily 9AM)
+// CRON — RENT REMINDERS (daily 9 AM)
 // ═══════════════════════════════════════
 
 async function checkArrears() {
@@ -2081,15 +2115,15 @@ async function checkArrears() {
         const tenants = await Tenant.find().populate('house');
 
         for (const tenant of tenants) {
-            if (!tenant.house)                   continue;
-            if (currentDay < tenant.dueDate)     continue;
+            if (!tenant.house)               continue;
+            if (currentDay < tenant.dueDate) continue;
 
-            const paid = await Payment.findOne({ tenant: tenant._id, month, status: 'paid' });
+            // FIX 15: use getMonthSummary so partial payers are not falsely reminded
+            const rent    = tenant.house.rent;
+            const summary = await getMonthSummary(tenant._id, month, rent);
 
-            if (!paid) {
-                const arrears = Math.max(0, tenant.house.rent);
-
-                console.log(`⚠️  ${tenant.name} has not paid for ${month} — Ksh ${arrears} owed`);
+            if (summary.status !== 'paid') {
+                console.log(`⚠️  ${tenant.name} — ${summary.status} for ${month} — balance Ksh ${summary.balance}`);
 
                 sendRentReminder({
                     name:    tenant.name,
@@ -2098,7 +2132,7 @@ async function checkArrears() {
                     rent:    tenant.house.rent,
                     month,
                     dueDate: tenant.dueDate,
-                    arrears
+                    arrears: summary.balance
                 }).catch(err =>
                     console.error(`Reminder email failed for ${tenant.name}:`, err.message)
                 );
@@ -2114,175 +2148,6 @@ async function checkArrears() {
 
 cron.schedule('0 9 * * *', () => { checkArrears(); });
 
-// ═══════════════════════════════════════
-// RULES
-// ═══════════════════════════════════════
-
-app.post('/rules', authMiddleware, adminOnly, async (req, res) => {
-    try {
-        const rule = await Rule.create(req.body);
-        res.json(rule);
-    } catch (err) {
-        res.status(500).json({ message: 'Error adding rule' });
-    }
-});
-
-app.get('/rules', async (req, res) => {
-    try {
-        const rules = await Rule.find().sort({ createdAt: -1 });
-        res.json(rules);
-    } catch (err) {
-        res.status(500).json({ message: 'Error fetching rules' });
-    }
-});
-
-app.delete('/rules/:id', authMiddleware, adminOnly, async (req, res) => {
-    try {
-        const rule = await Rule.findByIdAndDelete(req.params.id);
-        if (!rule) return res.status(404).json({ message: 'Rule not found' });
-        res.json({ message: 'Rule deleted ✅' });
-    } catch (err) {
-        res.status(500).json({ message: 'Error deleting rule' });
-    }
-});
-
-// ═══════════════════════════════════════
-// ANNOUNCEMENTS
-// ═══════════════════════════════════════
-
-app.post('/announcements', authMiddleware, adminOnly, async (req, res) => {
-    try {
-        const a = await Announcement.create(req.body);
-        res.json(a);
-    } catch (err) {
-        res.status(500).json({ message: 'Error creating announcement' });
-    }
-});
-
-app.get('/announcements', async (req, res) => {
-    try {
-        const list = await Announcement.find().sort({ createdAt: -1 });
-        res.json(list);
-    } catch (err) {
-        res.status(500).json({ message: 'Error fetching announcements' });
-    }
-});
-
-app.delete('/announcements/:id', authMiddleware, adminOnly, async (req, res) => {
-    try {
-        const a = await Announcement.findByIdAndDelete(req.params.id);
-        if (!a) return res.status(404).json({ message: 'Announcement not found' });
-        res.json({ message: 'Announcement deleted ✅' });
-    } catch (err) {
-        res.status(500).json({ message: 'Error deleting announcement' });
-    }
-});
-
-// ═══════════════════════════════════════
-// MESSAGES
-// ═══════════════════════════════════════
-
-// POST /messages — tenant sends
-app.post('/messages', authMiddleware, async (req, res) => {
-    try {
-        const { text } = req.body;
-        if (!text || !text.trim()) return res.status(400).json({ message: 'Message text is required' });
-
-        const msg = await Message.create({
-            tenant: req.user.tenantId,
-            sender: 'tenant',
-            text:   text.trim(),
-            isRead: false
-        });
-
-        res.json(msg);
-
-    } catch (err) {
-        res.status(500).json({ message: 'Error sending message' });
-    }
-});
-
-// POST /messages/reply — admin replies
-app.post('/messages/reply', authMiddleware, adminOnly, async (req, res) => {
-    try {
-        const { tenantId, text } = req.body;
-        if (!tenantId || !text || !text.trim()) {
-            return res.status(400).json({ message: 'tenantId and text are required' });
-        }
-
-        const msg = await Message.create({
-            tenant: tenantId,
-            sender: 'admin',
-            text:   text.trim(),
-            isRead: false
-        });
-
-        res.json(msg);
-
-    } catch (err) {
-        res.status(500).json({ message: 'Error sending reply' });
-    }
-});
-
-// GET /messages/my — tenant's thread
-app.get('/messages/my', authMiddleware, async (req, res) => {
-    try {
-        const messages = await Message.find({ tenant: req.user.tenantId }).sort({ createdAt: 1 });
-        res.json(messages);
-    } catch (err) {
-        res.status(500).json({ message: 'Error fetching messages' });
-    }
-});
-
-// GET /messages/thread/:tenantId — admin view
-app.get('/messages/thread/:tenantId', authMiddleware, adminOnly, async (req, res) => {
-    try {
-        const messages = await Message.find({ tenant: req.params.tenantId }).sort({ createdAt: 1 });
-        res.json(messages);
-    } catch (err) {
-        res.status(500).json({ message: 'Error fetching thread' });
-    }
-});
-
-// PUT /messages/read/:tenantId
-app.put('/messages/read/:tenantId', authMiddleware, adminOnly, async (req, res) => {
-    try {
-        await Message.updateMany(
-            { tenant: req.params.tenantId, sender: 'tenant', isRead: false },
-            { isRead: true }
-        );
-        res.json({ message: 'Marked as read' });
-    } catch (err) {
-        res.status(500).json({ message: 'Error marking as read' });
-    }
-});
-
-// GET /messages/unread — admin badge counts
-app.get('/messages/unread', authMiddleware, adminOnly, async (req, res) => {
-    try {
-        const unread = await Message.aggregate([
-            { $match: { sender: 'tenant', isRead: false } },
-            { $group: { _id: '$tenant', count: { $sum: 1 } } }
-        ]);
-        res.json(unread);
-    } catch (err) {
-        res.status(500).json({ message: 'Error fetching unread messages' });
-    }
-});
-
-// GET /messages/unread-mine — tenant unread count
-app.get('/messages/unread-mine', authMiddleware, async (req, res) => {
-    try {
-        const count = await Message.countDocuments({
-            tenant: req.user.tenantId,
-            sender: 'admin',
-            isRead: false
-        });
-        res.json({ count });
-    } catch (err) {
-        res.status(500).json({ message: 'Error fetching unread count' });
-    }
-});
 
 // ═══════════════════════════════════════
 // START
