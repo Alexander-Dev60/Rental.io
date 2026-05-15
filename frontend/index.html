@@ -803,6 +803,42 @@ function updateSubSidebarCard(data) {
     label.style.color = 'var(--danger)';
   }
 }
+let typingTimer;
+let deletingTimer;
+
+function typeBannerText(element, htmlText, speed = 22) {
+
+  clearTimeout(typingTimer);
+  clearTimeout(deletingTimer);
+
+  // temporary div to strip HTML safely for typing
+  const temp = document.createElement('div');
+  temp.innerHTML = htmlText;
+
+  const plainText = temp.textContent || temp.innerText || "";
+
+  let i = 0;
+  element.innerHTML = '';
+
+  function type() {
+
+    const currentText = plainText.substring(0, i);
+
+    // preserve link after typing finishes
+    if (i >= plainText.length) {
+      element.innerHTML = htmlText + `<span class="typing-cursor">▍</span>`;
+      return;
+    }
+
+    element.innerHTML = currentText + `<span class="typing-cursor">▍</span>`;
+
+    i++;
+
+    typingTimer = setTimeout(type, speed);
+  }
+
+  type();
+}
 
 function updateSubBanner(data) {
   const banner = document.getElementById('subBanner');
