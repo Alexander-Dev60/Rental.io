@@ -1,11 +1,10 @@
 // ═══════════════════════════════════════════════════════
 //  script.js — Admin API Layer
-//  All fetch() calls to the backend live here.
+//  All fetch() calls live here.
 //  index.js handles rendering / DOM only.
 // ═══════════════════════════════════════════════════════
 
-
-const API= window.API;
+const API = window.API;
 
 function getToken() {
     return localStorage.getItem('token');
@@ -23,7 +22,7 @@ function logout() {
     window.location.href = 'auth.html';
 }
 
-// ─── Guard: redirect if not logged in or not admin ───
+// ── Guard: redirect if not logged in or not admin ──
 (function guardAdmin() {
     const token = getToken();
     if (!token) { window.location.href = 'landing.html'; return; }
@@ -38,9 +37,10 @@ function logout() {
     }
 })();
 
-// ═══════════════════════════════════════════
+
+// ═══════════════════════════════════════
 // DASHBOARD
-// ═══════════════════════════════════════════
+// ═══════════════════════════════════════
 
 async function loadDashboard() {
     const month = document.getElementById('dashMonth').value.trim();
@@ -52,10 +52,13 @@ async function loadDashboard() {
         });
         const data = await res.json();
 
-        if (!res.ok) { showToast(data.message || 'Failed to load dashboard', 'error'); return; }
+        if (!res.ok) {
+            showToast(data.message || 'Failed to load dashboard', 'error');
+            return;
+        }
 
-        document.getElementById('income').textContent       = `${data.totalIncome.toLocaleString()}`;
-        document.getElementById('arrears').textContent      = `${data.totalArrears.toLocaleString()}`;
+        document.getElementById('income').textContent       = data.totalIncome.toLocaleString();
+        document.getElementById('arrears').textContent      = data.totalArrears.toLocaleString();
         document.getElementById('occupied').textContent     = data.occupiedHouses;
         document.getElementById('vacant').textContent       = data.vacantHouses;
         document.getElementById('totalTenants').textContent = data.totalTenants;
@@ -68,9 +71,10 @@ async function loadDashboard() {
     }
 }
 
-// ═══════════════════════════════════════════
+
+// ═══════════════════════════════════════
 // TENANTS
-// ═══════════════════════════════════════════
+// ═══════════════════════════════════════
 
 let _allTenants = [];
 
@@ -78,7 +82,10 @@ async function loadTenants() {
     try {
         const res     = await fetch(`${API}/tenants`, { headers: authHeaders() });
         const tenants = await res.json();
-        _allTenants   = tenants;
+
+        if (!res.ok) { showToast('Failed to load tenants', 'error'); return; }
+
+        _allTenants = tenants;
 
         renderTenantList(tenants);
         populateTenantSelects(tenants);
@@ -102,8 +109,11 @@ async function loadTenantProfile(id) {
     try {
         const res  = await fetch(`${API}/tenant/${id}`, { headers: authHeaders() });
         const data = await res.json();
+
         if (!res.ok) { showToast(data.message || 'Failed to load profile', 'error'); return; }
+
         renderProfile(data);
+
     } catch (err) {
         showToast('Network error', 'error');
         console.error(err);
@@ -123,19 +133,18 @@ async function addTenant() {
 
     try {
         const res  = await fetch(`${API}/register`, {
-            method: 'POST',
+            method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, phone, email, password, dueDate: Number(dueDate) })
+            body:    JSON.stringify({ name, phone, email, password, dueDate: Number(dueDate) })
         });
         const data = await res.json();
 
         if (!res.ok) { showToast(data.message || 'Failed to create tenant', 'error'); return; }
 
-        showToast(`${name} created successfully`, 'success');
+        showToast(`${name} created successfully ✅`, 'success');
 
-        // Clear form
-        ['newName','newPhone','newEmail','newPassword','newDueDate']
-            .forEach(id => document.getElementById(id).value = '');
+        ['newName', 'newPhone', 'newEmail', 'newPassword', 'newDueDate']
+            .forEach(id => { document.getElementById(id).value = ''; });
 
         await loadTenants();
 
@@ -148,7 +157,7 @@ async function addTenant() {
 async function deleteTenant(id) {
     try {
         const res  = await fetch(`${API}/tenant/${id}`, {
-            method: 'DELETE',
+            method:  'DELETE',
             headers: authHeaders()
         });
         const data = await res.json();
@@ -157,8 +166,10 @@ async function deleteTenant(id) {
 
         showToast('Tenant deleted', 'success');
         closeModal('modal-delete');
+
         document.getElementById('profileOutput').innerHTML =
             '<div class="empty-state"><span class="icon">👤</span>Select a tenant to view profile</div>';
+
         await loadTenants();
 
     } catch (err) {
@@ -169,17 +180,16 @@ async function deleteTenant(id) {
 
 async function resetTenantPassword(tenantId, newPassword) {
     try {
-        // Calls a backend endpoint to reset password by tenantId
         const res  = await fetch(`${API}/reset-password`, {
-            method: 'POST',
+            method:  'POST',
             headers: authHeaders(),
-            body: JSON.stringify({ tenantId, newPassword })
+            body:    JSON.stringify({ tenantId, newPassword })
         });
         const data = await res.json();
 
         if (!res.ok) { showToast(data.message || 'Reset failed', 'error'); return; }
 
-        showToast('Password reset successfully', 'success');
+        showToast('Password reset successfully ✅', 'success');
         closeModal('modal-reset');
 
     } catch (err) {
@@ -189,15 +199,16 @@ async function resetTenantPassword(tenantId, newPassword) {
 }
 
 
-
-// ═══════════════════════════════════════════
+// ═══════════════════════════════════════
 // HOUSES
-// ═══════════════════════════════════════════
+// ═══════════════════════════════════════
 
 async function loadHouses() {
     try {
         const res    = await fetch(`${API}/houses`, { headers: authHeaders() });
         const houses = await res.json();
+
+        if (!res.ok) { showToast('Failed to load houses', 'error'); return; }
 
         renderHouseGrid(houses);
         populateHouseSelects(houses);
@@ -218,13 +229,13 @@ async function addHouse() {
         const res  = await fetch(`${API}/houses`, {
             method:  'POST',
             headers: authHeaders(),
-            body: JSON.stringify({ name, rent: Number(rent) })
+            body:    JSON.stringify({ name, rent: Number(rent) })
         });
         const data = await res.json();
 
         if (!res.ok) { showToast(data.message || 'Failed to add house', 'error'); return; }
 
-        showToast(`House ${name} added`, 'success');
+        showToast(`House ${name} added ✅`, 'success');
         document.getElementById('houseName').value = '';
         document.getElementById('houseRent').value = '';
         await loadHouses();
@@ -246,7 +257,7 @@ async function deleteHouse(id) {
 
         if (!res.ok) { showToast(data.message || 'Delete failed', 'error'); return; }
 
-        showToast('House deleted', 'success');
+        showToast('House deleted ✅', 'success');
         await loadHouses();
 
     } catch (err) {
@@ -282,7 +293,6 @@ async function assignHouse() {
 async function moveOutTenant() {
     const tenantId = document.getElementById('moveOutSelect').value;
     if (!tenantId) { showToast('Select a tenant', 'warn'); return; }
-
     if (!confirm('Move this tenant out?')) return;
 
     try {
@@ -303,14 +313,119 @@ async function moveOutTenant() {
     }
 }
 
-// ═══════════════════════════════════════════
-// PAYMENTS
-// ═══════════════════════════════════════════
+
+// ═══════════════════════════════════════
+// PAYMENT SUMMARY (FIX 1, 13)
+// Fetches monthly summary for a tenant and renders
+// the progress bar + breakdown in the payments section
+// ═══════════════════════════════════════
+
+async function loadPaymentSummary() {
+    const tenantId = document.getElementById('payTenantSelect').value;
+    const month    = document.getElementById('month').value.trim();
+
+    const box = document.getElementById('paymentSummaryBox');
+    if (!tenantId || !month) { box.style.display = 'none'; return; }
+
+    try {
+        const res  = await fetch(
+            `${API}/payments/summary/${tenantId}/${encodeURIComponent(month)}`,
+            { headers: authHeaders() }
+        );
+        const data = await res.json();
+
+        if (!res.ok) { box.style.display = 'none'; return; }
+
+        // Populate summary rows
+        document.getElementById('sumRent').textContent    = `Ksh ${Number(data.rentAmount).toLocaleString()}`;
+        document.getElementById('sumPaid').textContent    = `Ksh ${Number(data.totalPaid).toLocaleString()}`;
+        document.getElementById('sumBalance').textContent = `Ksh ${Number(data.balance).toLocaleString()}`;
+
+        const statusEl = document.getElementById('sumStatus');
+        statusEl.innerHTML = data.status === 'paid'
+            ? '<span class="pill pill-green">Paid ✅</span>'
+            : data.status === 'partial'
+            ? '<span class="pill pill-yellow">Partial ⚠️</span>'
+            : '<span class="pill pill-red">Unpaid ❌</span>';
+
+        // Progress bar
+        const pct      = data.rentAmount > 0 ? Math.min(100, Math.round((data.totalPaid / data.rentAmount) * 100)) : 0;
+        const bar      = document.getElementById('progressBar');
+        bar.style.width = `${pct}%`;
+        bar.className   = `payment-progress-bar ${data.status === 'paid' ? 'paid' : 'partial'}`;
+
+        document.getElementById('progressLabel').textContent = `${pct}% paid`;
+
+        // Pre-fill amount with remaining balance if unpaid/partial
+        if (data.status !== 'paid') {
+            document.getElementById('amount').value = data.balance;
+        }
+
+        box.style.display = 'block';
+
+    } catch (err) {
+        console.error('loadPaymentSummary error:', err);
+        document.getElementById('paymentSummaryBox').style.display = 'none';
+    }
+}
+
+// Modal payment summary (FIX 1, 13)
+async function loadModalSummary() {
+    const tenantId = document.getElementById('payModalTenantId').value;
+    const month    = document.getElementById('payModalMonth').value.trim();
+
+    const box = document.getElementById('modalSummaryBox');
+    if (!tenantId || !month) { box.style.display = 'none'; return; }
+
+    try {
+        const res  = await fetch(
+            `${API}/payments/summary/${tenantId}/${encodeURIComponent(month)}`,
+            { headers: authHeaders() }
+        );
+        const data = await res.json();
+
+        if (!res.ok) { box.style.display = 'none'; return; }
+
+        document.getElementById('modalSumRent').textContent    = `Ksh ${Number(data.rentAmount).toLocaleString()}`;
+        document.getElementById('modalSumPaid').textContent    = `Ksh ${Number(data.totalPaid).toLocaleString()}`;
+        document.getElementById('modalSumBalance').textContent = `Ksh ${Number(data.balance).toLocaleString()}`;
+
+        const statusEl = document.getElementById('modalSumStatus');
+        statusEl.innerHTML = data.status === 'paid'
+            ? '<span class="pill pill-green">Paid ✅</span>'
+            : data.status === 'partial'
+            ? '<span class="pill pill-yellow">Partial ⚠️</span>'
+            : '<span class="pill pill-red">Unpaid ❌</span>';
+
+        const pct = data.rentAmount > 0 ? Math.min(100, Math.round((data.totalPaid / data.rentAmount) * 100)) : 0;
+        const bar = document.getElementById('modalProgressBar');
+        bar.style.width = `${pct}%`;
+        bar.className   = `payment-progress-bar ${data.status === 'paid' ? 'paid' : 'partial'}`;
+
+        // Pre-fill amount with balance
+        if (data.status !== 'paid') {
+            document.getElementById('payModalAmount').value = data.balance;
+        }
+
+        box.style.display = 'block';
+
+    } catch (err) {
+        console.error('loadModalSummary error:', err);
+        document.getElementById('modalSummaryBox').style.display = 'none';
+    }
+}
+
+
+// ═══════════════════════════════════════
+// PAYMENTS (FIX 7, 8, 20)
+// ═══════════════════════════════════════
 
 async function makePayment() {
     const tenantId = document.getElementById('payTenantSelect').value;
     const amount   = document.getElementById('amount').value;
     const month    = document.getElementById('month').value.trim();
+    const method   = document.getElementById('payMethod').value;           // FIX 7
+    const note     = document.getElementById('payNote').value.trim();      // FIX 7
 
     if (!tenantId || !amount || !month) { showToast('All fields required', 'warn'); return; }
 
@@ -318,7 +433,7 @@ async function makePayment() {
         const res  = await fetch(`${API}/payments`, {
             method:  'POST',
             headers: authHeaders(),
-            body: JSON.stringify({ tenantId, amount: Number(amount), month })
+            body:    JSON.stringify({ tenantId, amount: Number(amount), month, method, note })
         });
         const data = await res.json();
 
@@ -326,7 +441,14 @@ async function makePayment() {
 
         showToast('Payment recorded & receipt emailed ✅', 'success');
 
+        // FIX 20: refresh tenant list + arrears after payment
+        await loadTenants();
+        loadArrears();
+
         if (data.paymentId) loadAutoReceipt(data.paymentId);
+
+        // Refresh summary box
+        loadPaymentSummary();
 
     } catch (err) {
         showToast('Network error', 'error');
@@ -334,11 +456,13 @@ async function makePayment() {
     }
 }
 
-// Called from modal (pay from tenant context menu)
+// Called from modal (pay from tenant context menu) — FIX 8, 20
 async function submitModalPayment() {
     const tenantId = document.getElementById('payModalTenantId').value;
     const amount   = document.getElementById('payModalAmount').value;
     const month    = document.getElementById('payModalMonth').value.trim();
+    const method   = document.getElementById('payModalMethod').value;      // FIX 8
+    const note     = document.getElementById('payModalNote').value.trim(); // FIX 8
 
     if (!amount || !month) { showToast('Fill all fields', 'warn'); return; }
 
@@ -346,7 +470,7 @@ async function submitModalPayment() {
         const res  = await fetch(`${API}/payments`, {
             method:  'POST',
             headers: authHeaders(),
-            body: JSON.stringify({ tenantId, amount: Number(amount), month })
+            body:    JSON.stringify({ tenantId, amount: Number(amount), month, method, note })
         });
         const data = await res.json();
 
@@ -354,6 +478,10 @@ async function submitModalPayment() {
 
         showToast('Payment recorded ✅', 'success');
         closeModal('modal-pay');
+
+        // FIX 20: refresh data after payment
+        await loadTenants();
+        loadArrears();
 
         if (data.paymentId) {
             showSection('payments');
@@ -370,9 +498,12 @@ async function loadAutoReceipt(paymentId) {
     try {
         const res  = await fetch(`${API}/receipt/${paymentId}`, { headers: authHeaders() });
         const data = await res.json();
+
+        if (!res.ok) return;
         renderReceipt(data, 'autoReceipt');
+
     } catch (err) {
-        console.error(err);
+        console.error('loadAutoReceipt error:', err);
     }
 }
 
@@ -394,25 +525,86 @@ async function loadReceipt() {
     }
 }
 
-function downloadPDF(paymentId) {
-    window.open(`${API}/receipt/pdf/${paymentId}`, '_blank');
+// FIX 15: PDF download with auth — fetch as blob, create object URL
+async function downloadPDF(paymentId) {
+    try {
+        const res = await fetch(`${API}/receipt/pdf/${paymentId}`, {
+            headers: { 'Authorization': 'Bearer ' + getToken() }
+        });
+
+        if (!res.ok) { showToast('PDF not found', 'error'); return; }
+
+        const blob = await res.blob();
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = `receipt-${paymentId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+    } catch (err) {
+        showToast('Failed to download PDF', 'error');
+        console.error(err);
+    }
 }
 
-// ═══════════════════════════════════════════════════════
-//  REPLACE THESE FUNCTIONS IN admin script.js
-// ═══════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════
+// ARREARS (FIX 11)
+// Fetch moved here from index.js to maintain separation of concerns.
+// Rendering stays in index.js (renderArrearsTable).
+// ═══════════════════════════════════════
+
+async function loadArrears() {
+    const monthInput = document.getElementById('arrearsMonth');
+    const month      = monthInput ? monthInput.value.trim() : '';
+
+    const url = month
+        ? `${API}/arrears/${encodeURIComponent(month)}`
+        : `${API}/arrears`;
+
+    try {
+        const res  = await fetch(url, { headers: authHeaders() });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            showToast(err.message || `Failed to load arrears (${res.status})`, 'error');
+            return;
+        }
+
+        const data = await res.json();
+
+        if (!Array.isArray(data)) {
+            showToast('Unexpected response from server', 'error');
+            return;
+        }
+
+        renderArrearsTable(data);
+
+        const badge = document.getElementById('arrearsBadge');
+        if (badge) {
+            badge.textContent   = data.length;
+            badge.style.display = data.length > 0 ? 'inline-block' : 'none';
+        }
+
+    } catch (err) {
+        showToast('Failed to load arrears', 'error');
+        console.error('loadArrears error:', err);
+    }
+}
 
 
-// ════════════════════════════════
-// MESSAGES — replace all 3 functions
-// ════════════════════════════════
+// ═══════════════════════════════════════
+// MESSAGES
+// ═══════════════════════════════════════
 
 async function loadAdminChat() {
     const tenantId = document.getElementById('chatTenant').value;
-    if (!tenantId) return;
+    if (!tenantId) return; // guard against empty select
 
     try {
-        // FIX: use /messages/thread/:tenantId instead of /messages/my
         const res  = await fetch(`${API}/messages/thread/${tenantId}`, {
             headers: authHeaders()
         });
@@ -427,7 +619,6 @@ async function loadAdminChat() {
             method: 'PUT', headers: authHeaders()
         });
 
-        // Refresh unread badge
         loadUnread();
 
     } catch (err) {
@@ -435,7 +626,6 @@ async function loadAdminChat() {
         console.error(err);
     }
 }
-
 
 async function sendAdminMessage() {
     const tenantId = document.getElementById('chatTenant').value;
@@ -445,24 +635,24 @@ async function sendAdminMessage() {
     if (!text)     return;
 
     try {
-        // FIX: use /messages/reply with tenantId in body
-        const res = await fetch(`${API}/messages/reply`, {
+        const res  = await fetch(`${API}/messages/reply`, {
             method:  'POST',
             headers: authHeaders(),
             body:    JSON.stringify({ tenantId, text })
         });
-
         const data = await res.json();
+
         if (!res.ok) { showToast(data.message || 'Send failed', 'error'); return; }
 
         document.getElementById('adminMsg').value = '';
-        await loadAdminChat(); // reload thread
+        await loadAdminChat();
 
     } catch (err) {
         showToast('Network error', 'error');
         console.error(err);
     }
 }
+
 // Enter key sends message
 document.getElementById('adminMsg').addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAdminMessage(); }
@@ -477,27 +667,27 @@ async function loadUnread() {
 
         renderUnreadSummary(data);
 
-        const total = data.reduce((s, d) => s + d.count, 0);
+        const total    = data.reduce((s, d) => s + d.count, 0);
         const badge    = document.getElementById('msgBadge');
         const navBadge = document.querySelector('.nav-item[onclick*="messages"] .nav-badge');
 
         if (total > 0) {
-            if (badge) { badge.textContent = total; badge.style.display = 'inline-block'; }
+            if (badge)    { badge.textContent = total; badge.style.display = 'inline-block'; }
             if (navBadge) { navBadge.textContent = total; navBadge.style.display = 'inline-block'; }
         } else {
-            if (badge) badge.style.display = 'none';
+            if (badge)    badge.style.display    = 'none';
             if (navBadge) navBadge.style.display = 'none';
         }
 
     } catch (err) {
-        console.error(err);
+        console.error('loadUnread error:', err);
     }
 }
 
 
-// ════════════════════════════════
-// RULES — replace addRule() + add deleteRule()
-// ════════════════════════════════
+// ═══════════════════════════════════════
+// RULES
+// ═══════════════════════════════════════
 
 async function addRule() {
     const title   = document.getElementById('ruleTitle').value.trim();
@@ -526,7 +716,6 @@ async function addRule() {
     }
 }
 
-
 async function deleteRule(id) {
     try {
         const res  = await fetch(`${API}/rules/${id}`, {
@@ -544,11 +733,16 @@ async function deleteRule(id) {
         console.error(err);
     }
 }
+
 async function loadRules() {
     try {
-        const res   = await fetch(`${API}/rules`);
+        const res   = await fetch(`${API}/rules`, { headers: authHeaders() });
         const rules = await res.json();
-        renderRules(rules);  // renderRules is in index.js
+
+        if (!res.ok) { showToast('Failed to load rules', 'error'); return; }
+
+        renderRules(rules);
+
     } catch (err) {
         showToast('Failed to load rules', 'error');
         console.error(err);
@@ -556,10 +750,9 @@ async function loadRules() {
 }
 
 
-
-// ════════════════════════════════
-// ANNOUNCEMENTS — replace addAnnouncement() + add deleteAnnouncement()
-// ════════════════════════════════
+// ═══════════════════════════════════════
+// ANNOUNCEMENTS
+// ═══════════════════════════════════════
 
 async function addAnnouncement() {
     const message = document.getElementById('announcementText').value.trim();
@@ -585,7 +778,6 @@ async function addAnnouncement() {
     }
 }
 
-
 async function deleteAnnouncement(id) {
     try {
         const res  = await fetch(`${API}/announcements/${id}`, {
@@ -604,35 +796,46 @@ async function deleteAnnouncement(id) {
     }
 }
 
-
 async function loadAnnouncements() {
     try {
-        const res  = await fetch(`${API}/announcements`);
+        const res  = await fetch(`${API}/announcements`, { headers: authHeaders() });
         const data = await res.json();
+
+        if (!res.ok) return;
+
         renderAnnouncements(data);
+
     } catch (err) {
-        console.error(err);
+        console.error('loadAnnouncements error:', err);
     }
 }
 
-// ═══════════════════════════════════════════
-// RULES
-// ═══════════════════════════════════════════
 
+// ═══════════════════════════════════════
+// MAINTENANCE MODE (FIX 9)
+// ═══════════════════════════════════════
 
+// FIX 9: always sync from server, never trust localStorage for maintenance state
+async function syncMaintenanceToggle() {
+    try {
+        const res  = await fetch(`${API}/maintenance`, { headers: authHeaders() });
+        const data = await res.json();
 
-// ═══════════════════════════════════════════
-// MAINTENANCE MODE
-// ═══════════════════════════════════════════
+        const toggle = document.getElementById('maintenanceToggle');
+        const chip   = document.getElementById('maintenanceChip');
 
-// ═══════════════════════════════════════════════════════
-//  PART 1 — REPLACE toggleMaintenance() IN admin script.js
-// ═══════════════════════════════════════════════════════
+        if (toggle) toggle.checked       = data.maintenanceMode;
+        if (chip)   chip.style.display   = data.maintenanceMode ? 'inline-block' : 'none';
+
+    } catch (err) {
+        console.error('Could not sync maintenance state:', err.message);
+    }
+}
 
 async function toggleMaintenance() {
     const on  = document.getElementById('maintenanceToggle').checked;
     const msg = on
-        ? (prompt('Optional: Set a maintenance message for tenants (or press OK for default)') || '')
+        ? (prompt('Optional: maintenance message for tenants (press OK for default)') || '')
         : '';
 
     try {
@@ -644,85 +847,53 @@ async function toggleMaintenance() {
                 maintenanceMessage: msg || 'The system is currently under maintenance. Please check back later.'
             })
         });
-
         const data = await res.json();
 
         if (!res.ok) {
             showToast(data.message || 'Failed to update maintenance mode', 'error');
-            // Revert toggle UI if failed
             document.getElementById('maintenanceToggle').checked = !on;
             return;
         }
 
-        // Update chip in topbar
         const chip = document.getElementById('maintenanceChip');
         chip.style.display = on ? 'inline-block' : 'none';
 
-        // Persist in localStorage as a UI memory only
-        localStorage.setItem('maintenance', on ? 'true' : 'false');
-
-        showToast(on ? '🔧 Maintenance mode ON — tenants are locked out' : '✅ Maintenance mode OFF', on ? 'warn' : 'success');
+        showToast(
+            on ? '🔧 Maintenance mode ON — tenants are locked out' : '✅ Maintenance mode OFF',
+            on ? 'warn' : 'success'
+        );
 
     } catch (err) {
         showToast('Network error', 'error');
-        // Revert toggle UI
         document.getElementById('maintenanceToggle').checked = !on;
         console.error(err);
     }
 }
 
 
-// Also update window DOMContentLoaded in script.js
-// REPLACE the maintenance block in your DOMContentLoaded with this:
-
-async function syncMaintenanceToggle() {
-    try {
-        const res  = await fetch(`${API}/maintenance`);
-        const data = await res.json();
-
-        const toggle = document.getElementById('maintenanceToggle');
-        const chip   = document.getElementById('maintenanceChip');
-
-        if (toggle) toggle.checked         = data.maintenanceMode;
-        if (chip)   chip.style.display     = data.maintenanceMode ? 'inline-block' : 'none';
-        localStorage.setItem('maintenance', data.maintenanceMode ? 'true' : 'false');
-
-    } catch (err) {
-        console.error('Could not sync maintenance state:', err);
-    }
-}
-
-// In your DOMContentLoaded, replace:
-//   const maintenance = localStorage.getItem('maintenance') === 'true';
-//   ...
-// With just:
-//   syncMaintenanceToggle();
-
-
-
-
-
-// ═══════════════════════════════════════════
+// ═══════════════════════════════════════
 // MODAL TRIGGERS (from tenant context menu)
-// ═══════════════════════════════════════════
+// ═══════════════════════════════════════
 
 function openPayModal(tenant) {
-    document.getElementById('payModalTenantId').value   = tenant._id;
+    document.getElementById('payModalTenantId').value         = tenant._id;
     document.getElementById('payModalTenantName').textContent = `Paying for: ${tenant.name}`;
-    document.getElementById('payModalAmount').value     = '';
-    document.getElementById('payModalMonth').value      = '';
+    document.getElementById('payModalAmount').value           = '';
+    document.getElementById('payModalMonth').value            = '';
+    document.getElementById('payModalNote').value             = '';
+    document.getElementById('modalSummaryBox').style.display  = 'none';
     openModal('modal-pay');
 }
 
 function openResetModal(tenant) {
-    document.getElementById('resetModalTenantId').value   = tenant._id;
+    document.getElementById('resetModalTenantId').value         = tenant._id;
     document.getElementById('resetModalTenantName').textContent = `Reset password for: ${tenant.name}`;
-    document.getElementById('newResetPassword').value     = '';
+    document.getElementById('newResetPassword').value           = '';
     openModal('modal-reset');
 }
 
 function openDeleteModal(tenant) {
-    document.getElementById('deleteModalTenantId').value   = tenant._id;
+    document.getElementById('deleteModalTenantId').value         = tenant._id;
     document.getElementById('deleteModalTenantName').textContent = tenant.name;
     openModal('modal-delete');
 }
@@ -739,27 +910,54 @@ async function submitDeleteTenant() {
     await deleteTenant(id);
 }
 
-// ─── Init: load data that's always needed ───
+
+// ═══════════════════════════════════════
+// INIT (FIX 9, 19)
+// ═══════════════════════════════════════
+
 window.addEventListener('DOMContentLoaded', () => {
+    // Theme
     const saved = localStorage.getItem('theme') || 'dark';
     setTheme(saved);
 
-    const maintenance = localStorage.getItem('maintenance') === 'true';
-    document.getElementById('maintenanceToggle').checked = maintenance;
-    if (maintenance) document.getElementById('maintenanceChip').style.display = 'inline-block';
+    // FIX 9: sync maintenance from server, not localStorage
+    syncMaintenanceToggle();
 
+    // FIX 19: auto-populate current month in dashboard input
+    const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+    const dashMonthEl  = document.getElementById('dashMonth');
+    if (dashMonthEl) dashMonthEl.value = currentMonth;
+
+    // Load initial data
     loadTenants();
     loadHouses();
     loadAnnouncements();
     loadRules();
     loadUnread();
+
+    // FIX 19: auto-load dashboard for current month
+    loadDashboard();
 });
 
-setInterval(loadUnread, 10000); // Refresh unread messages every 10s
 
+// ═══════════════════════════════════════
+// POLLING INTERVALS (FIX 10, 11)
+// ═══════════════════════════════════════
 
-setInterval(loadHouses,30000); // Refresh house status every 30s
+// Unread messages — every 15s
+setInterval(loadUnread, 15000);
 
-setInterval(loadArrears, 60000); // Refresh arrears every 60s
-setInterval(loadTenants,30000); // Refresh tenant list every 30s
-setInterval(loadAdminChat, 10000); // Refresh chat every 10s if open
+// House status — every 30s
+setInterval(loadHouses, 30000);
+
+// Arrears — every 60s (FIX 11: now calls script.js function, not index.js)
+setInterval(loadArrears, 60000);
+
+// Tenant list — every 30s
+setInterval(loadTenants, 30000);
+
+// FIX 10: only poll chat if a tenant is actually selected
+setInterval(() => {
+    const tenantId = document.getElementById('chatTenant')?.value;
+    if (tenantId) loadAdminChat();
+}, 15000);
