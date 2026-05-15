@@ -501,7 +501,7 @@ app.post('/tenants', authMiddleware, adminOnly, async (req, res) => {
 // PUT /tenants/:id — admin only
 app.put('/tenants/:id', authMiddleware, adminOnly, async (req, res) => {
     try {
-        const updated = await Tenant.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        const updated = await Tenant.findByIdAndUpdate(req.params.id, req.body, { returnDocument: 'after' });
         res.json(updated);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -564,7 +564,7 @@ app.get('/houses', authMiddleware, async (req, res) => {
 // PUT /houses/:id — admin only
 app.put('/houses/:id', authMiddleware, adminOnly, async (req, res) => {
     try {
-        const updated = await House.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        const updated = await House.findByIdAndUpdate(req.params.id, req.body, { returnDocument: 'after' });
         res.json(updated);
     } catch (err) {
         res.status(500).json({ error: err.message });
