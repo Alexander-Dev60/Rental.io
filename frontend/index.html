@@ -712,6 +712,12 @@
 
 <div id="toast"></div>
 
+<!-- ═══════════════════════════════════════
+     REPLACE the entire <script> block in index.html
+     (the one before <script src="config.js">)
+     with this fixed version
+═══════════════════════════════════════ -->
+
 <script>
 // ═══════════════════════════════════════
 // THEME SYSTEM
@@ -719,29 +725,34 @@
 function setTheme(name) {
   document.documentElement.setAttribute('data-theme', name);
   localStorage.setItem('admin-theme', name);
-  document.querySelectorAll('.theme-dot').forEach(d => d.classList.toggle('active', d.dataset.theme === name));
+  document.querySelectorAll('.theme-dot').forEach(d =>
+    d.classList.toggle('active', d.dataset.theme === name)
+  );
 }
 
 (function () {
   const saved = localStorage.getItem('admin-theme') || 'dark';
   document.documentElement.setAttribute('data-theme', saved);
-  document.querySelectorAll('.theme-dot').forEach(d => d.classList.toggle('active', d.dataset.theme === saved));
+  document.querySelectorAll('.theme-dot').forEach(d =>
+    d.classList.toggle('active', d.dataset.theme === saved)
+  );
 })();
+
 
 // ═══════════════════════════════════════
 // SUBSCRIPTION UI
 // ═══════════════════════════════════════
 
-let selectedPlanId   = null;
-let subPollingTimer  = null;
-let subCountdownTimer = null;
+let selectedPlanId  = null;
+let subPollingTimer = null;
 
+// ── Called on page load after CONFIG is available ──
 async function loadSubscriptionStatus() {
   try {
     const token = localStorage.getItem('token');
     if (!token) return;
 
-    const res  = await fetch(`${CONFIG.API_URL}/subscription-status`, {
+    const res = await fetch(`${CONFIG.API_URL}/subscription-status`, {
       headers: { Authorization: `Bearer ${token}` }
     });
 
@@ -761,20 +772,25 @@ function updateSubSidebarCard(data) {
   const badge = document.getElementById('subStatusBadge');
   const fill  = document.getElementById('subProgressFill');
   const label = document.getElementById('subDaysLabel');
+  if (!badge || !fill || !label) return;
 
-  badge.textContent  = data.subscriptionStatus;
-  badge.className    = `sub-status-badge ${data.subscriptionStatus}`;
-  fill.className     = `sub-progress-fill ${data.subscriptionStatus}`;
+  badge.textContent = data.subscriptionStatus;
+  badge.className   = `sub-status-badge ${data.subscriptionStatus}`;
+  fill.className    = `sub-progress-fill ${data.subscriptionStatus}`;
 
-  const pct = Math.min(100, Math.round((data.daysRemaining / 30) * 100));
-  fill.style.width   = `${pct}%`;
+  const pct        = Math.min(100, Math.round((data.daysRemaining / 30) * 100));
+  fill.style.width = `${pct}%`;
 
   if (data.subscriptionStatus === 'suspended') {
     label.textContent = 'Account suspended';
     label.style.color = 'var(--danger)';
   } else if (data.daysRemaining > 0) {
     label.textContent = `${data.daysRemaining} days remaining`;
-    label.style.color = data.daysRemaining <= 7 ? 'var(--danger)' : data.daysRemaining <= 14 ? 'var(--warn)' : 'var(--text-dim)';
+    label.style.color = data.daysRemaining <= 7
+      ? 'var(--danger)'
+      : data.daysRemaining <= 14
+        ? 'var(--warn)'
+        : 'var(--text-dim)';
   } else {
     label.textContent = 'Expired — renew now';
     label.style.color = 'var(--danger)';
@@ -783,6 +799,7 @@ function updateSubSidebarCard(data) {
 
 function updateSubBanner(data) {
   const banner = document.getElementById('subBanner');
+  if (!banner) return;
 
   const messages = {
     trial:    `⏳ Trial period — ${data.daysRemaining} days remaining. <a onclick="openModal('modal-subscribe')">Subscribe now →</a>`,
@@ -792,14 +809,14 @@ function updateSubBanner(data) {
   };
 
   if (messages[data.subscriptionStatus]) {
-    banner.innerHTML   = messages[data.subscriptionStatus];
-    banner.className   = `sub-banner ${data.subscriptionStatus}`;
+    banner.innerHTML     = messages[data.subscriptionStatus];
+    banner.className     = `sub-banner ${data.subscriptionStatus}`;
     banner.style.display = 'block';
   } else {
-    // Active — only show banner if expiring soon
+    // Active — only warn if expiring soon
     if (data.daysRemaining <= 7) {
-      banner.innerHTML   = `⚠️ Subscription expiring in ${data.daysRemaining} days. <a onclick="openModal('modal-subscribe')">Renew now →</a>`;
-      banner.className   = 'sub-banner grace';
+      banner.innerHTML     = `⚠️ Subscription expiring in ${data.daysRemaining} days. <a onclick="openModal('modal-subscribe')">Renew now →</a>`;
+      banner.className     = 'sub-banner grace';
       banner.style.display = 'block';
     } else {
       banner.style.display = 'none';
@@ -808,34 +825,46 @@ function updateSubBanner(data) {
 }
 
 function handleExpiredOverlay(data) {
-  const overlay = document.getElementById('expiredOverlay');
+  const overlay  = document.getElementById('expiredOverlay');
+  const renewBtn = document.querySelector('.expired-box .btn-primary');
+  if (!overlay) return;
 
   if (data.subscriptionStatus === 'expired') {
     document.getElementById('expiredTitle').textContent = 'Subscription Expired';
-    document.getElementById('expiredDesc').textContent  = 'Your subscription has expired. Please renew to continue managing your properties.';
+    document.getElementById('expiredDesc').textContent  =
+      'Your subscription has expired. Please renew to continue managing your properties.';
+    if (renewBtn) renewBtn.style.display = '';
     overlay.classList.add('show');
+
   } else if (data.subscriptionStatus === 'suspended') {
     document.getElementById('expiredTitle').textContent = 'Account Suspended';
-    document.getElementById('expiredDesc').innerHTML    = `Your account has been suspended.<br><strong>Reason:</strong> ${data.suspendedReason || 'Contact support'}<br><br>Email: support@affordablerentals.site`;
-    document.querySelector('.expired-box .btn-primary').style.display = 'none';
+    document.getElementById('expiredDesc').innerHTML    =
+      `Your account has been suspended.<br><strong>Reason:</strong> ${data.suspendedReason || 'Contact support'}<br><br>Email: support@affordablerentals.site`;
+    if (renewBtn) renewBtn.style.display = 'none';
     overlay.classList.add('show');
+
   } else {
+    if (renewBtn) renewBtn.style.display = '';
     overlay.classList.remove('show');
-    document.querySelector('.expired-box .btn-primary').style.display = '';
   }
 }
 
+// ── Open subscribe modal — loads status + plans using CONFIG ──
 async function openSubscribeModal() {
-  openModal('modal-subscribe');
+  document.getElementById('modal-subscribe').classList.add('open');
   selectedPlanId = null;
 
-  // Load current status
+  // Reset polling status
+  const statusEl = document.getElementById('subPayStatus');
+  if (statusEl) { statusEl.style.display = 'none'; statusEl.textContent = ''; }
+
+  // ── Load current subscription status ──
   try {
     const token = localStorage.getItem('token');
     const res   = await fetch(`${CONFIG.API_URL}/subscription-status`, {
       headers: { Authorization: `Bearer ${token}` }
     });
-    const data = await res.json();
+    const data  = await res.json();
 
     document.getElementById('subModalStatus').innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem">
@@ -845,7 +874,9 @@ async function openSubscribeModal() {
         </div>
         <div style="text-align:right">
           <div style="font-size:0.7rem;color:var(--text-dim);font-family:'JetBrains Mono',monospace">Days remaining</div>
-          <div style="font-size:1.1rem;font-weight:700;color:${data.daysRemaining <= 7 ? 'var(--danger)' : 'var(--accent)'}">${data.daysRemaining}</div>
+          <div style="font-size:1.1rem;font-weight:700;color:${data.daysRemaining <= 7 ? 'var(--danger)' : 'var(--accent)'}">
+            ${data.daysRemaining}
+          </div>
         </div>
       </div>
     `;
@@ -859,13 +890,19 @@ async function openSubscribeModal() {
     document.getElementById('subModalStatus').textContent = 'Could not load status.';
   }
 
-  // Load plans
+  // ── Load available plans ──
+  document.getElementById('subModalPlans').innerHTML =
+    `<div style="text-align:center;color:var(--text-dim);font-size:0.82rem;padding:1rem">Loading plans...</div>`;
+
   try {
     const res   = await fetch(`${CONFIG.API_URL}/subscription-plans`);
     const plans = await res.json();
 
-    if (!plans.length) {
-      document.getElementById('subModalPlans').innerHTML = `<div style="text-align:center;color:var(--text-dim);font-size:0.82rem;padding:1rem">No plans available. Contact Stacklord.</div>`;
+    if (!Array.isArray(plans) || !plans.length) {
+      document.getElementById('subModalPlans').innerHTML =
+        `<div style="text-align:center;color:var(--text-dim);font-size:0.82rem;padding:1rem">
+           No plans available. Contact Stacklord to add plans.
+         </div>`;
       return;
     }
 
@@ -878,19 +915,32 @@ async function openSubscribeModal() {
           </div>
           <div class="plan-option-price">Ksh ${Number(p.price).toLocaleString()}</div>
         </div>
-        ${p.description ? `<div style="font-size:0.75rem;color:var(--text-dim);margin-top:0.35rem">${p.description}</div>` : ''}
+        ${p.description
+          ? `<div style="font-size:0.75rem;color:var(--text-dim);margin-top:0.35rem">${p.description}</div>`
+          : ''}
+        ${p.features?.length
+          ? `<ul style="list-style:none;margin-top:0.35rem">
+               ${p.features.map(f =>
+                 `<li style="font-size:0.72rem;color:var(--text-muted);padding:1px 0">✓ ${f}</li>`
+               ).join('')}
+             </ul>`
+          : ''}
       </div>
     `).join('');
 
   } catch (err) {
-    document.getElementById('subModalPlans').innerHTML = `<div style="color:var(--danger);font-size:0.8rem">Failed to load plans</div>`;
+    document.getElementById('subModalPlans').innerHTML =
+      `<div style="color:var(--danger);font-size:0.8rem;padding:0.5rem">
+         Failed to load plans. Check your connection.
+       </div>`;
   }
 }
 
 function selectPlan(planId) {
   selectedPlanId = planId;
   document.querySelectorAll('.plan-option').forEach(el => el.classList.remove('selected'));
-  document.getElementById('plan-opt-' + planId)?.classList.add('selected');
+  const el = document.getElementById('plan-opt-' + planId);
+  if (el) el.classList.add('selected');
 }
 
 async function initiateSubscription() {
@@ -912,54 +962,60 @@ async function initiateSubscription() {
 
     showToast('M-Pesa prompt sent! Enter your PIN 📱', 'success');
 
-    // Show polling status
     const statusEl = document.getElementById('subPayStatus');
     statusEl.style.display = 'block';
+    statusEl.style.color   = 'var(--text-dim)';
     statusEl.textContent   = '⏳ Waiting for payment confirmation...';
 
-    // Poll for payment confirmation
     pollSubscriptionPayment(data.checkoutRequestId);
 
   } catch (err) {
-    showToast('Network error', 'error');
+    showToast('Network error — check your connection', 'error');
   }
 }
 
 function pollSubscriptionPayment(checkoutRequestId) {
   let attempts = 0;
-  const maxAttempts = 20; // 60 seconds
+  const maxAttempts = 20; // ~60 seconds
 
   clearInterval(subPollingTimer);
 
   subPollingTimer = setInterval(async () => {
     attempts++;
+
     if (attempts > maxAttempts) {
       clearInterval(subPollingTimer);
-      document.getElementById('subPayStatus').textContent = '⚠️ Payment timeout. Check your M-Pesa messages.';
+      const statusEl = document.getElementById('subPayStatus');
+      statusEl.textContent = '⚠️ Timeout. Check your M-Pesa messages and refresh the page.';
+      statusEl.style.color = 'var(--warn)';
       return;
     }
 
     try {
       const token = localStorage.getItem('token');
-      const res   = await fetch(`${CONFIG.API_URL}/subscription-status-poll/${checkoutRequestId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res   = await fetch(
+        `${CONFIG.API_URL}/subscription-status-poll/${checkoutRequestId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
       const data = await res.json();
+      const statusEl = document.getElementById('subPayStatus');
 
       if (data.status === 'paid') {
         clearInterval(subPollingTimer);
-        document.getElementById('subPayStatus').innerHTML = `✅ Payment confirmed! Plan: ${data.plan?.name} · Expires: ${new Date(data.expiresAt).toDateString()}`;
-        document.getElementById('subPayStatus').style.color = 'var(--accent)';
+        statusEl.textContent = `✅ Payment confirmed! Plan: ${data.plan?.name} · Expires: ${new Date(data.expiresAt).toDateString()}`;
+        statusEl.style.color = 'var(--accent)';
         showToast('Subscription renewed successfully! 🎉', 'success');
+
         setTimeout(() => {
           closeModal('modal-subscribe');
           loadSubscriptionStatus();
         }, 2500);
+
       } else if (data.status === 'failed') {
         clearInterval(subPollingTimer);
-        document.getElementById('subPayStatus').textContent = '❌ Payment failed. Please try again.';
-        document.getElementById('subPayStatus').style.color = 'var(--danger)';
+        statusEl.textContent = '❌ Payment failed. Please try again.';
+        statusEl.style.color = 'var(--danger)';
       }
 
     } catch (err) {
@@ -968,35 +1024,42 @@ function pollSubscriptionPayment(checkoutRequestId) {
   }, 3000);
 }
 
-// Override openModal to handle subscribe modal
-const _openModal = window.openModal;
-window.openModal = function(id) {
+function openModal(id) {
   if (id === 'modal-subscribe') {
     openSubscribeModal();
   } else {
-    document.getElementById(id).classList.add('open');
-  }
-};
-
-function closeModal(id) {
-  document.getElementById(id).classList.remove('open');
-  if (id === 'modal-subscribe') {
-    clearInterval(subPollingTimer);
-    document.getElementById('subPayStatus').style.display = 'none';
-    document.getElementById('subPayStatus').textContent   = '';
-    selectedPlanId = null;
+    const el = document.getElementById(id);
+    if (el) el.classList.add('open');
   }
 }
 
-// Load subscription status on page load and every 5 minutes
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('open');
+
+  if (id === 'modal-subscribe') {
+    clearInterval(subPollingTimer);
+    const statusEl = document.getElementById('subPayStatus');
+    if (statusEl) { statusEl.style.display = 'none'; statusEl.textContent = ''; }
+    selectedPlanId = null;
+    document.querySelectorAll('.plan-option').forEach(el => el.classList.remove('selected'));
+  }
+}
+
+// ── Init — runs AFTER config.js is loaded ──
 window.addEventListener('load', () => {
-  setTimeout(loadSubscriptionStatus, 1000);
+  // Small delay ensures CONFIG is available
+  setTimeout(loadSubscriptionStatus, 800);
+
+  // Refresh subscription status every 5 minutes
   setInterval(loadSubscriptionStatus, 5 * 60 * 1000);
 });
 </script>
 
+<!-- config.js MUST come after this script block -->
 <script src="config.js"></script>
 <script src="script.js"></script>
 <script src="index.js"></script>
+
 </body>
 </html>

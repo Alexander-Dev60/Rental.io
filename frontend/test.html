@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Stacklord Console</title>
+
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: radial-gradient(circle at center, #0b0f14, #000000);
+      font-family: "Courier New", monospace;
+      color: #39ff88;
+      overflow: hidden;
+    }
+
+    .container {
+      text-align: center;
+      padding: 20px;
+    }
+
+    .title {
+      font-size: 14px;
+      letter-spacing: 3px;
+      opacity: 0.6;
+      margin-bottom: 20px;
+    }
+
+    .text {
+      font-size: 28px;
+      letter-spacing: 1px;
+      text-shadow: 0 0 10px rgba(57, 255, 136, 0.4);
+    }
+
+    .cursor {
+      display: inline-block;
+      width: 10px;
+      animation: blink 0.8s infinite;
+      color: #39ff88;
+    }
+
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0; }
+    }
+
+    /* subtle scanline effect */
+    body::before {
+      content: "";
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(255,255,255,0.03),
+        rgba(255,255,255,0.03) 1px,
+        transparent 1px,
+        transparent 3px
+      );
+      pointer-events: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="title">STACKLORD CONSOLE INTERFACE</div>
+    <div class="text">
+      <span id="type"></span><span class="cursor">▍</span>
+    </div>
+  </div>
+
+  <script>
+    const messages = [
+      "Initializing Stacklord Core...",
+      "Linking tenant networks...",
+      "Calibrating system permissions...",
+      "Deploying control layer...",
+      "System online. Welcome back, Operator."
+    ];
+
+    let i = 0;
+    let j = 0;
+    let deleting = false;
+    const speed = { type: 90, delete: 45, pause: 1200 };
+
+    const el = document.getElementById("type");
+
+    function loop() {
+      const current = messages[i];
+
+      if (!deleting) {
+        el.textContent = current.substring(0, j++);
+        if (j > current.length) {
+          deleting = true;
+          setTimeout(loop, speed.pause);
+          return;
+        }
+      } else {
+        el.textContent = current.substring(0, j--);
+        if (j < 0) {
+          deleting = false;
+          i = (i + 1) % messages.length;
+        }
+      }
+
+      setTimeout(loop, deleting ? speed.delete : speed.type);
+    }
+
+    loop();
+  </script>
+</body>
+</html>
