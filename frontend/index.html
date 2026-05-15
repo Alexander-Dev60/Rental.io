@@ -725,6 +725,7 @@
 ═══════════════════════════════════════ -->
 
 <script>
+  const API=window.API;
 // ═══════════════════════════════════════
 // THEME SYSTEM
 // ═══════════════════════════════════════
@@ -758,7 +759,7 @@ async function loadSubscriptionStatus() {
     const token = localStorage.getItem('token');
     if (!token) return;
 
-    const res = await fetch(`${CONFIG.API_URL}/subscription-status`, {
+    const res = await fetch(`${API}/subscription-status`, {
       headers: { Authorization: `Bearer ${token}` }
     });
 
@@ -867,7 +868,7 @@ async function openSubscribeModal() {
   // ── Load current subscription status ──
   try {
     const token = localStorage.getItem('token');
-    const res   = await fetch(`${CONFIG.API_URL}/subscription-status`, {
+    const res   = await fetch(`${API}/subscription-status`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     const data  = await res.json();
@@ -901,7 +902,7 @@ async function openSubscribeModal() {
     `<div style="text-align:center;color:var(--text-dim);font-size:0.82rem;padding:1rem">Loading plans...</div>`;
 
   try {
-    const res   = await fetch(`${CONFIG.API_URL}/subscription-plans`);
+    const res   = await fetch(`${API}/subscription-plans`);
     const plans = await res.json();
 
     if (!Array.isArray(plans) || !plans.length) {
@@ -957,7 +958,7 @@ async function initiateSubscription() {
 
   try {
     const token = localStorage.getItem('token');
-    const res   = await fetch(`${CONFIG.API_URL}/subscribe`, {
+    const res   = await fetch(`${API}/subscribe`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body:    JSON.stringify({ planId: selectedPlanId, phone })
@@ -1000,7 +1001,7 @@ function pollSubscriptionPayment(checkoutRequestId) {
     try {
       const token = localStorage.getItem('token');
       const res   = await fetch(
-        `${CONFIG.API_URL}/subscription-status-poll/${checkoutRequestId}`,
+        `${API}/subscription-status-poll/${checkoutRequestId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
