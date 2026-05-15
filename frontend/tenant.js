@@ -121,7 +121,7 @@ function showMaintenanceScreen(message) {
 
 
 
-const API= window.API;
+const API= 'https://affordable-rental-systems.onrender.com';
 
 // ─── State ───
 let _tenant    = null;

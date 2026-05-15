@@ -4,7 +4,7 @@
 //  index.js handles rendering / DOM only.
 // ═══════════════════════════════════════════════════════
 
-const API = window.API;
+const API = CONFIG.API_URL; // Defined in config.js, which must be included before this script
 
 function getToken() {
     return localStorage.getItem('token');

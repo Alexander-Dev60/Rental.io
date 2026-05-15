@@ -93,26 +93,6 @@ function showToast(msg, type = '') {
 // script override from being clobbered.
 // ═══════════════════════════════════════
 
-function openModal(id) {
-    if (id === 'modal-subscribe') {
-        // Subscription modal needs data loaded — delegate to script.js
-        openSubscribeModal();
-        return;
-    }
-    document.getElementById(id).classList.add('open');
-}
-
-function closeModal(id) {
-    document.getElementById(id).classList.remove('open');
-
-    if (id === 'modal-subscribe') {
-        // Clean up polling and reset UI state
-        clearInterval(window._subPollingTimer);
-        const payEl = document.getElementById('subPayStatus');
-        if (payEl) { payEl.style.display = 'none'; payEl.textContent = ''; }
-        window._selectedPlanId = null;
-    }
-}
 
 // Close modal when clicking the overlay backdrop
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
