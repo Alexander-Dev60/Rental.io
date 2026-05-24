@@ -227,7 +227,7 @@ app.put('/maintenance', authMiddleware, adminOnly, async (req, res) => {
 // ═══════════════════════════════════════
 
 // POST /register — creates a tenant user + tenant record
-app.post('/register', async (req, res) => {
+app.post('/register', authMiddleware, adminOnly, async (req, res) => {
     try {
         const { name, email, password, phone, dueDate } = req.body;
 

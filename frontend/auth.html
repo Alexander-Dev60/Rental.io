@@ -3,638 +3,609 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Affordable Rentals — Access</title>
+  <link rel="icon" type="image/svg+xml" href="./public/favicon.svg">
+  <title>Affordable Rentals — Login</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=Martian+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 
   <style>
-  :root {
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --bg-dark: #0f172a;
-  --glass: rgba(255, 255, 255, 0.05);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --text-main: #f8fafc;
-  --text-dim: #94a3b8;
-  --error: #ef4444;
-  --success: #22c55e;
-}
+    :root {
+      --navy:      #020b18;
+      --navy-mid:  #071428;
+      --navy-card: rgba(4, 16, 38, 0.82);
+      --blue-1:    #0a4a8f;
+      --blue-2:    #1464c0;
+      --blue-3:    #2484e8;
+      --blue-4:    #5baaf5;
+      --blue-5:    #a8cff9;
+      --gold:      #c8a96e;
+      --gold-dim:  rgba(200,169,110,0.18);
+      --text:      #e8edf5;
+      --muted:     #5e7a9b;
+      --muted2:    #3a5578;
+      --error:     #f07070;
+      --success:   #4ecb96;
+      --border:    rgba(255,255,255,0.07);
+      --border2:   rgba(255,255,255,0.13);
+      --font-d:    'DM Serif Display', Georgia, serif;
+      --font-s:    'DM Sans', sans-serif;
+      --font-m:    'Space Mono', monospace;
+      --ease:      cubic-bezier(0.4,0,0.2,1);
+      --spring:    cubic-bezier(0.34,1.56,0.64,1);
+    }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-}
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { height: 100%; }
+    body {
+      background: var(--navy);
+      color: var(--text);
+      font-family: var(--font-s);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+      overflow-y: auto;
+      position: relative;
+      padding: 5rem 1rem 1.5rem;
+    }
 
-body {
-  background-color: var(--bg-dark);
-  color: var(--text-main);
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow-x: hidden;
-}
+    /* ── Hero Background ── */
+    .hero-bg {
+      position: fixed; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 110%, rgba(10,74,143,0.55) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 70% at 85% -10%,  rgba(20,100,192,0.35) 0%, transparent 55%),
+        radial-gradient(ellipse 50% 50% at 50%  50%,  rgba(2,11,24,0.9)    0%, transparent 100%),
+        linear-gradient(160deg, #030e1f 0%, #020b18 50%, #041224 100%);
+    }
 
-/* --- Animated Background --- */
-.bg-canvas {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: -1;
-  overflow: hidden;
-}
+    /* Subtle grid lines */
+    .hero-bg::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(100,160,240,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(100,160,240,0.03) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 80%);
+    }
 
-.orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.4;
-  animation: float 20s infinite alternate;
-}
+    /* Glowing horizontal line */
+    .hero-bg::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0;
+      top: 38%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent 0%, var(--blue-3) 35%, var(--blue-4) 50%, var(--blue-3) 65%, transparent 100%);
+      opacity: 0.12;
+    }
 
-.orb-1 { width: 400px; height: 400px; background: #3b82f6; top: -10%; left: -10%; }
-.orb-2 { width: 500px; height: 500px; background: #8b5cf6; bottom: -10%; right: -10%; animation-delay: -5s; }
-.orb-3 { width: 300px; height: 300px; background: #06b6d4; top: 40%; left: 50%; animation-delay: -10s; }
+    /* Orbs */
+    .orb {
+      position: absolute; border-radius: 50%;
+      filter: blur(90px); pointer-events: none;
+    }
+    .orb-1 {
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(20,100,192,0.28), transparent 70%);
+      top: -150px; left: -150px;
+      animation: orbDrift 22s ease-in-out infinite alternate;
+    }
+    .orb-2 {
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, rgba(36,132,232,0.2), transparent 70%);
+      bottom: -80px; right: -80px;
+      animation: orbDrift 18s ease-in-out infinite alternate-reverse;
+    }
+    .orb-3 {
+      width: 250px; height: 250px;
+      background: radial-gradient(circle, rgba(200,169,110,0.12), transparent 70%);
+      top: 55%; left: 60%;
+      animation: orbDrift 26s ease-in-out infinite alternate;
+    }
 
-@keyframes float {
-  0% { transform: translate(0, 0); }
-  100% { transform: translate(50px, 100px); }
-}
+    @keyframes orbDrift {
+      from { transform: translate(0,0) scale(1); }
+      to   { transform: translate(30px,25px) scale(1.08); }
+    }
 
-.particle {
-  position: absolute;
-  background: white;
-  border-radius: 50%;
-  opacity: 0.3;
-  animation: rise linear infinite;
-}
+    /* Floating particles */
+    .particle {
+      position: absolute; border-radius: 50%;
+      background: var(--blue-4); opacity: 0;
+      animation: particleRise linear infinite;
+    }
+    @keyframes particleRise {
+      0%   { opacity: 0; transform: translateY(0) translateX(0); }
+      8%   { opacity: 0.5; }
+      92%  { opacity: 0.2; }
+      100% { opacity: 0; transform: translateY(-100vh) translateX(20px); }
+    }
 
-@keyframes rise {
-  from { transform: translateY(0); opacity: 0; }
-  50% { opacity: 0.3; }
-  to { transform: translateY(-100vh); opacity: 0; }
-}
+    /* ── Logo top-left ── */
+    .site-logo {
+      position: fixed; top: 1.5rem; left: 1.75rem; z-index: 10;
+      display: flex; align-items: center; gap: 0.6rem;
+      text-decoration: none;
+      animation: fadeDown 0.6s 0.1s var(--ease) both;
+    }
+    .site-logo-icon {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, var(--blue-2), var(--blue-3));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+      box-shadow: 0 0 20px rgba(36,132,232,0.35);
+    }
+    .site-logo-name {
+      font-family: var(--font-m); font-size: 0.6rem; font-weight: 700;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--blue-5); opacity: 0.8;
+    }
 
-/* --- Navigation & Toast --- */
-.back-home {
-  position: absolute;
-  top: 2rem;
-  left: 2rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  text-decoration: none;
-  color: var(--text-dim);
-  font-size: 0.85rem;
-  font-weight: 600;
-  transition: 0.3s;
-  z-index: 10;
-}
+    /* ── Main card ── */
+    .login-card {
+      position: relative; z-index: 1;
+      width: min(440px, 94vw);
+      background: var(--navy-card);
+      border: 1px solid var(--border2);
+      border-radius: 20px;
+      padding: clamp(2rem, 6vw, 2.8rem) clamp(1.5rem, 6vw, 2.8rem);
+      backdrop-filter: blur(24px) saturate(1.5);
+      -webkit-backdrop-filter: blur(24px) saturate(1.5);
+      box-shadow:
+        0 0 0 1px rgba(36,132,232,0.08),
+        0 40px 100px rgba(0,0,0,0.65),
+        inset 0 1px 0 rgba(255,255,255,0.06);
+      animation: cardIn 0.75s var(--ease) both;
+    }
 
-.back-home:hover { color: white; }
-.back-home svg { width: 20px; stroke: currentColor; fill: none; }
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(24px) scale(0.96); }
+      to   { opacity: 1; transform: translateY(0)    scale(1); }
+    }
 
-#toast {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  padding: 1rem 2rem;
-  border-radius: 8px;
-  background: #1e293b;
-  border-left: 4px solid var(--primary);
-  transform: translateX(150%);
-  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  z-index: 1000;
-}
+    /* Card top accent line */
+    .login-card::before {
+      content: '';
+      position: absolute; top: 0; left: 10%; right: 10%; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--blue-3), var(--blue-4), transparent);
+      border-radius: 1px; opacity: 0.6;
+    }
 
-#toast.show { transform: translateX(0); }
-#toast.error { border-color: var(--error); }
-#toast.success { border-color: var(--success); }
+    /* ── Hero text block ── */
+    .hero-text {
+      margin-bottom: 2rem;
+      animation: fadeUp 0.6s 0.25s var(--ease) both;
+    }
 
-/* --- Auth Wrapper --- */
-.auth-wrapper {
-  width: 100%;
-  max-width: 1000px;
-  min-height: 600px;
-  display: flex;
-  margin: 2rem;
-  background: var(--glass);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
-  border-radius: 24px;
-  overflow: hidden;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-}
+    .hero-eyebrow {
+      font-family: var(--font-m); font-size: 0.6rem;
+      letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--blue-4); margin-bottom: 0.6rem; display: block;
+    }
 
-/* --- Left: Brand Panel --- */
-.brand-panel {
-  flex: 1;
-  padding: 3rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), transparent);
-  border-right: 1px solid var(--glass-border);
-}
+    .hero-title {
+      font-family: var(--font-d); font-style: italic;
+      font-size: clamp(1.9rem, 5vw, 2.4rem);
+      font-weight: 400; line-height: 1.15;
+      color: var(--text); margin-bottom: 1rem;
+    }
 
-.brand-logo {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 1.25rem;
-  font-weight: 700;
-}
+    /* ── Typewriter ── */
+    .typewriter-wrap {
+      min-height: 1.5rem;           /* fixed height — no layout shift */
+      display: flex;
+      align-items: center;
+    }
 
-.brand-icon { font-size: 1.5rem; }
+    .typewriter-text {
+      font-family: var(--font-m); font-size: 0.72rem;
+      letter-spacing: 0.06em; color: var(--muted);
+      white-space: nowrap; overflow: hidden;
+    }
 
-.brand-headline h1 {
-  font-size: 2.5rem;
-  line-height: 1.1;
-  margin-bottom: 1.5rem;
-}
+    .typewriter-cursor {
+      display: inline-block;
+      width: 2px; height: 0.85em;
+      background: var(--blue-3);
+      margin-left: 3px;
+      vertical-align: middle;
+      animation: blink 1s step-end infinite;
+    }
 
-.brand-headline em {
-  color: var(--primary);
-  font-style: normal;
-}
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0; }
+    }
 
-.brand-headline p {
-  color: var(--text-dim);
-  line-height: 1.6;
-}
+    /* ── Form ── */
+    .form-section { animation: fadeUp 0.6s 0.45s var(--ease) both; }
 
-.brand-features {
-  margin: 2rem 0;
-  display: grid;
-  gap: 1rem;
-}
+    .field { margin-bottom: 0.85rem; }
 
-.feat {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 0.9rem;
-  color: var(--text-dim);
-}
+    .field-label {
+      display: block;
+      font-family: var(--font-m); font-size: 0.58rem;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--muted2); margin-bottom: 0.4rem;
+    }
 
-.feat-dot {
-  width: 6px;
-  height: 6px;
-  background: var(--primary);
-  border-radius: 50%;
-  box-shadow: 0 0 10px var(--primary);
-}
+    /* Wrap input + eye so top:50% is relative to the input row only */
+    .input-wrap { position: relative; }
 
-.brand-footer {
-  display: flex;
-  gap: 1.5rem;
-}
+    .field input {
+      width: 100%;
+      background: rgba(7,20,40,0.7);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: var(--font-s); font-size: 0.88rem; font-weight: 400;
+      padding: 0.8rem 2.8rem 0.8rem 1rem;
+      outline: none;
+      transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease), background 0.2s;
+    }
 
-.brand-footer a {
-  color: var(--text-dim);
-  text-decoration: none;
-  font-size: 0.8rem;
-  transition: 0.2s;
-}
+    .field input::placeholder { color: var(--muted2); font-size: 0.82rem; }
 
-.brand-footer a:hover { color: white; }
+    .field input:focus {
+      border-color: var(--blue-3);
+      background: rgba(10,30,60,0.8);
+      box-shadow: 0 0 0 3px rgba(36,132,232,0.15);
+    }
 
-/* --- Right: Form Panel --- */
-.form-panel {
-  flex: 0 0 450px;
-  padding: 3rem;
-  background: rgba(15, 23, 42, 0.4);
-  display: flex;
-  flex-direction: column;
-}
+    /* Eye button — sits inside .input-wrap so 50% = centre of input */
+    .eye-btn {
+      position: absolute; right: 0.75rem; top: 50%;
+      transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; padding: 4px;
+      color: var(--muted2); display: flex; align-items: center;
+      transition: color 0.2s; line-height: 0;
+    }
+    .eye-btn:hover { color: var(--blue-4); }
 
-.mode-tabs {
-  display: flex;
-  background: rgba(0, 0, 0, 0.2);
-  padding: 4px;
-  border-radius: 12px;
-  margin-bottom: 2.5rem;
-}
+    /* Forgot row */
+    .forgot-row {
+      display: flex; justify-content: flex-end;
+      margin-top: -0.3rem; margin-bottom: 1.2rem;
+    }
+    .forgot-link {
+      font-family: var(--font-m); font-size: 0.6rem;
+      letter-spacing: 0.08em; color: var(--muted);
+      text-decoration: none; transition: color 0.2s;
+    }
+    .forgot-link:hover { color: var(--blue-4); }
 
-.tab-btn {
-  flex: 1;
-  padding: 0.75rem;
-  border: none;
-  background: transparent;
-  color: var(--text-dim);
-  font-weight: 600;
-  cursor: pointer;
-  border-radius: 8px;
-  transition: 0.3s;
-}
+    /* Submit */
+    #submitBtn {
+      width: 100%;
+      background: linear-gradient(135deg, var(--blue-2) 0%, var(--blue-3) 100%);
+      border: none; border-radius: 10px;
+      color: #fff; font-family: var(--font-s);
+      font-size: 0.82rem; font-weight: 500;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      padding: 0.9rem; cursor: pointer;
+      position: relative; overflow: hidden;
+      transition: opacity 0.2s, transform 0.15s var(--ease), box-shadow 0.2s;
+      box-shadow: 0 4px 24px rgba(20,100,192,0.4);
+    }
+    #submitBtn::after {
+      content: '';
+      position: absolute; top: 0; left: -100%;
+      width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+      transition: left 0.4s ease;
+    }
+    #submitBtn:hover::after { left: 100%; }
+    #submitBtn:hover  { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 8px 32px rgba(20,100,192,0.5); }
+    #submitBtn:active { transform: translateY(1px); }
+    #submitBtn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
-.tab-btn.active {
-  background: var(--primary);
-  color: white;
-}
+    /* ── Divider ── */
+    .divider {
+      display: flex; align-items: center; gap: 0.8rem;
+      margin: 1.4rem 0 1.2rem;
+    }
+    .divider-line { flex: 1; height: 1px; background: var(--border); }
+    .divider-text {
+      font-family: var(--font-m); font-size: 0.58rem;
+      letter-spacing: 0.1em; color: var(--muted2); white-space: nowrap;
+    }
 
-.form-title h2 { font-size: 1.75rem; margin-bottom: 0.5rem; }
-.form-title p { 
-  font-size: 0.75rem; 
-  letter-spacing: 1px; 
-  color: var(--text-dim); 
-  margin-bottom: 2rem; 
-}
+    /* ── Feature badges ── */
+    .features {
+      display: flex; flex-wrap: wrap; gap: 0.45rem;
+      animation: fadeUp 0.6s 0.6s var(--ease) both;
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      background: rgba(10,74,143,0.18);
+      border: 1px solid rgba(36,132,232,0.2);
+      border-radius: 20px;
+      padding: 0.28rem 0.65rem;
+      font-family: var(--font-s); font-size: 0.68rem;
+      color: var(--blue-5); font-weight: 400;
+    }
+    .badge-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--blue-3); flex-shrink: 0; }
 
-.field-group { display: grid; gap: 1.25rem; }
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 2rem; left: 50%;
+      transform: translateX(-50%) translateY(12px);
+      background: rgba(7,20,40,0.95);
+      border: 1px solid var(--border2);
+      border-radius: 10px; padding: 0.7rem 1.3rem;
+      font-family: var(--font-m); font-size: 0.72rem;
+      letter-spacing: 0.06em; color: var(--text);
+      opacity: 0; transition: opacity 0.3s, transform 0.3s;
+      z-index: 999; pointer-events: none; white-space: nowrap;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    }
+    #toast.show    { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.error   { border-color: rgba(240,112,112,0.4); color: var(--error); }
+    #toast.success { border-color: rgba(78,203,150,0.4); color: var(--success); }
 
-.field {
-  position: relative;
-  transition: 0.4s ease;
-}
+    /* ── Animations ── */
+    @keyframes fadeUp   { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes fadeDown { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }
 
-.field.hidden {
-  display: none;
-  opacity: 0;
-  transform: translateY(-10px);
-}
+    /* ── Footer ── */
+    .site-footer {
+      position: relative; z-index: 1;
+      width: 100%;
+      max-width: 440px;
+      text-align: center;
+      padding: 1.2rem 1rem 0.5rem;
+      margin-top: 1rem;
+    }
+    .site-footer p {
+      font-family: var(--font-m); font-size: 0.57rem;
+      letter-spacing: 0.11em; color: var(--muted2);
+      line-height: 2;
+    }
+    .site-footer a {
+      color: var(--muted); text-decoration: none;
+      transition: color 0.2s;
+    }
+    .site-footer a:hover { color: var(--blue-4); }
+    .site-footer-sep { margin: 0 0.55rem; opacity: 0.35; }
 
-.field.visible {
-  display: block;
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.field input {
-  width: 100%;
-  padding: 1rem 1rem 1rem 3rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--glass-border);
-  border-radius: 12px;
-  color: white;
-  outline: none;
-  transition: 0.3s;
-}
-
-.field input:focus {
-  border-color: var(--primary);
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
-}
-
-.field-icon {
-  position: absolute;
-  left: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
-  opacity: 0.6;
-}
-
-.eye-btn {
-  position: absolute;
-  right: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  color: var(--text-dim);
-  cursor: pointer;
-  padding: 4px;
-}
-
-.match-indicator {
-  font-size: 0.8rem;
-  margin-top: -0.5rem;
-  min-height: 1rem;
-}
-.match { color: var(--success); }
-.nomatch { color: var(--error); }
-
-.forgot-row {
-  margin-top: 1rem;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.forgot-link {
-  color: var(--primary);
-  text-decoration: none;
-  font-size: 0.85rem;
-}
-
-#submitBtn {
-  margin-top: 2rem;
-  padding: 1rem;
-  border: none;
-  border-radius: 12px;
-  background: var(--primary);
-  color: white;
-  font-weight: 700;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: 0.3s;
-}
-
-#submitBtn:hover { background: var(--primary-hover); transform: translateY(-2px); }
-#submitBtn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-
-.form-footer {
-  margin-top: auto;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 0.75rem;
-  padding-top: 2rem;
-}
-
-.form-footer a {
-  color: var(--text-dim);
-  text-decoration: none;
-  font-size: 0.75rem;
-}
-
-.form-footer-dot {
-  width: 3px;
-  height: 3px;
-  background: var(--glass-border);
-  border-radius: 50%;
-}
-
-/* --- Responsive Design --- */
-@media (max-width: 900px) {
-  .brand-panel { display: none; }
-  .auth-wrapper { max-width: 500px; }
-  .form-panel { flex: 1; }
-}
-
-@media (max-width: 480px) {
-  .auth-wrapper { margin: 1rem; border-radius: 0; min-height: 100vh; width: 100%; border: none; }
-  .form-panel { padding: 2rem; }
-  .back-home { top: 1rem; left: 1rem; }
-}
+    /* ── Responsive ── */
+    @media (max-width: 480px) {
+      .site-logo-name { display: none; }
+      .login-card { border-radius: 16px; }
+      .hero-title  { font-size: 1.75rem; }
+      body { padding-top: 4.5rem; }
+    }
+    strong{
+      color:red;
+    }
   </style>
 </head>
-
 <body>
 
-  <!-- Back to home -->
-  <a href="landing.html" class="back-home">
-    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
-    BACK TO HOME
-  </a>
-
   <!-- Background -->
-  <div class="bg-canvas">
+  <div class="hero-bg">
     <div class="orb orb-1"></div>
     <div class="orb orb-2"></div>
     <div class="orb orb-3"></div>
   </div>
 
+  <!-- Logo -->
+  <a href="landing.html" class="site-logo">
+    <div class="site-logo-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <!-- Tailored to sit flawlessly alongside your sophisticated emerald/blue css variables -->
+    <linearGradient id="rentalGradient" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2563eb" /> <!-- Blue base -->
+      <stop offset="60%" stop-color="#10b981" /> <!-- Shift to emerald -->
+      <stop offset="100%" stop-color="#6ee7b7" /> <!-- Neon teal peak -->
+    </linearGradient>
+    
+    <!-- Depth shadow to lift the architecture off your dark background -->
+    <filter id="structureGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#10b981" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+
+  <!-- Canvas Frame Background (matches var(--bg) seamless dark styling) -->
+  <rect width="100%" height="100%" fill="#0a0c10" rx="24"/>
+
+  <!-- Core Asset Vector Group -->
+  <g filter="url(#structureGlow)">
+    
+    <!-- Outer Protective Roof Structure (The Estate Silhouette) -->
+    <path d="M 250,90 
+             L 410,210 
+             L 370,210 
+             L 370,390 
+             L 320,390 
+             L 320,250 
+             L 180,250 
+             L 180,390 
+             L 130,390 
+             L 130,210 
+             L 90,210 Z" 
+          fill="url(#rentalGradient)" 
+          opacity="0.15" />
+
+    <!-- Sharp Primary Roofline -->
+    <path d="M 250,90 L 410,210 L 375,210 L 250,116 L 125,210 L 90,210 Z" fill="url(#rentalGradient)" />
+
+    <!-- The Rental Key/Data Nexus (Intersecting inside the property lines) -->
+    <!-- Key Shaft & Teeth -->
+    <path d="M 242,160 L 258,160 L 258,340 L 285,340 L 285,365 L 258,365 L 258,390 L 242,390 Z" fill="url(#rentalGradient)" />
+    
+    <!-- Key Bow (The Geometric Bow acts as a growth chart / structure at the top) -->
+    <path d="M 250,140 C 275,140 295,160 295,185 C 295,210 275,230 250,230 C 225,230 205,210 205,185 C 205,160 225,140 250,140 Z" 
+          fill="none" 
+          stroke="url(#rentalGradient)" 
+          stroke-width="7" />
+
+    <!-- Core Dynamic Data Node (Center of Key Head) -->
+    <circle cx="250" cy="185" r="10" fill="#6ee7b7" />
+    
+    <!-- Decorative Accent Grid lines representing floors/units -->
+    <rect x="145" y="260" width="20" height="20" rx="3" fill="#3b82f6" opacity="0.4"/>
+    <rect x="145" y="300" width="20" height="20" rx="3" fill="#3b82f6" opacity="0.4"/>
+    <rect x="335" y="260" width="20" height="20" rx="3" fill="#6ee7b7" opacity="0.4"/>
+    <rect x="335" y="300" width="20" height="20" rx="3" fill="#6ee7b7" opacity="0.4"/>
+
+  </g>
+</svg>
+</div>
+    <span class="site-logo-name">Affordable Rentals <strong>Home</strong></span>
+  </a>
+
   <!-- Toast -->
   <div id="toast"></div>
 
-  <!-- Auth wrapper -->
-  <div class="auth-wrapper">
+  <!-- Login Card -->
+  <div class="login-card">
 
-    <!-- Left: Branding -->
-    <div class="brand-panel">
-      <div class="brand-logo">
-        <div class="brand-icon">🏠</div>
-        <span class="brand-name">Affordable Rentals</span>
-      </div>
-
-      <div class="brand-headline">
-        <h1>Your home,<br><em>managed well.</em></h1>
-        <p>A modern rental platform for tenants and landlords in Kenya. Pay rent, track receipts, and stay informed — all in one place.</p>
-      </div>
-
-      <div class="brand-features">
-        <div class="feat"><span class="feat-dot"></span> Real-time M-Pesa payments</div>
-        <div class="feat"><span class="feat-dot"></span> Instant PDF receipts by email</div>
-        <div class="feat"><span class="feat-dot"></span> Tenant & landlord chat</div>
-        <div class="feat"><span class="feat-dot"></span> Arrears & balance tracking</div>
-        <div class="feat"><span class="feat-dot"></span> Secure JWT authentication</div>
-      </div>
-
-      <div class="brand-footer">
-        <a href="terms.html">Terms</a>
-        <a href="privacy.html">Privacy</a>
-        <a href="landing.html#contact">Support</a>
-        <a href="https://affordablerentals.site">affordablerentals.site</a>
+    <!-- Hero text -->
+    <div class="hero-text">
+      <span class="hero-eyebrow">Affordable Rentals — Kenya</span>
+      <h1 class="hero-title">Your rental,<br><em>always in order.</em></h1>
+      <div class="typewriter-wrap">
+        <span class="typewriter-text" id="typewriterEl"></span>
+        <span class="typewriter-cursor"></span>
       </div>
     </div>
 
-    <!-- Right: Form -->
-    <div class="form-panel">
+    <!-- Form -->
+    <div class="form-section">
 
-      <!-- Mode tabs -->
-      <div class="mode-tabs">
-        <button class="tab-btn active" id="loginTab"    onclick="setMode('login')">Login</button>
-        <button class="tab-btn"        id="registerTab" onclick="setMode('register')">Register</button>
+      <div class="field">
+        <label class="field-label" for="email">Email address</label>
+        <input type="email" id="email" placeholder="you@example.com" autocomplete="email">
       </div>
 
-      <!-- Title -->
-      <div class="form-title">
-        <h2 id="title">Welcome back.</h2>
-        <p id="subtitle">SIGN IN TO YOUR ACCOUNT</p>
+      <div class="field">
+        <label class="field-label" for="password">Password</label>
+        <div class="input-wrap">
+        <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password">
+        <button class="eye-btn" type="button" onclick="toggleEye()" title="Show/hide password" aria-label="Toggle password visibility">
+          <svg id="eyeIcon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+        </div>
       </div>
 
-      <!-- Fields -->
-      <div class="field-group">
-
-        <!-- Name — register only -->
-        <div class="field hidden" id="nameField">
-          <input type="text" id="name" placeholder="Full name" autocomplete="name">
-          <span class="field-icon">👤</span>
-        </div>
-
-        <!-- Email — always -->
-        <div class="field">
-          <input type="email" id="email" placeholder="Email address" autocomplete="email">
-          <span class="field-icon">✉️</span>
-        </div>
-
-        <!-- Phone — register only -->
-        <div class="field hidden" id="phoneField">
-          <input type="tel" id="phone" placeholder="Phone number (07XXXXXXXX)" autocomplete="tel">
-          <span class="field-icon">📞</span>
-        </div>
-
-        <!-- Password — always -->
-        <div class="field">
-          <input type="password" id="password" placeholder="Password" autocomplete="current-password">
-          <span class="field-icon">🔑</span>
-          <button class="eye-btn" type="button" onclick="toggleEye('password', this)" title="Show/hide password">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-              <circle cx="12" cy="12" r="3"/>
-            </svg>
-          </button>
-        </div>
-
-        <!-- Confirm password — register only -->
-        <div class="field hidden" id="confirmField">
-          <input type="password" id="confirmPassword" placeholder="Confirm password" oninput="checkMatch()" autocomplete="new-password">
-          <span class="field-icon">🔒</span>
-          <button class="eye-btn" type="button" onclick="toggleEye('confirmPassword', this)" title="Show/hide password">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-              <circle cx="12" cy="12" r="3"/>
-            </svg>
-          </button>
-        </div>
-
-        <!-- Match indicator -->
-        <div class="match-indicator" id="matchIndicator"></div>
-
-      </div>
-
-      <!-- Forgot password — login only -->
-      <div class="forgot-row" id="forgotRow">
+      <div class="forgot-row">
         <a href="forgot-password.html" class="forgot-link">Forgot password?</a>
       </div>
 
-      <!-- Submit -->
-      <button id="submitBtn" onclick="submitAuth()">Sign In</button>
-
-      <!-- Form footer -->
-      <div class="form-footer">
-        <a href="terms.html">Terms</a>
-        <span class="form-footer-dot"></span>
-        <a href="privacy.html">Privacy</a>
-        <span class="form-footer-dot"></span>
-        <a href="landing.html#contact">Support</a>
-        <span class="form-footer-dot"></span>
-        <a href="landing.html">← Home</a>
-      </div>
+      <button id="submitBtn" onclick="submitLogin()">Sign In</button>
 
     </div>
+
+    <!-- Divider -->
+    <div class="divider">
+      <div class="divider-line"></div>
+      <span class="divider-text">SECURE PLATFORM</span>
+      <div class="divider-line"></div>
+    </div>
+
+    <!-- Badges -->
+    <div class="features">
+      <span class="badge"><span class="badge-dot"></span>M-Pesa Payments</span>
+      <span class="badge"><span class="badge-dot"></span>PDF Receipts</span>
+      <span class="badge"><span class="badge-dot"></span>Tenant Chat</span>
+      <span class="badge"><span class="badge-dot"></span>JWT Auth</span>
+      <span class="badge"><span class="badge-dot"></span>Arrears Tracking</span>
+    </div>
+
   </div>
 
+  <!-- Footer -->
+  <footer class="site-footer">
+    <p>&copy; 2025 Affordable Rentals. All rights reserved.</p>
+    <p>
+      <a href="terms.html">Terms of Service</a>
+      <span class="site-footer-sep">&middot;</span>
+      <a href="privacy.html">Privacy Policy</a>
+      <span class="site-footer-sep">&middot;</span>
+      <a href="landing.html#contact">Support</a>
+    </p>
+  </footer>
+
+  <script src="config.js" onerror="void 0"></script>
   <script>
-    // ── Particles ──
-    const bgCanvas = document.querySelector('.bg-canvas');
-    for (let i = 0; i < 18; i++) {
+    /* ── Particles ── */
+    const bg = document.querySelector('.hero-bg');
+    for (let i = 0; i < 22; i++) {
       const p = document.createElement('div');
       p.className = 'particle';
-      p.style.cssText = `
-        left: ${Math.random() * 100}%;
-        top: ${80 + Math.random() * 20}%;
-        animation-duration: ${8 + Math.random() * 14}s;
-        animation-delay: ${-Math.random() * 20}s;
-        width: ${1 + Math.random() * 2}px;
-        height: ${1 + Math.random() * 2}px;
-      `;
-      bgCanvas.appendChild(p);
-    }
-
-    // ── Mode ──
-    let currentMode = 'login';
-
-    function setMode(mode) {
-      currentMode = mode;
-
-      const nameField      = document.getElementById('nameField');
-      const phoneField     = document.getElementById('phoneField');
-      const confirmField   = document.getElementById('confirmField');
-      const matchIndicator = document.getElementById('matchIndicator');
-      const forgotRow      = document.getElementById('forgotRow');
-      const title          = document.getElementById('title');
-      const subtitle       = document.getElementById('subtitle');
-      const loginTab       = document.getElementById('loginTab');
-      const registerTab    = document.getElementById('registerTab');
-      const btn            = document.getElementById('submitBtn');
-
-      if (mode === 'login') {
-        loginTab.classList.add('active');
-        registerTab.classList.remove('active');
-        title.textContent    = 'Welcome back.';
-        subtitle.textContent = 'SIGN IN TO YOUR ACCOUNT';
-        btn.textContent      = 'Sign In';
-        forgotRow.style.display = 'flex';
-
-        nameField.classList.remove('visible');    nameField.classList.add('hidden');
-        phoneField.classList.remove('visible');   phoneField.classList.add('hidden');
-        confirmField.classList.remove('visible'); confirmField.classList.add('hidden');
-        matchIndicator.textContent = '';
-        matchIndicator.className   = 'match-indicator';
-
-      } else {
-        registerTab.classList.add('active');
-        loginTab.classList.remove('active');
-        title.textContent    = 'Create account.';
-        subtitle.textContent = 'JOIN AFFORDABLE RENTALS';
-        btn.textContent      = 'Create Account';
-        forgotRow.style.display = 'none'; // hide forgot password on register
-
-        nameField.classList.remove('hidden');    nameField.classList.add('visible');
-        phoneField.classList.remove('hidden');   phoneField.classList.add('visible');
-        confirmField.classList.remove('hidden'); confirmField.classList.add('visible');
-      }
-
-      // Reset eye buttons
-      document.querySelectorAll('#password, #confirmPassword').forEach(inp => {
-        inp.type = 'password';
+      Object.assign(p.style, {
+        left: Math.random() * 100 + '%',
+        top:  (75 + Math.random() * 25) + '%',
+        width:  (1 + Math.random() * 2) + 'px',
+        height: (1 + Math.random() * 2) + 'px',
+        animationDuration: (10 + Math.random() * 16) + 's',
+        animationDelay:    (-Math.random() * 22) + 's',
       });
-      document.querySelectorAll('.eye-btn').forEach(b => {
-        b.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
-      });
+      bg.appendChild(p);
     }
 
-    // ── Eye toggle ──
-    function toggleEye(inputId, btn) {
-      const input   = document.getElementById(inputId);
-      const showing = input.type === 'text';
-      input.type    = showing ? 'password' : 'text';
+    /* ── Typewriter ── */
+    const phrases = [
+      'Pay your rent securely online.',
+      'Track every payment receipt.',
+      'Message your landlord directly.',
+      'Manage your properties with ease.',
+      'View outstanding arrears at a glance.',
+      'Receive instant PDF receipts by email.',
+      'Stay informed with announcements.',
+      'Monitor tenant balances in real-time.',
+    ];
 
-      btn.innerHTML = showing
-        ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`
-        : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
-    }
+    let phraseIdx = 0, charIdx = 0, deleting = false;
+    const el = document.getElementById('typewriterEl');
 
-    // ── Password match checker ──
-    function checkMatch() {
-      const pw        = document.getElementById('password').value;
-      const confirm   = document.getElementById('confirmPassword').value;
-      const indicator = document.getElementById('matchIndicator');
-
-      if (!confirm) {
-        indicator.textContent = '';
-        indicator.className   = 'match-indicator';
-        return;
-      }
-
-      if (pw === confirm) {
-        indicator.textContent = '✓ Passwords match';
-        indicator.className   = 'match-indicator match';
+    function typeStep() {
+      const phrase = phrases[phraseIdx];
+      if (!deleting) {
+        charIdx++;
+        el.textContent = phrase.slice(0, charIdx);
+        if (charIdx === phrase.length) {
+          deleting = true;
+          setTimeout(typeStep, 2000);
+          return;
+        }
+        setTimeout(typeStep, 48 + Math.random() * 28);
       } else {
-        indicator.textContent = '✗ Passwords do not match';
-        indicator.className   = 'match-indicator nomatch';
+        charIdx--;
+        el.textContent = phrase.slice(0, charIdx);
+        if (charIdx === 0) {
+          deleting = false;
+          phraseIdx = (phraseIdx + 1) % phrases.length;
+          setTimeout(typeStep, 420);
+          return;
+        }
+        setTimeout(typeStep, 22 + Math.random() * 14);
       }
     }
 
-    // ── Toast ──
-    function showToast(msg, type = '') {
-      const t = document.getElementById('toast');
-      t.textContent = msg;
-      t.className   = 'show ' + type;
-      clearTimeout(t._timer);
-      t._timer = setTimeout(() => { t.className = ''; }, 3500);
-    }
+    setTimeout(typeStep, 900);
 
-    // ── Loading state ──
-    function setLoading(on) {
-      const btn = document.getElementById('submitBtn');
-      btn.disabled    = on;
-      btn.textContent = on
-        ? (currentMode === 'login' ? 'Signing in…' : 'Creating account…')
-        : (currentMode === 'login' ? 'Sign In'     : 'Create Account');
+    /* ── Eye toggle ── */
+    function toggleEye() {
+      const inp = document.getElementById('password');
+      const showing = inp.type === 'text';
+      inp.type = showing ? 'password' : 'text';
+      document.getElementById('eyeIcon').innerHTML = showing
+        ? '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'
+        : '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>';
     }
-
-    // Init
-    setMode('login');
   </script>
 
-  <script src="config.js"></script>
+  <!-- auth.js handles: showToast, setLoading, submitLogin, Enter key, auto-redirect -->
   <script src="auth.js"></script>
 
 </body>

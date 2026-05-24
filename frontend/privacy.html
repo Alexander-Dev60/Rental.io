@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="./public/favicon.svg">
   <title>Privacy Policy — RentPortal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Bebas+Neue&family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet">
@@ -109,7 +110,67 @@
 
 <nav>
   <a href="landing.html" class="nav-logo">
-    <div class="nav-logo-icon">🏠</div>
+    <div class="nav-logo-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <!-- Tailored to sit flawlessly alongside your sophisticated emerald/blue css variables -->
+    <linearGradient id="rentalGradient" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2563eb" /> <!-- Blue base -->
+      <stop offset="60%" stop-color="#10b981" /> <!-- Shift to emerald -->
+      <stop offset="100%" stop-color="#6ee7b7" /> <!-- Neon teal peak -->
+    </linearGradient>
+    
+    <!-- Depth shadow to lift the architecture off your dark background -->
+    <filter id="structureGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#10b981" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+
+  <!-- Canvas Frame Background (matches var(--bg) seamless dark styling) -->
+  <rect width="100%" height="100%" fill="#0a0c10" rx="24"/>
+
+  <!-- Core Asset Vector Group -->
+  <g filter="url(#structureGlow)">
+    
+    <!-- Outer Protective Roof Structure (The Estate Silhouette) -->
+    <path d="M 250,90 
+             L 410,210 
+             L 370,210 
+             L 370,390 
+             L 320,390 
+             L 320,250 
+             L 180,250 
+             L 180,390 
+             L 130,390 
+             L 130,210 
+             L 90,210 Z" 
+          fill="url(#rentalGradient)" 
+          opacity="0.15" />
+
+    <!-- Sharp Primary Roofline -->
+    <path d="M 250,90 L 410,210 L 375,210 L 250,116 L 125,210 L 90,210 Z" fill="url(#rentalGradient)" />
+
+    <!-- The Rental Key/Data Nexus (Intersecting inside the property lines) -->
+    <!-- Key Shaft & Teeth -->
+    <path d="M 242,160 L 258,160 L 258,340 L 285,340 L 285,365 L 258,365 L 258,390 L 242,390 Z" fill="url(#rentalGradient)" />
+    
+    <!-- Key Bow (The Geometric Bow acts as a growth chart / structure at the top) -->
+    <path d="M 250,140 C 275,140 295,160 295,185 C 295,210 275,230 250,230 C 225,230 205,210 205,185 C 205,160 225,140 250,140 Z" 
+          fill="none" 
+          stroke="url(#rentalGradient)" 
+          stroke-width="7" />
+
+    <!-- Core Dynamic Data Node (Center of Key Head) -->
+    <circle cx="250" cy="185" r="10" fill="#6ee7b7" />
+    
+    <!-- Decorative Accent Grid lines representing floors/units -->
+    <rect x="145" y="260" width="20" height="20" rx="3" fill="#3b82f6" opacity="0.4"/>
+    <rect x="145" y="300" width="20" height="20" rx="3" fill="#3b82f6" opacity="0.4"/>
+    <rect x="335" y="260" width="20" height="20" rx="3" fill="#6ee7b7" opacity="0.4"/>
+    <rect x="335" y="300" width="20" height="20" rx="3" fill="#6ee7b7" opacity="0.4"/>
+
+  </g>
+</svg>
+</div>
     <span class="nav-logo-text">RENTPORTAL</span>
   </a>
   <a href="landing.html" class="nav-back">← Back to Home</a>

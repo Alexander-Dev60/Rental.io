@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════
 //  mpesa.js  —  Production M-Pesa Integration Module
-//  Drop this file in your project root alongside server.js
-//  Then in server.js: const mpesa = require('./mpesa');
+//  Drop this file in your project root alongside app.js
+//  Then in app.js: const mpesa = require('./mpesa');
 // ═══════════════════════════════════════════════════════
 
 const axios       = require('axios');

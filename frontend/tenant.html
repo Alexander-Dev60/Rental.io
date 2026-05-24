@@ -3,14 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="./public/favicon.svg">
   <title>My Dashboard — Affordable Rentals</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 
   <style>
-  /* ═══════════════════════════════════════════
+  /* ══════════════════════════════════════
      THEMES
-  ═══════════════════════════════════════════ */
+  ══════════════════════════════════════ */
   :root, [data-theme="dark"] {
     --bg:         #111318;
     --bg2:        #16191f;
@@ -28,199 +29,180 @@
     --text:       #e2e8f0;
     --text-dim:   #64748b;
     --text-muted: #94a3b8;
-    --nav-h:      60px;
-    --glow:       rgba(167,139,250,0.08);
-    --header-bg:  rgba(17,19,24,0.85);
-    --nav-bg:     rgba(17,19,24,0.95);
+    --nav-h:      58px;
+    --header-bg:  rgba(17,19,24,0.92);
+    --nav-bg:     rgba(17,19,24,0.97);
   }
-
   [data-theme="light"] {
-    --bg:         #f1f5f9;
-    --bg2:        #e8edf5;
-    --bg3:        #dde4f0;
-    --panel:      #ffffff;
-    --panel2:     #f8fafc;
-    --border:     rgba(0,0,0,0.08);
-    --border2:    rgba(0,0,0,0.15);
-    --accent:     #7c3aed;
-    --accent2:    #6d28d9;
-    --accent-dim: rgba(124,58,237,0.08);
-    --green:      #059669;
-    --red:        #dc2626;
-    --amber:      #d97706;
-    --text:       #0f172a;
-    --text-dim:   #64748b;
-    --text-muted: #475569;
-    --glow:       rgba(124,58,237,0.05);
-    --header-bg:  rgba(241,245,249,0.92);
-    --nav-bg:     rgba(241,245,249,0.97);
+    --bg:#f1f5f9; --bg2:#e8edf5; --bg3:#dde4f0;
+    --panel:#fff; --panel2:#f8fafc;
+    --border:rgba(0,0,0,0.08); --border2:rgba(0,0,0,0.15);
+    --accent:#7c3aed; --accent2:#6d28d9; --accent-dim:rgba(124,58,237,0.08);
+    --green:#059669; --red:#dc2626; --amber:#d97706;
+    --text:#0f172a; --text-dim:#64748b; --text-muted:#475569;
+    --header-bg:rgba(241,245,249,0.94); --nav-bg:rgba(241,245,249,0.98);
   }
-
   [data-theme="blue"] {
-    --bg:         #050d1a;
-    --bg2:        #071223;
-    --bg3:        #0a1a30;
-    --panel:      #0d2040;
-    --panel2:     #112548;
-    --border:     rgba(59,130,246,0.15);
-    --border2:    rgba(59,130,246,0.3);
-    --accent:     #60a5fa;
-    --accent2:    #3b82f6;
-    --accent-dim: rgba(96,165,250,0.12);
-    --green:      #34d399;
-    --red:        #f87171;
-    --amber:      #fbbf24;
-    --text:       #e0f0ff;
-    --text-dim:   #4a7eb5;
-    --text-muted: #7aadda;
-    --glow:       rgba(59,130,246,0.08);
-    --header-bg:  rgba(5,13,26,0.9);
-    --nav-bg:     rgba(5,13,26,0.97);
+    --bg:#050d1a; --bg2:#071223; --bg3:#0a1a30;
+    --panel:#0d2040; --panel2:#112548;
+    --border:rgba(59,130,246,0.15); --border2:rgba(59,130,246,0.3);
+    --accent:#60a5fa; --accent2:#3b82f6; --accent-dim:rgba(96,165,250,0.12);
+    --green:#34d399; --red:#f87171; --amber:#fbbf24;
+    --text:#e0f0ff; --text-dim:#4a7eb5; --text-muted:#7aadda;
+    --header-bg:rgba(5,13,26,0.94); --nav-bg:rgba(5,13,26,0.98);
   }
-
   [data-theme="orange"] {
-    --bg:         #0f0a05;
-    --bg2:        #180f07;
-    --bg3:        #221509;
-    --panel:      #2a1a0a;
-    --panel2:     #321f0c;
-    --border:     rgba(251,146,60,0.15);
-    --border2:    rgba(251,146,60,0.3);
-    --accent:     #fb923c;
-    --accent2:    #ea580c;
-    --accent-dim: rgba(251,146,60,0.12);
-    --green:      #34d399;
-    --red:        #f87171;
-    --amber:      #fbbf24;
-    --text:       #fff7ed;
-    --text-dim:   #92400e;
-    --text-muted: #c2803a;
-    --glow:       rgba(251,146,60,0.06);
-    --header-bg:  rgba(15,10,5,0.9);
-    --nav-bg:     rgba(15,10,5,0.97);
+    --bg:#0f0a05; --bg2:#180f07; --bg3:#221509;
+    --panel:#2a1a0a; --panel2:#321f0c;
+    --border:rgba(251,146,60,0.15); --border2:rgba(251,146,60,0.3);
+    --accent:#fb923c; --accent2:#ea580c; --accent-dim:rgba(251,146,60,0.12);
+    --green:#34d399; --red:#f87171; --amber:#fbbf24;
+    --text:#fff7ed; --text-dim:#92400e; --text-muted:#c2803a;
+    --header-bg:rgba(15,10,5,0.94); --nav-bg:rgba(15,10,5,0.98);
   }
 
-  /* ─── Reset ─── */
+  /* ══════════════════════════════════════
+     RESET
+  ══════════════════════════════════════ */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; }
-
   body {
     font-family: 'DM Sans', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    font-size: 14px;
-    line-height: 1.6;
+    background: var(--bg); color: var(--text);
+    font-size: 14px; line-height: 1.6;
     overflow-x: hidden;
     transition: background 0.3s, color 0.3s;
   }
 
-  /* ─── Glow — uses CSS variable so it changes with theme ─── */
-  body::after {
-    content: '';
-    position: fixed;
-    top: -60px; left: 50%;
-    transform: translateX(-50%);
-    width: 600px; height: 200px;
-    background: radial-gradient(ellipse, var(--glow), transparent 70%);
-    pointer-events: none;
-    z-index: 0;
-    transition: background 0.3s;
+  /* ══════════════════════════════════════
+     TYPING CURSOR
+     Used across all typer containers.
+  ══════════════════════════════════════ */
+  .typing-cursor {
+    display: inline-block;
+    animation: cursorBlink 0.8s step-end infinite;
+    opacity: 0.7;
+    margin-left: 1px;
+  }
+  @keyframes cursorBlink { 0%,100%{opacity:0.7} 50%{opacity:0} }
+
+  /* ══════════════════════════════════════
+     TYPER CONTAINER — THE KEY RULE
+     Every piece of typed text lives in one
+     of these. Height is fixed in CSS.
+     overflow:hidden clips any overflow.
+     white-space:nowrap prevents wrapping.
+     The page NEVER moves. Ever.
+  ══════════════════════════════════════ */
+  .typer-line {
+    height: 1.35em;          /* exactly one line — never changes */
+    overflow: hidden;         /* clips if message is long */
+    white-space: nowrap;      /* no wrapping */
+    flex-shrink: 0;           /* never squeezed in flex parents */
+    display: block;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    color: var(--text-dim);
+    letter-spacing: 0.04em;
+    line-height: 1.35em;
+    user-select: none;
   }
 
-  /* ════════════════════════════════
+  /* ══════════════════════════════════════
      HEADER
-  ════════════════════════════════ */
+  ══════════════════════════════════════ */
   header {
-    position: sticky;
-    top: 0; z-index: 100;
-    height: var(--nav-h);
+    position: sticky; top: 0; z-index: 100;
     background: var(--header-bg);
     backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
     border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
+    display: flex; align-items: center;
     justify-content: space-between;
-    padding: 0 1.5rem;
-    animation: slideDown 0.5s cubic-bezier(0.4,0,0.2,1) both;
+    padding: 0 1.25rem;
+    height: 58px;             /* fixed — typing text inside never changes this */
+    flex-shrink: 0;
     transition: background 0.3s, border-color 0.3s;
   }
 
-  @keyframes slideDown {
-    from { opacity: 0; transform: translateY(-100%); }
-    to   { opacity: 1; transform: translateY(0); }
+  .header-left {
+    display: flex; flex-direction: column;
+    justify-content: center; gap: 0;
+    min-width: 0;
+    /* Total height of name + typer-line fits inside 58px header */
   }
-
-  .header-left { display: flex; align-items: center; gap: 0.85rem; }
 
   .header-avatar {
-    width: 36px; height: 36px; border-radius: 50%;
+    width: 34px; height: 34px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-size: 0.75rem; font-weight: 700; color: #fff;
+    font-size: 0.72rem; font-weight: 700; color: #fff;
     flex-shrink: 0; letter-spacing: 0.04em;
     border: 2px solid rgba(255,255,255,0.15);
+    margin-right: 0.7rem;
   }
+  .header-identity { display: flex; align-items: center; min-width: 0; }
+  .header-identity-text { display: flex; flex-direction: column; min-width: 0; }
 
   .header-name {
-    font-family: 'Fraunces', Georgia, serif;
-    font-style: italic; font-size: 1rem; color: var(--text);
+    font-family: 'Fraunces', serif; font-style: italic;
+    font-size: 0.95rem; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    line-height: 1.2;
   }
 
-  .header-right { display: flex; align-items: center; gap: 0.75rem; }
+  /* #headerGreeting is a .typer-line — sits right below the name */
+  /* No additional CSS needed — .typer-line handles it */
+
+  .header-right { display: flex; align-items: center; gap: 0.65rem; flex-shrink: 0; }
 
   .status-pill {
     font-family: 'DM Mono', monospace;
-    font-size: 0.62rem; letter-spacing: 0.1em;
-    padding: 3px 10px; border-radius: 99px; font-weight: 500;
+    font-size: 0.6rem; letter-spacing: 0.08em;
+    padding: 3px 9px; border-radius: 99px; font-weight: 500;
+    white-space: nowrap;
   }
-  .status-pill.paid    { background: rgba(52,211,153,0.12);  color: var(--green); border: 1px solid rgba(52,211,153,0.25); }
-  .status-pill.partial { background: rgba(251,191,36,0.12);  color: var(--amber); border: 1px solid rgba(251,191,36,0.25); }
-  .status-pill.unpaid  { background: rgba(248,113,113,0.12); color: var(--red);   border: 1px solid rgba(248,113,113,0.25); }
+  .status-pill.paid    { background:rgba(52,211,153,0.12);  color:var(--green); border:1px solid rgba(52,211,153,0.25); }
+  .status-pill.partial { background:rgba(251,191,36,0.12);  color:var(--amber); border:1px solid rgba(251,191,36,0.25); }
+  .status-pill.unpaid  { background:rgba(248,113,113,0.12); color:var(--red);   border:1px solid rgba(248,113,113,0.25); }
 
   .btn-logout {
     background: transparent; border: 1px solid var(--border2);
     color: var(--text-muted); font-family: 'DM Sans', sans-serif;
-    font-size: 0.72rem; font-weight: 500;
-    padding: 0.38rem 0.9rem; border-radius: 99px;
+    font-size: 0.7rem; font-weight: 500;
+    padding: 0.35rem 0.8rem; border-radius: 99px;
     cursor: pointer; transition: border-color 0.2s, color 0.2s;
-    width: auto; margin: 0;
+    white-space: nowrap; width: auto; margin: 0;
   }
   .btn-logout:hover { border-color: var(--red); color: var(--red); }
 
-  /* ════════════════════════════════
-     BOTTOM NAV
-  ════════════════════════════════ */
+  /* ══════════════════════════════════════
+     BOTTOM NAV (mobile)
+  ══════════════════════════════════════ */
   .bottom-nav {
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
-    background: var(--nav-bg);
-    backdrop-filter: blur(20px);
+    background: var(--nav-bg); backdrop-filter: blur(20px);
     border-top: 1px solid var(--border);
-    display: flex; height: 58px;
-    transition: background 0.3s, border-color 0.3s;
+    display: flex; height: var(--nav-h);
+    transition: background 0.3s;
   }
-
   .bnav-item {
     flex: 1; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 3px;
+    align-items: center; justify-content: center; gap: 2px;
     cursor: pointer; color: var(--text-dim);
-    font-size: 0.58rem; font-weight: 600;
-    letter-spacing: 0.08em; text-transform: uppercase;
+    font-size: 0.55rem; font-weight: 600;
+    letter-spacing: 0.07em; text-transform: uppercase;
     transition: color 0.15s; position: relative; user-select: none;
   }
-
-  .bnav-item .bnav-icon { font-size: 1.1rem; transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1); }
+  .bnav-item .bnav-icon { font-size: 1.05rem; transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1); }
   .bnav-item:hover .bnav-icon { transform: translateY(-2px); }
   .bnav-item.active { color: var(--accent); }
-
   .bnav-item.active::after {
     content: ''; position: absolute; top: 0; left: 50%;
     transform: translateX(-50%);
-    width: 24px; height: 2px;
+    width: 22px; height: 2px;
     background: var(--accent); border-radius: 0 0 2px 2px;
   }
-
   .bnav-badge {
-    position: absolute; top: 8px; right: calc(50% - 16px);
+    position: absolute; top: 7px; right: calc(50% - 16px);
     background: var(--red); color: #fff;
     font-size: 0.5rem; font-weight: 700;
     width: 14px; height: 14px; border-radius: 50%;
@@ -228,53 +210,52 @@
     font-family: 'DM Mono', monospace;
   }
 
-  /* ════════════════════════════════
+  /* ══════════════════════════════════════
      DESKTOP SIDEBAR
-  ════════════════════════════════ */
+  ══════════════════════════════════════ */
   @media (min-width: 768px) {
     .bottom-nav { display: none; }
     .sidebar-desktop {
       display: flex !important; flex-direction: column;
-      width: 220px; flex-shrink: 0;
-      background: var(--bg2);
-      border-right: 1px solid var(--border);
-      height: calc(100vh - var(--nav-h));
-      position: sticky; top: var(--nav-h); overflow-y: auto;
+      width: 210px; flex-shrink: 0;
+      background: var(--bg2); border-right: 1px solid var(--border);
+      height: calc(100dvh - 58px);
+      position: sticky; top: 58px;
+      overflow-y: auto;
       transition: background 0.3s, border-color 0.3s;
     }
-    .sidebar-nav { flex: 1; padding: 0.75rem 0; }
-    .sidebar-footer { padding: 1rem 1.25rem; border-top: 1px solid var(--border); }
-    .page-body { flex-direction: row; }
+    .sidebar-nav  { flex: 1; padding: 0.75rem 0; min-height: 0; }
+    .sidebar-footer { padding: 0.85rem 1.1rem; border-top: 1px solid var(--border); flex-shrink: 0; }
+    .page-body    { flex-direction: row; }
     .content-area { padding-bottom: 2rem; }
   }
 
-  /* ════════════════════════════════
+  /* ══════════════════════════════════════
      LAYOUT
-  ════════════════════════════════ */
+  ══════════════════════════════════════ */
   .page-body {
-    display: flex; min-height: calc(100vh - var(--nav-h));
-    position: relative; z-index: 1;
+    display: flex;
+    min-height: calc(100dvh - 58px);
+    position: relative;
   }
-
   .sidebar-desktop { display: none; }
 
   .dsk-nav-item {
-    display: flex; align-items: center; gap: 0.65rem;
-    padding: 0.6rem 1.25rem; color: var(--text-muted);
-    font-size: 0.82rem; font-weight: 500;
+    display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.58rem 1.1rem; color: var(--text-muted);
+    font-size: 0.8rem; font-weight: 500;
     cursor: pointer; border-left: 2px solid transparent;
     transition: all 0.15s; user-select: none;
   }
+  .dsk-nav-item:hover  { background: var(--accent-dim); color: var(--text); }
+  .dsk-nav-item.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-dim); font-weight: 600; }
+  .dsk-nav-item .icon  { font-size: 0.88rem; width: 18px; text-align: center; flex-shrink: 0; }
 
-  .dsk-nav-item:hover { background: var(--accent-dim); color: var(--text); }
-  .dsk-nav-item.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-dim); }
-  .dsk-nav-item .icon { font-size: 0.9rem; width: 18px; text-align: center; }
-
-  /* ─── Theme dots ─── */
+  /* Theme dots */
   .theme-dot {
-    width: 18px; height: 18px; border-radius: 50%;
+    width: 17px; height: 17px; border-radius: 50%;
     cursor: pointer; border: 2px solid transparent;
-    transition: border-color 0.2s, transform 0.2s; flex-shrink: 0;
+    transition: border-color 0.2s, transform 0.15s; flex-shrink: 0;
   }
   .theme-dot:hover { transform: scale(1.2); }
   .theme-dot.active { border-color: var(--text); }
@@ -283,327 +264,284 @@
   .theme-dot[data-theme="blue"]   { background: #1e40af; }
   .theme-dot[data-theme="orange"] { background: #ea580c; }
 
+  /* ══════════════════════════════════════
+     CONTENT AREA
+  ══════════════════════════════════════ */
   .content-area {
-    flex: 1; padding: 1.5rem 1.25rem 80px;
+    flex: 1; padding: 1.25rem 1.1rem 80px;
     max-width: 800px; margin: 0 auto; width: 100%;
+    min-width: 0;
   }
+  @media (min-width: 768px) { .content-area { padding: 1.75rem 1.75rem 2rem; } }
 
-  @media (min-width: 768px) { .content-area { padding: 2rem; } }
-
-  /* ════════════════════════════════
+  /* ══════════════════════════════════════
      SECTIONS
-  ════════════════════════════════ */
+  ══════════════════════════════════════ */
   .section { display: none; animation: secIn 0.2s cubic-bezier(0.4,0,0.2,1) both; }
   .section.active { display: block; }
-
-  @keyframes secIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
+  @keyframes secIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
 
   .sec-title {
-    font-family: 'Fraunces', Georgia, serif;
-    font-style: italic; font-size: 1.7rem; font-weight: 300;
-    color: var(--text); margin-bottom: 1.5rem;
+    font-family: 'Fraunces', serif; font-style: italic;
+    font-size: 1.6rem; font-weight: 300; color: var(--text);
+    margin-bottom: 0.35rem;   /* reduced — typer-line sits right below */
+    line-height: 1.2;
   }
 
-  /* ════════════════════════════════
+  /* Section header block: title + fixed-height typer below it */
+  .sec-header { margin-bottom: 1.25rem; }
+
+  /* ══════════════════════════════════════
      CARDS
-  ════════════════════════════════ */
+  ══════════════════════════════════════ */
   .card {
     background: var(--panel); border: 1px solid var(--border);
-    border-radius: 12px; padding: 1.4rem;
+    border-radius: 12px; padding: 1.25rem;
     margin-bottom: 1rem; transition: border-color 0.2s, background 0.3s;
   }
   .card:hover { border-color: var(--border2); }
-
   .card-label {
     font-family: 'DM Mono', monospace;
-    font-size: 0.6rem; letter-spacing: 0.2em;
-    text-transform: uppercase; color: var(--text-dim); margin-bottom: 0.75rem;
+    font-size: 0.58rem; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--text-dim); margin-bottom: 0.7rem;
   }
 
+  /* ══════════════════════════════════════
+     STATS ROW
+  ══════════════════════════════════════ */
   .stats-row {
     display: grid; grid-template-columns: repeat(2, 1fr);
-    gap: 0.85rem; margin-bottom: 1rem;
+    gap: 0.75rem; margin-bottom: 0.9rem;
   }
-
   @media (min-width: 500px) { .stats-row { grid-template-columns: repeat(3, 1fr); } }
 
   .stat-card {
     background: var(--panel); border: 1px solid var(--border);
-    border-radius: 12px; padding: 1.1rem;
-    animation: cardUp 0.5s cubic-bezier(0.4,0,0.2,1) both;
-    transition: background 0.3s, border-color 0.3s;
+    border-radius: 12px; padding: 1rem;
+    transition: background 0.3s, border-color 0.3s, transform 0.2s;
   }
-
-  .stat-card:nth-child(1) { animation-delay: 0.1s; }
-  .stat-card:nth-child(2) { animation-delay: 0.18s; }
-  .stat-card:nth-child(3) { animation-delay: 0.26s; }
-
-  @keyframes cardUp {
-    from { opacity: 0; transform: translateY(16px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
+  .stat-card:hover { transform: translateY(-2px); border-color: var(--border2); }
   .stat-label {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.58rem; letter-spacing: 0.18em;
-    text-transform: uppercase; color: var(--text-dim); margin-bottom: 0.4rem;
-  }
-
-  .stat-value {
-    font-family: 'Fraunces', Georgia, serif;
-    font-size: 1.9rem; font-weight: 300; color: var(--accent); line-height: 1;
-  }
-
-  /* ════════════════════════════════
-     PAYMENT PROGRESS BAR
-  ════════════════════════════════ */
-  .pay-progress-wrap {
-    margin: 0.85rem 0 0.5rem;
-  }
-
-  .pay-progress-labels {
-    display: flex; justify-content: space-between;
-    font-family: 'DM Mono', monospace; font-size: 0.62rem;
+    font-family: 'DM Mono', monospace; font-size: 0.56rem;
+    letter-spacing: 0.18em; text-transform: uppercase;
     color: var(--text-dim); margin-bottom: 0.35rem;
   }
+  .stat-value { font-family: 'Fraunces', serif; font-size: 1.8rem; font-weight: 300; color: var(--accent); line-height: 1; }
 
-  .pay-progress-track {
-    background: var(--bg3); border-radius: 99px;
-    height: 7px; overflow: hidden;
+  /* ══════════════════════════════════════
+     PAYMENT PROGRESS BAR
+  ══════════════════════════════════════ */
+  .pay-progress-wrap { margin: 0.75rem 0 0.4rem; }
+  .pay-progress-labels {
+    display: flex; justify-content: space-between;
+    font-family: 'DM Mono', monospace; font-size: 0.6rem;
+    color: var(--text-dim); margin-bottom: 0.3rem;
   }
-
-  .pay-progress-fill {
-    height: 100%; border-radius: 99px;
-    transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
-  }
-
+  .pay-progress-track { background: var(--bg3); border-radius: 99px; height: 6px; overflow: hidden; }
+  .pay-progress-fill  { height: 100%; border-radius: 99px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
   .pay-progress-fill.status-paid    { background: var(--green); }
   .pay-progress-fill.status-partial { background: var(--amber); }
   .pay-progress-fill.status-unpaid  { background: var(--red); width: 0% !important; }
-
-  .pay-status-row {
-    display: flex; justify-content: space-between; align-items: center;
-    margin-top: 0.5rem; font-size: 0.78rem;
-  }
-
+  .pay-status-row { display: flex; justify-content: space-between; align-items: center; margin-top: 0.4rem; font-size: 0.78rem; }
   .pay-status-row .label { color: var(--text-dim); }
-  .pay-status-row .value { font-family: 'DM Mono', monospace; font-size: 0.75rem; color: var(--text); }
+  .pay-status-row .value { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--text); }
 
-  /* ════════════════════════════════
-     INPUTS & BUTTONS
-  ════════════════════════════════ */
+  /* ══════════════════════════════════════
+     INPUTS / BUTTONS
+  ══════════════════════════════════════ */
   input, textarea, select {
     width: 100%; background: var(--bg3); border: 1px solid var(--border);
     border-radius: 8px; color: var(--text);
     font-family: 'DM Sans', sans-serif; font-size: 0.85rem;
-    padding: 0.65rem 0.9rem; margin-bottom: 0.65rem; outline: none;
+    padding: 0.62rem 0.9rem; margin-bottom: 0.62rem; outline: none;
     transition: border-color 0.15s, box-shadow 0.15s, background 0.3s, color 0.3s;
   }
-
-  input:focus, textarea:focus, select:focus {
-    border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim);
-  }
-
-  input::placeholder, textarea::placeholder { color: var(--text-dim); font-size: 0.82rem; }
+  input:focus, textarea:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+  input::placeholder, textarea::placeholder { color: var(--text-dim); font-size: 0.8rem; }
   select option { background: var(--panel); color: var(--text); }
 
   .btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 0.4em;
     border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif;
     font-size: 0.8rem; font-weight: 600; letter-spacing: 0.05em;
-    padding: 0.65rem 1.25rem; cursor: pointer;
+    padding: 0.62rem 1.2rem; cursor: pointer;
     transition: all 0.15s cubic-bezier(0.4,0,0.2,1);
     width: 100%; margin-top: 0.1rem;
   }
-
-  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary   { background: var(--accent); color: #fff; }
   .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); box-shadow: 0 6px 20px var(--accent-dim); }
-
   .btn-secondary { background: transparent; border: 1px solid var(--border2); color: var(--text-muted); }
   .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
-
-  .btn-danger { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.25); color: var(--red); }
+  .btn-danger    { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.25); color: var(--red); }
   .btn-danger:hover { background: rgba(248,113,113,0.2); }
+  .btn-sm { padding: 0.38rem 0.85rem; font-size: 0.72rem; width: auto; margin: 0; }
 
-  .btn-sm { padding: 0.4rem 0.9rem; font-size: 0.72rem; width: auto; margin: 0; }
-
-  /* ════════════════════════════════
-     PROFILE AVATAR
-  ════════════════════════════════ */
-  .profile-avatar-wrap {
-    display: flex; flex-direction: column; align-items: center; padding: 2rem 1rem 1.5rem;
-  }
-
+  /* ══════════════════════════════════════
+     PROFILE
+  ══════════════════════════════════════ */
+  .profile-avatar-wrap { display: flex; flex-direction: column; align-items: center; padding: 1.75rem 1rem 1.25rem; }
   .profile-avatar {
-    width: 90px; height: 90px; border-radius: 50%;
+    width: 84px; height: 84px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-size: 1.8rem; font-weight: 700; color: #fff;
+    font-size: 1.7rem; font-weight: 700; color: #fff;
     letter-spacing: 0.04em; border: 3px solid rgba(255,255,255,0.15);
-    box-shadow: 0 8px 32px rgba(0,0,0,0.4); margin-bottom: 0.85rem;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4); margin-bottom: 0.75rem;
     animation: avatarPop 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
   }
+  @keyframes avatarPop { from{opacity:0;transform:scale(0.7)} to{opacity:1;transform:scale(1)} }
+  .profile-name  { font-family:'Fraunces',serif;font-style:italic;font-size:1.4rem;font-weight:300;color:var(--text);text-align:center;margin-bottom:0.2rem; }
+  .profile-email { font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--text-dim);text-align:center; }
 
-  @keyframes avatarPop {
-    from { opacity: 0; transform: scale(0.7); }
-    to   { opacity: 1; transform: scale(1); }
-  }
-
-  .profile-name {
-    font-family: 'Fraunces', Georgia, serif; font-style: italic;
-    font-size: 1.5rem; font-weight: 300; color: var(--text); text-align: center; margin-bottom: 0.25rem;
-  }
-
-  .profile-email { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--text-dim); text-align: center; }
-
-  /* ════════════════════════════════
+  /* ══════════════════════════════════════
      TABLE
-  ════════════════════════════════ */
-  .table-wrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-  th {
-    text-align: left; padding: 0.55rem 0.75rem;
-    font-family: 'DM Mono', monospace; font-size: 0.58rem;
-    letter-spacing: 0.15em; text-transform: uppercase;
-    color: var(--text-dim); border-bottom: 1px solid var(--border); font-weight: 400;
-  }
-  td { padding: 0.65rem 0.75rem; border-bottom: 1px solid var(--border); color: var(--text-muted); }
-  tr:last-child td { border: none; }
-  tr:hover td { color: var(--text); background: var(--panel2); }
-  .td-mono { font-family: 'DM Mono', monospace; font-size: 0.75rem; }
+  ══════════════════════════════════════ */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+  th { text-align:left; padding:0.5rem 0.7rem; font-family:'DM Mono',monospace; font-size:0.56rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--text-dim); border-bottom:1px solid var(--border); font-weight:400; }
+  td { padding:0.6rem 0.7rem; border-bottom:1px solid var(--border); color:var(--text-muted); }
+  tr:last-child td { border:none; }
+  tr:hover td { color:var(--text); background:var(--panel2); }
+  .td-mono { font-family:'DM Mono',monospace; font-size:0.72rem; }
 
-  /* ════════════════════════════════
+  /* ══════════════════════════════════════
      PILLS
-  ════════════════════════════════ */
-  .pill {
-    display: inline-block; font-family: 'DM Mono', monospace;
-    font-size: 0.6rem; padding: 2px 8px; border-radius: 99px; font-weight: 500; letter-spacing: 0.06em;
-  }
-  .pill-green  { background: rgba(52,211,153,0.12);  color: var(--green); border: 1px solid rgba(52,211,153,0.2); }
-  .pill-red    { background: rgba(248,113,113,0.12); color: var(--red);   border: 1px solid rgba(248,113,113,0.2); }
-  .pill-amber  { background: rgba(251,191,36,0.12);  color: var(--amber); border: 1px solid rgba(251,191,36,0.2); }
-  .pill-violet { background: var(--accent-dim);       color: var(--accent);border: 1px solid rgba(167,139,250,0.2); }
+  ══════════════════════════════════════ */
+  .pill { display:inline-block;font-family:'DM Mono',monospace;font-size:0.58rem;padding:2px 7px;border-radius:99px;font-weight:500;letter-spacing:0.05em; }
+  .pill-green { background:rgba(52,211,153,0.12); color:var(--green); border:1px solid rgba(52,211,153,0.2); }
+  .pill-red   { background:rgba(248,113,113,0.12);color:var(--red);   border:1px solid rgba(248,113,113,0.2); }
+  .pill-amber { background:rgba(251,191,36,0.12); color:var(--amber); border:1px solid rgba(251,191,36,0.2); }
+  .pill-violet{ background:var(--accent-dim);      color:var(--accent);border:1px solid rgba(167,139,250,0.2); }
 
-  /* ════════════════════════════════
+  /* ══════════════════════════════════════
      CHAT
-  ════════════════════════════════ */
+  ══════════════════════════════════════ */
   .chat-box {
-    background: var(--bg3); border: 1px solid var(--border);
-    border-radius: 10px; padding: 0.85rem; height: 260px;
-    overflow-y: auto; margin-bottom: 0.75rem;
-    display: flex; flex-direction: column; gap: 0.6rem;
-    transition: background 0.3s;
+    background:var(--bg3); border:1px solid var(--border);
+    border-radius:10px; padding:0.85rem;
+    height:260px; overflow-y:auto; margin-bottom:0.75rem;
+    display:flex; flex-direction:column; gap:0.55rem;
+    transition:background 0.3s;
   }
+  .chat-box::-webkit-scrollbar { width:3px; }
+  .chat-box::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+  .msg-bubble { max-width:80%;padding:0.5rem 0.85rem;border-radius:10px;font-size:0.78rem;line-height:1.5;animation:msgIn 0.2s cubic-bezier(0.4,0,0.2,1) both; }
+  @keyframes msgIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+  .msg-mine  { background:var(--accent-dim);color:var(--accent);align-self:flex-end;border-bottom-right-radius:2px;border:1px solid rgba(167,139,250,0.2); }
+  .msg-admin { background:var(--panel2);color:var(--text);align-self:flex-start;border-bottom-left-radius:2px;border:1px solid var(--border2); }
+  .msg-meta  { font-family:'DM Mono',monospace;font-size:0.56rem;color:var(--text-dim);margin-top:3px; }
+  .msg-mine .msg-meta  { text-align:right; }
+  .msg-admin .msg-meta { text-align:left; }
+  .chat-input-row { display:flex;gap:0.5rem;align-items:flex-end; }
+  .chat-input-row input { flex:1;margin:0;border-radius:99px;padding:0.58rem 1rem; }
 
-  .chat-box::-webkit-scrollbar { width: 3px; }
-  .chat-box::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+  /* ══════════════════════════════════════
+     INFO ITEMS (rules, notices)
+  ══════════════════════════════════════ */
+  .info-item { padding:0.8rem 0; border-bottom:1px solid var(--border); }
+  .info-item:last-child { border:none; }
+  .info-title { font-weight:600;font-size:0.84rem;color:var(--text);margin-bottom:0.2rem; }
+  .info-body  { font-size:0.78rem;color:var(--text-muted);line-height:1.6; }
+  .info-date  { font-family:'DM Mono',monospace;font-size:0.58rem;color:var(--text-dim);margin-top:0.25rem; }
 
-  .msg-bubble {
-    max-width: 80%; padding: 0.55rem 0.9rem;
-    border-radius: 10px; font-size: 0.8rem; line-height: 1.5;
-    animation: msgIn 0.2s cubic-bezier(0.4,0,0.2,1) both;
-  }
-
-  @keyframes msgIn {
-    from { opacity: 0; transform: translateY(6px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
-  .msg-mine {
-    background: var(--accent-dim); color: var(--accent);
-    align-self: flex-end; border-bottom-right-radius: 2px;
-    border: 1px solid rgba(167,139,250,0.2);
-  }
-
-  .msg-admin {
-    background: var(--panel2); color: var(--text);
-    align-self: flex-start; border-bottom-left-radius: 2px; border: 1px solid var(--border2);
-  }
-
-  .msg-meta { font-family: 'DM Mono', monospace; font-size: 0.58rem; color: var(--text-dim); margin-top: 3px; }
-  .msg-mine .msg-meta { text-align: right; }
-  .msg-admin .msg-meta { text-align: left; }
-
-  .chat-input-row { display: flex; gap: 0.5rem; align-items: flex-end; }
-  .chat-input-row input { flex: 1; margin: 0; border-radius: 99px; padding: 0.6rem 1rem; }
-
-  /* ════════════════════════════════
-     RULES / NOTICES
-  ════════════════════════════════ */
-  .info-item { padding: 0.85rem 0; border-bottom: 1px solid var(--border); }
-  .info-item:last-child { border: none; }
-  .info-title { font-weight: 600; font-size: 0.85rem; color: var(--text); margin-bottom: 0.25rem; }
-  .info-body  { font-size: 0.8rem; color: var(--text-muted); line-height: 1.6; }
-  .info-date  { font-family: 'DM Mono', monospace; font-size: 0.6rem; color: var(--text-dim); margin-top: 0.3rem; }
-
-  /* ════════════════════════════════
+  /* ══════════════════════════════════════
      SETTINGS
-  ════════════════════════════════ */
-  .settings-section { margin-bottom: 1.5rem; }
+  ══════════════════════════════════════ */
+  .settings-section { margin-bottom:1.25rem; }
+  .settings-label { font-family:'DM Mono',monospace;font-size:0.58rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-dim);margin-bottom:0.65rem;padding-bottom:0.45rem;border-bottom:1px solid var(--border); }
+  .info-row { display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-bottom:1px solid var(--border);font-size:0.82rem; }
+  .info-row:last-child { border:none; }
+  .info-row-label { color:var(--text-dim); }
+  .info-row-value { color:var(--text);font-family:'DM Mono',monospace;font-size:0.72rem; }
 
-  .settings-label {
-    font-family: 'DM Mono', monospace; font-size: 0.6rem;
-    letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim);
-    margin-bottom: 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);
-  }
-
-  .info-row {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 0.55rem 0; border-bottom: 1px solid var(--border); font-size: 0.82rem;
-  }
-  .info-row:last-child { border: none; }
-  .info-row-label { color: var(--text-dim); }
-  .info-row-value { color: var(--text); font-family: 'DM Mono', monospace; font-size: 0.75rem; }
-
-  /* ════════════════════════════════
-     TOAST
-  ════════════════════════════════ */
-  #toast {
-    position: fixed; bottom: 80px; right: 1.25rem;
-    background: var(--panel2); border: 1px solid var(--border2);
-    border-radius: 8px; padding: 0.6rem 1rem;
-    font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--text);
-    opacity: 0; transform: translateY(8px);
-    transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
-    z-index: 9999; pointer-events: none; max-width: 280px;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.5);
-  }
-
-  #toast.show    { opacity: 1; transform: translateY(0); }
-  #toast.success { border-color: var(--green); color: var(--green); }
-  #toast.error   { border-color: var(--red);   color: var(--red); }
-  #toast.warn    { border-color: var(--amber);  color: var(--amber); }
-
-  @media (min-width: 768px) { #toast { bottom: 1.5rem; right: 2rem; } }
-
-  /* ════════════════════════════════
-     EMPTY STATE
-  ════════════════════════════════ */
-  .empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--text-dim); font-size: 0.8rem; }
-  .empty-icon  { font-size: 2rem; display: block; margin-bottom: 0.5rem; }
-
-  /* ════════════════════════════════
-     MPESA BUTTON
-  ════════════════════════════════ */
+  /* ══════════════════════════════════════
+     M-PESA BUTTON
+  ══════════════════════════════════════ */
   .mpesa-btn {
-    background: linear-gradient(135deg, #00a651, #007a3d);
-    color: #fff; font-size: 0.85rem; padding: 0.8rem;
-    border-radius: 10px; width: 100%; border: none;
-    cursor: pointer; font-family: 'DM Sans', sans-serif;
-    font-weight: 700; letter-spacing: 0.06em;
-    transition: filter 0.15s, transform 0.15s; margin-top: 0.1rem;
+    background:linear-gradient(135deg,#00a651,#007a3d);
+    color:#fff;font-size:0.85rem;padding:0.78rem;
+    border-radius:10px;width:100%;border:none;
+    cursor:pointer;font-family:'DM Sans',sans-serif;
+    font-weight:700;letter-spacing:0.06em;
+    transition:filter 0.15s,transform 0.15s;margin-top:0.1rem;
   }
-  .mpesa-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
-  .mpesa-btn:active { transform: translateY(1px); }
-  .mpesa-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .mpesa-btn:hover   { filter:brightness(1.1);transform:translateY(-1px); }
+  .mpesa-btn:active  { transform:translateY(1px); }
+  .mpesa-btn:disabled{ opacity:0.5;cursor:not-allowed;transform:none; }
 
-  /* Scrollbars */
-  ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
-  ::selection { background: var(--accent-dim); color: var(--text); }
+  /* ══════════════════════════════════════
+     SPINNER (for M-Pesa waiting state)
+  ══════════════════════════════════════ */
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ══════════════════════════════════════
+     TOAST
+  ══════════════════════════════════════ */
+  #toast {
+    position:fixed;bottom:72px;right:1.1rem;
+    background:var(--panel2);border:1px solid var(--border2);
+    border-radius:8px;padding:0.58rem 0.95rem;
+    font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--text);
+    opacity:0;transform:translateY(8px);
+    transition:all 0.25s cubic-bezier(0.4,0,0.2,1);
+    z-index:9999;pointer-events:none;max-width:270px;
+    box-shadow:0 8px 30px rgba(0,0,0,0.5);
+  }
+  #toast.show    { opacity:1;transform:translateY(0); }
+  #toast.success { border-color:var(--green);color:var(--green); }
+  #toast.error   { border-color:var(--red);  color:var(--red); }
+  #toast.warn    { border-color:var(--amber); color:var(--amber); }
+  @media (min-width:768px) { #toast { bottom:1.5rem;right:2rem; } }
+
+  /* ══════════════════════════════════════
+     EMPTY STATE
+  ══════════════════════════════════════ */
+  .empty-state { text-align:center;padding:2.25rem 1rem;color:var(--text-dim);font-size:0.8rem; }
+  .empty-icon  { font-size:1.9rem;display:block;margin-bottom:0.45rem; }
+
+  /* ══════════════════════════════════════
+     PAY SECTION TIP CONTAINER
+     Fixed height — never pushes card down.
+  ══════════════════════════════════════ */
+  .pay-tip-line {
+    height: 1.2em;
+    overflow: hidden;
+    white-space: nowrap;
+    flex-shrink: 0;
+    display: block;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.64rem;
+    color: var(--text-dim);
+    letter-spacing: 0.03em;
+    line-height: 1.2em;
+    margin-top: 0.55rem;
+    user-select: none;
+  }
+
+  /* ══════════════════════════════════════
+     RECEIPTS TIP
+  ══════════════════════════════════════ */
+  .receipts-tip-line {
+    height: 1.15em;
+    overflow: hidden;
+    white-space: nowrap;
+    flex-shrink: 0;
+    display: block;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    letter-spacing: 0.03em;
+    line-height: 1.15em;
+    margin-bottom: 0.85rem;
+    user-select: none;
+  }
+
+  /* ══════════════════════════════════════
+     SCROLLBARS
+  ══════════════════════════════════════ */
+  ::-webkit-scrollbar { width:4px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--border2);border-radius:2px; }
+  ::selection { background:var(--accent-dim);color:var(--text); }
   </style>
 </head>
 
@@ -611,9 +549,18 @@
 
 <!-- ═══ HEADER ═══ -->
 <header>
-  <div class="header-left">
+  <div class="header-identity">
     <div class="header-avatar" id="headerAvatar">??</div>
-    <div class="header-name" id="headerName">Loading...</div>
+    <div class="header-identity-text">
+      <!-- Tenant first name -->
+      <div class="header-name" id="headerName">Loading...</div>
+      <!--
+        TYPER 1 — Header greeting
+        Fixed height via .typer-line → never moves header.
+        Messages cycle: tenant lifestyle tips, reassuring copy.
+      -->
+      <span class="typer-line" id="headerGreeting"></span>
+    </div>
   </div>
   <div class="header-right">
     <span class="status-pill" id="headerStatus"></span>
@@ -627,19 +574,22 @@
   <!-- Desktop sidebar -->
   <aside class="sidebar-desktop" id="desktopSidebar">
     <div class="sidebar-nav">
-      <div class="dsk-nav-item active" onclick="showSection('home')">     <span class="icon">🏠</span> Home       </div>
-      <div class="dsk-nav-item"        onclick="showSection('profile')">  <span class="icon">👤</span> Profile    </div>
-      <div class="dsk-nav-item"        onclick="showSection('pay')">      <span class="icon">💳</span> Pay Rent   </div>
-      <div class="dsk-nav-item"        onclick="showSection('receipts')"> <span class="icon">🧾</span> Receipts   </div>
-      <div class="dsk-nav-item"        onclick="showSection('messages')"> <span class="icon">💬</span> Messages   <span class="bnav-badge" id="dskMsgBadge" style="position:static;margin-left:auto;display:none"></span></div>
-      <div class="dsk-nav-item"        onclick="showSection('notices')">  <span class="icon">📢</span> Notices    </div>
-      <div class="dsk-nav-item"        onclick="showSection('rules')">    <span class="icon">📜</span> Rules      </div>
-      <div class="dsk-nav-item"        onclick="showSection('settings')"> <span class="icon">⚙️</span> Settings   </div>
+      <div class="dsk-nav-item active" onclick="showSection('home')">    <span class="icon">🏠</span>Home    </div>
+      <div class="dsk-nav-item"        onclick="showSection('profile')"> <span class="icon">👤</span>Profile </div>
+      <div class="dsk-nav-item"        onclick="showSection('pay')">     <span class="icon">💳</span>Pay Rent</div>
+      <div class="dsk-nav-item"        onclick="showSection('receipts')"><span class="icon">🧾</span>Receipts</div>
+      <div class="dsk-nav-item"        onclick="showSection('messages')">
+        <span class="icon">💬</span>Messages
+        <span class="bnav-badge" id="dskMsgBadge" style="position:static;margin-left:auto;display:none"></span>
+      </div>
+      <div class="dsk-nav-item"        onclick="showSection('notices')"> <span class="icon">📢</span>Notices </div>
+      <div class="dsk-nav-item"        onclick="showSection('rules')">   <span class="icon">📜</span>Rules   </div>
+      <div class="dsk-nav-item"        onclick="showSection('settings')"><span class="icon">⚙️</span>Settings</div>
     </div>
 
     <div class="sidebar-footer">
-      <div style="font-family:'DM Mono',monospace;font-size:0.58rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--text-dim);margin-bottom:0.6rem">Appearance</div>
-      <div style="display:flex;gap:6px">
+      <div style="font-family:'DM Mono',monospace;font-size:0.56rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-dim);margin-bottom:0.5rem">Appearance</div>
+      <div style="display:flex;gap:6px;margin-bottom:0.75rem">
         <div class="theme-dot active" data-theme="dark"   onclick="setTheme('dark')"   title="Dark"></div>
         <div class="theme-dot"        data-theme="light"  onclick="setTheme('light')"  title="Light"></div>
         <div class="theme-dot"        data-theme="blue"   onclick="setTheme('blue')"   title="Blue"></div>
@@ -653,23 +603,32 @@
 
     <!-- ─── HOME ─── -->
     <div class="section active" id="sec-home">
-      <div class="sec-title">Good day 👋</div>
+      <div class="sec-header">
+        <div class="sec-title">Good day 👋</div>
+        <!--
+          TYPER 2 — Home subtitle
+          Fixed height .typer-line between title and stats grid.
+          Stats grid always starts at the same Y position.
+          Messages: friendly overview prompts.
+        -->
+        <span class="typer-line" id="homeSubtitle"></span>
+      </div>
 
       <div class="stats-row">
         <div class="stat-card">
           <div class="stat-label">Total Paid</div>
           <div class="stat-value" id="statPaid">—</div>
-          <div style="font-size:0.65rem;color:var(--text-dim);margin-top:0.25rem">Ksh lifetime</div>
+          <div style="font-size:0.62rem;color:var(--text-dim);margin-top:0.2rem">Ksh lifetime</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">Balance</div>
           <div class="stat-value" id="statArrears" style="color:var(--amber)">—</div>
-          <div style="font-size:0.65rem;color:var(--text-dim);margin-top:0.25rem">Ksh this month</div>
+          <div style="font-size:0.62rem;color:var(--text-dim);margin-top:0.2rem">Ksh this month</div>
         </div>
-        <div class="stat-card" style="grid-column: span 2;">
+        <div class="stat-card" style="grid-column:span 2;">
           <div class="stat-label">House</div>
-          <div class="stat-value" id="statHouse" style="font-size:1.3rem;color:var(--text)">—</div>
-          <div style="font-size:0.65rem;color:var(--text-dim);margin-top:0.25rem">Your unit</div>
+          <div class="stat-value" id="statHouse" style="font-size:1.2rem;color:var(--text)">—</div>
+          <div style="font-size:0.62rem;color:var(--text-dim);margin-top:0.2rem">Your unit</div>
         </div>
       </div>
 
@@ -696,25 +655,27 @@
 
       <div class="card">
         <div class="card-label">Quick Actions</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-top:0.25rem">
-          <button class="btn btn-primary"   onclick="showSection('pay')">💳 Pay Rent</button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-top:0.1rem">
+          <button class="btn btn-primary"   onclick="showSection('pay')">     💳 Pay Rent</button>
           <button class="btn btn-secondary" onclick="showSection('receipts')">🧾 Receipts</button>
           <button class="btn btn-secondary" onclick="showSection('messages')">💬 Message</button>
-          <button class="btn btn-secondary" onclick="showSection('notices')">📢 Notices</button>
+          <button class="btn btn-secondary" onclick="showSection('notices')"> 📢 Notices</button>
         </div>
       </div>
     </div>
 
     <!-- ─── PROFILE ─── -->
     <div class="section" id="sec-profile">
-      <div class="sec-title">My Profile</div>
+      <div class="sec-header">
+        <div class="sec-title">My Profile</div>
+      </div>
       <div class="card">
         <div class="profile-avatar-wrap">
           <div class="profile-avatar" id="profileAvatar">??</div>
           <div class="profile-name"   id="profileName">—</div>
           <div class="profile-email"  id="profileEmail">—</div>
         </div>
-        <div class="card-label" style="margin-top:0.5rem">Account Info</div>
+        <div class="card-label" style="margin-top:0.25rem">Account Info</div>
         <div class="info-row"><span class="info-row-label">Phone</span>       <span class="info-row-value" id="profilePhone">—</span></div>
         <div class="info-row"><span class="info-row-label">House</span>       <span class="info-row-value" id="profileHouse">—</span></div>
         <div class="info-row"><span class="info-row-label">Monthly Rent</span><span class="info-row-value" id="profileRent">—</span></div>
@@ -727,14 +688,17 @@
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>Month</th><th>Amount</th><th>Total Paid</th><th>Balance</th><th>Status</th><th>Date</th></tr>
+              <tr>
+                <th>Month</th><th>Amount</th><th>Total Paid</th>
+                <th>Balance</th><th>Status</th><th>Date</th>
+              </tr>
             </thead>
             <tbody id="payHistoryTable">
               <tr><td colspan="6"><div class="empty-state">No payments yet</div></td></tr>
             </tbody>
           </table>
         </div>
-        <div style="margin-top:0.75rem;font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--text-dim)">
+        <div style="margin-top:0.65rem;font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--text-dim)">
           Lifetime total: <strong id="profileTotalPaid" style="color:var(--accent)">Ksh 0</strong>
         </div>
       </div>
@@ -742,13 +706,15 @@
 
     <!-- ─── PAY RENT ─── -->
     <div class="section" id="sec-pay">
-      <div class="sec-title">Pay Rent</div>
+      <div class="sec-header">
+        <div class="sec-title">Pay Rent</div>
+      </div>
 
       <!-- Monthly summary card -->
       <div class="card" id="rentSummaryCard">
         <div class="card-label">Current Month Status</div>
         <div id="rentSummary" style="font-size:0.85rem;color:var(--text-muted)">Enter month below to check balance.</div>
-        <div id="payProgressWrap" style="display:none;margin-top:0.75rem">
+        <div id="payProgressWrap" style="display:none;margin-top:0.65rem">
           <div class="pay-progress-wrap">
             <div class="pay-progress-labels">
               <span id="payPaidLabel">Paid: Ksh 0</span>
@@ -758,7 +724,7 @@
               <div class="pay-progress-fill" id="payProgressBar" style="width:0%"></div>
             </div>
           </div>
-          <div class="pay-status-row" style="margin-top:0.5rem">
+          <div class="pay-status-row" style="margin-top:0.4rem">
             <span class="label">Balance remaining</span>
             <span class="value" id="payBalanceLabel" style="color:var(--amber)">Ksh 0</span>
           </div>
@@ -767,23 +733,37 @@
 
       <div class="card">
         <div class="card-label">M-Pesa Payment</div>
-        <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:0.85rem;line-height:1.6">
-          Enter the month and amount. An M-Pesa STK push will be sent to your registered phone.
+        <div style="font-size:0.76rem;color:var(--text-dim);margin-bottom:0.8rem;line-height:1.65">
+          Enter the month and amount. An M-Pesa STK push will be sent to your registered phone number.
         </div>
         <input type="text"   id="payMonth"  placeholder="Month (e.g. May 2026)" oninput="checkMonthBalance()">
         <input type="number" id="payAmount" placeholder="Amount to pay (Ksh)" min="1">
         <button class="mpesa-btn" id="mpesaBtn" onclick="payWithMpesa()">📱 Pay with M-Pesa</button>
+        <!--
+          TYPER 3 — Pay Rent tip
+          .pay-tip-line: fixed height 1.2em, overflow:hidden.
+          Card height does NOT change. Tips rotate every cycle.
+        -->
+        <span class="pay-tip-line" id="payTip"></span>
       </div>
 
-      <!-- Polling status -->
+      <!-- Payment status / receipt -->
       <div id="payReceipt"></div>
     </div>
 
     <!-- ─── RECEIPTS ─── -->
     <div class="section" id="sec-receipts">
-      <div class="sec-title">My Receipts</div>
+      <div class="sec-header">
+        <div class="sec-title">My Receipts</div>
+      </div>
       <div class="card">
-        <div class="card-label" style="margin-bottom:1rem">Payment History — All Transactions</div>
+        <div class="card-label">All Transactions</div>
+        <!--
+          TYPER 4 — Receipts tip
+          .receipts-tip-line: fixed height, no layout impact.
+          Types once when section opens, stays static.
+        -->
+        <span class="receipts-tip-line" id="receiptsTip"></span>
         <div id="receiptsList">
           <div class="empty-state"><span class="empty-icon">🧾</span>No receipts yet</div>
         </div>
@@ -792,10 +772,21 @@
 
     <!-- ─── MESSAGES ─── -->
     <div class="section" id="sec-messages">
-      <div class="sec-title">Chat with Landlord</div>
+      <div class="sec-header">
+        <div class="sec-title">Chat with Landlord</div>
+      </div>
       <div class="card">
         <div class="chat-box" id="chatBox">
-          <div class="empty-state"><span class="empty-icon">💬</span>No messages yet</div>
+          <!--
+            TYPER 5 — Messages empty state
+            When no messages, this div shows.
+            The typed text is rendered INSIDE the empty-state div,
+            which has a fixed height (padding). No layout shift.
+          -->
+          <div class="empty-state">
+            <span class="empty-icon">💬</span>
+            <span id="messagesEmptyText">Send a message to your landlord.</span>
+          </div>
         </div>
         <div class="chat-input-row">
           <input type="text" id="msgInput" placeholder="Type a message...">
@@ -806,7 +797,9 @@
 
     <!-- ─── NOTICES ─── -->
     <div class="section" id="sec-notices">
-      <div class="sec-title">Announcements</div>
+      <div class="sec-header">
+        <div class="sec-title">Announcements</div>
+      </div>
       <div class="card">
         <div id="noticesList">
           <div class="empty-state"><span class="empty-icon">📢</span>No announcements yet</div>
@@ -816,7 +809,9 @@
 
     <!-- ─── RULES ─── -->
     <div class="section" id="sec-rules">
-      <div class="sec-title">House Rules</div>
+      <div class="sec-header">
+        <div class="sec-title">House Rules</div>
+      </div>
       <div class="card">
         <div id="rulesList">
           <div class="empty-state"><span class="empty-icon">📜</span>No rules posted yet</div>
@@ -826,7 +821,9 @@
 
     <!-- ─── SETTINGS ─── -->
     <div class="section" id="sec-settings">
-      <div class="sec-title">Settings</div>
+      <div class="sec-header">
+        <div class="sec-title">Settings</div>
+      </div>
 
       <!-- Account info -->
       <div class="card settings-section">
@@ -834,18 +831,18 @@
         <div class="info-row"><span class="info-row-label">Name</span>  <span class="info-row-value" id="settingsName">—</span></div>
         <div class="info-row"><span class="info-row-label">Email</span> <span class="info-row-value" id="settingsEmail">—</span></div>
         <div class="info-row"><span class="info-row-label">Phone</span> <span class="info-row-value" id="settingsPhone">—</span></div>
-        <div class="info-row"><span class="info-row-label">Role</span>  <span class="pill pill-violet" style="font-size:0.6rem">Tenant</span></div>
+        <div class="info-row"><span class="info-row-label">Role</span>  <span class="pill pill-violet" style="font-size:0.58rem">Tenant</span></div>
       </div>
 
       <!-- Appearance -->
       <div class="card settings-section">
         <div class="settings-label">Appearance</div>
-        <div style="display:flex;gap:10px;align-items:center;padding:0.25rem 0;flex-wrap:wrap">
-          <div class="theme-dot" data-theme="dark"   onclick="setTheme('dark')"   title="Dark"   style="width:26px;height:26px"></div>
-          <div class="theme-dot" data-theme="light"  onclick="setTheme('light')"  title="Light"  style="width:26px;height:26px"></div>
-          <div class="theme-dot" data-theme="blue"   onclick="setTheme('blue')"   title="Blue"   style="width:26px;height:26px"></div>
-          <div class="theme-dot" data-theme="orange" onclick="setTheme('orange')" title="Orange" style="width:26px;height:26px"></div>
-          <span style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--text-dim);margin-left:0.25rem" id="currentThemeLabel">dark</span>
+        <div style="display:flex;gap:10px;align-items:center;padding:0.15rem 0;flex-wrap:wrap">
+          <div class="theme-dot" data-theme="dark"   onclick="setTheme('dark')"   title="Dark"   style="width:24px;height:24px"></div>
+          <div class="theme-dot" data-theme="light"  onclick="setTheme('light')"  title="Light"  style="width:24px;height:24px"></div>
+          <div class="theme-dot" data-theme="blue"   onclick="setTheme('blue')"   title="Blue"   style="width:24px;height:24px"></div>
+          <div class="theme-dot" data-theme="orange" onclick="setTheme('orange')" title="Orange" style="width:24px;height:24px"></div>
+          <span style="font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--text-dim)" id="currentThemeLabel">dark</span>
         </div>
       </div>
 
@@ -858,8 +855,8 @@
         <button class="btn btn-primary" onclick="changePassword()">Update Password</button>
       </div>
 
-      <!-- Danger -->
-      <div class="card settings-section" style="border-color:rgba(248,113,113,0.2)">
+      <!-- Sign out -->
+      <div class="card settings-section" style="border-color:rgba(248,113,113,0.18)">
         <div class="settings-label" style="color:var(--red)">Session</div>
         <button class="btn btn-danger" onclick="logout()">⏻ Sign Out</button>
       </div>
@@ -873,58 +870,122 @@
   <div class="bnav-item active" onclick="showSection('home')"     id="bnav-home">    <span class="bnav-icon">🏠</span>Home    </div>
   <div class="bnav-item"        onclick="showSection('profile')"  id="bnav-profile"> <span class="bnav-icon">👤</span>Profile </div>
   <div class="bnav-item"        onclick="showSection('pay')"      id="bnav-pay">     <span class="bnav-icon">💳</span>Pay     </div>
-  <div class="bnav-item"        onclick="showSection('messages')" id="bnav-messages"><span class="bnav-icon">💬</span>Chat    <span class="bnav-badge" id="msgBadge" style="display:none">!</span></div>
+  <div class="bnav-item"        onclick="showSection('messages')" id="bnav-messages">
+    <span class="bnav-icon">💬</span>Chat
+    <span class="bnav-badge" id="msgBadge" style="display:none">!</span>
+  </div>
   <div class="bnav-item"        onclick="showSection('settings')" id="bnav-settings"><span class="bnav-icon">⚙️</span>Settings</div>
 </nav>
 
 <div id="toast"></div>
 
+<!-- ══════════════════════════════════════════════════════
+     INLINE SCRIPT — Theme (runs before paint, no flash)
+══════════════════════════════════════════════════════ -->
 <script>
-// ═══════════════════════════════════════
-// THEME SYSTEM
-// ═══════════════════════════════════════
+(function() {
+  const t = localStorage.getItem('tenant-theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+})();
 
-function setTheme(name) {
-  document.documentElement.setAttribute('data-theme', name);
-  localStorage.setItem('tenant-theme', name);
-
-  document.querySelectorAll('.theme-dot').forEach(d => {
-    d.classList.toggle('active', d.dataset.theme === name);
-  });
-
-  const label = document.getElementById('currentThemeLabel');
-  if (label) label.textContent = name;
-
-  showToast('Theme: ' + name + ' ✨', 'success');
-}
-
-function loadTheme() {
-  const saved = localStorage.getItem('tenant-theme') || 'dark';
-  document.documentElement.setAttribute('data-theme', saved);
-
-  document.querySelectorAll('.theme-dot').forEach(d => {
-    d.classList.toggle('active', d.dataset.theme === saved);
-  });
-
-  const label = document.getElementById('currentThemeLabel');
-  if (label) label.textContent = saved;
-}
-
-// Load theme before anything renders — no flash
-loadTheme();
-
-// ── showToast needed here for theme feedback ──
 function showToast(msg, type) {
   const t = document.getElementById('toast');
   if (!t) return;
   t.textContent = msg;
   t.className   = 'show ' + (type || '');
   clearTimeout(t._t);
-  t._t = setTimeout(() => { t.className = ''; }, 3000);
+  t._t = setTimeout(() => { t.className = ''; }, 3200);
 }
 </script>
 
 <script src="config.js"></script>
 <script src="tenant.js"></script>
+
+<!-- ══════════════════════════════════════════════════════
+     TYPERS — wired AFTER tenant.js loads so startTyper()
+     is available. All containers are fixed-height in CSS.
+     Even if a message is 300 chars wide, overflow:hidden
+     clips it. The cursor ▍ is always visible inside the box.
+══════════════════════════════════════════════════════ -->
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+
+  /* ── TYPER 1: Header greeting ────────────────────────
+     Container: #headerGreeting (.typer-line, h=1.35em)
+     Shows under the tenant's first name in the header.
+     Cycles through lifestyle and reassurance messages.
+  ──────────────────────────────────────────────────── */
+  startTyper('headerGreeting', [
+    '// your home, your account — all here',
+    '// M-Pesa payments in seconds',
+    '// track every payment, every month',
+    '// receipts always at your fingertips',
+    '// your landlord is just a message away',
+    '// never miss a due date again',
+    '// Affordable Rentals — built for Kenya',
+    '// pay partial or full — we track it all',
+    '// rent on time, stress-free living',
+    '// all your records in one place',
+  ], { typeSpeed: 32, deleteSpeed: 16, pauseAfter: 2800, pauseBefore: 400, loop: true });
+
+
+  /* ── TYPER 2: Home subtitle ──────────────────────────
+     Container: #homeSubtitle (.typer-line, h=1.35em)
+     Sits between "Good day 👋" title and the stats grid.
+     Stats grid Y position NEVER changes — height is fixed.
+  ──────────────────────────────────────────────────── */
+  startTyper('homeSubtitle', [
+    'Welcome back. Here\'s your rental overview.',
+    'Your dashboard is up to date.',
+    'Everything you need, right here.',
+    'Manage your rent from anywhere.',
+    'Stay on top of your payments effortlessly.',
+  ], { typeSpeed: 36, deleteSpeed: 18, pauseAfter: 3200, pauseBefore: 600, loop: true });
+
+
+  /* ── TYPER 3: Pay Rent tip ───────────────────────────
+     Container: #payTip (.pay-tip-line, h=1.2em)
+     Sits below the M-Pesa button inside the payment card.
+     Card height is fixed — this line is always 1.2em tall.
+     Rotates helpful M-Pesa tips.
+  ──────────────────────────────────────────────────── */
+  startTyper('payTip', [
+    'Tip: your registered phone receives the M-Pesa prompt instantly.',
+    'Tip: partial payments are tracked — pay what you can today.',
+    'Tip: your receipt is emailed right after payment confirms.',
+    'Tip: you can pay for any month — past or current.',
+    'Tip: enter your balance amount to clear this month fully.',
+  ], { typeSpeed: 30, deleteSpeed: 14, pauseAfter: 3500, pauseBefore: 800, loop: true });
+
+
+  /* ── TYPER 4: Receipts tip ───────────────────────────
+     Container: #receiptsTip (.receipts-tip-line, h=1.15em)
+     Sits below the "All Transactions" card-label.
+     Types once and stays — no delete loop on first message.
+     Subsequent cycles give variety without being distracting.
+  ──────────────────────────────────────────────────── */
+  startTyper('receiptsTip', [
+    'Every payment generates a downloadable PDF receipt.',
+    'Download any receipt as PDF for your records.',
+    'M-Pesa codes are saved on every transaction.',
+  ], { typeSpeed: 34, deleteSpeed: 16, pauseAfter: 4000, pauseBefore: 600, loop: true });
+
+
+  /* ── TYPER 5: Messages empty state ──────────────────
+     Container: #messagesEmptyText (inside .empty-state)
+     .empty-state has fixed padding — no layout shift.
+     Only active when chat box shows the empty state.
+     Types a warm prompt to encourage first message.
+  ──────────────────────────────────────────────────── */
+  startTyper('messagesEmptyText', [
+    'Send a message to your landlord — they\'ll respond shortly.',
+    'Have a maintenance request? Send it here directly.',
+    'Questions about your rent? Message your landlord now.',
+    'Your messages are private between you and your landlord.',
+  ], { typeSpeed: 34, deleteSpeed: 16, pauseAfter: 3800, pauseBefore: 600, loop: true });
+
+});
+</script>
+
 </body>
 </html>

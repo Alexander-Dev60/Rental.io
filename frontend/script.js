@@ -4,7 +4,7 @@
 //  index.js handles rendering / DOM only.
 // ═══════════════════════════════════════════════════════
 
-const API = CONFIG.API_URL; // Defined in config.js, which must be included before this script
+const API = CONFIG.API_URL;
 
 function getToken() {
     return localStorage.getItem('token');
@@ -26,16 +26,64 @@ function logout() {
 (function guardAdmin() {
     const token = getToken();
     if (!token) { window.location.href = 'landing.html'; return; }
-
     try {
         const payload = JSON.parse(atob(token.split('.')[1]));
-        if (payload.role !== 'admin') {
-            window.location.href = 'tenant.html';
-        }
+        if (payload.role !== 'admin') window.location.href = 'tenant.html';
     } catch {
         window.location.href = 'auth.html';
     }
 })();
+
+
+// ═══════════════════════════════════════════════════════
+//  DANGER CONFIRM MODAL
+//  Single reusable modal for ALL destructive actions.
+//  Usage:
+//    openDangerModal({
+//      icon:    '🗑️',
+//      title:   'Delete House',
+//      message: 'Are you sure you want to delete <strong>A-12</strong>?<br>This cannot be undone.',
+//      label:   'Delete House',        // button text
+//      type:    'danger' | 'warn',     // button colour
+//      onConfirm: async () => { ... }  // called when user clicks confirm
+//    });
+// ═══════════════════════════════════════════════════════
+
+let _dangerCallback = null;
+
+function openDangerModal({ icon = '⚠️', title, message, label = 'Confirm', type = 'danger', onConfirm }) {
+    document.getElementById('dangerIcon').textContent    = icon;
+    document.getElementById('dangerTitle').textContent   = title;
+    document.getElementById('dangerMessage').innerHTML   = message;
+
+    const btn = document.getElementById('dangerConfirmBtn');
+    btn.textContent = label;
+    btn.className   = `btn btn-full ${type === 'warn' ? 'btn-warn' : 'btn-danger'}`;
+
+    _dangerCallback = onConfirm;
+
+    document.getElementById('modal-danger').classList.add('open');
+}
+
+async function confirmDangerAction() {
+    if (typeof _dangerCallback !== 'function') return;
+
+    const btn = document.getElementById('dangerConfirmBtn');
+    btn.disabled    = true;
+    btn.textContent = '⏳ Processing...';
+
+    try {
+        await _dangerCallback();
+    } finally {
+        btn.disabled    = false;
+        closeDangerModal();
+    }
+}
+
+function closeDangerModal() {
+    document.getElementById('modal-danger').classList.remove('open');
+    _dangerCallback = null;
+}
 
 
 // ═══════════════════════════════════════
@@ -52,10 +100,7 @@ async function loadDashboard() {
         });
         const data = await res.json();
 
-        if (!res.ok) {
-            showToast(data.message || 'Failed to load dashboard', 'error');
-            return;
-        }
+        if (!res.ok) { showToast(data.message || 'Failed to load dashboard', 'error'); return; }
 
         document.getElementById('income').textContent       = data.totalIncome.toLocaleString();
         document.getElementById('arrears').textContent      = data.totalArrears.toLocaleString();
@@ -86,7 +131,6 @@ async function loadTenants() {
         if (!res.ok) { showToast('Failed to load tenants', 'error'); return; }
 
         _allTenants = tenants;
-
         renderTenantList(tenants);
         populateTenantSelects(tenants);
 
@@ -97,10 +141,9 @@ async function loadTenants() {
 }
 
 function filterTenants() {
-    const q = document.getElementById('tenantSearch').value.toLowerCase();
+    const q        = document.getElementById('tenantSearch').value.toLowerCase();
     const filtered = _allTenants.filter(t =>
-        t.name.toLowerCase().includes(q) ||
-        (t.phone || '').includes(q)
+        t.name.toLowerCase().includes(q) || (t.phone || '').includes(q)
     );
     renderTenantList(filtered);
 }
@@ -142,7 +185,6 @@ async function addTenant() {
         if (!res.ok) { showToast(data.message || 'Failed to create tenant', 'error'); return; }
 
         showToast(`${name} created successfully ✅`, 'success');
-
         ['newName', 'newPhone', 'newEmail', 'newPassword', 'newDueDate']
             .forEach(id => { document.getElementById(id).value = ''; });
 
@@ -157,14 +199,13 @@ async function addTenant() {
 async function deleteTenant(id) {
     try {
         const res  = await fetch(`${API}/tenant/${id}`, {
-            method:  'DELETE',
-            headers: authHeaders()
+            method: 'DELETE', headers: authHeaders()
         });
         const data = await res.json();
 
         if (!res.ok) { showToast(data.message || 'Delete failed', 'error'); return; }
 
-        showToast('Tenant deleted', 'success');
+        showToast('Tenant deleted ✅', 'success');
         closeModal('modal-delete');
 
         document.getElementById('profileOutput').innerHTML =
@@ -246,24 +287,36 @@ async function addHouse() {
     }
 }
 
-async function deleteHouse(id) {
-    if (!confirm('Delete this house? This cannot be undone.')) return;
+// ── deleteHouse — routes through danger modal ──
+function deleteHouse(id) {
+    // Find house name for the message
+    const cards = document.querySelectorAll('.house-card');
+    let houseName = 'this house';
+    cards.forEach(c => {
+        if (c.getAttribute('onclick')?.includes(id)) {
+            houseName = c.querySelector('.house-name')?.textContent || houseName;
+        }
+    });
 
-    try {
-        const res  = await fetch(`${API}/house/${id}`, {
-            method: 'DELETE', headers: authHeaders()
-        });
-        const data = await res.json();
+    openDangerModal({
+        icon:    '🏡',
+        title:   'Delete House',
+        message: `Are you sure you want to permanently delete <strong>${houseName}</strong>?<br><br>
+                  This action cannot be undone. Make sure no tenant is currently assigned to this house.`,
+        label:   'Delete House',
+        type:    'danger',
+        onConfirm: async () => {
+            const res  = await fetch(`${API}/house/${id}`, {
+                method: 'DELETE', headers: authHeaders()
+            });
+            const data = await res.json();
 
-        if (!res.ok) { showToast(data.message || 'Delete failed', 'error'); return; }
+            if (!res.ok) { showToast(data.message || 'Delete failed', 'error'); return; }
 
-        showToast('House deleted ✅', 'success');
-        await loadHouses();
-
-    } catch (err) {
-        showToast('Network error', 'error');
-        console.error(err);
-    }
+            showToast('House deleted ✅', 'success');
+            await loadHouses();
+        }
+    });
 }
 
 async function assignHouse() {
@@ -290,41 +343,46 @@ async function assignHouse() {
     }
 }
 
-async function moveOutTenant() {
-    const tenantId = document.getElementById('moveOutSelect').value;
+// ── moveOutTenant — routes through danger modal ──
+function moveOutTenant() {
+    const tenantId  = document.getElementById('moveOutSelect').value;
     if (!tenantId) { showToast('Select a tenant', 'warn'); return; }
-    if (!confirm('Move this tenant out?')) return;
 
-    try {
-        const res  = await fetch(`${API}/move-out/${tenantId}`, {
-            method: 'PUT', headers: authHeaders()
-        });
-        const data = await res.json();
+    const tenantName = document.getElementById('moveOutSelect')
+        .options[document.getElementById('moveOutSelect').selectedIndex]?.text || 'this tenant';
 
-        if (!res.ok) { showToast(data.message || 'Move out failed', 'error'); return; }
+    openDangerModal({
+        icon:    '🚪',
+        title:   'Move Out Tenant',
+        message: `Are you sure you want to move out <strong>${tenantName}</strong>?<br><br>
+                  Their house will be marked as <strong>available</strong> and they will receive a move-out notification email.`,
+        label:   'Move Out',
+        type:    'warn',
+        onConfirm: async () => {
+            const res  = await fetch(`${API}/move-out/${tenantId}`, {
+                method: 'PUT', headers: authHeaders()
+            });
+            const data = await res.json();
 
-        showToast(data.message, 'success');
-        await loadHouses();
-        await loadTenants();
+            if (!res.ok) { showToast(data.message || 'Move out failed', 'error'); return; }
 
-    } catch (err) {
-        showToast('Network error', 'error');
-        console.error(err);
-    }
+            showToast(data.message, 'success');
+            await loadHouses();
+            await loadTenants();
+        }
+    });
 }
 
 
 // ═══════════════════════════════════════
-// PAYMENT SUMMARY (FIX 1, 13)
-// Fetches monthly summary for a tenant and renders
-// the progress bar + breakdown in the payments section
+// PAYMENT SUMMARY
 // ═══════════════════════════════════════
 
 async function loadPaymentSummary() {
     const tenantId = document.getElementById('payTenantSelect').value;
     const month    = document.getElementById('month').value.trim();
+    const box      = document.getElementById('paymentSummaryBox');
 
-    const box = document.getElementById('paymentSummaryBox');
     if (!tenantId || !month) { box.style.display = 'none'; return; }
 
     try {
@@ -336,7 +394,6 @@ async function loadPaymentSummary() {
 
         if (!res.ok) { box.style.display = 'none'; return; }
 
-        // Populate summary rows
         document.getElementById('sumRent').textContent    = `Ksh ${Number(data.rentAmount).toLocaleString()}`;
         document.getElementById('sumPaid').textContent    = `Ksh ${Number(data.totalPaid).toLocaleString()}`;
         document.getElementById('sumBalance').textContent = `Ksh ${Number(data.balance).toLocaleString()}`;
@@ -348,18 +405,15 @@ async function loadPaymentSummary() {
             ? '<span class="pill pill-yellow">Partial ⚠️</span>'
             : '<span class="pill pill-red">Unpaid ❌</span>';
 
-        // Progress bar
-        const pct      = data.rentAmount > 0 ? Math.min(100, Math.round((data.totalPaid / data.rentAmount) * 100)) : 0;
-        const bar      = document.getElementById('progressBar');
+        const pct = data.rentAmount > 0
+            ? Math.min(100, Math.round((data.totalPaid / data.rentAmount) * 100))
+            : 0;
+        const bar = document.getElementById('progressBar');
         bar.style.width = `${pct}%`;
         bar.className   = `payment-progress-bar ${data.status === 'paid' ? 'paid' : 'partial'}`;
-
         document.getElementById('progressLabel').textContent = `${pct}% paid`;
 
-        // Pre-fill amount with remaining balance if unpaid/partial
-        if (data.status !== 'paid') {
-            document.getElementById('amount').value = data.balance;
-        }
+        if (data.status !== 'paid') document.getElementById('amount').value = data.balance;
 
         box.style.display = 'block';
 
@@ -369,12 +423,11 @@ async function loadPaymentSummary() {
     }
 }
 
-// Modal payment summary (FIX 1, 13)
 async function loadModalSummary() {
     const tenantId = document.getElementById('payModalTenantId').value;
     const month    = document.getElementById('payModalMonth').value.trim();
+    const box      = document.getElementById('modalSummaryBox');
 
-    const box = document.getElementById('modalSummaryBox');
     if (!tenantId || !month) { box.style.display = 'none'; return; }
 
     try {
@@ -397,15 +450,15 @@ async function loadModalSummary() {
             ? '<span class="pill pill-yellow">Partial ⚠️</span>'
             : '<span class="pill pill-red">Unpaid ❌</span>';
 
-        const pct = data.rentAmount > 0 ? Math.min(100, Math.round((data.totalPaid / data.rentAmount) * 100)) : 0;
+        const pct = data.rentAmount > 0
+            ? Math.min(100, Math.round((data.totalPaid / data.rentAmount) * 100))
+            : 0;
         const bar = document.getElementById('modalProgressBar');
         bar.style.width = `${pct}%`;
         bar.className   = `payment-progress-bar ${data.status === 'paid' ? 'paid' : 'partial'}`;
 
-        // Pre-fill amount with balance
-        if (data.status !== 'paid') {
-            document.getElementById('payModalAmount').value = data.balance;
-        }
+        //auto-fill amount if not fully paid
+        if (data.status !== 'paid') document.getElementById('payModalAmount').value = data.balance;
 
         box.style.display = 'block';
 
@@ -417,15 +470,15 @@ async function loadModalSummary() {
 
 
 // ═══════════════════════════════════════
-// PAYMENTS (FIX 7, 8, 20)
+// PAYMENTS
 // ═══════════════════════════════════════
 
 async function makePayment() {
     const tenantId = document.getElementById('payTenantSelect').value;
     const amount   = document.getElementById('amount').value;
     const month    = document.getElementById('month').value.trim();
-    const method   = document.getElementById('payMethod').value;           // FIX 7
-    const note     = document.getElementById('payNote').value.trim();      // FIX 7
+    const method   = document.getElementById('payMethod').value;
+    const note     = document.getElementById('payNote').value.trim();
 
     if (!tenantId || !amount || !month) { showToast('All fields required', 'warn'); return; }
 
@@ -440,14 +493,9 @@ async function makePayment() {
         if (!res.ok) { showToast(data.message || 'Payment failed', 'error'); return; }
 
         showToast('Payment recorded & receipt emailed ✅', 'success');
-
-        // FIX 20: refresh tenant list + arrears after payment
         await loadTenants();
         loadArrears();
-
         if (data.paymentId) loadAutoReceipt(data.paymentId);
-
-        // Refresh summary box
         loadPaymentSummary();
 
     } catch (err) {
@@ -456,13 +504,12 @@ async function makePayment() {
     }
 }
 
-// Called from modal (pay from tenant context menu) — FIX 8, 20
 async function submitModalPayment() {
     const tenantId = document.getElementById('payModalTenantId').value;
     const amount   = document.getElementById('payModalAmount').value;
     const month    = document.getElementById('payModalMonth').value.trim();
-    const method   = document.getElementById('payModalMethod').value;      // FIX 8
-    const note     = document.getElementById('payModalNote').value.trim(); // FIX 8
+    const method   = document.getElementById('payModalMethod').value;
+    const note     = document.getElementById('payModalNote').value.trim();
 
     if (!amount || !month) { showToast('Fill all fields', 'warn'); return; }
 
@@ -478,15 +525,9 @@ async function submitModalPayment() {
 
         showToast('Payment recorded ✅', 'success');
         closeModal('modal-pay');
-
-        // FIX 20: refresh data after payment
         await loadTenants();
         loadArrears();
-
-        if (data.paymentId) {
-            showSection('payments');
-            loadAutoReceipt(data.paymentId);
-        }
+        if (data.paymentId) { showSection('payments'); loadAutoReceipt(data.paymentId); }
 
     } catch (err) {
         showToast('Network error', 'error');
@@ -498,10 +539,8 @@ async function loadAutoReceipt(paymentId) {
     try {
         const res  = await fetch(`${API}/receipt/${paymentId}`, { headers: authHeaders() });
         const data = await res.json();
-
         if (!res.ok) return;
         renderReceipt(data, 'autoReceipt');
-
     } catch (err) {
         console.error('loadAutoReceipt error:', err);
     }
@@ -514,36 +553,26 @@ async function loadReceipt() {
     try {
         const res  = await fetch(`${API}/receipt/${id}`, { headers: authHeaders() });
         const data = await res.json();
-
         if (!res.ok) { showToast('Receipt not found', 'error'); return; }
-
         renderReceipt(data, 'receiptOutput');
-
     } catch (err) {
         showToast('Network error', 'error');
         console.error(err);
     }
 }
 
-// FIX 15: PDF download with auth — fetch as blob, create object URL
 async function downloadPDF(paymentId) {
     try {
         const res = await fetch(`${API}/receipt/pdf/${paymentId}`, {
             headers: { 'Authorization': 'Bearer ' + getToken() }
         });
-
         if (!res.ok) { showToast('PDF not found', 'error'); return; }
-
         const blob = await res.blob();
         const url  = URL.createObjectURL(blob);
         const a    = document.createElement('a');
-        a.href     = url;
-        a.download = `receipt-${paymentId}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
+        a.href = url; a.download = `receipt-${paymentId}.pdf`;
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a); URL.revokeObjectURL(url);
     } catch (err) {
         showToast('Failed to download PDF', 'error');
         console.error(err);
@@ -552,34 +581,25 @@ async function downloadPDF(paymentId) {
 
 
 // ═══════════════════════════════════════
-// ARREARS (FIX 11)
-// Fetch moved here from index.js to maintain separation of concerns.
-// Rendering stays in index.js (renderArrearsTable).
+// ARREARS
 // ═══════════════════════════════════════
 
 async function loadArrears() {
     const monthInput = document.getElementById('arrearsMonth');
     const month      = monthInput ? monthInput.value.trim() : '';
-
-    const url = month
+    const url        = month
         ? `${API}/arrears/${encodeURIComponent(month)}`
         : `${API}/arrears`;
 
     try {
         const res  = await fetch(url, { headers: authHeaders() });
-
         if (!res.ok) {
             const err = await res.json().catch(() => ({}));
             showToast(err.message || `Failed to load arrears (${res.status})`, 'error');
             return;
         }
-
         const data = await res.json();
-
-        if (!Array.isArray(data)) {
-            showToast('Unexpected response from server', 'error');
-            return;
-        }
+        if (!Array.isArray(data)) { showToast('Unexpected server response', 'error'); return; }
 
         renderArrearsTable(data);
 
@@ -588,7 +608,6 @@ async function loadArrears() {
             badge.textContent   = data.length;
             badge.style.display = data.length > 0 ? 'inline-block' : 'none';
         }
-
     } catch (err) {
         showToast('Failed to load arrears', 'error');
         console.error('loadArrears error:', err);
@@ -602,25 +621,16 @@ async function loadArrears() {
 
 async function loadAdminChat() {
     const tenantId = document.getElementById('chatTenant').value;
-    if (!tenantId) return; // guard against empty select
+    if (!tenantId) return;
 
     try {
-        const res  = await fetch(`${API}/messages/thread/${tenantId}`, {
-            headers: authHeaders()
-        });
+        const res  = await fetch(`${API}/messages/thread/${tenantId}`, { headers: authHeaders() });
         const msgs = await res.json();
-
         if (!res.ok) { showToast('Failed to load messages', 'error'); return; }
 
         renderChat(msgs, tenantId);
-
-        // Mark tenant messages as read
-        await fetch(`${API}/messages/read/${tenantId}`, {
-            method: 'PUT', headers: authHeaders()
-        });
-
+        await fetch(`${API}/messages/read/${tenantId}`, { method: 'PUT', headers: authHeaders() });
         loadUnread();
-
     } catch (err) {
         showToast('Network error', 'error');
         console.error(err);
@@ -630,30 +640,24 @@ async function loadAdminChat() {
 async function sendAdminMessage() {
     const tenantId = document.getElementById('chatTenant').value;
     const text     = document.getElementById('adminMsg').value.trim();
-
     if (!tenantId) { showToast('Select a tenant first', 'warn'); return; }
-    if (!text)     return;
+    if (!text) return;
 
     try {
         const res  = await fetch(`${API}/messages/reply`, {
-            method:  'POST',
-            headers: authHeaders(),
-            body:    JSON.stringify({ tenantId, text })
+            method: 'POST', headers: authHeaders(),
+            body:   JSON.stringify({ tenantId, text })
         });
         const data = await res.json();
-
         if (!res.ok) { showToast(data.message || 'Send failed', 'error'); return; }
-
         document.getElementById('adminMsg').value = '';
         await loadAdminChat();
-
     } catch (err) {
         showToast('Network error', 'error');
         console.error(err);
     }
 }
 
-// Enter key sends message
 document.getElementById('adminMsg').addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAdminMessage(); }
 });
@@ -662,7 +666,6 @@ async function loadUnread() {
     try {
         const res  = await fetch(`${API}/messages/unread`, { headers: authHeaders() });
         const data = await res.json();
-
         if (!res.ok) return;
 
         renderUnreadSummary(data);
@@ -670,15 +673,13 @@ async function loadUnread() {
         const total    = data.reduce((s, d) => s + d.count, 0);
         const badge    = document.getElementById('msgBadge');
         const navBadge = document.querySelector('.nav-item[onclick*="messages"] .nav-badge');
-
         if (total > 0) {
             if (badge)    { badge.textContent = total; badge.style.display = 'inline-block'; }
             if (navBadge) { navBadge.textContent = total; navBadge.style.display = 'inline-block'; }
         } else {
-            if (badge)    badge.style.display    = 'none';
+            if (badge)    badge.style.display = 'none';
             if (navBadge) navBadge.style.display = 'none';
         }
-
     } catch (err) {
         console.error('loadUnread error:', err);
     }
@@ -692,57 +693,65 @@ async function loadUnread() {
 async function addRule() {
     const title   = document.getElementById('ruleTitle').value.trim();
     const content = document.getElementById('ruleContent').value.trim();
-
     if (!title || !content) { showToast('Title and content required', 'warn'); return; }
 
     try {
         const res  = await fetch(`${API}/rules`, {
-            method:  'POST',
-            headers: authHeaders(),
-            body:    JSON.stringify({ title, content })
+            method: 'POST', headers: authHeaders(),
+            body:   JSON.stringify({ title, content })
         });
         const data = await res.json();
-
         if (!res.ok) { showToast(data.message || 'Failed to add rule', 'error'); return; }
 
         showToast('Rule added ✅', 'success');
         document.getElementById('ruleTitle').value   = '';
         document.getElementById('ruleContent').value = '';
         await loadRules();
-
     } catch (err) {
         showToast('Network error', 'error');
         console.error(err);
     }
 }
 
-async function deleteRule(id) {
-    try {
-        const res  = await fetch(`${API}/rules/${id}`, {
-            method: 'DELETE', headers: authHeaders()
-        });
-        const data = await res.json();
+// ── deleteRule — routes through danger modal ──
+function deleteRule(id) {
+    // Find rule title from rendered list
+    const ruleEls  = document.querySelectorAll('#rulesList [data-rule-id]');
+    let   ruleTitle = 'this rule';
 
-        if (!res.ok) { showToast(data.message || 'Delete failed', 'error'); return; }
+    // Fallback: find by searching rendered rule buttons
+    document.querySelectorAll('#rulesList button').forEach(btn => {
+        if (btn.getAttribute('onclick')?.includes(id)) {
+            const titleEl = btn.closest('div[style]')?.querySelector('[style*="font-weight:600"]');
+            if (titleEl) ruleTitle = titleEl.textContent;
+        }
+    });
 
-        showToast('Rule deleted', 'success');
-        await loadRules();
-
-    } catch (err) {
-        showToast('Network error', 'error');
-        console.error(err);
-    }
+    openDangerModal({
+        icon:    '📜',
+        title:   'Delete Rule',
+        message: `Are you sure you want to delete <strong>${ruleTitle}</strong>?<br><br>
+                  This rule will be permanently removed and tenants will no longer see it.`,
+        label:   'Delete Rule',
+        type:    'danger',
+        onConfirm: async () => {
+            const res  = await fetch(`${API}/rules/${id}`, {
+                method: 'DELETE', headers: authHeaders()
+            });
+            const data = await res.json();
+            if (!res.ok) { showToast(data.message || 'Delete failed', 'error'); return; }
+            showToast('Rule deleted ✅', 'success');
+            await loadRules();
+        }
+    });
 }
 
 async function loadRules() {
     try {
         const res   = await fetch(`${API}/rules`, { headers: authHeaders() });
         const rules = await res.json();
-
         if (!res.ok) { showToast('Failed to load rules', 'error'); return; }
-
         renderRules(rules);
-
     } catch (err) {
         showToast('Failed to load rules', 'error');
         console.error(err);
@@ -760,51 +769,48 @@ async function addAnnouncement() {
 
     try {
         const res  = await fetch(`${API}/announcements`, {
-            method:  'POST',
-            headers: authHeaders(),
-            body:    JSON.stringify({ message })
+            method: 'POST', headers: authHeaders(),
+            body:   JSON.stringify({ message })
         });
         const data = await res.json();
-
         if (!res.ok) { showToast(data.message || 'Post failed', 'error'); return; }
 
         showToast('Announcement posted ✅', 'success');
         document.getElementById('announcementText').value = '';
         await loadAnnouncements();
-
     } catch (err) {
         showToast('Network error', 'error');
         console.error(err);
     }
 }
 
-async function deleteAnnouncement(id) {
-    try {
-        const res  = await fetch(`${API}/announcements/${id}`, {
-            method: 'DELETE', headers: authHeaders()
-        });
-        const data = await res.json();
-
-        if (!res.ok) { showToast(data.message || 'Delete failed', 'error'); return; }
-
-        showToast('Announcement deleted', 'success');
-        await loadAnnouncements();
-
-    } catch (err) {
-        showToast('Network error', 'error');
-        console.error(err);
-    }
+// ── deleteAnnouncement — routes through danger modal ──
+function deleteAnnouncement(id) {
+    openDangerModal({
+        icon:    '📢',
+        title:   'Delete Announcement',
+        message: `Are you sure you want to delete this announcement?<br><br>
+                  It will be permanently removed and tenants will no longer see it.`,
+        label:   'Delete Announcement',
+        type:    'danger',
+        onConfirm: async () => {
+            const res  = await fetch(`${API}/announcements/${id}`, {
+                method: 'DELETE', headers: authHeaders()
+            });
+            const data = await res.json();
+            if (!res.ok) { showToast(data.message || 'Delete failed', 'error'); return; }
+            showToast('Announcement deleted ✅', 'success');
+            await loadAnnouncements();
+        }
+    });
 }
 
 async function loadAnnouncements() {
     try {
         const res  = await fetch(`${API}/announcements`, { headers: authHeaders() });
         const data = await res.json();
-
         if (!res.ok) return;
-
         renderAnnouncements(data);
-
     } catch (err) {
         console.error('loadAnnouncements error:', err);
     }
@@ -812,21 +818,17 @@ async function loadAnnouncements() {
 
 
 // ═══════════════════════════════════════
-// MAINTENANCE MODE (FIX 9)
+// MAINTENANCE MODE
 // ═══════════════════════════════════════
 
-// FIX 9: always sync from server, never trust localStorage for maintenance state
 async function syncMaintenanceToggle() {
     try {
         const res  = await fetch(`${API}/maintenance`, { headers: authHeaders() });
         const data = await res.json();
-
         const toggle = document.getElementById('maintenanceToggle');
         const chip   = document.getElementById('maintenanceChip');
-
-        if (toggle) toggle.checked       = data.maintenanceMode;
-        if (chip)   chip.style.display   = data.maintenanceMode ? 'inline-block' : 'none';
-
+        if (toggle) toggle.checked     = data.maintenanceMode;
+        if (chip)   chip.style.display = data.maintenanceMode ? 'inline-block' : 'none';
     } catch (err) {
         console.error('Could not sync maintenance state:', err.message);
     }
@@ -840,29 +842,24 @@ async function toggleMaintenance() {
 
     try {
         const res  = await fetch(`${API}/maintenance`, {
-            method:  'PUT',
-            headers: authHeaders(),
-            body:    JSON.stringify({
+            method: 'PUT', headers: authHeaders(),
+            body:   JSON.stringify({
                 maintenanceMode:    on,
                 maintenanceMessage: msg || 'The system is currently under maintenance. Please check back later.'
             })
         });
         const data = await res.json();
-
         if (!res.ok) {
             showToast(data.message || 'Failed to update maintenance mode', 'error');
             document.getElementById('maintenanceToggle').checked = !on;
             return;
         }
-
         const chip = document.getElementById('maintenanceChip');
         chip.style.display = on ? 'inline-block' : 'none';
-
         showToast(
             on ? '🔧 Maintenance mode ON — tenants are locked out' : '✅ Maintenance mode OFF',
             on ? 'warn' : 'success'
         );
-
     } catch (err) {
         showToast('Network error', 'error');
         document.getElementById('maintenanceToggle').checked = !on;
@@ -878,8 +875,8 @@ async function toggleMaintenance() {
 function openPayModal(tenant) {
     document.getElementById('payModalTenantId').value         = tenant._id;
     document.getElementById('payModalTenantName').textContent = `Paying for: ${tenant.name}`;
-    document.getElementById('payModalAmount').value           = '';
     document.getElementById('payModalMonth').value            = '';
+    document.getElementById('payModalAmount').value           = '';
     document.getElementById('payModalNote').value             = '';
     document.getElementById('modalSummaryBox').style.display  = 'none';
     openModal('modal-pay');
@@ -912,51 +909,36 @@ async function submitDeleteTenant() {
 
 
 // ═══════════════════════════════════════
-// INIT (FIX 9, 19)
+// INIT
 // ═══════════════════════════════════════
 
 window.addEventListener('DOMContentLoaded', () => {
-    // Theme
     const saved = localStorage.getItem('theme') || 'dark';
     setTheme(saved);
 
-    // FIX 9: sync maintenance from server, not localStorage
     syncMaintenanceToggle();
 
-    // FIX 19: auto-populate current month in dashboard input
     const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
     const dashMonthEl  = document.getElementById('dashMonth');
     if (dashMonthEl) dashMonthEl.value = currentMonth;
 
-    // Load initial data
     loadTenants();
     loadHouses();
     loadAnnouncements();
     loadRules();
     loadUnread();
-
-    // FIX 19: auto-load dashboard for current month
     loadDashboard();
 });
 
 
 // ═══════════════════════════════════════
-// POLLING INTERVALS (FIX 10, 11)
+// POLLING INTERVALS
 // ═══════════════════════════════════════
 
-// Unread messages — every 15s
-setInterval(loadUnread, 15000);
-
-// House status — every 30s
-setInterval(loadHouses, 30000);
-
-// Arrears — every 60s (FIX 11: now calls script.js function, not index.js)
-setInterval(loadArrears, 60000);
-
-// Tenant list — every 30s
-setInterval(loadTenants, 30000);
-
-// FIX 10: only poll chat if a tenant is actually selected
+setInterval(loadUnread,   15000);
+setInterval(loadHouses,   30000);
+setInterval(loadArrears,  60000);
+setInterval(loadTenants,  30000);
 setInterval(() => {
     const tenantId = document.getElementById('chatTenant')?.value;
     if (tenantId) loadAdminChat();

@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500">
+  <defs>
+    <linearGradient id="rentalGradient" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="60%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#6ee7b7"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="500" height="500" fill="#0a0c10" rx="24"/>
+
+  <!-- Outer Structure -->
+  <path d="M 250,90 
+           L 410,210 
+           L 370,210 
+           L 370,390 
+           L 320,390 
+           L 320,250 
+           L 180,250 
+           L 180,390 
+           L 130,390 
+           L 130,210 
+           L 90,210 Z"
+        fill="url(#rentalGradient)"
+        opacity="0.15"/>
+
+  <!-- Roof -->
+  <path d="M 250,90 
+           L 410,210 
+           L 375,210 
+           L 250,116 
+           L 125,210 
+           L 90,210 Z"
+        fill="url(#rentalGradient)"/>
+
+  <!-- Key Shaft -->
+  <path d="M 242,160 
+           L 258,160 
+           L 258,340 
+           L 285,340 
+           L 285,365 
+           L 258,365 
+           L 258,390 
+           L 242,390 Z"
+        fill="url(#rentalGradient)"/>
+
+  <!-- Key Circle -->
+  <path d="M 250,140 
+           C 275,140 295,160 295,185 
+           C 295,210 275,230 250,230 
+           C 225,230 205,210 205,185 
+           C 205,160 225,140 250,140 Z"
+        fill="none"
+        stroke="url(#rentalGradient)"
+        stroke-width="7"/>
+
+  <!-- Center Dot -->
+  <circle cx="250" cy="185" r="10" fill="#6ee7b7"/>
+
+  <!-- Decorative Squares -->
+  <rect x="145" y="260" width="20" height="20" rx="3" fill="#3b82f6" opacity="0.4"/>
+  <rect x="145" y="300" width="20" height="20" rx="3" fill="#3b82f6" opacity="0.4"/>
+  <rect x="335" y="260" width="20" height="20" rx="3" fill="#6ee7b7" opacity="0.4"/>
+  <rect x="335" y="300" width="20" height="20" rx="3" fill="#6ee7b7" opacity="0.4"/>
+</svg>
