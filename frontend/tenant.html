@@ -76,7 +76,6 @@
 
   /* ══════════════════════════════════════
      TYPING CURSOR
-     Used across all typer containers.
   ══════════════════════════════════════ */
   .typing-cursor {
     display: inline-block;
@@ -87,48 +86,72 @@
   @keyframes cursorBlink { 0%,100%{opacity:0.7} 50%{opacity:0} }
 
   /* ══════════════════════════════════════
-     TYPER CONTAINER — THE KEY RULE
-     Every piece of typed text lives in one
-     of these. Height is fixed in CSS.
-     overflow:hidden clips any overflow.
-     white-space:nowrap prevents wrapping.
-     The page NEVER moves. Ever.
+     TYPER CONTAINER
+  ══════════════════════════════════════ */
+  /* ══════════════════════════════════════
+     TYPER LINE
+     width:100% + overflow:hidden clips the
+     typed text at exactly the container edge.
+     The container's width is always known
+     because .header-identity has a fixed
+     right boundary (see header layout below).
   ══════════════════════════════════════ */
   .typer-line {
-    height: 1.35em;          /* exactly one line — never changes */
-    overflow: hidden;         /* clips if message is long */
-    white-space: nowrap;      /* no wrapping */
-    flex-shrink: 0;           /* never squeezed in flex parents */
     display: block;
+    width: 100%;
+    height: 1.35em;
+    line-height: 1.35em;
+    overflow: hidden;
+    white-space: nowrap;
     font-family: 'DM Mono', monospace;
     font-size: 0.62rem;
     color: var(--text-dim);
     letter-spacing: 0.04em;
-    line-height: 1.35em;
     user-select: none;
+    flex-shrink: 0;
   }
 
   /* ══════════════════════════════════════
-     HEADER
+     HEADER — fixed-lane layout
+     ┌─────────────────────┬────────────┐
+     │ avatar  name        │ pill  btn  │
+     │         typer line  │            │
+     └─────────────────────┴────────────┘
+     .header-right is position:absolute,
+     pinned to the right edge.
+     .header-identity gets a padding-right
+     equal to .header-right's reserved width
+     so the two lanes NEVER overlap.
+
+     Mobile  right-lane  ≈ 100px  (pill + icon-btn)
+     ≥480px  right-lane  ≈ 170px  (pill + "Sign Out")
+     ≥768px  right-lane  ≈ 210px  (badge + pill + "Sign Out")
   ══════════════════════════════════════ */
   header {
     position: sticky; top: 0; z-index: 100;
+    /* sticky creates a containing block, so position:absolute on
+       .header-right anchors correctly inside this element */
     background: var(--header-bg);
     backdrop-filter: blur(20px);
     border-bottom: 1px solid var(--border);
-    display: flex; align-items: center;
-    justify-content: space-between;
-    padding: 0 1.25rem;
-    height: 58px;             /* fixed — typing text inside never changes this */
+    display: block;          /* NOT flex — we manage lanes manually */
+    height: 58px;
+    padding: 0 1rem;
     flex-shrink: 0;
     transition: background 0.3s, border-color 0.3s;
   }
 
-  .header-left {
-    display: flex; flex-direction: column;
-    justify-content: center; gap: 0;
-    min-width: 0;
-    /* Total height of name + typer-line fits inside 58px header */
+  /* Left lane — avatar + name + typer.
+     padding-right keeps it clear of the right lane.
+     These values must match the right lane widths below. */
+  .header-identity {
+    display: flex;
+    align-items: center;
+    height: 58px;
+    /* mobile: reserve 104px for right lane (pill ~60 + btn ~34 + gap 10) */
+    padding-right: 104px;
+    overflow: hidden;        /* clips any overflow on very narrow phones */
+    box-sizing: border-box;
   }
 
   .header-avatar {
@@ -137,10 +160,15 @@
     font-size: 0.72rem; font-weight: 700; color: #fff;
     flex-shrink: 0; letter-spacing: 0.04em;
     border: 2px solid rgba(255,255,255,0.15);
-    margin-right: 0.7rem;
+    margin-right: 0.65rem;
   }
-  .header-identity { display: flex; align-items: center; min-width: 0; }
-  .header-identity-text { display: flex; flex-direction: column; min-width: 0; }
+
+  /* Text column: name + typer. overflow:hidden clips both. */
+  .header-identity-text {
+    display: flex; flex-direction: column; justify-content: center;
+    overflow: hidden;
+    min-width: 0; flex: 1;
+  }
 
   .header-name {
     font-family: 'Fraunces', serif; font-style: italic;
@@ -149,30 +177,82 @@
     line-height: 1.2;
   }
 
-  /* #headerGreeting is a .typer-line — sits right below the name */
-  /* No additional CSS needed — .typer-line handles it */
+  /* Right lane — absolutely positioned, pinned to right edge,
+     vertically centred.  Width is explicitly set per breakpoint
+     to match the padding-right on .header-identity above. */
+  .header-right {
+    position: absolute;
+    top: 0; right: 1rem;
+    height: 58px;
+    display: flex; align-items: center;
+    gap: 0.5rem;
+    /* mobile width = 104px matches padding-right above */
+    width: 104px;
+    justify-content: flex-end;
+  }
 
-  .header-right { display: flex; align-items: center; gap: 0.65rem; flex-shrink: 0; }
-
+  /* ── Status pill ── */
   .status-pill {
     font-family: 'DM Mono', monospace;
-    font-size: 0.6rem; letter-spacing: 0.08em;
-    padding: 3px 9px; border-radius: 99px; font-weight: 500;
-    white-space: nowrap;
+    font-size: 0.58rem; letter-spacing: 0.06em;
+    padding: 3px 7px; border-radius: 99px; font-weight: 500;
+    white-space: nowrap; flex-shrink: 0;
   }
   .status-pill.paid    { background:rgba(52,211,153,0.12);  color:var(--green); border:1px solid rgba(52,211,153,0.25); }
   .status-pill.partial { background:rgba(251,191,36,0.12);  color:var(--amber); border:1px solid rgba(251,191,36,0.25); }
   .status-pill.unpaid  { background:rgba(248,113,113,0.12); color:var(--red);   border:1px solid rgba(248,113,113,0.25); }
 
+  /* ── Sign-out button ──
+     Mobile: icon-only (⏻), compact.
+     ≥480px: full "Sign Out" text. */
   .btn-logout {
     background: transparent; border: 1px solid var(--border2);
     color: var(--text-muted); font-family: 'DM Sans', sans-serif;
     font-size: 0.7rem; font-weight: 500;
-    padding: 0.35rem 0.8rem; border-radius: 99px;
+    border-radius: 99px;
     cursor: pointer; transition: border-color 0.2s, color 0.2s;
-    white-space: nowrap; width: auto; margin: 0;
+    white-space: nowrap; flex-shrink: 0;
+    /* mobile: icon-only sizing */
+    width: 30px; height: 30px;
+    padding: 0; display: flex; align-items: center; justify-content: center;
+    margin: 0;
   }
   .btn-logout:hover { border-color: var(--red); color: var(--red); }
+  .btn-logout .btn-logout-text { display: none; }
+  .btn-logout::before { content: '⏻'; font-size: 0.9rem; line-height: 1; }
+
+  /* ── Property badge (header-right) ──
+     Hidden on mobile — shown from 480px up. */
+  #headerPropertyBadge {
+    display: none;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.56rem; letter-spacing: 0.05em;
+    background: var(--accent-dim); color: var(--accent);
+    border: 1px solid rgba(167,139,250,0.2);
+    padding: 2px 7px; border-radius: 99px;
+    white-space: nowrap; max-width: 120px;
+    overflow: hidden; text-overflow: ellipsis;
+    flex-shrink: 0;
+  }
+
+  /* ── ≥480px: show "Sign Out" text, badge still hidden ── */
+  @media (min-width: 480px) {
+    .header-identity  { padding-right: 160px; }
+    .header-right     { width: 160px; }
+    .btn-logout {
+      width: auto; height: auto;
+      padding: 0.35rem 0.8rem;
+    }
+    .btn-logout::before { display: none; }
+    .btn-logout .btn-logout-text { display: inline; }
+  }
+
+  /* ── ≥768px: also show property badge ── */
+  @media (min-width: 768px) {
+    .header-identity  { padding-right: 290px; }
+    .header-right     { width: 290px; gap: 0.65rem; }
+    #headerPropertyBadge { display: inline-block; }
+  }
 
   /* ══════════════════════════════════════
      BOTTOM NAV (mobile)
@@ -284,11 +364,9 @@
   .sec-title {
     font-family: 'Fraunces', serif; font-style: italic;
     font-size: 1.6rem; font-weight: 300; color: var(--text);
-    margin-bottom: 0.35rem;   /* reduced — typer-line sits right below */
+    margin-bottom: 0.35rem;
     line-height: 1.2;
   }
-
-  /* Section header block: title + fixed-height typer below it */
   .sec-header { margin-bottom: 1.25rem; }
 
   /* ══════════════════════════════════════
@@ -375,6 +453,60 @@
   .btn-danger    { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.25); color: var(--red); }
   .btn-danger:hover { background: rgba(248,113,113,0.2); }
   .btn-sm { padding: 0.38rem 0.85rem; font-size: 0.72rem; width: auto; margin: 0; }
+
+  /* ══════════════════════════════════════
+     PASSWORD FIELD WRAPPER
+     Needed for eye-toggle button positioning
+  ══════════════════════════════════════ */
+  .pw-field-wrap {
+    position: relative;
+    margin-bottom: 0; /* inputs inside already have margin-bottom */
+  }
+  .pw-field-wrap input {
+    padding-right: 2.8rem; /* room for eye button */
+    margin-bottom: 0.62rem;
+  }
+  .pw-eye-btn {
+    position: absolute;
+    right: 0.75rem;
+    /* vertically centered within the input (input height ~38px, button 18px) */
+    top: calc(0.62rem + 1px); /* aligns with input top padding start */
+    transform: translateY(0);
+    background: none; border: none;
+    cursor: pointer; padding: 0;
+    color: var(--text-dim);
+    line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    height: calc(38px - 2px); /* match input inner height */
+    width: 20px;
+    transition: color 0.2s;
+    z-index: 1;
+  }
+  .pw-eye-btn:hover { color: var(--accent); }
+  .pw-eye-btn svg { pointer-events: none; }
+
+  /* ══════════════════════════════════════
+     PASSWORD STRENGTH BAR
+     (injected by JS; these styles ensure
+      it matches the set-password.html look)
+  ══════════════════════════════════════ */
+  #pwStrengthWrap { margin-top: -0.35rem; margin-bottom: 0.62rem; }
+
+  /* JS injects #pwStrengthBar and #pwStrengthLabel inside #pwStrengthWrap.
+     The base styles below apply whether JS injected or not. */
+  #pwStrengthBar {
+    height: 100%; border-radius: 99px;
+    width: 0%; transition: width 0.3s ease, background 0.3s ease;
+  }
+  #pwStrengthLabel {
+    font-family: 'DM Mono', monospace; font-size: 0.58rem;
+    min-height: 1em; transition: color 0.3s;
+  }
+  #pwMatchIndicator {
+    font-family: 'DM Mono', monospace; font-size: 0.6rem;
+    margin-top: -0.35rem; margin-bottom: 0.62rem;
+    min-height: 1em; transition: color 0.3s;
+  }
 
   /* ══════════════════════════════════════
      PROFILE
@@ -469,7 +601,7 @@
   .mpesa-btn:disabled{ opacity:0.5;cursor:not-allowed;transform:none; }
 
   /* ══════════════════════════════════════
-     SPINNER (for M-Pesa waiting state)
+     SPINNER
   ══════════════════════════════════════ */
   @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -500,7 +632,6 @@
 
   /* ══════════════════════════════════════
      PAY SECTION TIP CONTAINER
-     Fixed height — never pushes card down.
   ══════════════════════════════════════ */
   .pay-tip-line {
     height: 1.2em;
@@ -552,19 +683,21 @@
   <div class="header-identity">
     <div class="header-avatar" id="headerAvatar">??</div>
     <div class="header-identity-text">
-      <!-- Tenant first name -->
       <div class="header-name" id="headerName">Loading...</div>
       <!--
         TYPER 1 — Header greeting
         Fixed height via .typer-line → never moves header.
-        Messages cycle: tenant lifestyle tips, reassuring copy.
       -->
       <span class="typer-line" id="headerGreeting"></span>
     </div>
   </div>
   <div class="header-right">
+    <!--
+      #headerPropertyBadge is injected here by showPropertyBadge()
+      in tenant.js, inserted before #headerStatus.
+    -->
     <span class="status-pill" id="headerStatus"></span>
-    <button class="btn-logout" onclick="logout()">Sign Out</button>
+    <button class="btn-logout" onclick="logout()"><span class="btn-logout-text">Sign Out</span></button>
   </div>
 </header>
 
@@ -604,12 +737,29 @@
     <!-- ─── HOME ─── -->
     <div class="section active" id="sec-home">
       <div class="sec-header">
-        <div class="sec-title">Good day 👋</div>
+        <div class="sec-title" id="homeGreeting">Good day 👋</div>
+        <!--
+          #homePropertyName — set by renderHome() in tenant.js to:
+          "Welcome back to [Property Name]"
+          Styled as a prominent subtitle in accent colour.
+          Hidden until data loads (JS sets display:block).
+        -->
+        <div id="homePropertyName" style="
+          display:none;
+          font-family:'Fraunces',serif;
+          font-style:italic;
+          font-size:1.05rem;
+          font-weight:300;
+          color:var(--accent);
+          margin-bottom:0.2rem;
+          line-height:1.3;
+          white-space:nowrap;
+          overflow:hidden;
+          text-overflow:ellipsis;
+        "></div>
         <!--
           TYPER 2 — Home subtitle
-          Fixed height .typer-line between title and stats grid.
-          Stats grid always starts at the same Y position.
-          Messages: friendly overview prompts.
+          Fixed height .typer-line between property name and stats grid.
         -->
         <span class="typer-line" id="homeSubtitle"></span>
       </div>
@@ -676,11 +826,16 @@
           <div class="profile-email"  id="profileEmail">—</div>
         </div>
         <div class="card-label" style="margin-top:0.25rem">Account Info</div>
-        <div class="info-row"><span class="info-row-label">Phone</span>       <span class="info-row-value" id="profilePhone">—</span></div>
-        <div class="info-row"><span class="info-row-label">House</span>       <span class="info-row-value" id="profileHouse">—</span></div>
-        <div class="info-row"><span class="info-row-label">Monthly Rent</span><span class="info-row-value" id="profileRent">—</span></div>
-        <div class="info-row"><span class="info-row-label">Due Date</span>    <span class="info-row-value" id="profileDue">—</span></div>
-        <div class="info-row"><span class="info-row-label">Member Since</span><span class="info-row-value" id="profileSince">—</span></div>
+        <div class="info-row"><span class="info-row-label">Phone</span>        <span class="info-row-value" id="profilePhone">—</span></div>
+        <div class="info-row"><span class="info-row-label">House</span>        <span class="info-row-value" id="profileHouse">—</span></div>
+        <!--
+          #profilePropertyRow is injected by renderProfile() in tenant.js
+          directly after the House row above. It shows:
+          🏢 [Property Name] · [Location]
+        -->
+        <div class="info-row"><span class="info-row-label">Monthly Rent</span> <span class="info-row-value" id="profileRent">—</span></div>
+        <div class="info-row"><span class="info-row-label">Due Date</span>     <span class="info-row-value" id="profileDue">—</span></div>
+        <div class="info-row"><span class="info-row-label">Member Since</span> <span class="info-row-value" id="profileSince">—</span></div>
       </div>
 
       <div class="card">
@@ -742,7 +897,6 @@
         <!--
           TYPER 3 — Pay Rent tip
           .pay-tip-line: fixed height 1.2em, overflow:hidden.
-          Card height does NOT change. Tips rotate every cycle.
         -->
         <span class="pay-tip-line" id="payTip"></span>
       </div>
@@ -761,7 +915,6 @@
         <!--
           TYPER 4 — Receipts tip
           .receipts-tip-line: fixed height, no layout impact.
-          Types once when section opens, stays static.
         -->
         <span class="receipts-tip-line" id="receiptsTip"></span>
         <div id="receiptsList">
@@ -780,8 +933,6 @@
           <!--
             TYPER 5 — Messages empty state
             When no messages, this div shows.
-            The typed text is rendered INSIDE the empty-state div,
-            which has a fixed height (padding). No layout shift.
           -->
           <div class="empty-state">
             <span class="empty-icon">💬</span>
@@ -831,6 +982,11 @@
         <div class="info-row"><span class="info-row-label">Name</span>  <span class="info-row-value" id="settingsName">—</span></div>
         <div class="info-row"><span class="info-row-label">Email</span> <span class="info-row-value" id="settingsEmail">—</span></div>
         <div class="info-row"><span class="info-row-label">Phone</span> <span class="info-row-value" id="settingsPhone">—</span></div>
+        <!--
+          #settingsPropertyRow is injected by renderSettings() in tenant.js
+          directly after the Phone row above. It shows:
+          🏢 [Property Name] · [Location]
+        -->
         <div class="info-row"><span class="info-row-label">Role</span>  <span class="pill pill-violet" style="font-size:0.58rem">Tenant</span></div>
       </div>
 
@@ -846,12 +1002,50 @@
         </div>
       </div>
 
-      <!-- Change password -->
+      <!-- Change password — with eye toggles + strength/match injected by JS -->
       <div class="card settings-section">
         <div class="settings-label">Change Password</div>
-        <input type="password" id="currentPassword" placeholder="Current password">
-        <input type="password" id="newPassword"     placeholder="New password (min 6 chars)">
-        <input type="password" id="confirmPassword" placeholder="Confirm new password">
+
+        <!-- Current password with eye toggle -->
+        <div class="pw-field-wrap">
+          <input type="password" id="currentPassword" placeholder="Current password" autocomplete="current-password">
+          <button class="pw-eye-btn" type="button" onclick="togglePwEye('currentPassword', this)" aria-label="Toggle password visibility">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- New password with eye toggle -->
+        <!--
+          initPasswordStrength() in tenant.js injects the strength bar
+          (#pwStrengthWrap → #pwStrengthBar + #pwStrengthLabel)
+          immediately after this input via insertAdjacentHTML('afterend', …).
+          The .pw-field-wrap keeps the eye button correctly positioned.
+        -->
+        <div class="pw-field-wrap">
+          <input type="password" id="newPassword" placeholder="New password (min 6 chars)" autocomplete="new-password">
+          <button class="pw-eye-btn" type="button" onclick="togglePwEye('newPassword', this)" aria-label="Toggle password visibility">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Confirm password with eye toggle -->
+        <!--
+          initPasswordStrength() also injects the match indicator
+          (#pwMatchIndicator) immediately after this input.
+        -->
+        <div class="pw-field-wrap">
+          <input type="password" id="confirmPassword" placeholder="Confirm new password" autocomplete="new-password">
+          <button class="pw-eye-btn" type="button" onclick="togglePwEye('confirmPassword', this)" aria-label="Toggle password visibility">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+
         <button class="btn btn-primary" onclick="changePassword()">Update Password</button>
       </div>
 
@@ -896,6 +1090,16 @@ function showToast(msg, type) {
   clearTimeout(t._t);
   t._t = setTimeout(() => { t.className = ''; }, 3200);
 }
+
+/* Eye toggle for all three password fields in settings */
+function togglePwEye(inputId, btn) {
+  const inp     = document.getElementById(inputId);
+  const showing = inp.type === 'text';
+  inp.type      = showing ? 'password' : 'text';
+  btn.innerHTML = showing
+    ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`
+    : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+}
 </script>
 
 <script src="config.js"></script>
@@ -904,16 +1108,12 @@ function showToast(msg, type) {
 <!-- ══════════════════════════════════════════════════════
      TYPERS — wired AFTER tenant.js loads so startTyper()
      is available. All containers are fixed-height in CSS.
-     Even if a message is 300 chars wide, overflow:hidden
-     clips it. The cursor ▍ is always visible inside the box.
 ══════════════════════════════════════════════════════ -->
 <script>
 window.addEventListener('DOMContentLoaded', () => {
 
   /* ── TYPER 1: Header greeting ────────────────────────
      Container: #headerGreeting (.typer-line, h=1.35em)
-     Shows under the tenant's first name in the header.
-     Cycles through lifestyle and reassurance messages.
   ──────────────────────────────────────────────────── */
   startTyper('headerGreeting', [
     '// your home, your account — all here',
@@ -931,8 +1131,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
   /* ── TYPER 2: Home subtitle ──────────────────────────
      Container: #homeSubtitle (.typer-line, h=1.35em)
-     Sits between "Good day 👋" title and the stats grid.
-     Stats grid Y position NEVER changes — height is fixed.
   ──────────────────────────────────────────────────── */
   startTyper('homeSubtitle', [
     'Welcome back. Here\'s your rental overview.',
@@ -945,9 +1143,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
   /* ── TYPER 3: Pay Rent tip ───────────────────────────
      Container: #payTip (.pay-tip-line, h=1.2em)
-     Sits below the M-Pesa button inside the payment card.
-     Card height is fixed — this line is always 1.2em tall.
-     Rotates helpful M-Pesa tips.
   ──────────────────────────────────────────────────── */
   startTyper('payTip', [
     'Tip: your registered phone receives the M-Pesa prompt instantly.',
@@ -960,9 +1155,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
   /* ── TYPER 4: Receipts tip ───────────────────────────
      Container: #receiptsTip (.receipts-tip-line, h=1.15em)
-     Sits below the "All Transactions" card-label.
-     Types once and stays — no delete loop on first message.
-     Subsequent cycles give variety without being distracting.
   ──────────────────────────────────────────────────── */
   startTyper('receiptsTip', [
     'Every payment generates a downloadable PDF receipt.',
@@ -973,9 +1165,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
   /* ── TYPER 5: Messages empty state ──────────────────
      Container: #messagesEmptyText (inside .empty-state)
-     .empty-state has fixed padding — no layout shift.
-     Only active when chat box shows the empty state.
-     Types a warm prompt to encourage first message.
   ──────────────────────────────────────────────────── */
   startTyper('messagesEmptyText', [
     'Send a message to your landlord — they\'ll respond shortly.',

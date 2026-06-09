@@ -1,8 +1,13 @@
+// ═══════════════════════════════════════════════════════
+//  models/User.js — SaaS Multi-tenant version
+//  role: 'landlord' | 'tenant'
+//  (renamed from 'admin' → 'landlord')
+// ═══════════════════════════════════════════════════════
+
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
 
-    // ── Core ──
     name: {
         type:     String,
         required: true,
@@ -12,7 +17,7 @@ const userSchema = new mongoose.Schema({
     email: {
         type:      String,
         required:  true,
-        unique:    true,
+        unique:    true,   // single-field unique — OK to keep here only
         lowercase: true,
         trim:      true
     },
@@ -24,21 +29,83 @@ const userSchema = new mongoose.Schema({
 
     role: {
         type:    String,
-        enum:    ['admin', 'tenant'],
+        enum:    ['landlord', 'tenant'],
         default: 'tenant'
     },
 
-    // ── Tenant link (null for admin) ──
     tenantId: {
         type:    mongoose.Schema.Types.ObjectId,
         ref:     'Tenant',
         default: null
     },
 
-    // ══════════════════════════════════════════
-    // SUBSCRIPTION FIELDS — admin (landlord) only
-    // These are ignored for tenant accounts
-    // ══════════════════════════════════════════
+    landlordId: {
+        type:    mongoose.Schema.Types.ObjectId,
+        ref:     'User',
+        default: null
+    },
+
+    propertyName: {
+        type:    String,
+        trim:    true,
+        default: null
+    },
+
+    propertyLocation: {
+        type:    String,
+        trim:    true,
+        default: null
+    },
+
+    phone: {
+        type:    String,
+        trim:    true,
+        default: null
+    },
+
+    // No unique/sparse here — handled exclusively by schema.index() below
+    subdomain: {
+        type:      String,
+        trim:      true,
+        lowercase: true,
+        //default:   null
+    },
+
+    onboardingComplete: {
+        type:    Boolean,
+        default: false
+    },
+
+    paymentConfigured: {
+        type:    Boolean,
+        default: false
+    },
+
+    paybillNumber: {
+        type:    String,
+        default: null,
+        trim:    true
+    },
+
+    mpesaConsumerKey: {
+        type:    String,
+        default: null
+    },
+
+    mpesaConsumerSecret: {
+        type:    String,
+        default: null
+    },
+
+    mpesaPasskey: {
+        type:    String,
+        default: null
+    },
+
+    mustChangePassword: {
+        type:    Boolean,
+        default: false
+    },
 
     subscriptionStatus: {
         type:    String,
@@ -52,112 +119,81 @@ const userSchema = new mongoose.Schema({
         default: null
     },
 
-    // When current subscription period ends
     subscriptionExpiry: {
         type:    Date,
-        default: null   // set on first payment or trial start
+        default: null
     },
 
-    // Trial end date — set when admin account is created
     trialEndsAt: {
         type:    Date,
-        default: () => new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) // 14 days
+        default: () => new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
     },
 
-    // Grace period — 7 days after expiry before full lockout
     gracePeriodUntil: {
         type:    Date,
         default: null
     },
 
-    // Last successful subscription payment date
     lastSubscriptionPayment: {
         type:    Date,
         default: null
     },
 
-    // Admin's phone number used for subscription STK Push
     landlordPhone: {
         type:    String,
         default: null,
         trim:    true
     },
 
-    // Admin's own Paybill for tenant rent collection
-    paybillNumber: {
-        type:    String,
-        default: null,
-        trim:    true
-    },
-
-    paybillPasskey: {
-        type:    String,
-        default: null
-    },
-
-    mpesaConsumerKey: {
-        type:    String,
-        default: null
-    },
-
-    mpesaConsumerSecret: {
-        type:    String,
-        default: null
-    },
-
-    // ── Suspension ──
-    suspendedReason: {
-        type:    String,
-        default: null
-    },
-
-    suspendedAt: {
-        type:    Date,
-        default: null
-    },
-
-    suspendedBy: {
-        type:    String,  // 'stacklord' always
-        default: null
-    }
+    suspendedReason: { type: String, default: null },
+    suspendedAt:     { type: Date,   default: null },
+    suspendedBy:     { type: String, default: null }
 
 }, { timestamps: true });
 
-// ── Virtual: is subscription currently active ──
-userSchema.virtual('isSubscriptionActive').get(function () {
-    if (this.role !== 'admin') return true; // tenants always pass
+// ── Indexes (single source of truth — nothing duplicated on fields above) ──
+userSchema.index({ landlordId: 1 });
+userSchema.index({ role: 1 });
+userSchema.index({ subdomain: 1 }, { unique: true, sparse: true }); // sparse → nulls don't collide
 
-    const now = new Date();
-
-    switch (this.subscriptionStatus) {
-        case 'trial':
-            return this.trialEndsAt && now < this.trialEndsAt;
-        case 'active':
-            return this.subscriptionExpiry && now < this.subscriptionExpiry;
-        case 'grace':
-            return this.gracePeriodUntil && now < this.gracePeriodUntil;
-        case 'expired':
-        case 'suspended':
-            return false;
-        default:
-            return false;
-    }
-});
-
-// ── Virtual: days remaining ──
+// ── Virtual: subscription days remaining ──
 userSchema.virtual('daysRemaining').get(function () {
     const now = new Date();
     let expiry = null;
-
     if (this.subscriptionStatus === 'trial')  expiry = this.trialEndsAt;
     if (this.subscriptionStatus === 'active') expiry = this.subscriptionExpiry;
     if (this.subscriptionStatus === 'grace')  expiry = this.gracePeriodUntil;
-
     if (!expiry) return 0;
     return Math.max(0, Math.ceil((expiry - now) / (1000 * 60 * 60 * 24)));
+});
+
+// ── Virtual: is subscription active ──
+userSchema.virtual('isSubscriptionActive').get(function () {
+    if (this.role !== 'landlord') return true;
+    const now = new Date();
+    switch (this.subscriptionStatus) {
+        case 'trial':  return this.trialEndsAt && now < this.trialEndsAt;
+        case 'active': return this.subscriptionExpiry && now < this.subscriptionExpiry;
+        case 'grace':  return this.gracePeriodUntil && now < this.gracePeriodUntil;
+        default:       return false;
+    }
 });
 
 userSchema.set('toJSON',   { virtuals: true });
 userSchema.set('toObject', { virtuals: true });
 
 module.exports = mongoose.model('User', userSchema);
+
+
+
+
+
+
+
+
+
+
+
+
+
+

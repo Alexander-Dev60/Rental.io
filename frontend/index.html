@@ -1,1311 +1,852 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/svg+xml" href="./public/favicon.svg">
-  <title>Admin — Affordable Rentals</title>
+  <title>Affordable Rentals — Rental Management for Kenyan Landlords</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
-  /* ════════════════════════════════════════════
-     CSS CUSTOM PROPERTIES — THEMES
-  ════════════════════════════════════════════ */
-  :root, [data-theme="dark"] {
-    --bg:#0a0c10; --bg2:#0f1218; --bg3:#151922;
-    --panel:#1a1f2b; --panel2:#1f2535;
-    --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.13);
-    --accent:#6ee7b7; --accent2:#3b82f6; --accent-dim:rgba(110,231,183,0.12);
-    --danger:#f87171; --warn:#fbbf24;
-    --text:#e2e8f0; --text-dim:#64748b; --text-muted:#94a3b8;
-    --sidebar-w: 260px;
-    --banner-h: 0px;
+  /* ══════════════════════════════════════════
+     THEME TOKENS — system adaptive
+  ══════════════════════════════════════════ */
+  :root {
+    --bg: #0b1220;
+    --card: rgba(255,255,255,.08);
+    --card-solid: rgba(11,18,32,.97);
+    --text: #f8fafc;
+    --muted: #94a3b8;
+    --muted2: #4a6382;
+    --primary: #60a5fa;
+    --accent: #818cf8;
+    --success: #4ade80;
+    --error: #f87171;
+    --gold: #c8a96e;
+    --gold-lt: #e8c98a;
+    --gold-dim: rgba(200,169,110,.14);
+    --border: rgba(255,255,255,.08);
+    --border2: rgba(255,255,255,.16);
+    --input-bg: rgba(0,0,0,.22);
+    --topbar-bg: rgba(11,18,32,.88);
+    --overlay-a: rgba(0,0,0,.72);
+    --overlay-b: rgba(0,0,0,.28);
+    --img-filter: blur(4px) brightness(.38);
+    --font-d: 'DM Serif Display', Georgia, serif;
+    --font-s: 'DM Sans', sans-serif;
+    --font-m: 'Space Mono', monospace;
+    --ease: cubic-bezier(.4,0,.2,1);
+    --spring: cubic-bezier(.34,1.56,.64,1);
   }
-  [data-theme="light"] {
-    --bg:#f1f5f9; --bg2:#e8edf5; --bg3:#dde4f0;
-    --panel:#ffffff; --panel2:#f8fafc;
-    --border:rgba(0,0,0,0.08); --border2:rgba(0,0,0,0.15);
-    --accent:#059669; --accent2:#2563eb; --accent-dim:rgba(5,150,105,0.1);
-    --danger:#dc2626; --warn:#d97706;
-    --text:#0f172a; --text-dim:#64748b; --text-muted:#475569;
-  }
-  [data-theme="blue"] {
-    --bg:#050d1a; --bg2:#071223; --bg3:#0a1a30;
-    --panel:#0d2040; --panel2:#112548;
-    --border:rgba(59,130,246,0.15); --border2:rgba(59,130,246,0.3);
-    --accent:#60a5fa; --accent2:#a78bfa; --accent-dim:rgba(96,165,250,0.12);
-    --danger:#f87171; --warn:#fbbf24;
-    --text:#e0f0ff; --text-dim:#4a7eb5; --text-muted:#7aadda;
-  }
-  [data-theme="orange"] {
-    --bg:#0f0a05; --bg2:#180f07; --bg3:#221509;
-    --panel:#2a1a0a; --panel2:#321f0c;
-    --border:rgba(251,146,60,0.15); --border2:rgba(251,146,60,0.3);
-    --accent:#fb923c; --accent2:#fcd34d; --accent-dim:rgba(251,146,60,0.12);
-    --danger:#f87171; --warn:#fbbf24;
-    --text:#fff7ed; --text-dim:#92400e; --text-muted:#c2803a;
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #eef2f7;
+      --card: rgba(255,255,255,.62);
+      --card-solid: rgba(238,242,247,.98);
+      --text: #0f172a;
+      --muted: #64748b;
+      --muted2: #94a3b8;
+      --primary: #2563eb;
+      --accent: #6366f1;
+      --success: #16a34a;
+      --error: #dc2626;
+      --gold: #92660a;
+      --gold-lt: #b07e1e;
+      --gold-dim: rgba(146,102,10,.1);
+      --border: rgba(0,0,0,.07);
+      --border2: rgba(0,0,0,.14);
+      --input-bg: rgba(255,255,255,.7);
+      --topbar-bg: rgba(238,242,247,.92);
+      --overlay-a: rgba(220,232,248,.62);
+      --overlay-b: rgba(220,232,248,.18);
+      --img-filter: blur(4px) brightness(.72);
+    }
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html { height: 100%; }
-  body {
-    font-family: 'Space Grotesk', sans-serif;
-    background: var(--bg); color: var(--text);
-    height: 100%; display: flex; overflow: hidden; font-size: 14px;
+  html { scroll-behavior: smooth; }
+  body { font-family: var(--font-s); color: var(--text); overflow-x: hidden; font-size: 16px; line-height: 1.6; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 2px; }
+
+  /* BG SLIDESHOW */
+  .bg { position: fixed; inset: 0; z-index: -2; }
+  .bg img { position: absolute; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 1.6s ease; filter: var(--img-filter); }
+  .bg img.active { opacity: 1; }
+  .overlay { position: fixed; inset: 0; z-index: -1; background: linear-gradient(130deg, var(--overlay-a), var(--overlay-b)); }
+
+  /* particles */
+  .particle { position: fixed; border-radius: 50%; background: var(--gold); opacity: 0; animation: particleRise linear infinite; pointer-events: none; z-index: 0; }
+  @keyframes particleRise { 0%{opacity:0;transform:translateY(0)} 8%{opacity:.28} 92%{opacity:.07} 100%{opacity:0;transform:translateY(-100vh) translateX(10px)} }
+
+  /* NAVBAR */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+    padding: 0 2rem; height: 62px;
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--topbar-bg);
+    backdrop-filter: blur(22px) saturate(1.4);
+    -webkit-backdrop-filter: blur(22px) saturate(1.4);
+    border-bottom: 1px solid var(--border2);
+    transition: all .3s var(--ease);
   }
+  nav.scrolled { box-shadow: 0 4px 30px rgba(0,0,0,.4); }
+  nav::after { content: ''; position: absolute; bottom: 0; left: 8%; right: 8%; height: 1px; background: linear-gradient(90deg, transparent, var(--primary), transparent); opacity: .18; }
 
-  /* ════════════════════════════════════════════
-     SUBSCRIPTION BANNER
-  ════════════════════════════════════════════ */
-  .banner-wrapper {
-    position: fixed; top: 0; left: var(--sidebar-w); right: 0;
-    z-index: 150; transition: left 0.3s ease;
+  .nav-logo { display: flex; align-items: center; gap: 9px; text-decoration: none; flex-shrink: 0; }
+  .nav-logo-icon { width: 34px; height: 34px; background: linear-gradient(135deg, var(--primary), var(--accent)); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+  .nav-logo-icon svg { width: 18px; height: 18px; }
+  .nav-logo-name { font-family: var(--font-m); font-size: .6rem; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--primary); opacity: .82; }
+
+  .nav-links { display: flex; align-items: center; gap: 2rem; list-style: none; }
+  .nav-links a { font-family: var(--font-s); font-size: .82rem; font-weight: 500; color: var(--muted); text-decoration: none; transition: color .2s; }
+  .nav-links a:hover { color: var(--text); }
+  .nav-links a.nav-hi { color: var(--gold); opacity: .88; }
+  .nav-links a.nav-hi:hover { color: var(--gold-lt); opacity: 1; }
+
+  .nav-cta { display: flex; align-items: center; gap: 8px; }
+  .btn-ghost { font-family: var(--font-s); font-size: .78rem; font-weight: 500; color: var(--muted); background: transparent; border: 1px solid var(--border2); padding: 7px 16px; border-radius: 8px; cursor: pointer; text-decoration: none; transition: all .2s; }
+  .btn-ghost:hover { color: var(--text); border-color: var(--primary); }
+  .btn-nav-primary { font-family: var(--font-s); font-size: .78rem; font-weight: 700; color: #fff; background: linear-gradient(135deg, var(--primary), var(--accent)); border: none; padding: 7px 16px; border-radius: 8px; cursor: pointer; text-decoration: none; white-space: nowrap; box-shadow: 0 4px 16px rgba(96,165,250,.3); transition: opacity .2s, transform .15s; }
+  .btn-nav-primary:hover { opacity: .9; transform: translateY(-1px); }
+
+  .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; background: none; border: none; padding: 4px; }
+  .hamburger span { display: block; width: 22px; height: 2px; background: var(--text); border-radius: 2px; transition: all .3s; }
+  .mobile-menu { display: none; position: fixed; top: 62px; left: 0; right: 0; background: var(--card-solid); border-bottom: 1px solid var(--border2); padding: 20px 28px; flex-direction: column; gap: 18px; z-index: 999; backdrop-filter: blur(22px); }
+  .mobile-menu.open { display: flex; }
+  .mobile-menu a { font-family: var(--font-s); font-size: .9rem; color: var(--muted); text-decoration: none; font-weight: 500; }
+  .mobile-menu a:hover { color: var(--text); }
+  .mobile-menu a.mm-landlord { color: var(--primary); font-weight: 700; }
+  .mobile-menu a.mm-tenant   { color: var(--gold); font-weight: 600; }
+
+  /* SHARED BUTTONS */
+  .btn-primary { display: inline-flex; align-items: center; gap: 7px; background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; font-family: var(--font-s); font-size: .88rem; font-weight: 700; padding: 14px 28px; border-radius: 12px; border: none; cursor: pointer; text-decoration: none; box-shadow: 0 8px 30px rgba(96,165,250,.38); transition: all .2s var(--ease); position: relative; overflow: hidden; }
+  .btn-primary::after { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.15), transparent); transition: left .45s ease; }
+  .btn-primary:hover::after { left: 100%; }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(96,165,250,.5); }
+  .btn-secondary { display: inline-flex; align-items: center; gap: 7px; background: transparent; color: var(--text); font-family: var(--font-s); font-size: .88rem; font-weight: 600; padding: 14px 28px; border-radius: 12px; border: 1px solid var(--border2); cursor: pointer; text-decoration: none; transition: all .2s var(--ease); }
+  .btn-secondary:hover { border-color: var(--primary); color: var(--primary); }
+
+  /* HERO */
+  .hero { min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; align-items: center; position: relative; z-index: 1; padding: 8rem 2rem 4rem; gap: 3rem; max-width: 1200px; margin: 0 auto; }
+  .hero-eyebrow { display: inline-flex; align-items: center; gap: 8px; background: var(--gold-dim); border: 1px solid var(--border2); border-radius: 99px; padding: 6px 14px; font-family: var(--font-m); font-size: .58rem; color: var(--gold); letter-spacing: .18em; text-transform: uppercase; margin-bottom: 24px; animation: fadeUp .6s .1s var(--ease) both; }
+  .hero-eyebrow-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 8px var(--gold); flex-shrink: 0; animation: pulseDot 2.4s ease infinite; }
+  @keyframes pulseDot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+  .hero-title { font-family: var(--font-d); font-style: italic; font-size: clamp(2.6rem,5.5vw,4.4rem); font-weight: 400; line-height: 1.08; color: var(--text); margin-bottom: 18px; animation: fadeUp .6s .2s var(--ease) both; }
+  .hero-title em { color: var(--gold); font-style: italic; }
+  .hero-title .line-blue { background: linear-gradient(135deg, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-style: normal; }
+  .hero-typewriter { display: flex; align-items: center; margin-bottom: 20px; min-height: 1.4rem; animation: fadeUp .6s .3s var(--ease) both; }
+  .typewriter-text { font-family: var(--font-m); font-size: .68rem; letter-spacing: .06em; color: var(--muted); white-space: nowrap; overflow: hidden; }
+  .typewriter-cursor { display: inline-block; width: 2px; height: .85em; background: var(--primary); margin-left: 3px; vertical-align: middle; animation: blink 1s step-end infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  .hero-sub { font-size: .96rem; color: var(--muted); max-width: 480px; line-height: 1.85; margin-bottom: 28px; animation: fadeUp .6s .35s var(--ease) both; }
+  .hero-btns { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; animation: fadeUp .6s .45s var(--ease) both; }
+  .hero-tenant-link { animation: fadeUp .6s .55s var(--ease) both; margin-top: 18px; display: flex; align-items: center; gap: 8px; }
+  .hero-tenant-text { font-family: var(--font-m); font-size: .58rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted2); }
+  .hero-tenant-btn { font-family: var(--font-m); font-size: .58rem; letter-spacing: .1em; text-transform: uppercase; color: var(--gold); text-decoration: none; border-bottom: 1px solid rgba(200,169,110,.3); padding-bottom: 1px; transition: color .2s, border-color .2s; }
+  .hero-tenant-btn:hover { color: var(--gold-lt); border-color: var(--gold); }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+
+  /* CITY SKYLINE */
+  .hero-right { position: relative; z-index: 1; display: flex; align-items: flex-end; justify-content: center; height: 460px; animation: fadeUp .8s .4s var(--ease) both; }
+  #skylineCanvas { width: 100%; height: 100%; display: block; }
+  .skyline-label { position: absolute; bottom: -22px; left: 0; right: 0; text-align: center; font-family: var(--font-m); font-size: .52rem; letter-spacing: .18em; text-transform: uppercase; color: var(--muted2); opacity: .65; }
+  #skylineTooltip { position: absolute; background: var(--card); border: 1px solid var(--border2); border-radius: 10px; padding: 9px 14px; font-family: var(--font-s); font-size: .72rem; color: var(--text); line-height: 1.5; pointer-events: none; opacity: 0; transition: opacity .2s; backdrop-filter: blur(14px); white-space: nowrap; z-index: 10; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+  #skylineTooltip.visible { opacity: 1; }
+  .tt-name { font-weight: 600; color: var(--text); }
+  .tt-loc  { color: var(--gold); font-size: .65rem; }
+  .tt-vac  { color: var(--success); font-size: .65rem; }
+
+  /* HERO STATS */
+  .hero-stats { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: clamp(2rem,4vw,3.5rem); flex-wrap: wrap; padding: 28px 2rem 36px; max-width: 860px; margin: 0 auto; border-top: 1px solid var(--border); animation: fadeUp .6s .7s var(--ease) both; }
+  .hero-stat { text-align: center; }
+  .hero-stat-value { font-family: var(--font-d); font-style: italic; font-size: 2.4rem; color: var(--gold); line-height: 1; margin-bottom: 4px; }
+  .hero-stat-label { font-family: var(--font-m); font-size: .55rem; color: var(--muted2); letter-spacing: .14em; text-transform: uppercase; }
+
+  /* PROOF BAR */
+  .proof-bar { position: relative; z-index: 1; background: var(--card); backdrop-filter: blur(20px); border-top: 1px solid var(--border2); border-bottom: 1px solid var(--border2); padding: 18px 2rem; }
+  .proof-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; justify-content: center; gap: 2.5rem; flex-wrap: wrap; }
+  .proof-item { display: flex; align-items: center; gap: 9px; font-family: var(--font-m); font-size: .58rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .proof-item span:first-child { font-size: 1rem; }
+  .proof-sep { color: var(--border2); font-size: .7rem; }
+
+  /* SECTIONS */
+  .full-section { position: relative; z-index: 1; padding: 5rem 2rem; }
+  .container { max-width: 1100px; margin: 0 auto; }
+  .section-tag { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-m); font-size: .58rem; letter-spacing: .2em; text-transform: uppercase; color: var(--gold); opacity: .78; margin-bottom: 12px; }
+  .section-tag::before { content: ''; display: inline-block; width: 22px; height: 1px; background: var(--gold); opacity: .5; }
+  .section-tag.center::before { display: none; }
+  .section-title { font-family: var(--font-d); font-style: italic; font-size: clamp(2rem,4.5vw,3.2rem); font-weight: 400; line-height: 1.1; color: var(--text); margin-bottom: 12px; }
+  .section-sub { font-size: .9rem; color: var(--muted); max-width: 500px; line-height: 1.8; }
+  .section-header { margin-bottom: 3rem; }
+  .section-header.center { text-align: center; }
+  .section-header.center .section-tag { justify-content: center; }
+  .section-header.center .section-sub { margin: 0 auto; }
+
+  /* FEATURES */
+  .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .feature-card { background: var(--card); border: 1px solid var(--border2); border-radius: 20px; padding: 28px; backdrop-filter: blur(24px) saturate(1.4); -webkit-backdrop-filter: blur(24px) saturate(1.4); box-shadow: 0 8px 40px rgba(0,0,0,.35); transition: transform .28s var(--ease), box-shadow .28s var(--ease), border-color .2s; position: relative; overflow: hidden; }
+  .feature-card::before { content: ''; position: absolute; top: 0; left: 14%; right: 14%; height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); opacity: 0; transition: opacity .3s; }
+  .feature-card:hover { border-color: rgba(200,169,110,.3); transform: translateY(-4px); box-shadow: 0 20px 60px rgba(0,0,0,.45); }
+  .feature-card:hover::before { opacity: .5; }
+  .feature-icon { width: 46px; height: 46px; background: var(--gold-dim); border: 1px solid var(--border2); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; margin-bottom: 16px; }
+  .feature-title { font-family: var(--font-s); font-size: .95rem; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+  .feature-desc  { font-size: .83rem; color: var(--muted); line-height: 1.72; }
+
+  /* FREE TRIAL */
+  .trial-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: center; max-width: 900px; margin: 0 auto; }
+  .trial-badge { display: inline-flex; align-items: center; gap: 7px; background: rgba(74,222,128,.08); border: 1px solid rgba(74,222,128,.22); border-radius: 99px; padding: 5px 13px; font-family: var(--font-m); font-size: .58rem; color: var(--success); letter-spacing: .12em; text-transform: uppercase; margin-bottom: 16px; }
+  .trial-badge-dot { width: 5px; height: 5px; background: var(--success); border-radius: 50%; box-shadow: 0 0 6px var(--success); animation: pulseDot 2s ease infinite; }
+  .trial-title { font-family: var(--font-d); font-style: italic; font-size: clamp(1.9rem,3.5vw,2.8rem); font-weight: 400; line-height: 1.1; color: var(--text); margin-bottom: 10px; }
+  .trial-title em { color: var(--gold); }
+  .trial-sub { font-size: .86rem; color: var(--muted); line-height: 1.8; margin-bottom: 22px; }
+  .trial-checks { display: flex; flex-direction: column; gap: 10px; margin-bottom: 26px; }
+  .trial-check { display: flex; align-items: center; gap: 10px; font-size: .84rem; color: var(--muted); }
+  .trial-check-icon { width: 20px; height: 20px; border-radius: 50%; background: rgba(74,222,128,.1); border: 1px solid rgba(74,222,128,.28); display: flex; align-items: center; justify-content: center; font-size: .6rem; flex-shrink: 0; color: var(--success); }
+  .trial-card { background: var(--card); border: 1px solid var(--border2); border-radius: 20px; padding: 28px; backdrop-filter: blur(24px) saturate(1.4); -webkit-backdrop-filter: blur(24px) saturate(1.4); box-shadow: 0 8px 40px rgba(0,0,0,.4); position: relative; overflow: hidden; }
+  .trial-card::before { content: ''; position: absolute; top: 0; left: 12%; right: 12%; height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); opacity: .5; }
+  .trial-card-label { font-family: var(--font-m); font-size: .56rem; letter-spacing: .2em; text-transform: uppercase; color: var(--muted2); margin-bottom: 5px; }
+  .trial-free-tag { font-family: var(--font-d); font-style: italic; font-size: 2.6rem; line-height: 1; color: var(--gold); margin-bottom: 3px; }
+  .trial-days-note { font-family: var(--font-m); font-size: .6rem; color: var(--muted2); letter-spacing: .08em; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+  .trial-card-features { list-style: none; display: flex; flex-direction: column; gap: 9px; margin-bottom: 20px; }
+  .trial-card-features li { font-size: .82rem; color: var(--muted); display: flex; align-items: center; gap: 9px; }
+  .feat-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--gold); flex-shrink: 0; }
+  .btn-trial { display: block; width: 100%; text-align: center; text-decoration: none; background: linear-gradient(135deg, var(--primary), var(--accent)); border: none; border-radius: 11px; color: #fff; font-family: var(--font-s); font-size: .84rem; font-weight: 600; letter-spacing: .06em; padding: 13px; cursor: pointer; transition: opacity .2s, transform .15s; box-shadow: 0 4px 20px rgba(96,165,250,.35); position: relative; overflow: hidden; }
+  .btn-trial::after { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.15), transparent); transition: left .45s; }
+  .btn-trial:hover::after { left: 100%; }
+  .btn-trial:hover { opacity: .92; transform: translateY(-1px); }
+  .trial-after-note { font-family: var(--font-m); font-size: .54rem; color: var(--muted2); letter-spacing: .06em; text-align: center; margin-top: 11px; line-height: 1.6; }
+
+  /* TESTIMONIALS */
+  .testimonials-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+  .testimonial-card { background: var(--card); border: 1px solid var(--border2); border-radius: 20px; padding: 28px; backdrop-filter: blur(24px) saturate(1.4); -webkit-backdrop-filter: blur(24px) saturate(1.4); box-shadow: 0 8px 40px rgba(0,0,0,.3); transition: border-color .3s, transform .3s; position: relative; }
+  .testimonial-card:hover { border-color: rgba(200,169,110,.28); transform: translateY(-3px); }
+  .testimonial-card::before { content: ''; position: absolute; top: 0; left: 14%; right: 14%; height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); opacity: .28; }
+  .stars { position: absolute; top: 22px; right: 22px; color: var(--gold); font-size: .72rem; letter-spacing: 2px; opacity: .85; }
+  .quote-mark { font-family: var(--font-d); font-style: italic; font-size: 4.5rem; line-height: .5; color: var(--gold); opacity: .16; margin-bottom: 14px; }
+  .testimonial-text { font-size: .86rem; color: var(--muted); line-height: 1.8; margin-bottom: 20px; font-style: italic; }
+  .testimonial-author { display: flex; align-items: center; gap: 10px; }
+  .author-avatar { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .82rem; color: #fff; flex-shrink: 0; }
+  .author-name { font-weight: 700; font-size: .84rem; color: var(--text); }
+  .author-role { font-family: var(--font-m); font-size: .6rem; color: var(--muted2); letter-spacing: .08em; }
+
+  /* HOW IT WORKS */
+  .steps-wrap { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 2rem; position: relative; }
+  .steps-wrap::before { content: ''; position: absolute; top: 40px; left: 10%; right: 10%; height: 1px; background: linear-gradient(90deg, transparent, var(--primary), transparent); opacity: .2; }
+  .step-card { text-align: center; padding: 28px 22px; }
+  .step-icon { width: 62px; height: 62px; background: linear-gradient(135deg, var(--primary), var(--accent)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin: 0 auto 18px; box-shadow: 0 0 28px rgba(96,165,250,.38); position: relative; z-index: 1; }
+  .step-title { font-family: var(--font-d); font-style: italic; font-size: 1.1rem; font-weight: 400; color: var(--text); margin-bottom: 8px; }
+  .step-desc  { font-size: .84rem; color: var(--muted); line-height: 1.75; }
+
+  /* TENANT PATHWAY */
+  .tenant-pathway { max-width: 860px; margin: 0 auto; background: var(--card); border: 1px solid var(--border2); border-radius: 22px; padding: 2.5rem clamp(1.5rem,6vw,3rem); backdrop-filter: blur(24px) saturate(1.4); -webkit-backdrop-filter: blur(24px) saturate(1.4); box-shadow: 0 8px 40px rgba(0,0,0,.4); display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: center; position: relative; overflow: hidden; }
+  .tenant-pathway::before { content: ''; position: absolute; top: 0; left: 12%; right: 12%; height: 1px; background: linear-gradient(90deg, transparent, var(--primary), transparent); opacity: .35; }
+  .tenant-pathway-tag { display: inline-flex; align-items: center; gap: 7px; background: rgba(96,165,250,.09); border: 1px solid rgba(96,165,250,.2); border-radius: 99px; padding: 4px 12px; font-family: var(--font-m); font-size: .56rem; color: var(--primary); letter-spacing: .12em; text-transform: uppercase; margin-bottom: 14px; }
+  .tenant-pathway-title { font-family: var(--font-d); font-style: italic; font-size: clamp(1.5rem,3vw,2rem); font-weight: 400; color: var(--text); line-height: 1.2; margin-bottom: 12px; }
+  .tenant-pathway-desc  { font-size: .84rem; color: var(--muted); line-height: 1.8; margin-bottom: 18px; }
+  .tenant-steps { display: flex; flex-direction: column; gap: 10px; }
+  .tenant-step { display: flex; align-items: flex-start; gap: 11px; font-size: .82rem; color: var(--muted); }
+  .tenant-step-num { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; background: var(--gold-dim); border: 1px solid var(--border2); font-family: var(--font-m); font-size: .6rem; color: var(--gold); display: flex; align-items: center; justify-content: center; margin-top: 2px; }
+
+  /* FAQ */
+  .faq-list { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 9px; }
+  .faq-item { background: var(--card); border: 1px solid var(--border2); border-radius: 13px; overflow: hidden; backdrop-filter: blur(18px); transition: border-color .2s; }
+  .faq-item.open { border-color: rgba(96,165,250,.3); }
+  .faq-q { display: flex; align-items: center; justify-content: space-between; padding: 17px 22px; cursor: pointer; font-family: var(--font-s); font-weight: 600; font-size: .9rem; color: var(--text); user-select: none; gap: 14px; transition: color .2s; }
+  .faq-q:hover { color: var(--primary); }
+  .faq-icon { width: 22px; height: 22px; border-radius: 50%; background: var(--gold-dim); border: 1px solid var(--border2); display: flex; align-items: center; justify-content: center; font-size: .9rem; flex-shrink: 0; color: var(--gold); font-weight: 700; transition: transform .3s, background .2s; }
+  .faq-item.open .faq-icon { transform: rotate(45deg); background: rgba(96,165,250,.15); color: var(--primary); }
+  .faq-a { max-height: 0; overflow: hidden; transition: max-height .4s ease, padding .3s; font-size: .84rem; color: var(--muted); line-height: 1.8; padding: 0 22px; }
+  .faq-item.open .faq-a { max-height: 240px; padding: 0 22px 16px; }
+
+  /* CONTACT */
+  .contact-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: start; }
+  .contact-info { display: flex; flex-direction: column; gap: 20px; }
+  .contact-item { display: flex; align-items: flex-start; gap: 14px; }
+  .contact-icon { width: 42px; height: 42px; background: var(--gold-dim); border: 1px solid var(--border2); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+  .contact-item-label { font-family: var(--font-m); font-size: .58rem; letter-spacing: .15em; text-transform: uppercase; color: var(--muted2); margin-bottom: 3px; }
+  .contact-item-value { font-size: .88rem; color: var(--text); font-weight: 500; text-decoration: none; transition: color .2s; display: block; }
+  .contact-item-value:hover { color: var(--primary); }
+  .contact-form { background: var(--card); border: 1px solid var(--border2); border-radius: 20px; padding: clamp(22px,5vw,32px); backdrop-filter: blur(24px) saturate(1.4); -webkit-backdrop-filter: blur(24px) saturate(1.4); box-shadow: 0 8px 40px rgba(0,0,0,.4); position: relative; overflow: hidden; }
+  .contact-form::before { content: ''; position: absolute; top: 0; left: 12%; right: 12%; height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); opacity: .45; }
+  .contact-form-title { font-family: var(--font-d); font-style: italic; font-size: 1.5rem; font-weight: 400; color: var(--text); margin-bottom: 20px; }
+  .form-field { margin-bottom: 13px; }
+  .form-field label { display: block; font-family: var(--font-m); font-size: .55rem; letter-spacing: .15em; text-transform: uppercase; color: var(--muted2); margin-bottom: 5px; }
+  .form-field input, .form-field textarea { width: 100%; background: var(--input-bg); border: 1px solid var(--border2); border-radius: 11px; color: var(--text); font-family: var(--font-s); font-size: .86rem; padding: 11px 14px; outline: none; resize: none; transition: border-color .2s, box-shadow .2s; }
+  .form-field input:focus, .form-field textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(96,165,250,.12); }
+  .form-field input::placeholder, .form-field textarea::placeholder { color: var(--muted2); font-size: .82rem; }
+  .btn-send { width: 100%; margin-top: 4px; background: linear-gradient(135deg, var(--primary), var(--accent)); border: none; border-radius: 11px; color: #fff; font-family: var(--font-s); font-size: .84rem; font-weight: 600; letter-spacing: .06em; padding: 13px; cursor: pointer; transition: opacity .2s, transform .15s; box-shadow: 0 4px 20px rgba(96,165,250,.35); position: relative; overflow: hidden; }
+  .btn-send::after { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.15), transparent); transition: left .45s; }
+  .btn-send:hover::after { left: 100%; }
+  .btn-send:hover { opacity: .9; transform: translateY(-1px); }
+  .btn-send:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+  #contactResult { margin-top: 10px; font-family: var(--font-m); font-size: .68rem; text-align: center; }
+
+  /* CTA */
+  .cta-box { max-width: 820px; margin: 0 auto; text-align: center; background: var(--card); border: 1px solid var(--border2); border-radius: 24px; padding: 4rem 3rem; backdrop-filter: blur(24px) saturate(1.4); -webkit-backdrop-filter: blur(24px) saturate(1.4); box-shadow: 0 20px 80px rgba(0,0,0,.5); position: relative; overflow: hidden; }
+  .cta-box::before { content: ''; position: absolute; top: 0; left: 10%; right: 10%; height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); opacity: .55; }
+  .cta-title { font-family: var(--font-d); font-style: italic; font-size: clamp(2.2rem,5.5vw,4rem); font-weight: 400; line-height: 1.1; color: var(--text); margin-bottom: 12px; }
+  .cta-title em { color: var(--gold); }
+  .cta-sub { font-size: .92rem; color: var(--muted); margin-bottom: 2.2rem; max-width: 460px; margin-left: auto; margin-right: auto; line-height: 1.75; }
+  .cta-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .cta-note { margin-top: 16px; font-family: var(--font-m); font-size: .57rem; color: var(--muted2); letter-spacing: .08em; line-height: 1.8; }
+
+  /* FOOTER */
+  footer { position: relative; z-index: 1; background: var(--card); backdrop-filter: blur(22px); border-top: 1px solid var(--border2); padding: 3rem 2rem 2rem; }
+  .footer-wrap { max-width: 1100px; margin: 0 auto; }
+  .footer-top { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 3rem; margin-bottom: 2.5rem; padding-bottom: 2.5rem; border-bottom: 1px solid var(--border); }
+  .footer-brand p { font-size: .82rem; color: var(--muted2); line-height: 1.8; margin-top: 10px; max-width: 240px; }
+  .footer-col-title { font-family: var(--font-m); font-size: .57rem; letter-spacing: .2em; text-transform: uppercase; color: var(--gold); opacity: .65; margin-bottom: 13px; }
+  .footer-links { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .footer-links a { font-size: .82rem; color: var(--muted); text-decoration: none; transition: color .2s; }
+  .footer-links a:hover { color: var(--primary); }
+  .footer-bottom { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; }
+  .footer-copy { font-family: var(--font-m); font-size: .57rem; color: var(--muted2); letter-spacing: .08em; }
+  .footer-socials { display: flex; gap: 8px; }
+  .social-btn { width: 30px; height: 30px; background: var(--card); border: 1px solid var(--border2); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: .82rem; cursor: pointer; text-decoration: none; color: var(--muted); transition: all .2s; }
+  .social-btn:hover { border-color: var(--primary); color: var(--primary); transform: translateY(-2px); }
+
+  /* REVEAL */
+  .reveal { opacity: 0; transform: translateY(28px); transition: opacity .6s var(--ease), transform .6s var(--ease); }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+  .reveal-delay-1 { transition-delay: .1s; }
+  .reveal-delay-2 { transition-delay: .2s; }
+  .reveal-delay-3 { transition-delay: .3s; }
+  .reveal-delay-4 { transition-delay: .4s; }
+
+  /* RESPONSIVE */
+  @media (max-width: 960px) {
+    .hero { grid-template-columns: 1fr; text-align: center; }
+    .hero-right { height: 320px; max-width: 480px; margin: 0 auto; }
+    .hero-btns, .hero-tenant-link { justify-content: center; }
+    .trial-grid, .tenant-pathway, .contact-wrap { grid-template-columns: 1fr; gap: 2rem; }
+    .footer-top { grid-template-columns: 1fr 1fr; gap: 2rem; }
   }
-
-  .sub-banner {
-    display: none; width: 100%;
-    padding: 0.55rem 1rem;
-    font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;
-    letter-spacing: 0.06em; text-align: center;
-    animation: bannerSlide 0.4s ease both;
-    overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  @media (max-width: 700px) {
+    .nav-links { display: none; }
+    .hamburger { display: flex; }
+    .hero { padding: 7rem 1.25rem 3rem; }
+    .hero-right { height: 240px; }
+    .hero-btns { flex-direction: column; align-items: stretch; }
+    .hero-btns .btn-primary, .hero-btns .btn-secondary { text-align: center; justify-content: center; }
+    .hero-stats { gap: 2rem; }
+    .cta-box { padding: 2.5rem 1.5rem; }
+    .cta-btns { flex-direction: column; align-items: stretch; }
+    .cta-btns a { text-align: center; justify-content: center; }
+    .footer-top { grid-template-columns: 1fr; gap: 2rem; }
+    .footer-bottom { flex-direction: column; align-items: flex-start; }
+    .steps-wrap::before { display: none; }
+    .full-section { padding: 3.5rem 1.25rem; }
+    .proof-inner { gap: 1.25rem; }
+    .proof-sep { display: none; }
   }
-
-  @keyframes bannerSlide {
-    from { opacity: 0; transform: translateY(-100%); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
-  .sub-banner.trial    { background: rgba(59,130,246,0.15);  color: #60a5fa;      border-bottom: 1px solid rgba(59,130,246,0.3); }
-  .sub-banner.grace    { background: rgba(251,191,36,0.15);  color: var(--warn);  border-bottom: 1px solid rgba(251,191,36,0.3); }
-  .sub-banner.expired  { background: rgba(248,113,113,0.15); color: var(--danger);border-bottom: 1px solid rgba(248,113,113,0.3); }
-  .sub-banner.suspended{ background: rgba(248,113,113,0.2);  color: var(--danger);border-bottom: 2px solid var(--danger); }
-  .sub-banner a { color: inherit; text-decoration: underline; cursor: pointer; margin-left: 0.75rem; font-weight: 700; }
-  .typing-cursor { display: inline-block; animation: blink 0.75s step-end infinite; font-weight: 400; opacity: 0.7; }
-  @keyframes blink { 0%,100% { opacity: 0.7; } 50% { opacity: 0; } }
-
-  /* ════════════════════════════════════════════
-     EXPIRED OVERLAY
-  ════════════════════════════════════════════ */
-  .expired-overlay { display: none; position: fixed; inset: 0; z-index: 400; background: rgba(0,0,0,0.92); backdrop-filter: blur(8px); align-items: center; justify-content: center; }
-  .expired-overlay.show { display: flex; }
-  .expired-box { background: var(--panel); border: 1px solid rgba(248,113,113,0.3); border-radius: 16px; padding: 3rem 2.5rem; text-align: center; max-width: 440px; width: 92vw; box-shadow: 0 0 60px rgba(248,113,113,0.15); }
-  .expired-icon  { font-size: 3.5rem; margin-bottom: 1rem; display: block; }
-  .expired-title { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.8rem; color: var(--danger); margin-bottom: 0.75rem; }
-  .expired-desc  { font-size: 0.85rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 2rem; }
-
-  /* ════════════════════════════════════════════
-     SIDEBAR
-  ════════════════════════════════════════════ */
-  .sidebar { width: var(--sidebar-w); flex-shrink: 0; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; height: 100dvh; position: fixed; left: 0; top: 0; z-index: 300; transition: transform 0.3s ease; overflow: hidden; }
-  .sidebar-header { padding: 1.25rem 1.25rem 0.85rem; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-  .sidebar-logo { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.3rem; color: var(--accent); display: flex; align-items: center; gap: 0.5rem; }
-  .sidebar-role { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); margin-top: 0.25rem; }
-  .sidebar-nav { flex: 1; overflow-y: auto; padding: 0.75rem 0; min-height: 0; }
-  .nav-section { padding: 0.5rem 1.25rem 0.25rem; font-size: 0.58rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); margin-top: 0.5rem; }
-  .nav-item { display: flex; align-items: center; gap: 0.65rem; padding: 0.6rem 1.25rem; cursor: pointer; color: var(--text-muted); font-size: 0.82rem; font-weight: 500; transition: all 0.15s; border-left: 2px solid transparent; user-select: none; }
-  .nav-item:hover  { background: var(--accent-dim); color: var(--text); border-left-color: var(--border2); }
-  .nav-item.active { background: var(--accent-dim); color: var(--accent); border-left-color: var(--accent); }
-  .nav-item .icon  { font-size: 0.95rem; width: 18px; text-align: center; }
-  .nav-badge { margin-left: auto; background: var(--danger); color: #fff; font-size: 0.6rem; font-weight: 700; padding: 1px 6px; border-radius: 99px; font-family: 'JetBrains Mono', monospace; }
-  .sidebar-footer { flex-shrink: 0; padding: 0.85rem 1.25rem; padding-bottom: max(0.85rem, env(safe-area-inset-bottom)); border-top: 1px solid var(--border); background: var(--bg2); }
-
-  /* Sub status card in sidebar */
-  .sub-status-card { margin-bottom: 0.75rem; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 0.65rem 0.85rem; cursor: pointer; transition: border-color 0.2s; }
-  .sub-status-card:hover { border-color: var(--border2); }
-  .sub-status-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.35rem; }
-  .sub-status-label { font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-dim); }
-  .sub-status-badge { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; font-weight: 700; padding: 2px 7px; border-radius: 99px; }
-  .sub-status-badge.trial    { background: rgba(59,130,246,0.12);  color: #60a5fa;       border: 1px solid rgba(59,130,246,0.25); }
-  .sub-status-badge.active   { background: rgba(110,231,183,0.12); color: var(--accent); border: 1px solid rgba(110,231,183,0.2); }
-  .sub-status-badge.grace    { background: rgba(251,191,36,0.12);  color: var(--warn);   border: 1px solid rgba(251,191,36,0.25); }
-  .sub-status-badge.expired  { background: rgba(248,113,113,0.12); color: var(--danger); border: 1px solid rgba(248,113,113,0.25); }
-  .sub-status-badge.suspended{ background: rgba(248,113,113,0.2);  color: var(--danger); border: 1px solid var(--danger); }
-  .sub-progress-track { background: var(--border); border-radius: 99px; height: 4px; overflow: hidden; }
-  .sub-progress-fill  { height: 100%; border-radius: 99px; transition: width 0.5s ease; }
-  .sub-progress-fill.active    { background: var(--accent); }
-  .sub-progress-fill.trial     { background: #60a5fa; }
-  .sub-progress-fill.grace     { background: var(--warn); }
-  .sub-progress-fill.expired   { background: var(--danger); width: 100% !important; }
-  .sub-progress-fill.suspended { background: var(--danger); width: 100% !important; }
-  .sub-days-label { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: var(--text-dim); margin-top: 0.3rem; }
-
-  .maintenance-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.65rem; padding: 0.45rem 0.75rem; background: var(--bg3); border-radius: 6px; border: 1px solid var(--border); }
-  .maintenance-label { font-size: 0.72rem; color: var(--text-muted); font-weight: 500; }
-  .toggle-switch { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
-  .toggle-switch input { display: none; }
-  .toggle-switch .slider { position: absolute; inset: 0; background: var(--border2); border-radius: 99px; cursor: pointer; transition: background 0.2s; }
-  .toggle-switch .slider::before { content: ''; position: absolute; width: 14px; height: 14px; top: 3px; left: 3px; background: white; border-radius: 50%; transition: transform 0.2s; }
-  .toggle-switch input:checked + .slider { background: var(--warn); }
-  .toggle-switch input:checked + .slider::before { transform: translateX(16px); }
-
-  .theme-switcher { display: flex; gap: 8px; margin-bottom: 0.65rem; align-items: center; }
-  .theme-label { font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); margin-right: 0.25rem; }
-  .theme-dot { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: border-color 0.2s, transform 0.2s; flex-shrink: 0; }
-  .theme-dot:hover { transform: scale(1.2); }
-  .theme-dot.active { border-color: var(--text); }
-  .theme-dot[data-theme="dark"]   { background: #1a1f2b; }
-  .theme-dot[data-theme="light"]  { background: #e2e8f0; }
-  .theme-dot[data-theme="blue"]   { background: #1e40af; }
-  .theme-dot[data-theme="orange"] { background: #ea580c; }
-  .btn-logout { width: 100%; background: transparent; border: 1px solid var(--border2); color: var(--text-muted); font-family: 'Space Grotesk', sans-serif; font-size: 0.75rem; font-weight: 500; letter-spacing: 0.08em; padding: 0.5rem; border-radius: 6px; cursor: pointer; transition: all 0.15s; }
-  .btn-logout:hover { border-color: var(--danger); color: var(--danger); }
-
-  /* Mobile overlay */
-  .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 250; backdrop-filter: blur(2px); }
-  .sidebar-overlay.show { display: block; }
-
-  /* ════════════════════════════════════════════
-     MAIN LAYOUT
-  ════════════════════════════════════════════ */
-  .main { margin-left: var(--sidebar-w); flex: 1; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; padding-top: var(--banner-h); transition: padding-top 0.3s ease, margin-left 0.3s ease; }
-
-  .topbar { position: sticky; top: 0; z-index: 50; background: var(--bg); border-bottom: 1px solid var(--border); padding: 0.85rem 1.5rem; display: flex; align-items: center; justify-content: space-between; backdrop-filter: blur(8px); }
-  .topbar-title { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.3rem; color: var(--text); }
-  .topbar-right { display: flex; align-items: center; gap: 0.75rem; }
-  .admin-chip { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; letter-spacing: 0.12em; text-transform: uppercase; background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(110,231,183,0.2); padding: 0.3rem 0.7rem; border-radius: 99px; }
-
-  .section { display: none; padding: 1.5rem; animation: fadeSection 0.2s ease both; }
-  .section.active { display: block; }
-  @keyframes fadeSection { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 0.75rem; }
-  .section-title { font-family: 'Instrument Serif', serif; font-size: 1.6rem; font-style: italic; color: var(--text); }
-
-  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem; transition: border-color 0.2s; }
-  .card:hover { border-color: var(--border2); }
-  .card-title { font-size: 0.65rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 1.1rem; }
-
-  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.85rem; margin-bottom: 1.5rem; }
-  .stat-card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 1.1rem 1.25rem; transition: border-color 0.2s, transform 0.2s; }
-  .stat-card:hover { border-color: var(--border2); transform: translateY(-2px); }
-  .stat-label { font-size: 0.62rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 0.5rem; }
-  .stat-value { font-family: 'Instrument Serif', serif; font-size: 2rem; color: var(--accent); line-height: 1; }
-  .stat-sub   { font-size: 0.7rem; color: var(--text-dim); margin-top: 0.25rem; }
-
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
-  .grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.25rem; }
-
-  input, textarea, select { width: 100%; background: var(--bg3); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font-family: 'Space Grotesk', sans-serif; font-size: 0.83rem; padding: 0.6rem 0.85rem; margin-bottom: 0.6rem; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
-  input:focus, textarea:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
-  input::placeholder, textarea::placeholder { color: var(--text-dim); }
-  textarea { resize: vertical; min-height: 80px; }
-  select option { background: var(--panel); }
-
-  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4em; border: none; border-radius: 7px; font-family: 'Space Grotesk', sans-serif; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; padding: 0.55rem 1.1rem; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
-  .btn-primary   { background: var(--accent); color: #0a0c10; }
-  .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
-  .btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border2); }
-  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
-  .btn-danger { background: rgba(248,113,113,0.12); color: var(--danger); border: 1px solid rgba(248,113,113,0.25); }
-  .btn-danger:hover { background: rgba(248,113,113,0.2); }
-  .btn-warn   { background: rgba(251,191,36,0.12);  color: var(--warn);   border: 1px solid rgba(251,191,36,0.25); }
-  .btn-warn:hover { background: rgba(251,191,36,0.2); }
-  .btn-sm   { padding: 0.3rem 0.65rem; font-size: 0.72rem; }
-  .btn-full { width: 100%; }
-
-  .tenant-list { display: flex; flex-direction: column; gap: 4px; max-height: 500px; overflow-y: auto; }
-  .tenant-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 0.85rem; border-radius: 7px; cursor: pointer; transition: background 0.15s; border: 1px solid transparent; position: relative; }
-  .tenant-row:hover { background: var(--panel2); border-color: var(--border); }
-  .tenant-row.selected { background: var(--accent-dim); border-color: var(--accent); }
-  .tenant-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--accent-dim); border: 1px solid var(--border2); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; color: var(--accent); flex-shrink: 0; text-transform: uppercase; }
-  .tenant-info { flex: 1; min-width: 0; }
-  .tenant-name { font-size: 0.83rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .tenant-meta { font-size: 0.68rem; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; }
-  .arrears-badge { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; font-weight: 700; background: rgba(248,113,113,0.15); color: var(--danger); border: 1px solid rgba(248,113,113,0.25); padding: 2px 7px; border-radius: 99px; flex-shrink: 0; }
-  .paid-badge    { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; font-weight: 700; background: rgba(110,231,183,0.12); color: var(--accent); border: 1px solid rgba(110,231,183,0.2);  padding: 2px 7px; border-radius: 99px; flex-shrink: 0; }
-  .partial-badge { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; font-weight: 700; background: rgba(251,191,36,0.12);  color: var(--warn);   border: 1px solid rgba(251,191,36,0.25);  padding: 2px 7px; border-radius: 99px; flex-shrink: 0; }
-
-  .ctx-menu { position: absolute; right: 8px; top: 100%; background: var(--panel2); border: 1px solid var(--border2); border-radius: 8px; padding: 4px; z-index: 999; min-width: 180px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); animation: menuPop 0.15s cubic-bezier(0.34,1.56,0.64,1) both; }
-  @keyframes menuPop { from { opacity:0; transform: scale(0.9) translateY(-4px); } to { opacity:1; transform: scale(1) translateY(0); } }
-  .ctx-item { display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.75rem; border-radius: 5px; cursor: pointer; font-size: 0.78rem; color: var(--text-muted); transition: background 0.1s, color 0.1s; }
-  .ctx-item:hover { background: var(--accent-dim); color: var(--text); }
-  .ctx-item.danger { color: var(--danger); }
-  .ctx-item.danger:hover { background: rgba(248,113,113,0.1); }
-  .ctx-divider { border-top: 1px solid var(--border); margin: 3px 0; }
-
-  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-  th { text-align: left; padding: 0.6rem 0.85rem; font-size: 0.6rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-dim); border-bottom: 1px solid var(--border); }
-  td { padding: 0.65rem 0.85rem; border-bottom: 1px solid var(--border); color: var(--text-muted); }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: var(--panel2); color: var(--text); }
-  .td-mono { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; }
-
-  .pay-summary { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; font-size: 0.82rem; }
-  .pay-summary-row { display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid var(--border); }
-  .pay-summary-row:last-child { border: none; font-weight: 600; }
-  .pay-summary-label { color: var(--text-dim); }
-  .pay-summary-value { color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; }
-  .payment-progress { background: var(--bg3); border-radius: 99px; height: 6px; overflow: hidden; margin-top: 0.5rem; }
-  .payment-progress-bar { height: 100%; border-radius: 99px; transition: width 0.4s ease; }
-  .payment-progress-bar.paid    { background: var(--accent); }
-  .payment-progress-bar.partial { background: var(--warn); }
-
-  .house-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.85rem; }
-  .house-card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; cursor: pointer; transition: all 0.15s; position: relative; }
-  .house-card:hover { border-color: var(--border2); transform: translateY(-2px); }
-  .house-card.occupied  { border-left: 3px solid var(--danger); }
-  .house-card.available { border-left: 3px solid var(--accent); }
-  .house-name { font-weight: 700; font-size: 1rem; color: var(--text); margin-bottom: 0.25rem; }
-  .house-rent { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--text-dim); }
-  .status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; }
-  .status-dot.available { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
-  .status-dot.occupied  { background: var(--danger);  box-shadow: 0 0 6px var(--danger); }
-
-  .chat-box { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 0.85rem; height: 260px; overflow-y: auto; margin-bottom: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; }
-  .msg-bubble { max-width: 78%; padding: 0.5rem 0.85rem; border-radius: 8px; font-size: 0.78rem; line-height: 1.5; animation: msgIn 0.2s ease both; }
-  @keyframes msgIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: translateY(0); } }
-  .msg-tenant { background: var(--panel2); color: var(--text); align-self: flex-start; border-bottom-left-radius: 2px; }
-  .msg-admin  { background: var(--accent-dim); color: var(--accent); align-self: flex-end; border-bottom-right-radius: 2px; border: 1px solid rgba(110,231,183,0.2); }
-  .msg-meta   { font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; color: var(--text-dim); margin-top: 2px; }
-
-  /* ════════════════════════════════════════════
-     MODALS — shared
-  ════════════════════════════════════════════ */
-  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px); z-index: 500; align-items: center; justify-content: center; }
-  .modal-overlay.open { display: flex; }
-  .modal { background: var(--panel); border: 1px solid var(--border2); border-radius: 12px; padding: 2rem; width: min(500px, 92vw); max-height: 90dvh; overflow-y: auto; animation: modalIn 0.25s cubic-bezier(0.34,1.2,0.64,1) both; box-shadow: 0 24px 80px rgba(0,0,0,0.6); }
-  @keyframes modalIn { from { opacity:0; transform: scale(0.93) translateY(10px); } to { opacity:1; transform: scale(1) translateY(0); } }
-  .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
-  .modal-title  { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.3rem; color: var(--text); }
-  .modal-close  { background: transparent; border: none; color: var(--text-dim); font-size: 1.1rem; cursor: pointer; width: auto; padding: 0; margin: 0; line-height: 1; transition: color 0.15s; }
-  .modal-close:hover { color: var(--danger); }
-
-  /* ════════════════════════════════════════════
-     DANGER CONFIRM MODAL — special styling
-  ════════════════════════════════════════════ */
-  #modal-danger .modal {
-    border-color: rgba(248,113,113,0.3);
-    box-shadow: 0 24px 80px rgba(0,0,0,0.7), 0 0 40px rgba(248,113,113,0.1);
-    max-width: 420px;
-  }
-
-  .danger-modal-icon {
-    font-size: 3rem;
-    display: block;
-    text-align: center;
-    margin-bottom: 0.75rem;
-    animation: dangerIconPop 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
-  }
-
-  @keyframes dangerIconPop {
-    from { opacity: 0; transform: scale(0.5); }
-    to   { opacity: 1; transform: scale(1); }
-  }
-
-  .danger-modal-title {
-    font-family: 'Instrument Serif', serif;
-    font-style: italic; font-size: 1.4rem;
-    color: var(--danger); text-align: center;
-    margin-bottom: 0.75rem;
-  }
-
-  .danger-modal-message {
-    font-size: 0.85rem; color: var(--text-muted);
-    line-height: 1.75; text-align: center;
-    margin-bottom: 1.75rem;
-    background: rgba(248,113,113,0.05);
-    border: 1px solid rgba(248,113,113,0.15);
-    border-radius: 8px; padding: 1rem 1.25rem;
-  }
-
-  .danger-modal-message strong { color: var(--text); }
-
-  .danger-modal-actions {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;
-  }
-
-  /* Plan option cards */
-  .plan-option { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 0.65rem; cursor: pointer; transition: all 0.15s; }
-  .plan-option:hover    { border-color: var(--accent); }
-  .plan-option.selected { border-color: var(--accent); background: var(--accent-dim); }
-  .plan-option-name  { font-weight: 600; color: var(--text); font-size: 0.88rem; }
-  .plan-option-price { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--accent); }
-  .plan-option-dur   { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--text-dim); }
-
-  #toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--panel2); border: 1px solid var(--border2); border-radius: 8px; padding: 0.65rem 1.1rem; font-size: 0.78rem; font-family: 'JetBrains Mono', monospace; color: var(--text); opacity: 0; transform: translateY(10px); transition: all 0.25s ease; z-index: 9999; pointer-events: none; max-width: 320px; box-shadow: 0 8px 30px rgba(0,0,0,0.4); }
-  #toast.show    { opacity: 1; transform: translateY(0); }
-  #toast.success { border-color: var(--accent); color: var(--accent); }
-  #toast.error   { border-color: var(--danger); color: var(--danger); }
-  #toast.warn    { border-color: var(--warn);   color: var(--warn); }
-
-  .empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--text-dim); font-size: 0.8rem; }
-  .empty-state .icon { font-size: 2rem; margin-bottom: 0.5rem; display: block; }
-  .pill { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; padding: 2px 8px; border-radius: 99px; font-weight: 600; }
-  .pill-green  { background: rgba(110,231,183,0.12); color: var(--accent); border: 1px solid rgba(110,231,183,0.2); }
-  .pill-red    { background: rgba(248,113,113,0.12); color: var(--danger); border: 1px solid rgba(248,113,113,0.2); }
-  .pill-yellow { background: rgba(251,191,36,0.12);  color: var(--warn);   border: 1px solid rgba(251,191,36,0.2); }
-  .divider { border: none; border-top: 1px solid var(--border); margin: 1.25rem 0; }
-  .mb-1 { margin-bottom: 0.5rem; }
-  .mb-2 { margin-bottom: 1rem; }
-  .mb-3 { margin-bottom: 1.5rem; }
-  .flex  { display: flex; align-items: center; gap: 0.75rem; }
-  .flex-between { display: flex; align-items: center; justify-content: space-between; }
-  ::-webkit-scrollbar { width: 4px; height: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
-
-  /* ════════════════════════════════════════════
-     RESPONSIVE
-  ════════════════════════════════════════════ */
-  @media (max-width: 900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
-
-  @media (max-width: 768px) {
-    :root { --sidebar-w: 0px; }
-    .sidebar { transform: translateX(-260px); width: 260px; }
-    .sidebar.open { transform: translateX(0); box-shadow: 8px 0 40px rgba(0,0,0,0.6); }
-    .banner-wrapper { left: 0; }
-    .main { margin-left: 0; }
-    .section { padding: 1rem; }
-    .topbar  { padding: 0.75rem 1rem; }
-    .mobile-menu-btn {
-      display: flex !important; background: transparent;
-      border: 1px solid var(--border2); color: var(--text);
-      padding: 0.4rem 0.65rem; border-radius: 6px;
-      cursor: pointer; font-size: 1rem; width: auto; margin: 0;
-      align-items: center; transition: border-color 0.15s, color 0.15s;
-    }
-    .mobile-menu-btn:hover { border-color: var(--accent); color: var(--accent); }
-    .danger-modal-actions { grid-template-columns: 1fr; }
-  }
-
-  .mobile-menu-btn { display: none; }
-
-  /* ════════════════════════════════════════════
-     TYPING TEXT CONTAINERS
-  ════════════════════════════════════════════ */
-  .topbar-typer {
-    display: block; height: 1em; overflow: hidden; white-space: nowrap;
-    font-family: 'JetBrains Mono', monospace; font-size: 0.58rem;
-    color: var(--text-dim); letter-spacing: 0.07em; line-height: 1em;
-    user-select: none; flex-shrink: 0;
-  }
-
-  .admin-typer-line {
-    display: block; height: 1.25em; overflow: hidden; white-space: nowrap;
-    font-family: 'JetBrains Mono', monospace; font-size: 0.62rem;
-    color: var(--text-dim); letter-spacing: 0.04em; line-height: 1.25em;
-    margin-bottom: 0.65rem; user-select: none; flex-shrink: 0;
-  }
-
-  .typing-cursor {
-    display: inline-block; animation: cursorBlink 0.8s step-end infinite;
-    opacity: 0.7; margin-left: 1px;
-  }
-  @keyframes cursorBlink { 0%,100%{opacity:0.7} 50%{opacity:0} }
   </style>
 </head>
 <body>
 
-<!-- ═══ BANNER WRAPPER ═══ -->
-<div class="banner-wrapper" id="bannerWrapper">
-  <div class="sub-banner" id="subBanner"></div>
+<div class="bg" id="bgEl">
+  <img class="active" src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=1400&q=80" alt="">
+  <img src="https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1400&q=80" alt="">
+  <img src="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1400&q=80" alt="">
+  <img src="https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=1400&q=80" alt="">
+  <img src="https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=1400&q=80" alt="">
+</div>
+<div class="overlay"></div>
+
+<!-- NAVBAR -->
+<nav id="navbar">
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+          <defs>
+            <linearGradient id="lg1" x1="0%" y1="100%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#2563eb"/>
+              <stop offset="60%" stop-color="#10b981"/>
+              <stop offset="100%" stop-color="#6ee7b7"/>
+            </linearGradient>
+            <filter id="glow1">
+              <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#10b981" flood-opacity="0.12"/>
+            </filter>
+          </defs>
+          <rect width="100%" height="100%" fill="#0a0c10" rx="24"/>
+          <g filter="url(#glow1)">
+            <path d="M250,90L410,210L375,210L250,116L125,210L90,210Z" fill="url(#lg1)"/>
+            <path d="M242,160L258,160L258,340L285,340L285,365L258,365L258,390L242,390Z" fill="url(#lg1)"/>
+            <path d="M250,140C275,140 295,160 295,185C295,210 275,230 250,230C225,230 205,210 205,185C205,160 225,140 250,140Z" fill="none" stroke="url(#lg1)" stroke-width="7"/>
+            <circle cx="250" cy="185" r="10" fill="#6ee7b7"/>
+            <rect x="145" y="260" width="20" height="20" rx="3" fill="#3b82f6" opacity="0.4"/>
+            <rect x="145" y="300" width="20" height="20" rx="3" fill="#3b82f6" opacity="0.4"/>
+            <rect x="335" y="260" width="20" height="20" rx="3" fill="#6ee7b7" opacity="0.4"/>
+            <rect x="335" y="300" width="20" height="20" rx="3" fill="#6ee7b7" opacity="0.4"/>
+          </g>
+        </svg>
+    </div>
+    <span class="nav-logo-name">Affordable Rentals</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="listings.html" class="nav-hi">Browse Properties</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#how">How it Works</a></li>
+    <li><a href="#faq">FAQ</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ul>
+  <div class="nav-cta">
+    <a href="auth.html" class="btn-ghost">Tenant Login</a>
+    <a href="auth.html?tab=register" class="btn-nav-primary">For Landlords →</a>
+  </div>
+  <button class="hamburger" onclick="toggleMenu()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<div class="mobile-menu" id="mobileMenu">
+  <a href="listings.html" class="mm-landlord" onclick="toggleMenu()">Browse Properties →</a>
+  <a href="#features" onclick="toggleMenu()">Features</a>
+  <a href="#how"      onclick="toggleMenu()">How it Works</a>
+  <a href="#faq"      onclick="toggleMenu()">FAQ</a>
+  <a href="#contact"  onclick="toggleMenu()">Contact</a>
+  <a href="auth.html"              class="mm-tenant"   onclick="toggleMenu()">Tenant Login →</a>
+  <a href="auth.html?tab=register" class="mm-landlord" onclick="toggleMenu()">Landlord Sign Up →</a>
 </div>
 
-<!-- ═══ EXPIRED / SUSPENDED OVERLAY ═══ -->
-<div class="expired-overlay" id="expiredOverlay">
-  <div class="expired-box">
-    <span class="expired-icon">🔒</span>
-    <div class="expired-title" id="expiredTitle">Subscription Expired</div>
-    <div class="expired-desc"  id="expiredDesc">Your subscription has expired. Please renew to continue accessing your dashboard.</div>
-    <button class="btn btn-primary btn-full" onclick="openModal('modal-subscribe')" style="margin-bottom:0.75rem">🔄 Renew Subscription</button>
-    <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--text-dim)">Contact support@affordablerentals.site for help</div>
+<!-- HERO -->
+<section id="home" style="position:relative;z-index:1;">
+  <div class="hero">
+    <div class="hero-left">
+      <div class="hero-eyebrow"><span class="hero-eyebrow-dot"></span>14-Day Free Trial · No Credit Card Required</div>
+      <h1 class="hero-title">Manage your<br>rentals <em>smarter,</em><br><span class="line-blue">collect faster.</span></h1>
+      <div class="hero-typewriter">
+        <span class="typewriter-text" id="typewriterEl"></span>
+        <span class="typewriter-cursor"></span>
+      </div>
+      <p class="hero-sub">The all-in-one rental platform for Kenyan landlords. Collect rent via M-Pesa, manage tenants, automate receipts, and list your properties for free.</p>
+      <div class="hero-btns">
+        <a href="auth.html?tab=register" class="btn-primary">🚀 Start Free — 14 Days</a>
+        <a href="listings.html"           class="btn-secondary">Browse Properties ↓</a>
+      </div>
+      <div class="hero-tenant-link">
+        <span class="hero-tenant-text">Tenant?</span>
+        <a href="auth.html" class="hero-tenant-btn">Sign in to your dashboard →</a>
+      </div>
+    </div>
+    <div class="hero-right">
+      <canvas id="skylineCanvas"></canvas>
+      <div class="skyline-label">Live property availability across Kenya</div>
+      <div id="skylineTooltip"></div>
+    </div>
+  </div>
+  <div class="hero-stats">
+    <div class="hero-stat"><div class="hero-stat-value">14</div><div class="hero-stat-label">Day Free Trial</div></div>
+    <div class="hero-stat"><div class="hero-stat-value">M-PESA</div><div class="hero-stat-label">Daraja Integrated</div></div>
+    <div class="hero-stat"><div class="hero-stat-value">AES-256</div><div class="hero-stat-label">Encrypted Credentials</div></div>
+    <div class="hero-stat"><div class="hero-stat-value">KES 0</div><div class="hero-stat-label">To Get Started</div></div>
+  </div>
+</section>
+
+<!-- PROOF BAR -->
+<div class="proof-bar">
+  <div class="proof-inner">
+    <div class="proof-item"><span>📱</span><span>M-Pesa STK Push</span></div>
+    <span class="proof-sep">·</span>
+    <div class="proof-item"><span>🧾</span><span>PDF Receipts via Email</span></div>
+    <span class="proof-sep">·</span>
+    <div class="proof-item"><span>🔒</span><span>JWT + bcrypt Auth</span></div>
+    <span class="proof-sep">·</span>
+    <div class="proof-item"><span>🌐</span><span>Public Property Listings</span></div>
+    <span class="proof-sep">·</span>
+    <div class="proof-item"><span>☁️</span><span>Cloudinary Photo Storage</span></div>
+    <span class="proof-sep">·</span>
+    <div class="proof-item"><span>📊</span><span>Real-time Arrears Tracking</span></div>
   </div>
 </div>
 
-<!-- ═══ MOBILE SIDEBAR OVERLAY ═══ -->
-<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
-
-<!-- ═══ SIDEBAR ═══ -->
-<aside class="sidebar" id="sidebar">
-  <div class="sidebar-header">
-    <div class="sidebar-logo">🏠 Affordable Rentals</div>
-    <div class="sidebar-role">// admin console</div>
-  </div>
-
-  <nav class="sidebar-nav">
-    <div class="nav-section">Overview</div>
-    <div class="nav-item active" onclick="showSection('dashboard')"><span class="icon">📊</span> Dashboard</div>
-    <div class="nav-section">Tenants</div>
-    <div class="nav-item" onclick="showSection('tenants')">  <span class="icon">👥</span> All Tenants</div>
-    <div class="nav-item" onclick="showSection('arrears')">  <span class="icon">📉</span> Arrears
-      <span class="nav-badge" id="arrearsBadge" style="display:none">0</span>
+<!-- FEATURES -->
+<section id="features" class="full-section">
+  <div class="container">
+    <div class="section-header center">
+      <div class="section-tag center">Platform Features</div>
+      <h2 class="section-title">Everything you need,<br><em>nothing you don't.</em></h2>
+      <p class="section-sub">From public property listings to rent collection and tenant communication — Affordable Rentals handles it all.</p>
     </div>
-    <div class="nav-item" onclick="showSection('addTenant')"><span class="icon">➕</span> Add Tenant</div>
-    <div class="nav-section">Properties</div>
-    <div class="nav-item" onclick="showSection('houses')"><span class="icon">🏡</span> Houses</div>
-    <div class="nav-item" onclick="showSection('assign')"> <span class="icon">🔑</span> Assign House</div>
-    <div class="nav-section">Finance</div>
-    <div class="nav-item" onclick="showSection('payments')"><span class="icon">💳</span> Record Payment</div>
-    <div class="nav-item" onclick="showSection('receipts')"><span class="icon">🧾</span> Receipts</div>
-    <div class="nav-section">Communication</div>
-    <div class="nav-item" onclick="showSection('messages')">
-      <span class="icon">💬</span> Messages
-      <span class="nav-badge" id="msgBadge" style="display:none">0</span>
-    </div>
-    <div class="nav-item" onclick="showSection('announcements')"><span class="icon">📢</span> Announcements</div>
-    <div class="nav-item" onclick="showSection('rules')">       <span class="icon">📜</span> Rules</div>
-  </nav>
-
-  <div class="sidebar-footer">
-    <div class="sub-status-card" id="subStatusCard" onclick="openModal('modal-subscribe')" title="Click to manage subscription">
-      <div class="sub-status-card-top">
-        <span class="sub-status-label">Subscription</span>
-        <span class="sub-status-badge" id="subStatusBadge">—</span>
-      </div>
-      <div class="sub-progress-track">
-        <div class="sub-progress-fill" id="subProgressFill" style="width:0%"></div>
-      </div>
-      <div class="sub-days-label" id="subDaysLabel">Loading...</div>
-    </div>
-
-    <div class="maintenance-row">
-      <span class="maintenance-label">🔧 Maintenance</span>
-      <label class="toggle-switch">
-        <input type="checkbox" id="maintenanceToggle" onchange="toggleMaintenance()">
-        <span class="slider"></span>
-      </label>
-    </div>
-
-    <div class="theme-switcher">
-      <span class="theme-label">Theme</span>
-      <div class="theme-dot active" data-theme="dark"   onclick="setTheme('dark')"   title="Dark"></div>
-      <div class="theme-dot"        data-theme="light"  onclick="setTheme('light')"  title="Light"></div>
-      <div class="theme-dot"        data-theme="blue"   onclick="setTheme('blue')"   title="Blue"></div>
-      <div class="theme-dot"        data-theme="orange" onclick="setTheme('orange')" title="Orange"></div>
-    </div>
-
-    <button class="btn-logout" onclick="logout()">⏻ Sign Out</button>
-  </div>
-</aside>
-
-<!-- ═══ MAIN ═══ -->
-<main class="main">
-  <div class="topbar">
-    <div class="flex">
-      <button class="mobile-menu-btn" onclick="openSidebar()">☰</button>
-      <div style="display:flex;flex-direction:column;justify-content:center;gap:0">
-        <span class="topbar-title" id="topbarTitle">Dashboard</span>
-        <span class="topbar-typer" id="topbarGreeting"></span>
-      </div>
-    </div>
-    <div class="topbar-right">
-      <span id="maintenanceChip" style="display:none" class="pill pill-yellow">🔧 Maintenance ON</span>
-      <span class="admin-chip">Admin</span>
+    <div class="features-grid">
+      <div class="feature-card reveal reveal-delay-1"><div class="feature-icon">🌐</div><div class="feature-title">Public Property Listings</div><div class="feature-desc">Your vacant units are automatically published on a public listings page. Prospective tenants browse, search by location, and contact you directly — no account needed.</div></div>
+      <div class="feature-card reveal reveal-delay-2"><div class="feature-icon">📱</div><div class="feature-title">M-Pesa Rent Collection</div><div class="feature-desc">Tenants pay rent with a single M-Pesa STK Push to your Paybill. Payments are confirmed instantly and digital receipts are emailed automatically after every transaction.</div></div>
+      <div class="feature-card reveal reveal-delay-3"><div class="feature-icon">🧾</div><div class="feature-title">Digital PDF Receipts</div><div class="feature-desc">Every payment generates a PDF receipt delivered straight to the tenant's email. Full payment history is accessible anytime from the tenant dashboard.</div></div>
+      <div class="feature-card reveal reveal-delay-1"><div class="feature-icon">💬</div><div class="feature-title">Tenant–Landlord Messaging</div><div class="feature-desc">Tenants message landlords directly from their dashboard. All communication is logged, timestamped, and in one place — no more endless phone calls.</div></div>
+      <div class="feature-card reveal reveal-delay-2"><div class="feature-icon">📊</div><div class="feature-title">Arrears &amp; Payment Tracking</div><div class="feature-desc">See exactly who has paid, who owes, and by how much across all your units in real time. Partial payments are tracked with running balances.</div></div>
+      <div class="feature-card reveal reveal-delay-3"><div class="feature-icon">📢</div><div class="feature-title">Announcements &amp; House Rules</div><div class="feature-desc">Post notices and house rules from your dashboard. All tenants see them instantly — no WhatsApp groups, no printed notices, no confusion.</div></div>
     </div>
   </div>
+</section>
 
-  <!-- ─── DASHBOARD ─── -->
-  <div class="section active" id="sec-dashboard">
-    <div class="section-header">
-      <div class="section-title">Overview</div>
-      <div class="flex">
-        <input type="text" id="dashMonth" placeholder="e.g. May 2026" style="width:160px;margin:0">
-        <button class="btn btn-primary btn-sm" onclick="loadDashboard()">Load</button>
-      </div>
-    </div>
-    <div class="admin-typer-line" id="dashboardSubtitle"></div>
-    <div class="stats-grid">
-      <div class="stat-card"><div class="stat-label">💰 Total Collected</div><div class="stat-value" id="income">0</div><div class="stat-sub">Ksh this month</div></div>
-      <div class="stat-card"><div class="stat-label">📉 Total Arrears</div> <div class="stat-value" id="arrears" style="color:var(--danger)">0</div><div class="stat-sub">Ksh outstanding</div></div>
-      <div class="stat-card"><div class="stat-label">🏠 Occupied</div>      <div class="stat-value" id="occupied">0</div><div class="stat-sub">Houses</div></div>
-      <div class="stat-card"><div class="stat-label">🚪 Vacant</div>        <div class="stat-value" id="vacant" style="color:var(--warn)">0</div><div class="stat-sub">Available</div></div>
-      <div class="stat-card"><div class="stat-label">👥 Tenants</div>       <div class="stat-value" id="totalTenants">0</div><div class="stat-sub">Registered</div></div>
-    </div>
-    <div class="grid-2">
-      <div class="card"><div class="card-title">Income vs Arrears</div><canvas id="financeChart" height="200"></canvas></div>
-      <div class="card"><div class="card-title">Occupancy</div><canvas id="occupancyChart" height="200"></canvas></div>
-    </div>
-  </div>
-
-  <!-- ─── TENANTS ─── -->
-  <div class="section" id="sec-tenants">
-    <div class="section-header">
-      <div class="section-title">All Tenants</div>
-      <button class="btn btn-primary btn-sm" onclick="loadTenants()">↻ Refresh</button>
-    </div>
-    <div class="grid-2">
-      <div class="card">
-        <div class="card-title">Tenant List — click for options</div>
-        <input type="text" id="tenantSearch" placeholder="Search by name..." oninput="filterTenants()" style="margin-bottom:0.75rem">
-        <div class="tenant-list" id="tenantList"><div class="empty-state"><span class="icon">👥</span>Click Refresh to load tenants</div></div>
-      </div>
-      <div class="card" id="profilePanel">
-        <div class="card-title">Tenant Profile</div>
-        <div id="profileOutput"><div class="empty-state"><span class="icon">👤</span>Select a tenant to view profile</div></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ─── ARREARS ─── -->
-  <div class="section" id="sec-arrears">
-    <div class="section-header">
-      <div class="section-title">Tenants in Arrears</div>
-      <div class="flex">
-        <input type="text" id="arrearsMonth" placeholder="Month (optional)" style="width:160px;margin:0">
-        <button class="btn btn-primary btn-sm" onclick="loadArrears()">Load</button>
-      </div>
-    </div>
-    <div class="card">
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Tenant</th><th>House</th><th>Rent</th><th>Paid</th><th>Balance</th><th>Status</th><th>Action</th></tr></thead>
-          <tbody id="arrearsTable"><tr><td colspan="7"><div class="empty-state">No data — click Load</div></td></tr></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- ─── ADD TENANT ─── -->
-  <div class="section" id="sec-addTenant">
-    <div class="section-header"><div class="section-title">Add New Tenant</div></div>
-    <div style="max-width:500px">
-      <div class="card">
-        <div class="card-title">Tenant Details</div>
-        <input type="text"     id="newName"     placeholder="Full name *">
-        <input type="text"     id="newPhone"    placeholder="Phone number *">
-        <input type="email"    id="newEmail"    placeholder="Email address *">
-        <input type="password" id="newPassword" placeholder="Set tenant password *">
-        <input type="number"   id="newDueDate"  placeholder="Rent due day (default: 5)" min="1" max="28">
-        <button class="btn btn-primary btn-full" onclick="addTenant()">Create Tenant Account</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ─── HOUSES ─── -->
-  <div class="section" id="sec-houses">
-    <div class="section-header">
-      <div class="section-title">Houses</div>
-      <button class="btn btn-secondary btn-sm" onclick="loadHouses()">↻ Refresh</button>
-    </div>
-    <div class="grid-2 mb-3">
-      <div class="card">
-        <div class="card-title">Add New House</div>
-        <input type="text"   id="houseName" placeholder="House name (e.g. A-12)">
-        <input type="number" id="houseRent" placeholder="Monthly rent (Ksh)">
-        <button class="btn btn-primary btn-full" onclick="addHouse()">Add House</button>
-      </div>
-      <div class="card">
-        <div class="card-title">Move Out Tenant</div>
-        <select id="moveOutSelect"></select>
-        <button class="btn btn-warn btn-full" onclick="moveOutTenant()" style="margin-top:0.25rem">Move Out</button>
-      </div>
-    </div>
-    <div class="house-grid" id="houseGrid"><div class="empty-state" style="grid-column:1/-1">Click Refresh to load houses</div></div>
-  </div>
-
-  <!-- ─── ASSIGN HOUSE ─── -->
-  <div class="section" id="sec-assign">
-    <div class="section-header"><div class="section-title">Assign House to Tenant</div></div>
-    <div style="max-width:400px">
-      <div class="card">
-        <div class="card-title">Select Tenant & House</div>
-        <select id="tenantSelect"></select>
-        <select id="houseSelect"></select>
-        <button class="btn btn-primary btn-full" onclick="assignHouse()">Assign</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ─── PAYMENTS ─── -->
-  <div class="section" id="sec-payments">
-    <div class="section-header"><div class="section-title">Record Payment</div></div>
-    <div style="max-width:480px">
-      <div class="card">
-        <div class="card-title">Payment Details</div>
-        <select id="payTenantSelect" onchange="loadPaymentSummary()"></select>
-        <input type="text" id="month" placeholder="Month (e.g. May 2026)" oninput="loadPaymentSummary()">
-        <div id="paymentSummaryBox" style="display:none;margin-bottom:0.75rem">
-          <div class="pay-summary">
-            <div class="pay-summary-row"><span class="pay-summary-label">Monthly Rent</span>    <span class="pay-summary-value" id="sumRent">—</span></div>
-            <div class="pay-summary-row"><span class="pay-summary-label">Total Paid</span>       <span class="pay-summary-value" id="sumPaid">—</span></div>
-            <div class="pay-summary-row"><span class="pay-summary-label">Balance Remaining</span><span class="pay-summary-value" id="sumBalance" style="color:var(--warn)">—</span></div>
-            <div class="pay-summary-row"><span class="pay-summary-label">Status</span>           <span id="sumStatus">—</span></div>
-          </div>
-          <div class="payment-progress"><div class="payment-progress-bar" id="progressBar" style="width:0%"></div></div>
-          <div style="font-size:0.68rem;color:var(--text-dim);text-align:right;margin-top:0.3rem" id="progressLabel"></div>
+<!-- FREE TRIAL -->
+<section id="trial" class="full-section">
+  <div class="container">
+    <div class="trial-grid">
+      <div class="reveal reveal-delay-1">
+        <div class="trial-badge"><span class="trial-badge-dot"></span>Free Trial</div>
+        <h2 class="trial-title">Try it free.<br><em>No risk.</em></h2>
+        <p class="trial-sub">Every landlord account starts with a full 14-day trial. Zero commitment, zero credit card — just complete access from the moment you sign up.</p>
+        <div class="trial-checks">
+          <div class="trial-check"><div class="trial-check-icon">✓</div><span>Full access to all features for 14 days</span></div>
+          <div class="trial-check"><div class="trial-check-icon">✓</div><span>Unlimited properties and tenant accounts during trial</span></div>
+          <div class="trial-check"><div class="trial-check-icon">✓</div><span>M-Pesa rent collection active immediately</span></div>
+          <div class="trial-check"><div class="trial-check-icon">✓</div><span>Automated email receipts and cron reminders</span></div>
+          <div class="trial-check"><div class="trial-check-icon">✓</div><span>No credit card required to start</span></div>
+          <div class="trial-check"><div class="trial-check-icon">✓</div><span>Tenants never pay a subscription fee</span></div>
         </div>
-        <input type="number" id="amount" placeholder="Amount to record (Ksh)" min="1">
-        <select id="payMethod">
-          <option value="cash">Cash</option>
-          <option value="mpesa">M-Pesa (manual)</option>
-          <option value="bank">Bank Transfer</option>
-          <option value="other">Other</option>
-        </select>
-        <input type="text" id="payNote" placeholder="Note (optional)">
-        <button class="btn btn-primary btn-full" onclick="makePayment()">💾 Record & Email Receipt</button>
-        <div id="autoReceipt" style="margin-top:1rem"></div>
+        <a href="auth.html?tab=register" class="btn-primary" style="display:inline-flex">🚀 Start Free Trial</a>
+      </div>
+      <div class="trial-card reveal reveal-delay-2">
+        <div class="trial-card-label">Your trial includes</div>
+        <div class="trial-free-tag">14 Days</div>
+        <div class="trial-days-note">100% FREE · NO CREDIT CARD · FULL ACCESS</div>
+        <ul class="trial-card-features">
+          <li><span class="feat-dot"></span>Public property listings page</li>
+          <li><span class="feat-dot"></span>M-Pesa STK Push rent collection</li>
+          <li><span class="feat-dot"></span>Automated PDF receipts via email</li>
+          <li><span class="feat-dot"></span>Tenant &amp; landlord dashboards</li>
+          <li><span class="feat-dot"></span>Arrears tracking &amp; payment history</li>
+          <li><span class="feat-dot"></span>Tenant-landlord messaging</li>
+          <li><span class="feat-dot"></span>Announcements &amp; house rules</li>
+          <li><span class="feat-dot"></span>Automated rent reminders (cron)</li>
+        </ul>
+        <a href="auth.html?tab=register" class="btn-trial">Get Started Free →</a>
+        <p class="trial-after-note">After your trial, a monthly subscription via M-Pesa keeps your account active. Cancel anytime.</p>
       </div>
     </div>
   </div>
+</section>
 
-  <!-- ─── RECEIPTS ─── -->
-  <div class="section" id="sec-receipts">
-    <div class="section-header"><div class="section-title">Receipts</div></div>
-    <div style="max-width:420px">
-      <div class="card">
-        <div class="card-title">Lookup by Payment ID</div>
-        <input type="text" id="paymentId" placeholder="Paste Payment ID">
-        <button class="btn btn-primary btn-full" onclick="loadReceipt()">Generate Receipt</button>
-        <div id="receiptOutput" style="margin-top:1rem"></div>
-      </div>
+<!-- TESTIMONIALS -->
+<section id="testimonials" class="full-section">
+  <div class="container">
+    <div class="section-header center">
+      <div class="section-tag center">Testimonials</div>
+      <h2 class="section-title">What they <em>say.</em></h2>
+      <p class="section-sub">Real feedback from landlords and tenants using Affordable Rentals every day.</p>
     </div>
-  </div>
-
-  <!-- ─── MESSAGES ─── -->
-  <div class="section" id="sec-messages">
-    <div class="section-header">
-      <div class="section-title">Tenant Messages</div>
-      <button class="btn btn-secondary btn-sm" onclick="loadUnread()">↻ Check Unread</button>
-    </div>
-    <div class="grid-2">
-      <div class="card">
-        <div class="card-title">Select Tenant</div>
-        <select id="chatTenant" onchange="loadAdminChat()"></select>
-        <div class="chat-box" id="adminChatBox"><div class="empty-state"><span class="icon">💬</span>Select a tenant to view messages</div></div>
-        <div class="flex">
-          <input type="text" id="adminMsg" placeholder="Type reply..." style="margin:0;flex:1">
-          <button class="btn btn-primary btn-sm" onclick="sendAdminMessage()">Send</button>
+    <div class="testimonials-grid">
+      <div class="testimonial-card reveal reveal-delay-1">
+        <div class="stars">★★★★★</div>
+        <div class="quote-mark">"</div>
+        <div class="testimonial-text">Paying rent used to be a whole ordeal. Now I open the app, tap pay, and the receipt is in my inbox within seconds.</div>
+        <div class="testimonial-author">
+          <div class="author-avatar" style="background:linear-gradient(135deg,var(--primary),var(--accent))">JM</div>
+          <div><div class="author-name">James Mwangi</div><div class="author-role">Tenant · Nairobi</div></div>
         </div>
       </div>
-      <div class="card">
-        <div class="card-title">Unread Summary</div>
-        <div id="unreadSummary"><div class="empty-state"><span class="icon">📬</span>Click Check Unread</div></div>
+      <div class="testimonial-card reveal reveal-delay-2">
+        <div class="stars">★★★★★</div>
+        <div class="quote-mark">"</div>
+        <div class="testimonial-text">I manage 12 units across two properties. Affordable Rentals replaced three spreadsheets and a notebook. I can see who has paid at a glance.</div>
+        <div class="testimonial-author">
+          <div class="author-avatar" style="background:linear-gradient(135deg,#8b5cf6,#ec4899)">AK</div>
+          <div><div class="author-name">Alice Kamau</div><div class="author-role">Landlord · Kiambu — 12 units</div></div>
+        </div>
+      </div>
+      <div class="testimonial-card reveal reveal-delay-3">
+        <div class="stars">★★★★★</div>
+        <div class="quote-mark">"</div>
+        <div class="testimonial-text">The messaging feature is a game changer. I reported a plumbing issue and my landlord responded within the hour.</div>
+        <div class="testimonial-author">
+          <div class="author-avatar" style="background:linear-gradient(135deg,var(--gold),var(--gold-lt))">PO</div>
+          <div><div class="author-name">Peter Otieno</div><div class="author-role">Tenant · Mombasa</div></div>
+        </div>
       </div>
     </div>
   </div>
+</section>
 
-  <!-- ─── ANNOUNCEMENTS ─── -->
-  <div class="section" id="sec-announcements">
-    <div class="section-header"><div class="section-title">Announcements</div></div>
-    <div class="grid-2">
-      <div class="card">
-        <div class="card-title">Post New Announcement</div>
-        <textarea id="announcementText" placeholder="Type your announcement..."></textarea>
-        <button class="btn btn-primary btn-full" onclick="addAnnouncement()">Post to All Tenants</button>
-      </div>
-      <div class="card">
-        <div class="card-title">Recent Announcements</div>
-        <div id="announcementList"><div class="empty-state"><span class="icon">📢</span>No announcements yet</div></div>
-      </div>
+<!-- HOW IT WORKS -->
+<section id="how" class="full-section">
+  <div class="container">
+    <div class="section-header center">
+      <div class="section-tag center">Simple Process</div>
+      <h2 class="section-title">How it <em>works.</em></h2>
+      <p class="section-sub">Up and running in minutes. No paperwork, no confusion, no technical setup required.</p>
     </div>
-  </div>
-
-  <!-- ─── RULES ─── -->
-  <div class="section" id="sec-rules">
-    <div class="section-header"><div class="section-title">House Rules</div></div>
-    <div class="grid-2">
-      <div class="card">
-        <div class="card-title">Add Rule</div>
-        <input type="text" id="ruleTitle"   placeholder="Rule title *">
-        <textarea          id="ruleContent" placeholder="Rule description *"></textarea>
-        <button class="btn btn-primary btn-full" onclick="addRule()">Add Rule</button>
+    <div class="steps-wrap">
+      <div class="step-card reveal reveal-delay-1">
+        <div class="step-icon">✍️</div>
+        <div class="step-title">1. Register &amp; Start Your Trial</div>
+        <div class="step-desc">Create your landlord account in under two minutes. Your 14-day free trial begins immediately — full access from day one, no credit card required.</div>
       </div>
-      <div class="card">
-        <div class="card-title">Current Rules</div>
-        <div id="rulesList"><div class="empty-state"><span class="icon">📜</span>No rules yet</div></div>
+      <div class="step-card reveal reveal-delay-2">
+        <div class="step-icon">🏠</div>
+        <div class="step-title">2. Add Properties &amp; Tenants</div>
+        <div class="step-desc">Add your houses and set monthly rent amounts. Create tenant accounts — they receive a welcome email with credentials and set their own password on first login.</div>
+      </div>
+      <div class="step-card reveal reveal-delay-3">
+        <div class="step-icon">💳</div>
+        <div class="step-title">3. Collect, Track &amp; Manage</div>
+        <div class="step-desc">Tenants pay rent via M-Pesa STK Push with one tap. Monitor all payments, arrears, messages, and announcements from a single dashboard.</div>
       </div>
     </div>
   </div>
+</section>
 
-</main>
-
-<!-- ═══════════════════════════════════════════════════════
-     MODALS
-════════════════════════════════════════════════════════ -->
-
-<!-- ─── DANGER CONFIRM MODAL ───
-     Used for ALL destructive actions:
-     deleteHouse, deleteRule, deleteAnnouncement, moveOutTenant.
-     The deleteTenant modal below is kept separately because
-     it has a specific name field and existing wiring.
-──────────────────────────────── -->
-<div class="modal-overlay" id="modal-danger">
-  <div class="modal">
-    <span class="danger-modal-icon" id="dangerIcon">⚠️</span>
-    <div class="danger-modal-title"   id="dangerTitle">Are you sure?</div>
-    <div class="danger-modal-message" id="dangerMessage">This action cannot be undone.</div>
-    <div class="danger-modal-actions">
-      <button class="btn btn-secondary btn-full" onclick="closeDangerModal()">Cancel</button>
-      <button class="btn btn-danger btn-full"    id="dangerConfirmBtn" onclick="confirmDangerAction()">Confirm</button>
-    </div>
-  </div>
-</div>
-
-<!-- ─── DELETE TENANT MODAL (existing — kept as-is) ─── -->
-<div class="modal-overlay" id="modal-delete">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">Delete Tenant</div>
-      <button class="modal-close" onclick="closeModal('modal-delete')">✕</button>
-    </div>
-    <div style="text-align:center;margin-bottom:1rem">
-      <span style="font-size:3rem;display:block;margin-bottom:0.5rem;animation:dangerIconPop 0.4s cubic-bezier(0.34,1.56,0.64,1) both">🗑️</span>
-    </div>
-    <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:0.75rem;text-align:center;line-height:1.7;background:rgba(248,113,113,0.05);border:1px solid rgba(248,113,113,0.15);border-radius:8px;padding:1rem">
-      Are you sure you want to permanently delete
-      <strong id="deleteModalTenantName" style="color:var(--danger)"></strong>?<br>
-      This will remove their account, login access, and all associated records. This cannot be undone.
-    </p>
-    <input type="hidden" id="deleteModalTenantId">
-    <div class="flex">
-      <button class="btn btn-secondary btn-full" onclick="closeModal('modal-delete')">Cancel</button>
-      <button class="btn btn-danger btn-full"    onclick="submitDeleteTenant()">Delete Tenant</button>
-    </div>
-  </div>
-</div>
-
-<!-- ─── Subscription Renewal Modal ─── -->
-<div class="modal-overlay" id="modal-subscribe">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">🔄 Renew Subscription</div>
-      <button class="modal-close" onclick="closeModal('modal-subscribe')">✕</button>
-    </div>
-    <div id="subModalStatus" style="margin-bottom:1.25rem;padding:0.85rem;background:var(--bg3);border-radius:8px;border:1px solid var(--border);font-size:0.82rem;color:var(--text-muted)">
-      Loading subscription status...
-    </div>
-    <div class="card-title" style="margin-bottom:0.75rem">Select Plan</div>
-    <div id="subModalPlans">
-      <div style="text-align:center;color:var(--text-dim);font-size:0.82rem;padding:1rem">Loading plans...</div>
-    </div>
-    <div style="margin-top:1rem">
-      <div class="card-title" style="margin-bottom:0.5rem">M-Pesa Phone Number</div>
-      <input type="tel" id="subPhone" placeholder="07XXXXXXXX">
-    </div>
-    <button class="btn btn-primary btn-full" onclick="initiateSubscription()" style="margin-top:0.25rem">
-      📱 Pay with M-Pesa
-    </button>
-    <div id="subPayStatus" style="margin-top:1rem;display:none;text-align:center;font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--text-dim)"></div>
-  </div>
-</div>
-
-<!-- ─── Record Payment Modal ─── -->
-<div class="modal-overlay" id="modal-pay">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">Record Payment</div>
-      <button class="modal-close" onclick="closeModal('modal-pay')">✕</button>
-    </div>
-    <div class="card-title" id="payModalTenantName"></div>
-    <input type="hidden" id="payModalTenantId">
-    <div id="modalSummaryBox" style="margin-bottom:0.75rem;display:none">
-      <div class="pay-summary">
-        <div class="pay-summary-row"><span class="pay-summary-label">Monthly Rent</span>    <span class="pay-summary-value" id="modalSumRent">—</span></div>
-        <div class="pay-summary-row"><span class="pay-summary-label">Total Paid</span>       <span class="pay-summary-value" id="modalSumPaid">—</span></div>
-        <div class="pay-summary-row"><span class="pay-summary-label">Balance</span>          <span class="pay-summary-value" id="modalSumBalance" style="color:var(--warn)">—</span></div>
-        <div class="pay-summary-row"><span class="pay-summary-label">Status</span>           <span id="modalSumStatus">—</span></div>
+<!-- TENANT PATHWAY -->
+<section id="tenants" class="full-section">
+  <div class="container">
+    <div class="tenant-pathway reveal">
+      <div>
+        <div class="tenant-pathway-tag">For Tenants</div>
+        <h2 class="tenant-pathway-title">Already have a landlord on Affordable Rentals?</h2>
+        <p class="tenant-pathway-desc">Tenants don't self-register. Your landlord creates your account and emails you login credentials. Here's what happens next:</p>
+        <div class="tenant-steps">
+          <div class="tenant-step"><div class="tenant-step-num">1</div><span>Your landlord creates your account from their dashboard</span></div>
+          <div class="tenant-step"><div class="tenant-step-num">2</div><span>You receive a welcome email with a temporary password</span></div>
+          <div class="tenant-step"><div class="tenant-step-num">3</div><span>Sign in and set your permanent password on first login</span></div>
+          <div class="tenant-step"><div class="tenant-step-num">4</div><span>Pay rent, view receipts, and message your landlord — from your phone</span></div>
+        </div>
       </div>
-      <div class="payment-progress"><div class="payment-progress-bar" id="modalProgressBar" style="width:0%"></div></div>
-    </div>    
-    <input type="text"   id="payModalMonth"  placeholder="Month (e.g. May 2026)" oninput="loadModalSummary()">
-    <input type="number" id="payModalAmount" placeholder="Amount (Ksh)" min="1">
-    <select id="payModalMethod">
-      <option value="cash">Cash</option>
-      <option value="mpesa">M-Pesa (manual)</option>
-      <option value="bank">Bank Transfer</option>
-      <option value="other">Other</option>
-    </select>
-    <input type="text" id="payModalNote" placeholder="Note (optional)" style="margin-bottom:0.75rem">
-    <button class="btn btn-primary btn-full" onclick="submitModalPayment()">💾 Record & Send Receipt</button>
-  </div>
-</div>
-
-<!-- ─── Reset Password Modal ─── -->
-<div class="modal-overlay" id="modal-reset">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">Reset Password</div>
-      <button class="modal-close" onclick="closeModal('modal-reset')">✕</button>
+      <div>
+        <div class="section-tag" style="margin-bottom:13px">Tenant Dashboard Features</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="trial-check"><div class="trial-check-icon">✓</div><span>Pay rent via M-Pesa with one tap</span></div>
+          <div class="trial-check"><div class="trial-check-icon">✓</div><span>Download PDF receipts instantly</span></div>
+          <div class="trial-check"><div class="trial-check-icon">✓</div><span>View full payment history and arrears</span></div>
+          <div class="trial-check"><div class="trial-check-icon">✓</div><span>Message your landlord directly</span></div>
+          <div class="trial-check"><div class="trial-check-icon">✓</div><span>Read announcements and house rules</span></div>
+          <div class="trial-check"><div class="trial-check-icon">✓</div><span>No subscription fee — ever</span></div>
+        </div>
+        <a href="auth.html" class="btn-secondary" style="display:inline-flex;margin-top:22px">Tenant Sign In →</a>
+      </div>
     </div>
-    <div class="card-title" id="resetModalTenantName"></div>
-    <input type="hidden"   id="resetModalTenantId">
-    <input type="password" id="newResetPassword" placeholder="New password (min 6 chars)">
-    <button class="btn btn-warn btn-full" onclick="submitResetPassword()">Reset Password</button>
   </div>
-</div>
+</section>
 
-<div id="toast"></div>
+<!-- FAQ -->
+<section id="faq" class="full-section">
+  <div class="container">
+    <div class="section-header center">
+      <div class="section-tag center">FAQ</div>
+      <h2 class="section-title">Common <em>questions.</em></h2>
+      <p class="section-sub">Everything landlords and tenants need to know before getting started.</p>
+    </div>
+    <div class="faq-list">
+      <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">Is there a free trial? How does the subscription work?<span class="faq-icon">+</span></div><div class="faq-a">Yes — every landlord account comes with a full 14-day free trial. No credit card required and all features are unlocked from day one. After the trial, a monthly subscription via M-Pesa keeps your account active. Tenants never pay a subscription fee.</div></div>
+      <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">How do I get started as a landlord?<span class="faq-icon">+</span></div><div class="faq-a">Click "For Landlords" in the nav or "Start Free Trial" on this page. Fill in your name, email, and a secure password. Your account is created instantly and your 14-day free trial begins immediately.</div></div>
+      <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">How do tenants get access to Affordable Rentals?<span class="faq-icon">+</span></div><div class="faq-a">Tenants do not self-register. As the landlord, you create each tenant's account from your dashboard. The tenant automatically receives a welcome email with a temporary password and is prompted to set their own on first login.</div></div>
+      <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">How does a tenant pay rent?<span class="faq-icon">+</span></div><div class="faq-a">From the tenant dashboard, click "Pay Rent", enter the amount and month, then confirm. An STK Push notification is sent to the tenant's phone. They enter their M-Pesa PIN and the payment is confirmed. A PDF receipt is emailed automatically within seconds.</div></div>
+      <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">What happens if an M-Pesa payment fails?<span class="faq-icon">+</span></div><div class="faq-a">If a payment fails, it appears as "Failed" in the payment history and no funds are deducted. The tenant can attempt the payment again immediately. Common causes include wrong PIN, insufficient balance, or a timeout — all safe to retry.</div></div>
+      <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">Is my data safe?<span class="faq-icon">+</span></div><div class="faq-a">Yes. All passwords are hashed using bcrypt. Sessions are protected by JWT tokens and every API endpoint requires authentication. M-Pesa credentials are stored with AES-256 encryption and payments are processed through Safaricom's Daraja API.</div></div>
+      <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">I forgot my password. What do I do?<span class="faq-icon">+</span></div><div class="faq-a">Click "Forgot Password" on the login page and enter your registered email. A 6-digit OTP reset code will be sent to your inbox. Tenants without email access can contact their landlord — they can reset passwords from the dashboard.</div></div>
+    </div>
+  </div>
+</section>
 
-<!-- ═══════════════════════════════════════
-     INLINE SCRIPT
-════════════════════════════════════════ -->
-<script src="config.js"></script>
+<!-- CONTACT -->
+<section id="contact" class="full-section">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-tag">Get in Touch</div>
+      <h2 class="section-title">Contact &amp; <em>Support.</em></h2>
+      <p class="section-sub">Have a question or need help? We're here for you.</p>
+    </div>
+    <div class="contact-wrap">
+      <div class="contact-info">
+        <div class="contact-item reveal reveal-delay-1"><div class="contact-icon">📧</div><div><div class="contact-item-label">Email</div><a href="mailto:support@affordablerentals.site" class="contact-item-value">support@affordablerentals.site</a></div></div>
+        <div class="contact-item reveal reveal-delay-2"><div class="contact-icon">💬</div><div><div class="contact-item-label">WhatsApp</div><a href="https://wa.me/254702276609" class="contact-item-value" target="_blank" rel="noopener">+254 702 276 609</a></div></div>
+        <div class="contact-item reveal reveal-delay-3"><div class="contact-icon">⏰</div><div><div class="contact-item-label">Support Hours</div><span class="contact-item-value">Mon – Fri, 8AM – 6PM EAT</span></div></div>
+        <div class="contact-item reveal reveal-delay-4"><div class="contact-icon">🐙</div><div><div class="contact-item-label">GitHub</div><a href="https://github.com/Alexander-Dev60" class="contact-item-value" target="_blank" rel="noopener">Alexander-Dev60</a></div></div>
+      </div>
+      <div class="contact-form reveal reveal-delay-2">
+        <div class="contact-form-title">Send a message.</div>
+        <div class="form-field"><label>Your Name</label><input type="text" id="contactName" placeholder="Alexander Bosire"></div>
+        <div class="form-field"><label>Email Address</label><input type="email" id="contactEmail" placeholder="you@example.com"></div>
+        <div class="form-field"><label>Message</label><textarea id="contactMsg" rows="4" placeholder="How can we help you?"></textarea></div>
+        <button class="btn-send" id="sendBtn" onclick="sendContact()">Send Message →</button>
+        <div id="contactResult"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section id="cta" style="position:relative;z-index:1;padding:5rem 2rem;">
+  <div class="container">
+    <div class="cta-box reveal">
+      <h2 class="cta-title">Start your<br><em>free trial.</em></h2>
+      <p class="cta-sub">14 days completely free. No credit card required. Full access from the moment you register.</p>
+      <div class="cta-btns">
+        <a href="auth.html?tab=register" class="btn-primary">🚀 Start Free — 14 Days</a>
+        <a href="listings.html"           class="btn-secondary">Browse Properties →</a>
+      </div>
+      <p class="cta-note">Tenants never pay a subscription · M-Pesa payments only · Cancel anytime</p>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-wrap">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a href="#" class="nav-logo" style="display:inline-flex;margin-bottom:6px">
+          <div class="nav-logo-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500"><defs><linearGradient id="lgf" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#2563eb"/><stop offset="60%" stop-color="#10b981"/><stop offset="100%" stop-color="#6ee7b7"/></linearGradient></defs><rect width="100%" height="100%" fill="transparent" rx="24"/><path d="M250,90L410,210L375,210L250,116L125,210L90,210Z" fill="url(#lgf)"/><path d="M242,160L258,160L258,340L285,340L285,365L258,365L258,390L242,390Z" fill="url(#lgf)"/><circle cx="250" cy="185" r="10" fill="#6ee7b7"/></svg></div>
+          <span class="nav-logo-name">Affordable Rentals</span>
+        </a>
+        <p>A modern rental management platform built for Kenyan landlords and tenants. Collect rent via M-Pesa, manage properties, and communicate — all in one place.</p>
+      </div>
+      <div><div class="footer-col-title">Platform</div><ul class="footer-links"><li><a href="listings.html">Browse Properties</a></li><li><a href="#features">Features</a></li><li><a href="#how">How it Works</a></li><li><a href="#faq">FAQ</a></li><li><a href="index.html">Login</a></li></ul></div>
+      <div><div class="footer-col-title">Legal</div><ul class="footer-links"><li><a href="terms.html">Terms &amp; Conditions</a></li><li><a href="privacy.html">Privacy Policy</a></li></ul></div>
+      <div><div class="footer-col-title">Developer</div><ul class="footer-links"><li><a href="https://github.com/Alexander-Dev60" target="_blank" rel="noopener">GitHub</a></li><li><a href="mailto:alexanderbosire60@gmail.com">Email Support</a></li><li><a href="https://wa.me/254702276609" target="_blank" rel="noopener">WhatsApp</a></li></ul></div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-copy">© 2026 AFFORDABLE RENTALS · BUILT WITH ❤️ IN KENYA</div>
+      <div class="footer-socials">
+        <a href="https://github.com/Alexander-Dev60" target="_blank" rel="noopener" class="social-btn">🐙</a>
+        <a href="https://wa.me/254702276609" target="_blank" rel="noopener" class="social-btn">💬</a>
+        <a href="mailto:alexanderbosire60@gmail.com" class="social-btn">📧</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="config.js" onerror="void 0"></script>
 <script>
-
-// ── Theme — runs immediately to avoid flash ──
-(function () {
-  const saved = localStorage.getItem('admin-theme') || 'dark';
-  document.documentElement.setAttribute('data-theme', saved);
-  document.querySelectorAll('.theme-dot').forEach(d =>
-    d.classList.toggle('active', d.dataset.theme === saved)
-  );
+// BG SLIDESHOW
+(function(){
+  const imgs=document.querySelectorAll('.bg img'); let i=0;
+  setInterval(()=>{ imgs[i].classList.remove('active'); i=(i+1)%imgs.length; imgs[i].classList.add('active'); },5000);
 })();
 
-function setTheme(name) {
-  document.documentElement.setAttribute('data-theme', name);
-  localStorage.setItem('admin-theme', name);
-  document.querySelectorAll('.theme-dot').forEach(d =>
-    d.classList.toggle('active', d.dataset.theme === name)
-  );
-}
-
-
-// ── Sidebar open / close ──
-function openSidebar() {
-  document.getElementById('sidebar').classList.add('open');
-  document.getElementById('sidebarOverlay').classList.add('show');
-  document.body.style.overflow = 'hidden';
-}
-
-function closeSidebar() {
-  document.getElementById('sidebar').classList.remove('open');
-  document.getElementById('sidebarOverlay').classList.remove('show');
-  document.body.style.overflow = '';
-}
-
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') {
-    closeSidebar();
-    document.querySelectorAll('.modal-overlay.open').forEach(m => closeModal(m.id));
+// PARTICLES
+(function(){
+  for(let i=0;i<20;i++){
+    const p=document.createElement('div'); p.className='particle';
+    Object.assign(p.style,{left:Math.random()*100+'%',top:(70+Math.random()*30)+'%',width:(1+Math.random()*1.5)+'px',height:(1+Math.random()*1.5)+'px',animationDuration:(12+Math.random()*16)+'s',animationDelay:(-Math.random()*20)+'s'});
+    document.body.appendChild(p);
   }
-});
+})();
 
-
-// ── Banner height updater ──
-function updateBannerHeight() {
-  const banner = document.getElementById('subBanner');
-  const h = (banner && banner.style.display !== 'none') ? banner.offsetHeight + 'px' : '0px';
-  document.documentElement.style.setProperty('--banner-h', h);
-}
-
-const _bannerObserver = new ResizeObserver(updateBannerHeight);
-_bannerObserver.observe(document.getElementById('subBanner'));
-
-
-// ── Typing animation engine ──
-let _typingTimer   = null;
-let _deletingTimer = null;
-
-function typeBannerLoop(element, htmlString, typingSpeed, pauseMs, deleteSpeed) {
-  typingSpeed  = typingSpeed  || 28;
-  pauseMs      = pauseMs      || 3500;
-  deleteSpeed  = deleteSpeed  || 14;
-
-  clearTimeout(_typingTimer);
-  clearTimeout(_deletingTimer);
-
-  const temp  = document.createElement('div');
-  temp.innerHTML = htmlString;
-  const plain = temp.textContent || '';
-
-  let i        = 0;
-  let deleting = false;
-
-  function tick() {
-    if (!deleting) {
-      if (i <= plain.length) {
-        element.innerHTML = i < plain.length
-          ? plain.substring(0, i) + '<span class="typing-cursor">▍</span>'
-          : htmlString + '<span class="typing-cursor">▍</span>';
-        i++;
-        _typingTimer = setTimeout(tick, typingSpeed);
-      } else {
-        _deletingTimer = setTimeout(() => { deleting = true; tick(); }, pauseMs);
-      }
-    } else {
-      if (i > 0) {
-        i--;
-        element.innerHTML = plain.substring(0, i) + '<span class="typing-cursor">▍</span>';
-        _typingTimer = setTimeout(tick, deleteSpeed);
-      } else {
-        deleting = false;
-        _deletingTimer = setTimeout(tick, 600);
-      }
-    }
+// TYPEWRITER
+(function(){
+  const phrases=['Collect rent via M-Pesa.','Track every payment receipt.','Message your tenants directly.','Manage multiple properties.','View outstanding arrears.','Send instant PDF receipts.','Monitor balances in real time.','List properties for free.'];
+  let pi=0,ci=0,del=false;
+  const el=document.getElementById('typewriterEl');
+  function step(){
+    const p=phrases[pi];
+    if(!del){el.textContent=p.slice(0,++ci);if(ci===p.length){del=true;return setTimeout(step,2000);}setTimeout(step,46+Math.random()*26);}
+    else{el.textContent=p.slice(0,--ci);if(ci===0){del=false;pi=(pi+1)%phrases.length;return setTimeout(step,420);}setTimeout(step,20+Math.random()*12);}
   }
-  tick();
-}
+  setTimeout(step,900);
+})();
 
-function stopTypingAnimation() {
-  clearTimeout(_typingTimer);
-  clearTimeout(_deletingTimer);
-}
+// CITY SKYLINE
+(function(){
+  const canvas=document.getElementById('skylineCanvas');
+  const tooltip=document.getElementById('skylineTooltip');
+  const ctx=canvas.getContext('2d');
+  const API_BASE=window.API||'http://localhost:3000';
+  const TEMPLATES=[{wr:.10,floors:8,cols:3,label:'Westlands Court'},{wr:.08,floors:12,cols:2,label:'Kilimani Heights'},{wr:.13,floors:6,cols:4,label:'Thika Road Apts'},{wr:.07,floors:14,cols:2,label:'Upperhill Plaza'},{wr:.11,floors:9,cols:3,label:'Lavington Park'},{wr:.09,floors:11,cols:2,label:'Karen Villas'},{wr:.10,floors:7,cols:3,label:'Kiambu Gardens'}];
+  let buildings=[],listings=[],buildTime=0,frame=0,animDone=false;
 
+  function resize(){const rect=canvas.parentElement.getBoundingClientRect();canvas.width=rect.width||480;canvas.height=rect.height||460;layoutBuildings();if(animDone)drawFrame(1);}
 
-// ── Subscription status UI ──
-async function loadSubscriptionStatus() {
-  try {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-    const res = await fetch(`${CONFIG.API_URL}/subscription-status`, {
-      headers: { Authorization: `Bearer ${token}` }
+  function layoutBuildings(){
+    const W=canvas.width,H=canvas.height,groundY=H-32,gap=W*.025;let x=W*.03;
+    buildings=TEMPLATES.map((t,i)=>{
+      const bw=Math.floor(W*t.wr),unitH=Math.max(14,Math.floor((H*.72)/t.floors)),bh=unitH*t.floors,by=groundY-bh;
+      const winW=Math.max(4,Math.floor((bw-10)/t.cols-4)),winH=Math.max(4,unitH-6);
+      const listing=listings[i%Math.max(listings.length,1)];
+      const total=listing?listing.totalHouses||(t.floors*t.cols):t.floors*t.cols;
+      const vacant=listing?listing.vacantCount||0:Math.floor(Math.random()*total*.4);
+      const name=listing?listing.name:t.label,loc=listing?listing.location:'Kenya';
+      const occR=total>0?(total-vacant)/total:.75;
+      const windows=[];for(let f=0;f<t.floors;f++)for(let c=0;c<t.cols;c++)windows.push(Math.random()<occR);
+      const bld={x,y:by,w:bw,h:bh,floors:t.floors,cols:t.cols,unitH,winW,winH,groundY,windows,name,loc,vacant,total,baseY:groundY};
+      x+=bw+gap;return bld;
     });
-    if (!res.ok) return;
-    const data = await res.json();
-    _updateSubSidebarCard(data);
-    _updateSubBanner(data);
-    _handleExpiredOverlay(data);
-  } catch (err) {
-    console.error('Subscription status error:', err.message);
+    const overflow=x-W*.05;
+    if(overflow>0&&buildings.length){const scale=(W*.92)/(x-W*.03);let rx=W*.03;buildings=buildings.map(b=>{const nb={...b,x:rx,w:Math.floor(b.w*scale),winW:Math.max(3,Math.floor(b.winW*scale))};rx+=nb.w+gap;return nb;});}
   }
-}
 
-function _updateSubSidebarCard(data) {
-  const badge = document.getElementById('subStatusBadge');
-  const fill  = document.getElementById('subProgressFill');
-  const label = document.getElementById('subDaysLabel');
-  if (!badge || !fill || !label) return;
-  badge.textContent = data.subscriptionStatus;
-  badge.className   = `sub-status-badge ${data.subscriptionStatus}`;
-  fill.className    = `sub-progress-fill ${data.subscriptionStatus}`;
-  const pct = Math.min(100, Math.round((data.daysRemaining / 30) * 100));
-  fill.style.width  = `${pct}%`;
-  if (data.subscriptionStatus === 'suspended') {
-    label.textContent = 'Account suspended';
-    label.style.color = 'var(--danger)';
-  } else if (data.daysRemaining > 0) {
-    label.textContent = `${data.daysRemaining} days remaining`;
-    label.style.color = data.daysRemaining <= 7 ? 'var(--danger)'
-      : data.daysRemaining <= 14 ? 'var(--warn)' : 'var(--text-dim)';
-  } else {
-    label.textContent = 'Expired — renew now';
-    label.style.color = 'var(--danger)';
+  function drawBuilding(b,progress){
+    const{x,y,w,h,floors,cols,unitH,winW,winH,windows,baseY}=b;
+    const revealedH=h*progress,clipTop=baseY-revealedH;
+    ctx.save();ctx.beginPath();ctx.rect(x-2,clipTop,w+4,revealedH+2);ctx.clip();
+    const bg=ctx.createLinearGradient(x,y,x+w,y);bg.addColorStop(0,'rgba(4,16,38,.95)');bg.addColorStop(1,'rgba(7,22,48,.9)');
+    ctx.fillStyle=bg;ctx.fillRect(x,y,w,h);
+    ctx.strokeStyle='rgba(255,255,255,.06)';ctx.lineWidth=1;ctx.strokeRect(x,y,w,h);
+    ctx.strokeStyle='rgba(96,165,250,.28)';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x+w/2,y);ctx.lineTo(x+w/2,y-8*progress);ctx.stroke();
+    if(progress>.8){ctx.fillStyle='rgba(200,169,110,.9)';ctx.beginPath();ctx.arc(x+w/2,y-8,2,0,Math.PI*2);ctx.fill();}
+    const padX=Math.max(4,(w-cols*(winW+3)+3)/2),padY=6;let wi=0;
+    for(let f=0;f<floors;f++){for(let c=0;c<cols;c++){
+      const wx=x+padX+c*(winW+3),wy=y+padY+f*unitH+Math.floor((unitH-winH)/2);
+      const occ=windows[wi++],flick=.88+.12*Math.sin(frame*.05+wi*1.7);
+      if(occ){const wg=ctx.createRadialGradient(wx+winW/2,wy+winH/2,0,wx+winW/2,wy+winH/2,winW);wg.addColorStop(0,`rgba(232,201,138,${.95*flick})`);wg.addColorStop(1,`rgba(200,169,110,${.65*flick})`);ctx.fillStyle=wg;ctx.fillRect(wx,wy,winW,winH);ctx.shadowBlur=6;ctx.shadowColor='rgba(200,169,110,.45)';ctx.fillRect(wx,wy,winW,winH);ctx.shadowBlur=0;}
+      else{const wg=ctx.createRadialGradient(wx+winW/2,wy+winH/2,0,wx+winW/2,wy+winH/2,winW);wg.addColorStop(0,`rgba(96,165,250,${.5*flick})`);wg.addColorStop(1,`rgba(37,99,235,${.25*flick})`);ctx.fillStyle=wg;ctx.fillRect(wx,wy,winW,winH);}
+      ctx.strokeStyle=occ?'rgba(232,201,138,.3)':'rgba(96,165,250,.2)';ctx.lineWidth=.5;ctx.strokeRect(wx,wy,winW,winH);
+    }}
+    ctx.restore();
   }
-}
 
-function _updateSubBanner(data) {
-  const banner = document.getElementById('subBanner');
-  if (!banner) return;
-  stopTypingAnimation();
-
-  const urgentMessages = {
-    expired:   `🔒 Subscription expired. <a onclick="openModal('modal-subscribe')">Renew to restore access →</a>`,
-    suspended: `🚫 Account suspended: ${data.suspendedReason || 'Contact support'}. support@affordablerentals.site`
-  };
-
-  const typingMessages = {
-    trial: `⏳ Trial period — ${data.daysRemaining} days remaining. <a onclick="openModal('modal-subscribe')">Subscribe now →</a>`,
-    grace: `⚠️ Subscription expiring — ${data.daysRemaining} days left in grace period. <a onclick="openModal('modal-subscribe')">Renew now →</a>`
-  };
-
-  const urgentActive = data.subscriptionStatus === 'expired' || data.subscriptionStatus === 'suspended';
-  const warnActive   = data.subscriptionStatus === 'trial' || data.subscriptionStatus === 'grace'
-                       || (data.subscriptionStatus === 'active' && data.daysRemaining <= 7);
-
-  if (urgentActive) {
-    banner.innerHTML     = urgentMessages[data.subscriptionStatus];
-    banner.className     = `sub-banner ${data.subscriptionStatus}`;
-    banner.style.display = 'block';
-  } else if (warnActive) {
-    let msg = typingMessages[data.subscriptionStatus];
-    if (!msg && data.daysRemaining <= 7) {
-      msg = `⚠️ Subscription expiring in ${data.daysRemaining} days. <a onclick="openModal('modal-subscribe')">Renew now →</a>`;
-    }
-    banner.className     = `sub-banner ${data.subscriptionStatus === 'trial' ? 'trial' : 'grace'}`;
-    banner.style.display = 'block';
-    typeBannerLoop(banner, msg);
-  } else {
-    banner.style.display = 'none';
-    banner.innerHTML     = '';
+  function drawFrame(progress){
+    const W=canvas.width,H=canvas.height;ctx.clearRect(0,0,W,H);
+    const skyG=ctx.createLinearGradient(0,0,0,H);skyG.addColorStop(0,'#020b18');skyG.addColorStop(.6,'#071428');skyG.addColorStop(1,'#0a1a32');ctx.fillStyle=skyG;ctx.fillRect(0,0,W,H);
+    for(let i=0;i<40;i++){ctx.globalAlpha=.14*(.5+.5*Math.sin(frame*.02+i));ctx.fillStyle='rgba(200,169,110,.6)';ctx.beginPath();ctx.arc((i*71+13)%W,(i*53+7)%(H*.6),.5+(i%3)*.4,0,Math.PI*2);ctx.fill();}
+    ctx.globalAlpha=1;
+    const groundY=H-32;const groundG=ctx.createLinearGradient(0,groundY,0,H);groundG.addColorStop(0,'rgba(96,165,250,.1)');groundG.addColorStop(1,'rgba(96,165,250,.01)');ctx.fillStyle=groundG;ctx.fillRect(0,groundY,W,H-groundY);
+    ctx.strokeStyle='rgba(96,165,250,.15)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,groundY);ctx.lineTo(W,groundY);ctx.stroke();
+    buildings.forEach(b=>drawBuilding(b,progress));
+    const lx=10,ly=H-20,fs=Math.max(8,Math.floor(W*.022));
+    ctx.fillStyle='rgba(200,169,110,.85)';ctx.fillRect(lx,ly-5,8,6);ctx.fillStyle='rgba(200,169,110,.5)';ctx.font=`${fs}px Space Mono,monospace`;ctx.fillText('Occupied',lx+12,ly);
+    ctx.fillStyle='rgba(96,165,250,.85)';ctx.fillRect(lx+75,ly-5,8,6);ctx.fillStyle='rgba(96,165,250,.5)';ctx.fillText('Available',lx+87,ly);
   }
-  setTimeout(updateBannerHeight, 50);
-}
 
-function _handleExpiredOverlay(data) {
-  const overlay  = document.getElementById('expiredOverlay');
-  const renewBtn = document.querySelector('.expired-box .btn-primary');
-  if (!overlay) return;
-  if (data.subscriptionStatus === 'expired') {
-    document.getElementById('expiredTitle').textContent = 'Subscription Expired';
-    document.getElementById('expiredDesc').textContent  = 'Your subscription has expired. Please renew to continue managing your properties.';
-    if (renewBtn) renewBtn.style.display = '';
-    overlay.classList.add('show');
-  } else if (data.subscriptionStatus === 'suspended') {
-    document.getElementById('expiredTitle').textContent = 'Account Suspended';
-    document.getElementById('expiredDesc').innerHTML    =
-      `Your account has been suspended.<br><strong>Reason:</strong> ${data.suspendedReason || 'Contact support'}<br><br>Email: support@affordablerentals.site`;
-    if (renewBtn) renewBtn.style.display = 'none';
-    overlay.classList.add('show');
-  } else {
-    if (renewBtn) renewBtn.style.display = '';
-    overlay.classList.remove('show');
-  }
-}
+  function animate(){frame++;buildTime=Math.min(buildTime+.018,1);const eased=buildTime<1?1-Math.pow(1-buildTime,3):1;drawFrame(eased);if(buildTime<1){requestAnimationFrame(animate);}else{animDone=true;(function flicker(){frame++;drawFrame(1);requestAnimationFrame(flicker);})();}}
 
-
-// ── Modal open / close — single source of truth ──
-function openModal(id) {
-  if (id === 'modal-subscribe') { openSubscribeModal(); return; }
-  const el = document.getElementById(id);
-  if (el) el.classList.add('open');
-}
-
-function closeModal(id) {
-  const el = document.getElementById(id);
-  if (el) el.classList.remove('open');
-  if (id === 'modal-subscribe') {
-    clearInterval(_subPollingTimer);
-    const statusEl = document.getElementById('subPayStatus');
-    if (statusEl) { statusEl.style.display = 'none'; statusEl.textContent = ''; }
-    _selectedPlanId = null;
-    document.querySelectorAll('.plan-option').forEach(o => o.classList.remove('selected'));
-  }
-}
-
-// Close on backdrop click
-document.querySelectorAll('.modal-overlay').forEach(overlay => {
-  overlay.addEventListener('click', e => {
-    if (e.target === overlay) closeModal(overlay.id);
+  canvas.addEventListener('mousemove',e=>{
+    const rect=canvas.getBoundingClientRect();const mx=(e.clientX-rect.left)*(canvas.width/rect.width);const my=(e.clientY-rect.top)*(canvas.height/rect.height);
+    let hit=null;for(const b of buildings){if(mx>=b.x&&mx<=b.x+b.w&&my>=b.y&&my<=b.y+b.h){hit=b;break;}}
+    if(hit){tooltip.innerHTML=`<div class="tt-name">${hit.name}</div><div class="tt-loc">📍 ${hit.loc}</div><div class="tt-vac">${hit.vacant>0?`${hit.vacant} unit${hit.vacant>1?'s':''} available`:'Fully occupied'}</div>`;const cx=e.clientX-canvas.parentElement.getBoundingClientRect().left;const cy=e.clientY-canvas.parentElement.getBoundingClientRect().top;tooltip.style.left=(cx+12)+'px';tooltip.style.top=(cy-10)+'px';tooltip.classList.add('visible');canvas.style.cursor='pointer';}
+    else{tooltip.classList.remove('visible');canvas.style.cursor='default';}
   });
-});
+  canvas.addEventListener('mouseleave',()=>tooltip.classList.remove('visible'));
+  canvas.addEventListener('click',e=>{const rect=canvas.getBoundingClientRect();const mx=(e.clientX-rect.left)*(canvas.width/rect.width);const my=(e.clientY-rect.top)*(canvas.height/rect.height);for(const b of buildings){if(mx>=b.x&&mx<=b.x+b.w&&my>=b.y&&my<=b.y+b.h){window.location.href='listings.html';break;}}});
 
+  async function fetchAndRefresh(){try{const res=await fetch(`${API_BASE}/public/listings`);if(!res.ok)return;const data=await res.json();if(Array.isArray(data)&&data.length){listings=data;layoutBuildings();}}catch{}}
+  resize();window.addEventListener('resize',resize);fetchAndRefresh();setInterval(fetchAndRefresh,60000);requestAnimationFrame(animate);
+})();
 
-// ── Subscribe modal ──
-let _selectedPlanId  = null;
-let _subPollingTimer = null;
+// NAVBAR
+window.addEventListener('scroll',()=>document.getElementById('navbar').classList.toggle('scrolled',window.scrollY>50));
+function toggleMenu(){document.getElementById('mobileMenu').classList.toggle('open');}
+document.addEventListener('click',e=>{const m=document.getElementById('mobileMenu');const h=document.querySelector('.hamburger');if(!m.contains(e.target)&&!h.contains(e.target))m.classList.remove('open');});
 
-async function openSubscribeModal() {
-  document.getElementById('modal-subscribe').classList.add('open');
-  _selectedPlanId = null;
+// FAQ
+function toggleFaq(el){const item=el.parentElement;const isOpen=item.classList.contains('open');document.querySelectorAll('.faq-item').forEach(i=>i.classList.remove('open'));if(!isOpen)item.classList.add('open');}
 
-  const statusEl = document.getElementById('subModalStatus');
-  const plansEl  = document.getElementById('subModalPlans');
-  const payEl    = document.getElementById('subPayStatus');
+// SCROLL REVEAL
+const ro=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');ro.unobserve(e.target);}});},{threshold:.1});
+document.querySelectorAll('.reveal').forEach(el=>ro.observe(el));
 
-  statusEl.innerHTML = '<span style="color:var(--text-dim)">Loading subscription status...</span>';
-  plansEl.innerHTML  = '<div style="text-align:center;color:var(--text-dim);font-size:0.82rem;padding:1.5rem">Loading plans...</div>';
-  if (payEl) { payEl.style.display = 'none'; payEl.textContent = ''; }
-
-  try {
-    const token = localStorage.getItem('token');
-    const res   = await fetch(`${CONFIG.API_URL}/subscription-status`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const data  = await res.json();
-    if (!res.ok) { statusEl.textContent = 'Could not load status.'; }
-    else {
-      const expiry = data.subscriptionExpiry || data.trialEndsAt || data.gracePeriodUntil;
-      statusEl.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem">
-          <div>
-            <div style="font-size:0.65rem;font-family:'JetBrains Mono',monospace;letter-spacing:0.15em;text-transform:uppercase;color:var(--text-dim);margin-bottom:0.35rem">Current Status</div>
-            <span class="sub-status-badge ${data.subscriptionStatus}">${data.subscriptionStatus}</span>
-            ${data.subscriptionStatus === 'suspended' ? `<div style="font-size:0.75rem;color:var(--danger);margin-top:0.4rem">Reason: ${data.suspendedReason || '—'}</div>` : ''}
-          </div>
-          <div style="text-align:right">
-            <div style="font-size:0.65rem;font-family:'JetBrains Mono',monospace;color:var(--text-dim)">Days remaining</div>
-            <div style="font-size:1.3rem;font-weight:700;color:${data.daysRemaining <= 7 ? 'var(--danger)' : 'var(--accent)'}">${data.daysRemaining}</div>
-            ${expiry ? `<div style="font-size:0.65rem;font-family:'JetBrains Mono',monospace;color:var(--text-dim);margin-top:0.15rem">Until ${new Date(expiry).toDateString()}</div>` : ''}
-          </div>
-        </div>`;
-      if (data.landlordPhone) {
-        const phoneEl = document.getElementById('subPhone');
-        if (phoneEl && !phoneEl.value) phoneEl.value = data.landlordPhone;
-      }
-    }
-  } catch (err) {
-    statusEl.textContent = 'Could not load status.';
-  }
-
-  try {
-    const res   = await fetch(`${CONFIG.API_URL}/subscription-plans`);
-    if (!res.ok) {
-      plansEl.innerHTML = `<div style="color:var(--danger);font-size:0.82rem;text-align:center;padding:1rem">Failed to load plans (${res.status}). Try again.</div>`;
-      return;
-    }
-    const plans = await res.json();
-    if (!Array.isArray(plans) || !plans.length) {
-      plansEl.innerHTML = `<div style="text-align:center;color:var(--text-dim);font-size:0.82rem;padding:1.5rem">No plans available yet.<br>Contact Stacklord to add plans.</div>`;
-      return;
-    }
-    plansEl.innerHTML = plans.map(p => `
-      <div class="plan-option" id="plan-opt-${p._id}" onclick="selectPlan('${p._id}')">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:0.5rem">
-          <div>
-            <div class="plan-option-name">${p.name}</div>
-            <div class="plan-option-dur">${p.durationDays} days</div>
-          </div>
-          <div class="plan-option-price">Ksh ${Number(p.price).toLocaleString()}</div>
-        </div>
-        ${p.description ? `<div style="font-size:0.75rem;color:var(--text-dim);margin-top:0.35rem;line-height:1.5">${p.description}</div>` : ''}
-        ${p.features?.length
-          ? `<ul style="list-style:none;margin-top:0.35rem;display:flex;flex-wrap:wrap;gap:0.25rem">
-               ${p.features.map(f => `<li style="font-size:0.7rem;color:var(--text-muted);background:var(--bg3);padding:1px 7px;border-radius:99px;border:1px solid var(--border)">✓ ${f}</li>`).join('')}
-             </ul>` : ''}
-      </div>`).join('');
-  } catch (err) {
-    plansEl.innerHTML = `<div style="color:var(--danger);font-size:0.82rem;text-align:center;padding:1rem">Network error loading plans.</div>`;
+// CONTACT
+async function sendContact(){
+  const name=document.getElementById('contactName').value.trim();
+  const email=document.getElementById('contactEmail').value.trim();
+  const msg=document.getElementById('contactMsg').value.trim();
+  const result=document.getElementById('contactResult');
+  const btn=document.getElementById('sendBtn');
+  if(!name||!email||!msg){result.style.color='var(--error)';result.textContent='⚠ Please fill in all fields.';return;}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){result.style.color='var(--error)';result.textContent='⚠ Please enter a valid email address.';return;}
+  btn.disabled=true;btn.textContent='Sending…';
+  try{
+    const res=await fetch((window.API||'http://localhost:3000')+'/contact',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,email,message:msg})});
+    if(res.ok){result.style.color='var(--success)';result.textContent="✓ Message sent! We'll reply within 24 hours.";}
+    else throw new Error('err');
+  }catch{
+    window.open(`https://wa.me/254702276609?text=${encodeURIComponent(`Hi, I'm ${name} (${email}).\n\n${msg}`)}`,'_blank');
+    result.style.color='var(--success)';result.textContent='✓ Opening WhatsApp to send your message…';
+  }finally{
+    document.getElementById('contactName').value='';document.getElementById('contactEmail').value='';document.getElementById('contactMsg').value='';
+    btn.disabled=false;btn.textContent='Send Message →';setTimeout(()=>{result.textContent='';},5000);
   }
 }
-
-function selectPlan(planId) {
-  _selectedPlanId = planId;
-  document.querySelectorAll('.plan-option').forEach(el => el.classList.remove('selected'));
-  const el = document.getElementById('plan-opt-' + planId);
-  if (el) el.classList.add('selected');
-}
-
-async function initiateSubscription() {
-  if (!_selectedPlanId) { showToast('Please select a plan first', 'warn'); return; }
-  const phone = document.getElementById('subPhone').value.trim();
-  if (!phone)  { showToast('Enter your M-Pesa phone number', 'error'); return; }
-
-  const payBtn = document.querySelector('#modal-subscribe .btn-primary');
-  if (payBtn)  { payBtn.disabled = true; payBtn.textContent = '⏳ Sending...'; }
-
-  try {
-    const token = localStorage.getItem('token');
-    const res   = await fetch(`${CONFIG.API_URL}/subscribe`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body:    JSON.stringify({ planId: _selectedPlanId, phone })
-    });
-    const data  = await res.json();
-    if (!res.ok) { showToast(data.message || 'Payment initiation failed', 'error'); return; }
-
-    showToast('M-Pesa prompt sent! Enter your PIN 📱', 'success');
-    const statusEl = document.getElementById('subPayStatus');
-    if (statusEl) {
-      statusEl.style.display = 'block';
-      statusEl.style.color   = 'var(--text-dim)';
-      statusEl.textContent   = '⏳ Waiting for payment confirmation...';
-    }
-    _pollSubscription(data.checkoutRequestId);
-  } catch (err) {
-    showToast('Network error — check your connection', 'error');
-  } finally {
-    if (payBtn) { payBtn.disabled = false; payBtn.textContent = '📱 Pay with M-Pesa'; }
-  }
-}
-
-function _pollSubscription(checkoutRequestId) {
-  let attempts = 0;
-  clearInterval(_subPollingTimer);
-  _subPollingTimer = setInterval(async () => {
-    attempts++;
-    if (attempts > 20) {
-      clearInterval(_subPollingTimer);
-      const el = document.getElementById('subPayStatus');
-      if (el) { el.textContent = '⚠️ Timeout. Check your M-Pesa messages.'; el.style.color = 'var(--warn)'; }
-      return;
-    }
-    try {
-      const token = localStorage.getItem('token');
-      const res   = await fetch(`${CONFIG.API_URL}/subscription-status-poll/${checkoutRequestId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data  = await res.json();
-      const el    = document.getElementById('subPayStatus');
-      if (data.status === 'paid') {
-        clearInterval(_subPollingTimer);
-        if (el) { el.textContent = `✅ Payment confirmed! Plan: ${data.plan?.name} · Expires: ${new Date(data.expiresAt).toDateString()}`; el.style.color = 'var(--accent)'; }
-        showToast('Subscription renewed! 🎉', 'success');
-        setTimeout(() => { closeModal('modal-subscribe'); loadSubscriptionStatus(); }, 2500);
-      } else if (data.status === 'failed') {
-        clearInterval(_subPollingTimer);
-        if (el) { el.textContent = '❌ Payment failed. Please try again.'; el.style.color = 'var(--danger)'; }
-        showToast('Payment failed or cancelled', 'error');
-      }
-    } catch (err) { console.error('Polling error:', err.message); }
-  }, 3000);
-}
-
-
-// ── Typing engine for topbar + dashboard ──
-const _adminTypers = {};
-
-function _startTyper(elementId, messages, opts) {
-  opts = opts || {};
-  const typeSpeed   = opts.typeSpeed   || 36;
-  const deleteSpeed = opts.deleteSpeed || 18;
-  const pauseAfter  = opts.pauseAfter  || 2800;
-  const pauseBefore = opts.pauseBefore || 400;
-
-  if (_adminTypers[elementId]) { _adminTypers[elementId](); _adminTypers[elementId] = null; }
-
-  const el   = document.getElementById(elementId);
-  if (!el)   return;
-
-  const list   = Array.isArray(messages) ? messages : [messages];
-  let msgIdx   = 0;
-  let charIdx  = 0;
-  let deleting = false;
-  let timer    = null;
-
-  function tick() {
-    const raw   = list[msgIdx];
-    const tmp   = document.createElement('div');
-    tmp.innerHTML = raw;
-    const plain = tmp.textContent || '';
-
-    if (!deleting) {
-      charIdx++;
-      el.innerHTML = charIdx < plain.length
-        ? plain.substring(0, charIdx) + '<span class="typing-cursor">▍</span>'
-        : raw + '<span class="typing-cursor">▍</span>';
-      if (charIdx >= plain.length) {
-        timer = setTimeout(() => { deleting = true; tick(); }, pauseAfter);
-      } else {
-        timer = setTimeout(tick, typeSpeed);
-      }
-    } else {
-      charIdx--;
-      el.innerHTML = charIdx > 0
-        ? plain.substring(0, charIdx) + '<span class="typing-cursor">▍</span>'
-        : '<span class="typing-cursor">▍</span>';
-      if (charIdx <= 0) {
-        deleting = false;
-        msgIdx   = (msgIdx + 1) % list.length;
-        charIdx  = 0;
-        timer    = setTimeout(tick, pauseBefore);
-      } else {
-        timer = setTimeout(tick, deleteSpeed);
-      }
-    }
-  }
-
-  timer = setTimeout(tick, pauseBefore);
-  _adminTypers[elementId] = () => clearTimeout(timer);
-}
-
-function _startAdminTypers() {
-  _startTyper('topbarGreeting', [
-    '// managing your rental portfolio',
-    '// all systems operational',
-    '// real-time M-Pesa payment tracking',
-    '// your properties, your control',
-    '// tenant management simplified',
-    '// Affordable Rentals platform',
-    '// stay on top of every payment',
-    '// built for Kenyan landlords',
-    '// zero missed rent days',
-    '// receipts emailed automatically',
-  ], { typeSpeed: 30, deleteSpeed: 15, pauseAfter: 2600, pauseBefore: 300 });
-
-  _startTyper('dashboardSubtitle', [
-    'Select a month above to load your financial summary.',
-    'Track income, arrears and occupancy at a glance.',
-    'All M-Pesa payments are recorded in real time.',
-    'Here is your property overview for the selected month.',
-    'Zero missed rent days — you\'ve got this.',
-    'Click a tenant row to view their profile and payment history.',
-  ], { typeSpeed: 32, deleteSpeed: 15, pauseAfter: 3200, pauseBefore: 500 });
-}
-
-
-// ── Init ──
-window.addEventListener('load', () => {
-  setTimeout(loadSubscriptionStatus, 800);
-  setInterval(loadSubscriptionStatus, 5 * 60 * 1000);
-  _startAdminTypers();
-});
-
 </script>
-
-<script src="script.js"></script>
-<script src="index.js"></script>
 </body>
 </html>

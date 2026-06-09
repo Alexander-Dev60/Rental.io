@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RentalFlow Auth Demo</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Segoe UI',sans-serif;
+}
+
+body{
+    min-height:100vh;
+    background:linear-gradient(
+        135deg,
+        #0f172a,
+        #1e293b,
+        #0f172a
+    );
+    overflow:hidden;
+    color:white;
+}
+
+.container{
+    display:flex;
+    min-height:100vh;
+}
+
+.left{
+    flex:1;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    position:relative;
+}
+
+.right{
+    width:500px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    padding:40px;
+}
+
+/* BUILDING */
+
+.building{
+    width:280px;
+    height:420px;
+    background:#111827;
+    border-radius:12px 12px 0 0;
+    padding:25px;
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:15px;
+    position:relative;
+    box-shadow:
+    0 0 60px rgba(0,0,0,.4);
+}
+
+.window{
+    width:100%;
+    aspect-ratio:1;
+    border-radius:6px;
+    background:#1f2937;
+    transition:.8s;
+}
+
+.window.on{
+    background:#facc15;
+    box-shadow:
+    0 0 15px #facc15,
+    0 0 30px #facc15;
+}
+
+/* FLOATING EVENTS */
+
+.event{
+    position:absolute;
+    font-size:14px;
+    padding:8px 14px;
+    border-radius:20px;
+    backdrop-filter:blur(10px);
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.1);
+    animation:floatUp 6s linear forwards;
+}
+
+@keyframes floatUp{
+    from{
+        opacity:1;
+        transform:translateY(0);
+    }
+    to{
+        opacity:0;
+        transform:translateY(-180px);
+    }
+}
+
+/* CARD */
+
+.card{
+    width:100%;
+    max-width:420px;
+
+    backdrop-filter:blur(20px);
+
+    background:
+    rgba(255,255,255,.08);
+
+    border:1px solid rgba(255,255,255,.1);
+
+    border-radius:24px;
+
+    padding:35px;
+
+    box-shadow:
+    0 15px 40px rgba(0,0,0,.3);
+}
+
+.logo{
+    font-size:24px;
+    font-weight:700;
+    margin-bottom:20px;
+}
+
+.title{
+    font-size:30px;
+    margin-bottom:10px;
+}
+
+.subtitle{
+    color:#94a3b8;
+    margin-bottom:25px;
+}
+
+.input-group{
+    margin-bottom:18px;
+}
+
+.input-group label{
+    display:block;
+    margin-bottom:8px;
+    font-size:14px;
+}
+
+.input-group input{
+    width:100%;
+    padding:14px;
+    border:none;
+    outline:none;
+    border-radius:12px;
+
+    background:
+    rgba(255,255,255,.08);
+
+    color:white;
+}
+
+.input-group input:focus{
+    box-shadow:
+    0 0 0 2px #3b82f6;
+}
+
+button{
+    width:100%;
+    padding:15px;
+    border:none;
+    border-radius:12px;
+    cursor:pointer;
+    font-size:16px;
+    font-weight:600;
+
+    background:#2563eb;
+    color:white;
+
+    transition:.3s;
+}
+
+button:hover{
+    transform:translateY(-2px);
+    background:#3b82f6;
+}
+
+.links{
+    display:flex;
+    justify-content:space-between;
+    margin-top:15px;
+    font-size:14px;
+}
+
+.links a{
+    color:#60a5fa;
+    text-decoration:none;
+}
+
+.stats{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+    margin-top:30px;
+}
+
+.stat{
+    text-align:center;
+}
+
+.stat-number{
+    font-size:22px;
+    font-weight:bold;
+}
+
+.stat-label{
+    font-size:12px;
+    color:#94a3b8;
+}
+
+@media(max-width:900px){
+
+.container{
+    flex-direction:column;
+}
+
+.left{
+    height:300px;
+}
+
+.right{
+    width:100%;
+}
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<div class="left">
+
+<div class="building" id="building"></div>
+
+</div>
+
+<div class="right">
+
+<div class="card">
+
+<div class="logo">🏢 RentalFlow</div>
+
+<h1 class="title">Welcome Back</h1>
+
+<p class="subtitle">
+Manage properties, tenants and payments.
+</p>
+
+<div class="input-group">
+<label>Email Address</label>
+<input type="email" placeholder="name@example.com">
+</div>
+
+<div class="input-group">
+<label>Password</label>
+<input type="password" placeholder="••••••••">
+</div>
+
+<button id="loginBtn">
+Sign In
+</button>
+
+<div class="links">
+<a href="#">Forgot Password?</a>
+<a href="#">Create Account</a>
+</div>
+
+<div class="stats">
+
+<div class="stat">
+<div class="stat-number" id="propCount">0</div>
+<div class="stat-label">
+Properties
+</div>
+</div>
+
+<div class="stat">
+<div class="stat-number" id="tenantCount">0</div>
+<div class="stat-label">
+Tenants
+</div>
+</div>
+
+<div class="stat">
+<div class="stat-number" id="txCount">0</div>
+<div class="stat-label">
+Transactions
+</div>
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+/* BUILDING WINDOWS */
+
+const building = document.getElementById('building');
+
+for(let i=0;i<25;i++){
+
+const windowBox =
+document.createElement('div');
+
+windowBox.className='window';
+
+if(Math.random()>0.5){
+windowBox.classList.add('on');
+}
+
+building.appendChild(windowBox);
+}
+
+setInterval(()=>{
+
+document.querySelectorAll('.window')
+.forEach(w=>{
+
+if(Math.random()>0.7){
+w.classList.toggle('on');
+}
+
+});
+
+},1500);
+
+/* FLOATING EVENTS */
+
+const messages=[
+'💰 Rent Paid',
+'🔧 Repair Request',
+'🏠 New Tenant',
+'📩 Notification',
+'✅ Invoice Sent'
+];
+
+function createEvent(){
+
+const event =
+document.createElement('div');
+
+event.className='event';
+
+event.innerText=
+messages[Math.floor(
+Math.random()*messages.length
+)];
+
+event.style.left=
+(20+Math.random()*60)+'%';
+
+event.style.bottom='80px';
+
+document.querySelector('.left')
+.appendChild(event);
+
+setTimeout(()=>{
+event.remove();
+},6000);
+
+}
+
+setInterval(createEvent,2500);
+
+/* COUNTERS */
+
+function animateCounter(id,target){
+
+let count=0;
+
+const step=
+Math.ceil(target/120);
+
+const el=
+document.getElementById(id);
+
+const interval=
+setInterval(()=>{
+
+count+=step;
+
+if(count>=target){
+
+count=target;
+
+clearInterval(interval);
+
+}
+
+el.innerText=
+count.toLocaleString()+'+';
+
+},20);
+
+}
+
+animateCounter(
+'propCount',
+12500
+);
+
+animateCounter(
+'tenantCount',
+84000
+);
+
+animateCounter(
+'txCount',
+380000
+);
+
+/* BUTTON EFFECT */
+
+const btn =
+document.getElementById('loginBtn');
+
+btn.addEventListener('mouseenter',()=>{
+
+btn.innerText=
+'→ Access Dashboard';
+
+});
+
+btn.addEventListener('mouseleave',()=>{
+
+btn.innerText=
+'Sign In';
+
+});
+
+</script>
+
+</body>
+</html>

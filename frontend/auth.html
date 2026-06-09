@@ -4,556 +4,795 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/svg+xml" href="./public/favicon.svg">
-  <title>Affordable Rentals — Login</title>
+  <title>Affordable Rentals — Sign In</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
+    /* ── THEME TOKENS ── */
     :root {
-      --navy:      #020b18;
-      --navy-mid:  #071428;
-      --navy-card: rgba(4, 16, 38, 0.82);
-      --blue-1:    #0a4a8f;
-      --blue-2:    #1464c0;
-      --blue-3:    #2484e8;
-      --blue-4:    #5baaf5;
-      --blue-5:    #a8cff9;
-      --gold:      #c8a96e;
-      --gold-dim:  rgba(200,169,110,0.18);
-      --text:      #e8edf5;
-      --muted:     #5e7a9b;
-      --muted2:    #3a5578;
-      --error:     #f07070;
-      --success:   #4ecb96;
-      --border:    rgba(255,255,255,0.07);
-      --border2:   rgba(255,255,255,0.13);
-      --font-d:    'DM Serif Display', Georgia, serif;
-      --font-s:    'DM Sans', sans-serif;
-      --font-m:    'Space Mono', monospace;
-      --ease:      cubic-bezier(0.4,0,0.2,1);
-      --spring:    cubic-bezier(0.34,1.56,0.64,1);
+      --bg: #0b1220;
+      --card: rgba(255,255,255,.08);
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --muted2: #4a6382;
+      --primary: #60a5fa;
+      --accent: #818cf8;
+      --border: rgba(255,255,255,.12);
+      --border2: rgba(255,255,255,.2);
+      --input-bg: rgba(0,0,0,.22);
+      --toast-bg: rgba(15,23,42,.97);
+      --toast-border: rgba(255,255,255,.12);
+      --error: #fca5a5;
+      --success: #86efac;
+      --overlay-a: rgba(0,0,0,.7);
+      --overlay-b: rgba(0,0,0,.28);
+      --img-filter: blur(3px) brightness(.45);
+      --font-d: 'DM Serif Display', Georgia, serif;
+      --font-s: 'DM Sans', sans-serif;
+      --font-m: 'Space Mono', monospace;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #eef2f7;
+        --card: rgba(255,255,255,.58);
+        --text: #0f172a;
+        --muted: #64748b;
+        --muted2: #94a3b8;
+        --primary: #2563eb;
+        --accent: #6366f1;
+        --border: rgba(0,0,0,.1);
+        --border2: rgba(0,0,0,.18);
+        --input-bg: rgba(255,255,255,.65);
+        --toast-bg: rgba(255,255,255,.98);
+        --toast-border: rgba(0,0,0,.1);
+        --error: #dc2626;
+        --success: #16a34a;
+        --overlay-a: rgba(220,232,248,.62);
+        --overlay-b: rgba(220,232,248,.18);
+        --img-filter: blur(3px) brightness(.72);
+      }
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { height: 100%; }
+    html, body { height: 100%; }
     body {
-      background: var(--navy);
-      color: var(--text);
       font-family: var(--font-s);
-      min-height: 100vh;
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    /* ── BG SLIDESHOW ── */
+    .bg { position: fixed; inset: 0; z-index: -2; }
+    .bg img {
+      position: absolute; width: 100%; height: 100%;
+      object-fit: cover; opacity: 0;
+      transition: opacity 1.4s ease;
+      filter: var(--img-filter);
+    }
+    .bg img.active { opacity: 1; }
+    .overlay {
+      position: fixed; inset: 0; z-index: -1;
+      background: linear-gradient(130deg, var(--overlay-a), var(--overlay-b));
+    }
+
+    /* ── LAYOUT ── */
+    .container {
+      height: 100vh;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
-      overflow-x: hidden;
+      padding: 20px;
+      gap: 22px;
       overflow-y: auto;
+    }
+
+    /* ── GLASS CARD ── */
+    .card {
+      width: 420px;
+      max-height: 94vh;
+      overflow-y: auto;
+      background: var(--card);
+      border: 1px solid var(--border2);
+      backdrop-filter: blur(24px) saturate(1.4);
+      -webkit-backdrop-filter: blur(24px) saturate(1.4);
+      border-radius: 24px;
+      padding: 26px 26px 22px;
+      box-shadow: 0 30px 80px rgba(0,0,0,.45);
       position: relative;
-      padding: 5rem 1rem 1.5rem;
+      flex-shrink: 0;
+      scrollbar-width: none;
     }
-
-    /* ── Hero Background ── */
-    .hero-bg {
-      position: fixed; inset: 0; z-index: 0;
-      background:
-        radial-gradient(ellipse 80% 60% at 20% 110%, rgba(10,74,143,0.55) 0%, transparent 60%),
-        radial-gradient(ellipse 60% 70% at 85% -10%,  rgba(20,100,192,0.35) 0%, transparent 55%),
-        radial-gradient(ellipse 50% 50% at 50%  50%,  rgba(2,11,24,0.9)    0%, transparent 100%),
-        linear-gradient(160deg, #030e1f 0%, #020b18 50%, #041224 100%);
-    }
-
-    /* Subtle grid lines */
-    .hero-bg::before {
-      content: '';
-      position: absolute; inset: 0;
-      background-image:
-        linear-gradient(rgba(100,160,240,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(100,160,240,0.03) 1px, transparent 1px);
-      background-size: 48px 48px;
-      mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 80%);
-    }
-
-    /* Glowing horizontal line */
-    .hero-bg::after {
+    .card::-webkit-scrollbar { display: none; }
+    .card::before {
       content: '';
       position: absolute;
-      left: 0; right: 0;
-      top: 38%;
-      height: 1px;
-      background: linear-gradient(90deg, transparent 0%, var(--blue-3) 35%, var(--blue-4) 50%, var(--blue-3) 65%, transparent 100%);
-      opacity: 0.12;
+      width: 200px; height: 200px;
+      background: var(--primary);
+      filter: blur(80px); opacity: .16;
+      top: -50px; right: -50px;
+      pointer-events: none; border-radius: 50%;
+    }
+    .card::after {
+      content: '';
+      position: absolute; top: 0; left: 12%; right: 12%; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--primary), transparent);
+      opacity: .35; border-radius: 1px;
     }
 
-    /* Orbs */
-    .orb {
-      position: absolute; border-radius: 50%;
-      filter: blur(90px); pointer-events: none;
+    /* ── LOGO ── */
+    .logo {
+      display: flex; align-items: center; gap: 9px;
+      margin-bottom: 18px; text-decoration: none;
     }
-    .orb-1 {
-      width: 600px; height: 600px;
-      background: radial-gradient(circle, rgba(20,100,192,0.28), transparent 70%);
-      top: -150px; left: -150px;
-      animation: orbDrift 22s ease-in-out infinite alternate;
-    }
-    .orb-2 {
-      width: 400px; height: 400px;
-      background: radial-gradient(circle, rgba(36,132,232,0.2), transparent 70%);
-      bottom: -80px; right: -80px;
-      animation: orbDrift 18s ease-in-out infinite alternate-reverse;
-    }
-    .orb-3 {
-      width: 250px; height: 250px;
-      background: radial-gradient(circle, rgba(200,169,110,0.12), transparent 70%);
-      top: 55%; left: 60%;
-      animation: orbDrift 26s ease-in-out infinite alternate;
-    }
-
-    @keyframes orbDrift {
-      from { transform: translate(0,0) scale(1); }
-      to   { transform: translate(30px,25px) scale(1.08); }
-    }
-
-    /* Floating particles */
-    .particle {
-      position: absolute; border-radius: 50%;
-      background: var(--blue-4); opacity: 0;
-      animation: particleRise linear infinite;
-    }
-    @keyframes particleRise {
-      0%   { opacity: 0; transform: translateY(0) translateX(0); }
-      8%   { opacity: 0.5; }
-      92%  { opacity: 0.2; }
-      100% { opacity: 0; transform: translateY(-100vh) translateX(20px); }
-    }
-
-    /* ── Logo top-left ── */
-    .site-logo {
-      position: fixed; top: 1.5rem; left: 1.75rem; z-index: 10;
-      display: flex; align-items: center; gap: 0.6rem;
-      text-decoration: none;
-      animation: fadeDown 0.6s 0.1s var(--ease) both;
-    }
-    .site-logo-icon {
-      width: 34px; height: 34px;
-      background: linear-gradient(135deg, var(--blue-2), var(--blue-3));
+    .logo-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
       border-radius: 8px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 1rem;
-      box-shadow: 0 0 20px rgba(36,132,232,0.35);
+      flex-shrink: 0;
     }
-    .site-logo-name {
-      font-family: var(--font-m); font-size: 0.6rem; font-weight: 700;
-      letter-spacing: 0.18em; text-transform: uppercase;
-      color: var(--blue-5); opacity: 0.8;
-    }
-
-    /* ── Main card ── */
-    .login-card {
-      position: relative; z-index: 1;
-      width: min(440px, 94vw);
-      background: var(--navy-card);
-      border: 1px solid var(--border2);
-      border-radius: 20px;
-      padding: clamp(2rem, 6vw, 2.8rem) clamp(1.5rem, 6vw, 2.8rem);
-      backdrop-filter: blur(24px) saturate(1.5);
-      -webkit-backdrop-filter: blur(24px) saturate(1.5);
-      box-shadow:
-        0 0 0 1px rgba(36,132,232,0.08),
-        0 40px 100px rgba(0,0,0,0.65),
-        inset 0 1px 0 rgba(255,255,255,0.06);
-      animation: cardIn 0.75s var(--ease) both;
+    .logo-icon svg { width: 18px; height: 18px; }
+    .logo-name {
+      font-family: var(--font-m); font-size: .6rem; font-weight: 700;
+      letter-spacing: .18em; text-transform: uppercase;
+      color: var(--primary); opacity: .85;
     }
 
-    @keyframes cardIn {
-      from { opacity: 0; transform: translateY(24px) scale(0.96); }
-      to   { opacity: 1; transform: translateY(0)    scale(1); }
-    }
-
-    /* Card top accent line */
-    .login-card::before {
-      content: '';
-      position: absolute; top: 0; left: 10%; right: 10%; height: 1px;
-      background: linear-gradient(90deg, transparent, var(--blue-3), var(--blue-4), transparent);
-      border-radius: 1px; opacity: 0.6;
-    }
-
-    /* ── Hero text block ── */
-    .hero-text {
-      margin-bottom: 2rem;
-      animation: fadeUp 0.6s 0.25s var(--ease) both;
-    }
-
+    /* ── HERO TEXT + TYPEWRITER ── */
+    .hero-text { margin-bottom: 16px; }
     .hero-eyebrow {
-      font-family: var(--font-m); font-size: 0.6rem;
-      letter-spacing: 0.2em; text-transform: uppercase;
-      color: var(--blue-4); margin-bottom: 0.6rem; display: block;
+      font-family: var(--font-m); font-size: .58rem;
+      letter-spacing: .2em; text-transform: uppercase;
+      color: var(--primary); opacity: .7;
+      margin-bottom: 5px; display: block;
     }
-
     .hero-title {
       font-family: var(--font-d); font-style: italic;
-      font-size: clamp(1.9rem, 5vw, 2.4rem);
-      font-weight: 400; line-height: 1.15;
-      color: var(--text); margin-bottom: 1rem;
+      font-size: clamp(1.55rem, 4vw, 1.85rem);
+      font-weight: 400; line-height: 1.18;
+      color: var(--text); margin-bottom: 8px;
     }
-
-    /* ── Typewriter ── */
     .typewriter-wrap {
-      min-height: 1.5rem;           /* fixed height — no layout shift */
-      display: flex;
-      align-items: center;
+      min-height: 1.3rem;
+      display: flex; align-items: center;
     }
-
     .typewriter-text {
-      font-family: var(--font-m); font-size: 0.72rem;
-      letter-spacing: 0.06em; color: var(--muted);
+      font-family: var(--font-m); font-size: .68rem;
+      letter-spacing: .06em; color: var(--muted);
       white-space: nowrap; overflow: hidden;
     }
-
     .typewriter-cursor {
-      display: inline-block;
-      width: 2px; height: 0.85em;
-      background: var(--blue-3);
-      margin-left: 3px;
+      display: inline-block; width: 2px; height: .82em;
+      background: var(--primary); margin-left: 2px;
       vertical-align: middle;
       animation: blink 1s step-end infinite;
     }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: 0; }
+    /* ── TABS ── */
+    .tabs {
+      display: flex; gap: 0; margin-bottom: 18px;
+      background: rgba(0,0,0,.15);
+      border: 1px solid var(--border);
+      border-radius: 12px; padding: 3px;
     }
+    @media (prefers-color-scheme: light) { .tabs { background: rgba(0,0,0,.06); } }
+    .tab-btn {
+      flex: 1; background: none; border: none;
+      color: var(--muted); cursor: pointer;
+      font-family: var(--font-m); font-size: .57rem;
+      letter-spacing: .1em; text-transform: uppercase;
+      padding: 9px 6px; border-radius: 9px;
+      transition: all .2s ease; line-height: 1.4;
+    }
+    .tab-btn.active {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: #fff;
+      box-shadow: 0 2px 14px rgba(96,165,250,.3);
+    }
+    .tab-btn:not(.active):hover { color: var(--text); }
+    .tab-sub {
+      display: block; font-size: .5rem;
+      letter-spacing: .06em; opacity: .65;
+      margin-top: 1px; text-transform: none;
+      font-family: var(--font-s);
+    }
+    .tab-btn.active .tab-sub { opacity: .8; }
 
-    /* ── Form ── */
-    .form-section { animation: fadeUp 0.6s 0.45s var(--ease) both; }
+    /* ── TENANT HINT ── */
+    .tenant-hint {
+      display: flex; align-items: flex-start; gap: 8px;
+      background: rgba(96,165,250,.09);
+      border: 1px solid rgba(96,165,250,.2);
+      border-radius: 10px; padding: 10px 12px;
+      margin-bottom: 14px; font-size: .72rem;
+      color: var(--muted); line-height: 1.5;
+    }
+    .tenant-hint strong { color: var(--primary); }
 
-    .field { margin-bottom: 0.85rem; }
-
+    /* ── FIELDS ── */
+    .field { margin-bottom: 11px; }
     .field-label {
-      display: block;
-      font-family: var(--font-m); font-size: 0.58rem;
-      letter-spacing: 0.14em; text-transform: uppercase;
-      color: var(--muted2); margin-bottom: 0.4rem;
+      display: block; font-family: var(--font-m); font-size: .57rem;
+      letter-spacing: .14em; text-transform: uppercase;
+      color: var(--muted2); margin-bottom: 5px;
     }
-
-    /* Wrap input + eye so top:50% is relative to the input row only */
     .input-wrap { position: relative; }
-
     .field input {
       width: 100%;
-      background: rgba(7,20,40,0.7);
-      border: 1px solid var(--border2);
-      border-radius: 10px;
-      color: var(--text);
-      font-family: var(--font-s); font-size: 0.88rem; font-weight: 400;
-      padding: 0.8rem 2.8rem 0.8rem 1rem;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 11px; color: var(--text);
+      font-family: var(--font-s); font-size: .875rem;
+      padding: 11px 36px 11px 13px;
       outline: none;
-      transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease), background 0.2s;
+      transition: border-color .2s, box-shadow .2s;
     }
-
-    .field input::placeholder { color: var(--muted2); font-size: 0.82rem; }
-
+    .field input::placeholder { color: var(--muted2); font-size: .82rem; }
     .field input:focus {
-      border-color: var(--blue-3);
-      background: rgba(10,30,60,0.8);
-      box-shadow: 0 0 0 3px rgba(36,132,232,0.15);
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(96,165,250,.15);
     }
-
-    /* Eye button — sits inside .input-wrap so 50% = centre of input */
     .eye-btn {
-      position: absolute; right: 0.75rem; top: 50%;
+      position: absolute; right: 10px; top: 50%;
       transform: translateY(-50%);
       background: none; border: none; cursor: pointer; padding: 4px;
       color: var(--muted2); display: flex; align-items: center;
-      transition: color 0.2s; line-height: 0;
+      transition: color .2s;
     }
-    .eye-btn:hover { color: var(--blue-4); }
+    .eye-btn:hover { color: var(--primary); }
 
-    /* Forgot row */
-    .forgot-row {
-      display: flex; justify-content: flex-end;
-      margin-top: -0.3rem; margin-bottom: 1.2rem;
-    }
+    .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+    .field-grid .field-full { grid-column: 1 / -1; }
+
+    .forgot-row { display: flex; justify-content: flex-end; margin: -3px 0 11px; }
     .forgot-link {
-      font-family: var(--font-m); font-size: 0.6rem;
-      letter-spacing: 0.08em; color: var(--muted);
-      text-decoration: none; transition: color 0.2s;
+      font-family: var(--font-m); font-size: .6rem;
+      letter-spacing: .08em; color: var(--muted);
+      text-decoration: none; transition: color .2s;
     }
-    .forgot-link:hover { color: var(--blue-4); }
+    .forgot-link:hover { color: var(--primary); }
 
-    /* Submit */
-    #submitBtn {
+    /* ── SUBMIT ── */
+    .submit-btn {
       width: 100%;
-      background: linear-gradient(135deg, var(--blue-2) 0%, var(--blue-3) 100%);
-      border: none; border-radius: 10px;
-      color: #fff; font-family: var(--font-s);
-      font-size: 0.82rem; font-weight: 500;
-      letter-spacing: 0.12em; text-transform: uppercase;
-      padding: 0.9rem; cursor: pointer;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border: none; border-radius: 11px; color: #fff;
+      font-family: var(--font-s); font-size: .82rem; font-weight: 500;
+      letter-spacing: .08em; text-transform: uppercase;
+      padding: 12px; cursor: pointer;
       position: relative; overflow: hidden;
-      transition: opacity 0.2s, transform 0.15s var(--ease), box-shadow 0.2s;
-      box-shadow: 0 4px 24px rgba(20,100,192,0.4);
+      transition: opacity .2s, transform .15s;
+      box-shadow: 0 4px 20px rgba(96,165,250,.35);
+      margin-top: 2px;
     }
-    #submitBtn::after {
+    .submit-btn::after {
       content: '';
       position: absolute; top: 0; left: -100%;
       width: 100%; height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
-      transition: left 0.4s ease;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.15), transparent);
+      transition: left .45s ease;
     }
-    #submitBtn:hover::after { left: 100%; }
-    #submitBtn:hover  { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 8px 32px rgba(20,100,192,0.5); }
-    #submitBtn:active { transform: translateY(1px); }
-    #submitBtn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+    .submit-btn:hover::after { left: 100%; }
+    .submit-btn:hover { opacity: .92; transform: translateY(-1px); }
+    .submit-btn:active { transform: translateY(1px); }
+    .submit-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
 
-    /* ── Divider ── */
-    .divider {
-      display: flex; align-items: center; gap: 0.8rem;
-      margin: 1.4rem 0 1.2rem;
-    }
+    /* ── DIVIDER ── */
+    .divider { display: flex; align-items: center; gap: 10px; margin: 16px 0 13px; }
     .divider-line { flex: 1; height: 1px; background: var(--border); }
     .divider-text {
-      font-family: var(--font-m); font-size: 0.58rem;
-      letter-spacing: 0.1em; color: var(--muted2); white-space: nowrap;
+      font-family: var(--font-m); font-size: .57rem;
+      letter-spacing: .1em; color: var(--muted2);
     }
 
-    /* ── Feature badges ── */
-    .features {
-      display: flex; flex-wrap: wrap; gap: 0.45rem;
-      animation: fadeUp 0.6s 0.6s var(--ease) both;
-    }
+    /* ── BADGES ── */
+    .badges { display: flex; flex-wrap: wrap; gap: 5px; }
     .badge {
-      display: inline-flex; align-items: center; gap: 0.3rem;
-      background: rgba(10,74,143,0.18);
-      border: 1px solid rgba(36,132,232,0.2);
-      border-radius: 20px;
-      padding: 0.28rem 0.65rem;
-      font-family: var(--font-s); font-size: 0.68rem;
-      color: var(--blue-5); font-weight: 400;
+      display: inline-flex; align-items: center; gap: 5px;
+      background: rgba(96,165,250,.09);
+      border: 1px solid rgba(96,165,250,.18);
+      border-radius: 20px; padding: 3px 10px;
+      font-family: var(--font-s); font-size: .66rem;
+      color: var(--primary); opacity: .85;
     }
-    .badge-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--blue-3); flex-shrink: 0; }
+    .badge-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--primary); flex-shrink: 0; }
 
-    /* ── Toast ── */
+    /* ── REGISTER NOTE ── */
+    .register-note {
+      margin-top: 11px; padding: 10px 13px;
+      background: rgba(96,165,250,.07);
+      border: 1px solid rgba(96,165,250,.15);
+      border-radius: 9px;
+      font-family: var(--font-s); font-size: .73rem;
+      color: var(--muted); line-height: 1.6;
+    }
+    .register-note strong { color: var(--primary); font-weight: 500; }
+
+    /* panels */
+    .form-panel { display: none; }
+    .form-panel.active { display: block; }
+
+    /* ══ DISCOVERY PANEL ══ */
+    .disc-panel {
+      width: 330px; flex-shrink: 0;
+      background: var(--card);
+      border: 1px solid var(--border2);
+      backdrop-filter: blur(24px) saturate(1.4);
+      -webkit-backdrop-filter: blur(24px) saturate(1.4);
+      border-radius: 24px; overflow: hidden;
+      box-shadow: 0 30px 80px rgba(0,0,0,.45);
+      display: flex; flex-direction: column;
+      position: relative; max-height: 94vh;
+    }
+    .disc-panel::before {
+      content: '';
+      position: absolute; width: 180px; height: 180px;
+      background: var(--accent); filter: blur(80px); opacity: .14;
+      bottom: -40px; left: -40px; pointer-events: none; border-radius: 50%;
+    }
+    .disc-panel::after {
+      content: '';
+      position: absolute; top: 0; left: 10%; right: 10%; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: .4; z-index: 2; pointer-events: none;
+    }
+    .disc-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 15px;
+      border-bottom: 1px solid var(--border);
+      position: relative; z-index: 1;
+    }
+    .disc-live {
+      display: flex; align-items: center; gap: 5px;
+      font-family: var(--font-m); font-size: .56rem;
+      letter-spacing: .15em; text-transform: uppercase;
+      color: #4ade80; font-weight: 700;
+    }
+    .disc-live-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: #4ade80; flex-shrink: 0;
+      animation: livePulse 2.2s ease-in-out infinite;
+    }
+    @keyframes livePulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(74,222,128,.6); }
+      55%      { box-shadow: 0 0 0 5px rgba(74,222,128,0); }
+    }
+    .disc-header-label {
+      flex: 1; font-family: var(--font-m); font-size: .56rem;
+      letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+    }
+    .disc-count {
+      font-family: var(--font-m); font-size: .56rem; font-weight: 700;
+      background: rgba(96,165,250,.12);
+      border: 1px solid rgba(96,165,250,.25);
+      color: var(--primary);
+      padding: 2px 8px; border-radius: 99px;
+    }
+    .disc-slide {
+      position: relative; height: 195px; overflow: hidden;
+      background: #050e1e; flex-shrink: 0;
+    }
+    .disc-photo {
+      position: absolute; inset: 0;
+      background-size: cover; background-position: center;
+      transition: transform .7s ease; will-change: transform;
+    }
+    .disc-panel:hover .disc-photo { transform: scale(1.04); }
+    .disc-photo.no-photo {
+      background:
+        radial-gradient(ellipse at 25% 30%, rgba(20,70,160,.45) 0%, transparent 55%),
+        linear-gradient(160deg, #06102a 0%, #040c1e 60%, #081018 100%);
+    }
+    .disc-initial {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%,-54%);
+      font-family: var(--font-d); font-style: italic;
+      font-size: 5.5rem; color: rgba(96,165,250,.08);
+      pointer-events: none; user-select: none;
+    }
+    .disc-counter {
+      position: absolute; top: 9px; right: 9px;
+      font-family: var(--font-m); font-size: .53rem;
+      letter-spacing: .08em; color: rgba(255,255,255,.7);
+      background: rgba(0,0,0,.5); backdrop-filter: blur(6px);
+      padding: 2px 7px; border-radius: 4px;
+      border: 1px solid rgba(255,255,255,.08); z-index: 3;
+    }
+    .disc-overlay {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      padding: 2.5rem 13px 11px;
+      background: linear-gradient(to top, rgba(4,16,38,.97) 0%, rgba(4,16,38,.6) 45%, transparent 100%);
+      z-index: 2;
+    }
+    .disc-location {
+      font-family: var(--font-m); font-size: .53rem;
+      letter-spacing: .12em; text-transform: uppercase;
+      color: var(--primary); opacity: .85; margin-bottom: 4px;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .disc-name {
+      font-family: var(--font-d); font-style: italic;
+      font-size: 1.05rem; color: #fff; line-height: 1.2; margin-bottom: 7px;
+    }
+    .disc-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+    .disc-chip {
+      font-family: var(--font-m); font-size: .51rem; letter-spacing: .06em;
+      padding: 2px 7px; border-radius: 4px;
+      display: inline-flex; align-items: center;
+    }
+    .chip-vacant { background: rgba(96,165,250,.18); border: 1px solid rgba(96,165,250,.38); color: #93c5fd; }
+    .chip-full   { background: rgba(248,113,113,.12); border: 1px solid rgba(248,113,113,.3); color: #fca5a5; }
+    .chip-rent   { background: rgba(129,140,248,.14); border: 1px solid rgba(129,140,248,.28); color: #c4b5fd; }
+    .disc-loader {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(4,12,24,.4); z-index: 4;
+    }
+    .disc-spinner {
+      width: 20px; height: 20px;
+      border: 2px solid rgba(96,165,250,.15);
+      border-top-color: var(--primary);
+      border-radius: 50%; animation: spin .75s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .disc-empty {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 6px; padding: 1.5rem;
+    }
+    .disc-empty-icon { font-size: 1.8rem; opacity: .35; }
+    .disc-empty-title {
+      font-family: var(--font-d); font-style: italic;
+      font-size: .9rem; color: var(--text); opacity: .5;
+    }
+    .disc-empty-sub { font-size: .68rem; color: var(--muted2); text-align: center; line-height: 1.6; }
+    .disc-slide-in { animation: slideIn .36s ease both; }
+    @keyframes slideIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+    .disc-progress { height: 3px; background: rgba(96,165,250,.08); flex-shrink: 0; }
+    .disc-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      width: 0%;
+    }
+    .disc-body {
+      flex: 1; min-height: 0; padding: 13px 15px 9px;
+      display: flex; flex-direction: column; justify-content: center;
+    }
+    .disc-desc {
+      font-size: .74rem; color: var(--muted); line-height: 1.65;
+      display: -webkit-box;
+      -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .disc-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 9px 15px; border-top: 1px solid var(--border); flex-shrink: 0;
+    }
+    .disc-dots { display: flex; align-items: center; gap: 5px; }
+    .disc-dot {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: rgba(255,255,255,.15);
+      cursor: pointer; border: none; padding: 0;
+      transition: all .3s ease; flex-shrink: 0;
+    }
+    .disc-dot.active { width: 18px; border-radius: 3px; background: var(--primary); }
+    .disc-dot:hover:not(.active) { background: rgba(255,255,255,.35); }
+    .disc-browse-btn {
+      font-family: var(--font-m); font-size: .58rem;
+      letter-spacing: .1em; text-transform: uppercase;
+      color: var(--primary); text-decoration: none;
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 10px;
+      border: 1px solid rgba(96,165,250,.22);
+      border-radius: 6px; transition: all .2s ease;
+    }
+    .disc-browse-btn:hover { background: rgba(96,165,250,.1); }
+    .disc-arrow { transition: transform .2s ease; }
+    .disc-browse-btn:hover .disc-arrow { transform: translateX(3px); }
+
+    /* ── TOAST ── */
     #toast {
       position: fixed; bottom: 2rem; left: 50%;
       transform: translateX(-50%) translateY(12px);
-      background: rgba(7,20,40,0.95);
-      border: 1px solid var(--border2);
-      border-radius: 10px; padding: 0.7rem 1.3rem;
-      font-family: var(--font-m); font-size: 0.72rem;
-      letter-spacing: 0.06em; color: var(--text);
-      opacity: 0; transition: opacity 0.3s, transform 0.3s;
+      background: var(--toast-bg);
+      border: 1px solid var(--toast-border);
+      border-radius: 10px; padding: 9px 18px;
+      font-family: var(--font-m); font-size: .7rem;
+      letter-spacing: .05em; color: var(--text);
+      opacity: 0; transition: opacity .3s, transform .3s;
       z-index: 999; pointer-events: none; white-space: nowrap;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 8px 30px rgba(0,0,0,.4);
     }
-    #toast.show    { opacity: 1; transform: translateX(-50%) translateY(0); }
-    #toast.error   { border-color: rgba(240,112,112,0.4); color: var(--error); }
-    #toast.success { border-color: rgba(78,203,150,0.4); color: var(--success); }
+    #toast.show   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.error  { border-color: rgba(252,165,165,.4); color: var(--error); }
+    #toast.success{ border-color: rgba(134,239,172,.4); color: var(--success); }
 
-    /* ── Animations ── */
-    @keyframes fadeUp   { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
-    @keyframes fadeDown { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }
-
-    /* ── Footer ── */
+    /* ── FOOTER ── */
     .site-footer {
-      position: relative; z-index: 1;
-      width: 100%;
-      max-width: 440px;
-      text-align: center;
-      padding: 1.2rem 1rem 0.5rem;
-      margin-top: 1rem;
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 0;
+      text-align: center; padding: .7rem 1rem;
+      pointer-events: none;
     }
     .site-footer p {
-      font-family: var(--font-m); font-size: 0.57rem;
-      letter-spacing: 0.11em; color: var(--muted2);
-      line-height: 2;
+      font-family: var(--font-m); font-size: .54rem;
+      letter-spacing: .1em; color: rgba(255,255,255,.28); line-height: 2;
+      pointer-events: all;
     }
-    .site-footer a {
-      color: var(--muted); text-decoration: none;
-      transition: color 0.2s;
+    @media (prefers-color-scheme: light) {
+      .site-footer p { color: rgba(0,0,0,.3); }
     }
-    .site-footer a:hover { color: var(--blue-4); }
-    .site-footer-sep { margin: 0 0.55rem; opacity: 0.35; }
+    .site-footer a { color: rgba(255,255,255,.35); text-decoration: none; transition: color .2s; }
+    .site-footer a:hover { color: var(--primary); }
+    .site-footer-sep { margin: 0 .5rem; opacity: .35; }
 
-    /* ── Responsive ── */
-    @media (max-width: 480px) {
-      .site-logo-name { display: none; }
-      .login-card { border-radius: 16px; }
-      .hero-title  { font-size: 1.75rem; }
-      body { padding-top: 4.5rem; }
+    /* ── RESPONSIVE ── */
+    @media (max-width: 860px) {
+      .container {
+        flex-direction: column;
+        height: auto; min-height: 100vh;
+        align-items: center; overflow-y: auto;
+        padding-bottom: 3rem;
+      }
+      body { overflow-y: auto; }
+      .card { width: 100%; max-width: 440px; max-height: none; }
+      .disc-panel { width: 100%; max-width: 440px; max-height: none; }
     }
-    strong{
-      color:red;
+    @media (max-width: 480px) {
+      .field-grid { grid-template-columns: 1fr; }
+      .field-grid .field-full { grid-column: 1; }
+      .hero-title { font-size: 1.5rem; }
     }
   </style>
 </head>
 <body>
 
-  <!-- Background -->
-  <div class="hero-bg">
-    <div class="orb orb-1"></div>
-    <div class="orb orb-2"></div>
-    <div class="orb orb-3"></div>
+  <!-- Background slideshow -->
+  <div class="bg" id="bgEl">
+    <img class="active" src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=1400&q=80" alt="">
+    <img src="https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1400&q=80" alt="">
+    <img src="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1400&q=80" alt="">
+    <img src="https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=1400&q=80" alt="">
   </div>
+  <div class="overlay"></div>
 
-  <!-- Logo -->
-  <a href="landing.html" class="site-logo">
-    <div class="site-logo-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
-  <defs>
-    <!-- Tailored to sit flawlessly alongside your sophisticated emerald/blue css variables -->
-    <linearGradient id="rentalGradient" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#2563eb" /> <!-- Blue base -->
-      <stop offset="60%" stop-color="#10b981" /> <!-- Shift to emerald -->
-      <stop offset="100%" stop-color="#6ee7b7" /> <!-- Neon teal peak -->
-    </linearGradient>
-    
-    <!-- Depth shadow to lift the architecture off your dark background -->
-    <filter id="structureGlow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#10b981" flood-opacity="0.12"/>
-    </filter>
-  </defs>
-
-  <!-- Canvas Frame Background (matches var(--bg) seamless dark styling) -->
-  <rect width="100%" height="100%" fill="#0a0c10" rx="24"/>
-
-  <!-- Core Asset Vector Group -->
-  <g filter="url(#structureGlow)">
-    
-    <!-- Outer Protective Roof Structure (The Estate Silhouette) -->
-    <path d="M 250,90 
-             L 410,210 
-             L 370,210 
-             L 370,390 
-             L 320,390 
-             L 320,250 
-             L 180,250 
-             L 180,390 
-             L 130,390 
-             L 130,210 
-             L 90,210 Z" 
-          fill="url(#rentalGradient)" 
-          opacity="0.15" />
-
-    <!-- Sharp Primary Roofline -->
-    <path d="M 250,90 L 410,210 L 375,210 L 250,116 L 125,210 L 90,210 Z" fill="url(#rentalGradient)" />
-
-    <!-- The Rental Key/Data Nexus (Intersecting inside the property lines) -->
-    <!-- Key Shaft & Teeth -->
-    <path d="M 242,160 L 258,160 L 258,340 L 285,340 L 285,365 L 258,365 L 258,390 L 242,390 Z" fill="url(#rentalGradient)" />
-    
-    <!-- Key Bow (The Geometric Bow acts as a growth chart / structure at the top) -->
-    <path d="M 250,140 C 275,140 295,160 295,185 C 295,210 275,230 250,230 C 225,230 205,210 205,185 C 205,160 225,140 250,140 Z" 
-          fill="none" 
-          stroke="url(#rentalGradient)" 
-          stroke-width="7" />
-
-    <!-- Core Dynamic Data Node (Center of Key Head) -->
-    <circle cx="250" cy="185" r="10" fill="#6ee7b7" />
-    
-    <!-- Decorative Accent Grid lines representing floors/units -->
-    <rect x="145" y="260" width="20" height="20" rx="3" fill="#3b82f6" opacity="0.4"/>
-    <rect x="145" y="300" width="20" height="20" rx="3" fill="#3b82f6" opacity="0.4"/>
-    <rect x="335" y="260" width="20" height="20" rx="3" fill="#6ee7b7" opacity="0.4"/>
-    <rect x="335" y="300" width="20" height="20" rx="3" fill="#6ee7b7" opacity="0.4"/>
-
-  </g>
-</svg>
-</div>
-    <span class="site-logo-name">Affordable Rentals <strong>Home</strong></span>
-  </a>
-
-  <!-- Toast -->
   <div id="toast"></div>
 
-  <!-- Login Card -->
-  <div class="login-card">
+  <div class="container">
 
-    <!-- Hero text -->
-    <div class="hero-text">
-      <span class="hero-eyebrow">Affordable Rentals — Kenya</span>
-      <h1 class="hero-title">Your rental,<br><em>always in order.</em></h1>
-      <div class="typewriter-wrap">
-        <span class="typewriter-text" id="typewriterEl"></span>
-        <span class="typewriter-cursor"></span>
-      </div>
-    </div>
+    <!-- ── AUTH CARD ── -->
+    <div class="card">
 
-    <!-- Form -->
-    <div class="form-section">
+      <a href="index.html" class="logo">
+        <div class="logo-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+          <defs>
+            <linearGradient id="lg1" x1="0%" y1="100%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#2563eb"/>
+              <stop offset="60%" stop-color="#10b981"/>
+              <stop offset="100%" stop-color="#6ee7b7"/>
+            </linearGradient>
+            <filter id="glow1">
+              <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#10b981" flood-opacity="0.12"/>
+            </filter>
+          </defs>
+          <rect width="100%" height="100%" fill="#0a0c10" rx="24"/>
+          <g filter="url(#glow1)">
+            <path d="M250,90L410,210L375,210L250,116L125,210L90,210Z" fill="url(#lg1)"/>
+            <path d="M242,160L258,160L258,340L285,340L285,365L258,365L258,390L242,390Z" fill="url(#lg1)"/>
+            <path d="M250,140C275,140 295,160 295,185C295,210 275,230 250,230C225,230 205,210 205,185C205,160 225,140 250,140Z" fill="none" stroke="url(#lg1)" stroke-width="7"/>
+            <circle cx="250" cy="185" r="10" fill="#6ee7b7"/>
+            <rect x="145" y="260" width="20" height="20" rx="3" fill="#3b82f6" opacity="0.4"/>
+            <rect x="145" y="300" width="20" height="20" rx="3" fill="#3b82f6" opacity="0.4"/>
+            <rect x="335" y="260" width="20" height="20" rx="3" fill="#6ee7b7" opacity="0.4"/>
+            <rect x="335" y="300" width="20" height="20" rx="3" fill="#6ee7b7" opacity="0.4"/>
+          </g>
+        </svg>
+        </div>
+        <span class="logo-name">Affordable Rentals</span>
+      </a>
 
-      <div class="field">
-        <label class="field-label" for="email">Email address</label>
-        <input type="email" id="email" placeholder="you@example.com" autocomplete="email">
-      </div>
-
-      <div class="field">
-        <label class="field-label" for="password">Password</label>
-        <div class="input-wrap">
-        <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password">
-        <button class="eye-btn" type="button" onclick="toggleEye()" title="Show/hide password" aria-label="Toggle password visibility">
-          <svg id="eyeIcon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-            <circle cx="12" cy="12" r="3"/>
-          </svg>
-        </button>
+      <div class="hero-text">
+        <span class="hero-eyebrow">Affordable Rentals — Kenya</span>
+        <h1 class="hero-title">Your rental,<br><em>always in order.</em></h1>
+        <div class="typewriter-wrap">
+          <span class="typewriter-text" id="typewriterEl"></span>
+          <span class="typewriter-cursor"></span>
         </div>
       </div>
 
-      <div class="forgot-row">
-        <a href="forgot-password.html" class="forgot-link">Forgot password?</a>
+      <div class="tabs">
+        <button class="tab-btn active" id="tabLogin" onclick="switchTab('login')">
+          Sign In
+          <span class="tab-sub">Landlords &amp; Tenants</span>
+        </button>
+        <button class="tab-btn" id="tabRegister" onclick="switchTab('register')">
+          Create Account
+          <span class="tab-sub">For Landlords Only</span>
+        </button>
       </div>
 
-      <button id="submitBtn" onclick="submitLogin()">Sign In</button>
+      <!-- LOGIN PANEL -->
+      <div class="form-panel active" id="panelLogin">
 
-    </div>
+        <div class="tenant-hint" id="tenantHint">
+          <span style="font-size:.85rem;flex-shrink:0">ℹ️</span>
+          <span style="font-family:var(--font-s);font-size:.72rem;color:var(--muted);line-height:1.5">
+            <strong>Tenant?</strong> Your landlord created your account — check your email for login credentials.
+          </span>
+        </div>
 
-    <!-- Divider -->
-    <div class="divider">
-      <div class="divider-line"></div>
-      <span class="divider-text">SECURE PLATFORM</span>
-      <div class="divider-line"></div>
-    </div>
+        <div class="field">
+          <label class="field-label" for="loginEmail">Email address</label>
+          <input type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email">
+        </div>
+        <div class="field">
+          <label class="field-label" for="loginPassword">Password</label>
+          <div class="input-wrap">
+            <input type="password" id="loginPassword" placeholder="Enter your password" autocomplete="current-password">
+            <button class="eye-btn" type="button" onclick="toggleEye('loginPassword','eyeLogin')" aria-label="Toggle password visibility">
+              <svg id="eyeLogin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="forgot-row">
+          <a href="forgot-password.html" class="forgot-link">Forgot password?</a>
+        </div>
+        <button class="submit-btn" id="loginBtn" onclick="submitLogin()">Sign In</button>
+      </div>
 
-    <!-- Badges -->
-    <div class="features">
-      <span class="badge"><span class="badge-dot"></span>M-Pesa Payments</span>
-      <span class="badge"><span class="badge-dot"></span>PDF Receipts</span>
-      <span class="badge"><span class="badge-dot"></span>Tenant Chat</span>
-      <span class="badge"><span class="badge-dot"></span>JWT Auth</span>
-      <span class="badge"><span class="badge-dot"></span>Arrears Tracking</span>
-    </div>
+      <!-- REGISTER PANEL -->
+      <div class="form-panel" id="panelRegister">
+        <div class="field-grid">
+          <div class="field field-full">
+            <label class="field-label" for="regName">Full name</label>
+            <input type="text" id="regName" placeholder="Alex Kamau" autocomplete="name">
+          </div>
+          <div class="field field-full">
+            <label class="field-label" for="regEmail">Email address</label>
+            <input type="email" id="regEmail" placeholder="you@example.com" autocomplete="email">
+          </div>
+          <div class="field">
+            <label class="field-label" for="regPhone">Phone number</label>
+            <input type="tel" id="regPhone" placeholder="0712 345 678" autocomplete="tel">
+          </div>
+          <div class="field">
+            <label class="field-label" for="regPropertyName">Property name</label>
+            <input type="text" id="regPropertyName" placeholder="GreenView Apts">
+          </div>
+          <div class="field field-full">
+            <label class="field-label" for="regLocation">Property location</label>
+            <input type="text" id="regLocation" placeholder="Nairobi, Westlands">
+          </div>
+          <div class="field">
+            <label class="field-label" for="regPassword">Password</label>
+            <div class="input-wrap">
+              <input type="password" id="regPassword" placeholder="Min. 6 characters" autocomplete="new-password">
+              <button class="eye-btn" type="button" onclick="toggleEye('regPassword','eyeReg')" aria-label="Toggle password">
+                <svg id="eyeReg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="regConfirm">Confirm password</label>
+            <div class="input-wrap">
+              <input type="password" id="regConfirm" placeholder="Repeat password" autocomplete="new-password">
+              <button class="eye-btn" type="button" onclick="toggleEye('regConfirm','eyeConfirm')" aria-label="Toggle password">
+                <svg id="eyeConfirm" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        <button class="submit-btn" id="registerBtn" onclick="submitRegister()">Create Landlord Account</button>
+        <div class="register-note">
+          <strong>14-day free trial</strong> — No payment required to get started.
+          Configure your M-Pesa credentials after your first login.
+        </div>
+      </div>
 
-  </div>
+      <div class="divider">
+        <div class="divider-line"></div>
+        <span class="divider-text">SECURE PLATFORM</span>
+        <div class="divider-line"></div>
+      </div>
 
-  <!-- Footer -->
+      <div class="badges">
+        <span class="badge"><span class="badge-dot"></span>M-Pesa Payments</span>
+        <span class="badge"><span class="badge-dot"></span>PDF Receipts</span>
+        <span class="badge"><span class="badge-dot"></span>Tenant Chat</span>
+        <span class="badge"><span class="badge-dot"></span>JWT Auth</span>
+        <span class="badge"><span class="badge-dot"></span>Arrears Tracking</span>
+      </div>
+
+    </div><!-- /card -->
+
+    <!-- ── DISCOVERY PANEL ── -->
+    <div class="disc-panel" id="discoveryPanel">
+      <div class="disc-header">
+        <span class="disc-live">
+          <span class="disc-live-dot"></span>Live
+        </span>
+        <span class="disc-header-label">Available Properties</span>
+        <span class="disc-count" id="discCount" style="display:none">0</span>
+      </div>
+
+      <div class="disc-slide" id="discSlide">
+        <div class="disc-photo no-photo" id="discPhoto">
+          <span class="disc-initial" id="discInitial"></span>
+        </div>
+        <div class="disc-counter" id="discCounter" style="display:none"></div>
+        <div class="disc-overlay" id="discOverlay" style="display:none">
+          <div class="disc-location">📍 <span id="discLocationText"></span></div>
+          <div class="disc-name" id="discName"></div>
+          <div class="disc-chips">
+            <span class="disc-chip chip-vacant" id="discVacant" style="display:none"></span>
+            <span class="disc-chip chip-rent"   id="discRent"   style="display:none"></span>
+          </div>
+        </div>
+        <div class="disc-loader" id="discLoader">
+          <div class="disc-spinner"></div>
+        </div>
+        <div class="disc-empty" id="discEmpty" style="display:none">
+          <div class="disc-empty-icon">🏡</div>
+          <div class="disc-empty-title">No listings yet</div>
+          <div class="disc-empty-sub">No properties are publicly listed. Check back soon.</div>
+        </div>
+      </div>
+
+      <div class="disc-progress">
+        <div class="disc-progress-fill" id="discProgressFill"></div>
+      </div>
+
+      <div class="disc-body">
+        <p class="disc-desc" id="discDesc">Loading available properties…</p>
+      </div>
+
+      <div class="disc-footer">
+        <div class="disc-dots" id="discDots"></div>
+        <a href="listings.html" class="disc-browse-btn">
+          Browse all <span class="disc-arrow">→</span>
+        </a>
+      </div>
+    </div><!-- /disc-panel -->
+
+  </div><!-- /container -->
+
   <footer class="site-footer">
-    <p>&copy; 2025 Affordable Rentals. All rights reserved.</p>
     <p>
-      <a href="terms.html">Terms of Service</a>
-      <span class="site-footer-sep">&middot;</span>
-      <a href="privacy.html">Privacy Policy</a>
-      <span class="site-footer-sep">&middot;</span>
-      <a href="landing.html#contact">Support</a>
+      © 2026 Affordable Rentals. All rights reserved.
+      <span class="site-footer-sep">·</span>
+      <a href="terms.html">Terms</a>
+      <span class="site-footer-sep">·</span>
+      <a href="privacy.html">Privacy</a>
+      <span class="site-footer-sep">·</span>
+      <a href="listings.html">Browse Properties</a>
     </p>
   </footer>
 
+  <!-- Config (optional) -->
   <script src="config.js" onerror="void 0"></script>
-  <script>
-    /* ── Particles ── */
-    const bg = document.querySelector('.hero-bg');
-    for (let i = 0; i < 22; i++) {
-      const p = document.createElement('div');
-      p.className = 'particle';
-      Object.assign(p.style, {
-        left: Math.random() * 100 + '%',
-        top:  (75 + Math.random() * 25) + '%',
-        width:  (1 + Math.random() * 2) + 'px',
-        height: (1 + Math.random() * 2) + 'px',
-        animationDuration: (10 + Math.random() * 16) + 's',
-        animationDelay:    (-Math.random() * 22) + 's',
-      });
-      bg.appendChild(p);
-    }
 
-    /* ── Typewriter ── */
+  <script>
+    // ── BG SLIDESHOW ──
+    const bgImgs = document.querySelectorAll('.bg img');
+    let bgIdx = 0;
+    setInterval(() => {
+      bgImgs[bgIdx].classList.remove('active');
+      bgIdx = (bgIdx + 1) % bgImgs.length;
+      bgImgs[bgIdx].classList.add('active');
+    }, 4500);
+
+    // ── TYPEWRITER ──
     const phrases = [
       'Pay your rent securely online.',
       'Track every payment receipt.',
@@ -564,49 +803,386 @@
       'Stay informed with announcements.',
       'Monitor tenant balances in real-time.',
     ];
-
     let phraseIdx = 0, charIdx = 0, deleting = false;
-    const el = document.getElementById('typewriterEl');
-
+    const twEl = document.getElementById('typewriterEl');
     function typeStep() {
       const phrase = phrases[phraseIdx];
       if (!deleting) {
         charIdx++;
-        el.textContent = phrase.slice(0, charIdx);
-        if (charIdx === phrase.length) {
-          deleting = true;
-          setTimeout(typeStep, 2000);
-          return;
-        }
+        twEl.textContent = phrase.slice(0, charIdx);
+        if (charIdx === phrase.length) { deleting = true; setTimeout(typeStep, 2000); return; }
         setTimeout(typeStep, 48 + Math.random() * 28);
       } else {
         charIdx--;
-        el.textContent = phrase.slice(0, charIdx);
+        twEl.textContent = phrase.slice(0, charIdx);
         if (charIdx === 0) {
           deleting = false;
           phraseIdx = (phraseIdx + 1) % phrases.length;
-          setTimeout(typeStep, 420);
-          return;
+          setTimeout(typeStep, 420); return;
         }
         setTimeout(typeStep, 22 + Math.random() * 14);
       }
     }
-
     setTimeout(typeStep, 900);
 
-    /* ── Eye toggle ── */
-    function toggleEye() {
-      const inp = document.getElementById('password');
+    // ── TAB SWITCHING ──
+    function switchTab(tab) {
+      document.getElementById('tabLogin').classList.toggle('active',    tab === 'login');
+      document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
+      document.getElementById('panelLogin').classList.toggle('active',    tab === 'login');
+      document.getElementById('panelRegister').classList.toggle('active', tab === 'register');
+      const hint = document.getElementById('tenantHint');
+      if (hint) hint.style.display = tab === 'login' ? 'flex' : 'none';
+    }
+
+    // ── EYE TOGGLE ──
+    function toggleEye(inputId, iconId) {
+      const inp     = document.getElementById(inputId);
       const showing = inp.type === 'text';
       inp.type = showing ? 'password' : 'text';
-      document.getElementById('eyeIcon').innerHTML = showing
+      document.getElementById(iconId).innerHTML = showing
         ? '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'
         : '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>';
     }
-  </script>
 
-  <!-- auth.js handles: showToast, setLoading, submitLogin, Enter key, auto-redirect -->
-  <script src="auth.js"></script>
+    // ── ENTER KEY ──
+    document.addEventListener('keydown', function(e) {
+      if (e.key !== 'Enter') return;
+      if (document.getElementById('panelLogin').classList.contains('active')) submitLogin();
+      else submitRegister();
+    });
+
+    // ── AUTO-SELECT TAB FROM URL ──
+    document.addEventListener('DOMContentLoaded', function() {
+      const tab = new URLSearchParams(window.location.search).get('tab');
+      if (tab === 'register') switchTab('register');
+    });
+
+    // ── TOAST ──
+    function showToast(msg, type = '') {
+      const t = document.getElementById('toast');
+      if (!t) return;
+      t.textContent = msg;
+      t.className   = 'show ' + type;
+      clearTimeout(t._timer);
+      t._timer = setTimeout(() => { t.className = ''; }, 3500);
+    }
+
+    // ── LOADING STATE ──
+    function setLoading(btnId, on, defaultText) {
+      const btn = document.getElementById(btnId);
+      if (!btn) return;
+      btn.disabled    = on;
+      btn.textContent = on ? 'Please wait…' : defaultText;
+    }
+
+    // ── JWT DECODE ──
+    function getUserFromToken(token) {
+      try {
+        if (!token) return null;
+        return JSON.parse(atob(token.split('.')[1]));
+      } catch { return null; }
+    }
+
+    // ── DASHBOARD ROUTE BY ROLE ──
+    function dashboardFor(role) {
+      return role === 'landlord' ? 'dashboard.html' : 'tenant.html';
+    }
+
+    // ── STORE ACTIVE PROPERTY ──
+    function storeActiveProperty(properties) {
+      if (!Array.isArray(properties) || !properties.length) return;
+      const first = properties[0];
+      localStorage.setItem('activePropertyId',   first._id  || first.id);
+      localStorage.setItem('activePropertyName', first.name || 'Property');
+    }
+
+    // ── AUTO-REDIRECT IF ALREADY LOGGED IN ──
+    function checkAuthOnLoad() {
+      const token = localStorage.getItem('token');
+      const user  = getUserFromToken(token);
+      if (user && !user.mustChangePassword) {
+        window.location.href = dashboardFor(user.role);
+      }
+    }
+
+    // ════════════════════════════
+    // LOGIN
+    // ════════════════════════════
+    async function submitLogin() {
+      const email    = (document.getElementById('loginEmail')?.value    || '').trim();
+      const password = (document.getElementById('loginPassword')?.value || '');
+
+      if (!email)    { showToast('Email is required.', 'error'); return; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showToast('Please enter a valid email address.', 'error'); return;
+      }
+      if (!password) { showToast('Password is required.', 'error'); return; }
+
+      setLoading('loginBtn', true, 'Sign In');
+
+      try {
+        const res  = await fetch(`${window.API}/login`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ email, password }),
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          showToast(data.message || 'Login failed. Please try again.', 'error');
+          setLoading('loginBtn', false, 'Sign In'); return;
+        }
+
+        const token = data.token;
+        if (!token) {
+          showToast('No token received from server.', 'error');
+          setLoading('loginBtn', false, 'Sign In'); return;
+        }
+
+        const user = getUserFromToken(token);
+        if (!user) {
+          showToast('Invalid token received.', 'error');
+          setLoading('loginBtn', false, 'Sign In'); return;
+        }
+
+        // Tenant: forced password change on first login
+        if (user.mustChangePassword) {
+          localStorage.setItem('token', token);
+          localStorage.setItem('user', JSON.stringify(user));
+          showToast('Please set a new password to continue.', '');
+          setTimeout(() => { window.location.href = 'change-password.html'; }, 900);
+          return;
+        }
+
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+
+        if (user.role === 'landlord') {
+          localStorage.setItem('onboardingComplete', data.onboardingComplete ? 'true' : 'false');
+          localStorage.setItem('paymentConfigured',  data.paymentConfigured  ? 'true' : 'false');
+          if (Array.isArray(data.properties) && data.properties.length) {
+            storeActiveProperty(data.properties);
+          }
+        }
+
+        showToast('Welcome back! Redirecting…', 'success');
+        setTimeout(() => { window.location.href = dashboardFor(user.role); }, 900);
+
+      } catch (err) {
+        console.error('Login error:', err);
+        showToast('Cannot reach server. Are you connected to the internet?', 'error');
+        setLoading('loginBtn', false, 'Sign In');
+      }
+    }
+
+    // ════════════════════════════
+    // LANDLORD REGISTRATION
+    // ════════════════════════════
+    async function submitRegister() {
+      const name             = (document.getElementById('regName')?.value         || '').trim();
+      const email            = (document.getElementById('regEmail')?.value        || '').trim();
+      const phone            = (document.getElementById('regPhone')?.value        || '').trim();
+      const propertyName     = (document.getElementById('regPropertyName')?.value || '').trim();
+      const propertyLocation = (document.getElementById('regLocation')?.value     || '').trim();
+      const password         = (document.getElementById('regPassword')?.value     || '');
+      const confirm          = (document.getElementById('regConfirm')?.value      || '');
+
+      if (!name)             { showToast('Full name is required.',          'error'); return; }
+      if (!email)            { showToast('Email is required.',              'error'); return; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                               showToast('Please enter a valid email address.', 'error'); return; }
+      if (!phone)            { showToast('Phone number is required.',       'error'); return; }
+      if (!propertyName)     { showToast('Property name is required.',      'error'); return; }
+      if (!propertyLocation) { showToast('Property location is required.',  'error'); return; }
+      if (!password)         { showToast('Password is required.',           'error'); return; }
+      if (password.length < 6) { showToast('Password must be at least 6 characters.', 'error'); return; }
+      if (password !== confirm) { showToast('Passwords do not match.',      'error'); return; }
+
+      setLoading('registerBtn', true, 'Create Landlord Account');
+
+      try {
+        const res  = await fetch(`${window.API}/landlord/register`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ name, email, phone, propertyName, propertyLocation, password }),
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          showToast(data.message || 'Registration failed. Please try again.', 'error');
+          setLoading('registerBtn', false, 'Create Landlord Account'); return;
+        }
+
+        const token = data.token;
+        if (!token) {
+          showToast('No token received from server.', 'error');
+          setLoading('registerBtn', false, 'Create Landlord Account'); return;
+        }
+
+        const user = getUserFromToken(token);
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem('onboardingComplete', 'false');
+        localStorage.setItem('paymentConfigured',  'false');
+
+        if (data.property) {
+          localStorage.setItem('activePropertyId',   data.property.id   || data.property._id);
+          localStorage.setItem('activePropertyName', data.property.name || propertyName);
+        }
+
+        showToast('Account created! Setting up your dashboard…', 'success');
+        setTimeout(() => { window.location.href = 'index.html'; }, 1000);
+
+      } catch (err) {
+        console.error('Register error:', err);
+        showToast('Cannot reach server. Is your backend running?', 'error');
+        setLoading('registerBtn', false, 'Create Landlord Account');
+      }
+    }
+
+    // ════════════════════════════════════════
+    // DISCOVERY PANEL
+    // ════════════════════════════════════════
+    let _discListings = [], _discCurrent = 0, _discTimer = null, _discPaused = false;
+    const DISC_INTERVAL = 5500;
+
+    async function initDiscovery() {
+      const panel = document.getElementById('discoveryPanel');
+      if (!panel || !window.API) { showDiscLoader(false); showDiscEmpty(); return; }
+      try {
+        const res = await fetch(`${window.API}/public/listings`);
+        if (!res.ok) throw new Error(res.status);
+        _discListings = await res.json();
+      } catch (err) {
+        console.warn('Discovery fetch failed:', err.message);
+        _discListings = [];
+      }
+      if (!_discListings.length) { showDiscEmpty(); return; }
+
+      const countEl = document.getElementById('discCount');
+      if (countEl) { countEl.textContent = _discListings.length; countEl.style.display = 'inline-flex'; }
+
+      discRenderSlide(0);
+      discRenderDots();
+      discStart();
+
+      panel.addEventListener('mouseenter', () => { _discPaused = true; });
+      panel.addEventListener('mouseleave', () => { _discPaused = false; });
+
+      setInterval(async () => {
+        try {
+          const res = await fetch(`${window.API}/public/listings`);
+          if (!res.ok) return;
+          _discListings = await res.json();
+          discRenderSlide(_discCurrent, true);
+        } catch {}
+      }, 30000);
+    }
+
+    function discRenderSlide(idx, silent) {
+      const l = _discListings[idx]; if (!l) return;
+      _discCurrent = idx;
+
+      const photoEl = document.getElementById('discPhoto');
+      const initEl  = document.getElementById('discInitial');
+      if (l.photos?.length) {
+        photoEl.style.backgroundImage = `url('${l.photos[0]}')`;
+        photoEl.classList.remove('no-photo');
+        if (initEl) initEl.textContent = '';
+      } else {
+        photoEl.style.backgroundImage = '';
+        photoEl.classList.add('no-photo');
+        if (initEl) initEl.textContent = (l.name || '?')[0].toUpperCase();
+      }
+
+      const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+      set('discLocationText', l.location || '—');
+      set('discName',         l.name     || '—');
+
+      const vEl = document.getElementById('discVacant');
+      if (vEl) {
+        vEl.classList.remove('chip-full');
+        if (l.vacantCount > 0) {
+          vEl.textContent = l.vacantCount === 1 ? '1 unit available' : `${l.vacantCount} units available`;
+          vEl.classList.add('chip-vacant'); vEl.style.display = 'inline-flex';
+        } else {
+          vEl.textContent = 'Fully occupied';
+          vEl.classList.remove('chip-vacant'); vEl.classList.add('chip-full'); vEl.style.display = 'inline-flex';
+        }
+      }
+
+      const rEl = document.getElementById('discRent');
+      if (rEl && l.rentRange) {
+        const mn = Number(l.rentRange.min).toLocaleString();
+        const mx = Number(l.rentRange.max).toLocaleString();
+        rEl.textContent = mn === mx ? `Ksh ${mn}` : `Ksh ${mn} – ${mx}`;
+        rEl.style.display = 'inline-flex';
+      } else if (rEl) rEl.style.display = 'none';
+
+      const dEl = document.getElementById('discDesc');
+      if (dEl) dEl.textContent = l.description?.trim() || 'Contact the landlord for more details about this property.';
+
+      const cEl = document.getElementById('discCounter');
+      if (cEl) {
+        cEl.textContent   = `${idx + 1} / ${_discListings.length}`;
+        cEl.style.display = _discListings.length > 1 ? 'block' : 'none';
+      }
+
+      const oEl = document.getElementById('discOverlay');
+      if (oEl) oEl.style.display = 'block';
+
+      if (!silent) {
+        const s = document.getElementById('discSlide');
+        if (s) { s.classList.remove('disc-slide-in'); void s.offsetWidth; s.classList.add('disc-slide-in'); }
+      }
+
+      document.querySelectorAll('.disc-dot').forEach((d, i) => d.classList.toggle('active', i === idx));
+      if (!silent) discProgress();
+    }
+
+    function discRenderDots() {
+      const c = document.getElementById('discDots');
+      if (!c || _discListings.length <= 1) { if (c) c.style.display = 'none'; return; }
+      c.innerHTML = _discListings.map((_, i) =>
+        `<button class="disc-dot${i === 0 ? ' active' : ''}" onclick="discGoTo(${i})"></button>`
+      ).join('');
+    }
+
+    function discGoTo(idx) { discStop(); discRenderSlide(idx); discStart(); }
+
+    function discStart() {
+      discStop();
+      if (_discListings.length <= 1) return;
+      _discTimer = setInterval(() => {
+        if (!_discPaused) discRenderSlide((_discCurrent + 1) % _discListings.length);
+      }, DISC_INTERVAL);
+    }
+    function discStop() { if (_discTimer) { clearInterval(_discTimer); _discTimer = null; } }
+
+    function discProgress() {
+      const f = document.getElementById('discProgressFill'); if (!f) return;
+      f.style.transition = 'none'; f.style.width = '0%';
+      f.getBoundingClientRect();
+      f.style.transition = `width ${DISC_INTERVAL}ms linear`; f.style.width = '100%';
+    }
+
+    function showDiscLoader(v) {
+      const el = document.getElementById('discLoader');
+      if (el) el.style.display = v ? 'flex' : 'none';
+    }
+    function showDiscEmpty() {
+      showDiscLoader(false);
+      const e = document.getElementById('discEmpty'); if (e) e.style.display = 'flex';
+      const d = document.getElementById('discDesc');  if (d) d.textContent = 'No properties listed yet. Check back soon.';
+    }
+
+    // ── INIT ──
+    window.addEventListener('load', () => {
+      checkAuthOnLoad();
+      initDiscovery();
+    });
+  </script>
 
 </body>
 </html>

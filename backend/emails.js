@@ -4,6 +4,7 @@
 //
 //  Exports:
 //    sendWelcomeEmail({ name, email })
+//    sendTenantWelcomeEmail({ name, email, tempPassword, propertyName, landlordName })
 //    sendRentReminder({ name, email, house, rent, month, dueDate, arrears })
 //    sendMoveOutEmail({ name, email, house, moveOutDate })
 //    sendPasswordResetEmail({ name, email, code })
@@ -26,9 +27,9 @@ function ordinal(n) {
     return s[(v - 20) % 10] || s[v] || s[0];
 }
 
+
 // ═══════════════════════════════════════════════════════
-// 1. WELCOME EMAIL
-// Call after tenant registers
+// 1. WELCOME EMAIL (existing tenants — no temp password)
 // ═══════════════════════════════════════════════════════
 
 async function sendWelcomeEmail({ name, email }) {
@@ -123,8 +124,226 @@ async function sendWelcomeEmail({ name, email }) {
 
 
 // ═══════════════════════════════════════════════════════
-// 2. RENT REMINDER EMAIL
-// Call from checkArrears() cron job
+// 2. TENANT WELCOME EMAIL — SaaS version
+//    Sent when a landlord creates a tenant account.
+//    Includes temporary password + forced change notice.
+//    Call from POST /tenants/create
+// ═══════════════════════════════════════════════════════
+
+async function sendTenantWelcomeEmail({ name, email, tempPassword, propertyName, landlordName, isReturning = false }) {
+
+    const firstName = name.split(' ')[0];
+
+    // ── Returning tenant: already has a password, just notify them ──
+    const returningHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif">
+          <div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+
+            <!-- Header -->
+            <div style="background:linear-gradient(135deg,#1d4ed8,#0ea5e9);padding:40px 32px;text-align:center">
+              <div style="font-size:48px;margin-bottom:12px">🏠</div>
+              <h1 style="color:#ffffff;margin:0;font-size:24px;font-weight:700;letter-spacing:-0.5px">
+                You've been added to ${propertyName}
+              </h1>
+              <p style="color:#bae6fd;margin:8px 0 0;font-size:13px">Managed by ${landlordName} · Affordable Rentals</p>
+            </div>
+
+            <!-- Body -->
+            <div style="padding:36px 32px">
+              <p style="color:#1e293b;font-size:16px;margin:0 0 16px">
+                Hi <strong>${firstName}</strong> 👋,
+              </p>
+              <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">
+                <strong>${landlordName}</strong> has added you as a tenant at <strong>${propertyName}</strong>
+                on <strong>Affordable Rentals</strong>. Your existing account is now linked to this property —
+                just log in with your current password.
+              </p>
+
+              <!-- Info box -->
+              <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:24px;margin-bottom:24px">
+                <p style="color:#0369a1;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;margin:0 0 16px;font-weight:600">
+                  YOUR ACCOUNT
+                </p>
+                <table style="width:100%;border-collapse:collapse">
+                  <tr>
+                    <td style="color:#64748b;font-size:13px;padding:8px 0">Email</td>
+                    <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right;font-family:'Courier New',monospace">${email}</td>
+                  </tr>
+                  <tr>
+                    <td style="color:#64748b;font-size:13px;padding:8px 0">Password</td>
+                    <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">Your existing password</td>
+                  </tr>
+                  <tr>
+                    <td style="color:#64748b;font-size:13px;padding:8px 0">Property</td>
+                    <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${propertyName}</td>
+                  </tr>
+                </table>
+              </div>
+
+              <!-- What you can do -->
+              <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:20px 24px;margin-bottom:28px">
+                <p style="color:#64748b;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;margin:0 0 12px;font-weight:600">
+                  WITH YOUR ACCOUNT YOU CAN
+                </p>
+                <table style="width:100%;border-collapse:collapse">
+                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">💳</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">Pay rent via M-Pesa directly from your dashboard</td></tr>
+                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">🧾</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">Download payment receipts anytime</td></tr>
+                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">💬</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">Message your landlord directly</td></tr>
+                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">📋</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">View house rules and announcements</td></tr>
+                </table>
+              </div>
+
+              <!-- CTA -->
+              <div style="text-align:center;margin-bottom:28px">
+                <a href="${DASHBOARD_URL}/auth.html"
+                   style="display:inline-block;background:linear-gradient(135deg,#1d4ed8,#0ea5e9);color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:14px 32px;border-radius:8px;letter-spacing:0.02em">
+                  Login to My Dashboard →
+                </a>
+              </div>
+
+              <p style="color:#94a3b8;font-size:12px;line-height:1.6;margin:0">
+                If you have any questions, contact your landlord via the dashboard or email us at
+                <a href="mailto:support@affordablerentals.site" style="color:#1d4ed8">support@affordablerentals.site</a>.
+              </p>
+            </div>
+
+            <!-- Footer -->
+            <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 32px;text-align:center">
+              <p style="color:#cbd5e1;font-size:11px;margin:0">
+                © ${new Date().getFullYear()} Affordable Rentals · <a href="https://affordablerentals.site" style="color:#94a3b8;text-decoration:none">affordablerentals.site</a>
+              </p>
+              <p style="color:#e2e8f0;font-size:10px;margin:6px 0 0">
+                You received this because your landlord added you to their property management system.
+              </p>
+            </div>
+
+          </div>
+        </body>
+        </html>`;
+
+    // ── New tenant: include temp password ──
+    const newTenantHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif">
+          <div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+
+            <!-- Header -->
+            <div style="background:linear-gradient(135deg,#1d4ed8,#0ea5e9);padding:40px 32px;text-align:center">
+              <div style="font-size:48px;margin-bottom:12px">🏠</div>
+              <h1 style="color:#ffffff;margin:0;font-size:24px;font-weight:700;letter-spacing:-0.5px">
+                Welcome to ${propertyName}
+              </h1>
+              <p style="color:#bae6fd;margin:8px 0 0;font-size:13px">Managed by ${landlordName} · Affordable Rentals</p>
+            </div>
+
+            <!-- Body -->
+            <div style="padding:36px 32px">
+              <p style="color:#1e293b;font-size:16px;margin:0 0 16px">
+                Hi <strong>${firstName}</strong> 👋,
+              </p>
+              <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">
+                Your landlord, <strong>${landlordName}</strong>, has created a tenant account for you on
+                <strong>Affordable Rentals</strong>. Use the temporary password below to log in,
+                then you'll be asked to set a new password of your choice.
+              </p>
+
+              <!-- Credentials box -->
+              <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:24px;margin-bottom:24px">
+                <p style="color:#0369a1;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;margin:0 0 16px;font-weight:600">
+                  YOUR LOGIN CREDENTIALS
+                </p>
+                <table style="width:100%;border-collapse:collapse">
+                  <tr>
+                    <td style="color:#64748b;font-size:13px;padding:8px 0;vertical-align:middle">Email</td>
+                    <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right;font-family:'Courier New',monospace">${email}</td>
+                  </tr>
+                  <tr>
+                    <td style="color:#64748b;font-size:13px;padding:8px 0;vertical-align:middle">Temporary Password</td>
+                    <td style="text-align:right">
+                      <span style="background:#1d4ed8;color:#ffffff;font-family:'Courier New',monospace;font-size:15px;font-weight:700;padding:6px 14px;border-radius:6px;letter-spacing:2px;display:inline-block">
+                        ${tempPassword}
+                      </span>
+                    </td>
+                  </tr>
+                </table>
+              </div>
+
+              <!-- Warning box -->
+              <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:14px 18px;margin-bottom:24px">
+                <p style="color:#92400e;font-size:13px;margin:0;font-weight:600">⚠️ Important</p>
+                <p style="color:#78350f;font-size:13px;line-height:1.6;margin:6px 0 0">
+                  You will be required to change this temporary password immediately after your first login.
+                  Choose a strong password that only you know.
+                </p>
+              </div>
+
+              <!-- What you can do -->
+              <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:20px 24px;margin-bottom:28px">
+                <p style="color:#64748b;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;margin:0 0 12px;font-weight:600">
+                  WITH YOUR ACCOUNT YOU CAN
+                </p>
+                <table style="width:100%;border-collapse:collapse">
+                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">💳</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">Pay rent via M-Pesa directly from your dashboard</td></tr>
+                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">🧾</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">Download payment receipts anytime</td></tr>
+                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">💬</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">Message your landlord directly</td></tr>
+                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">📋</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">View house rules and announcements</td></tr>
+                </table>
+              </div>
+
+              <!-- CTA -->
+              <div style="text-align:center;margin-bottom:28px">
+                <a href="${DASHBOARD_URL}/auth.html"
+                   style="display:inline-block;background:linear-gradient(135deg,#1d4ed8,#0ea5e9);color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:14px 32px;border-radius:8px;letter-spacing:0.02em">
+                  Login to My Dashboard →
+                </a>
+              </div>
+
+              <p style="color:#94a3b8;font-size:12px;line-height:1.6;margin:0">
+                If you have any questions, contact your landlord via the dashboard or email us at
+                <a href="mailto:support@affordablerentals.site" style="color:#1d4ed8">support@affordablerentals.site</a>.
+              </p>
+            </div>
+
+            <!-- Footer -->
+            <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 32px;text-align:center">
+              <p style="color:#cbd5e1;font-size:11px;margin:0">
+                © ${new Date().getFullYear()} Affordable Rentals · <a href="https://affordablerentals.site" style="color:#94a3b8;text-decoration:none">affordablerentals.site</a>
+              </p>
+              <p style="color:#e2e8f0;font-size:10px;margin:6px 0 0">
+                You received this because your landlord added you to their property management system.
+              </p>
+            </div>
+
+          </div>
+        </body>
+        </html>`;
+
+    const { error } = await resend.emails.send({
+        from:    FROM,
+        to:      email,
+        subject: isReturning
+            ? `🏠 You've been added to ${propertyName}`
+            : `🏠 You've been added to ${propertyName} — Login Details Inside`,
+        html: isReturning ? returningHtml : newTenantHtml
+    });
+
+    if (error) throw new Error(`Tenant welcome email failed: ${error.message}`);
+    console.log(`📧 Tenant ${isReturning ? 'notification' : 'welcome'} email sent to ${email}`);
+}
+
+// ═══════════════════════════════════════════════════════
+// 3. RENT REMINDER EMAIL
 // ═══════════════════════════════════════════════════════
 
 async function sendRentReminder({ name, email, house, rent, month, dueDate, arrears }) {
@@ -143,7 +362,6 @@ async function sendRentReminder({ name, email, house, rent, month, dueDate, arre
         <body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif">
           <div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
 
-            <!-- Header -->
             <div style="background:${isOverdue ? 'linear-gradient(135deg,#dc2626,#b91c1c)' : 'linear-gradient(135deg,#d97706,#b45309)'};padding:36px 32px;text-align:center">
               <div style="font-size:44px;margin-bottom:10px">${isOverdue ? '⚠️' : '🔔'}</div>
               <h1 style="color:#ffffff;margin:0;font-size:22px;font-weight:700">
@@ -152,23 +370,17 @@ async function sendRentReminder({ name, email, house, rent, month, dueDate, arre
               <p style="color:${isOverdue ? '#fca5a5' : '#fde68a'};margin:8px 0 0;font-size:13px">${month}</p>
             </div>
 
-            <!-- Body -->
             <div style="padding:36px 32px">
-              <p style="color:#1e293b;font-size:16px;margin:0 0 16px">
-                Hi <strong>${name.split(' ')[0]}</strong>,
-              </p>
+              <p style="color:#1e293b;font-size:16px;margin:0 0 16px">Hi <strong>${name.split(' ')[0]}</strong>,</p>
               <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">
                 ${isOverdue
-                    ? `This is a reminder that your rent for <strong>${month}</strong> is <strong style="color:#dc2626">overdue</strong>. Please make your payment as soon as possible to avoid any penalties.`
-                    : `This is a friendly reminder that your rent for <strong>${month}</strong> is due on the <strong>${dueDate}${ordinal(dueDate)}</strong>. Please ensure payment is made on time.`
+                    ? `Your rent for <strong>${month}</strong> is <strong style="color:#dc2626">overdue</strong>. Please make your payment as soon as possible.`
+                    : `Your rent for <strong>${month}</strong> is due on the <strong>${dueDate}${ordinal(dueDate)}</strong>. Please ensure payment is made on time.`
                 }
               </p>
 
-              <!-- Details box -->
               <div style="background:#fefce8;border:1px solid #fde68a;border-radius:10px;padding:20px 24px;margin-bottom:28px">
-                <p style="color:#92400e;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;margin:0 0 12px;font-weight:600">
-                  PAYMENT DETAILS
-                </p>
+                <p style="color:#92400e;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;margin:0 0 12px;font-weight:600">PAYMENT DETAILS</p>
                 <table style="width:100%;border-collapse:collapse">
                   <tr>
                     <td style="color:#78716c;font-size:13px;padding:6px 0">House</td>
@@ -194,7 +406,6 @@ async function sendRentReminder({ name, email, house, rent, month, dueDate, arre
                 </table>
               </div>
 
-              <!-- CTA -->
               <div style="text-align:center;margin-bottom:28px">
                 <a href="${DASHBOARD_URL}/tenant.html"
                    style="display:inline-block;background:${isOverdue ? '#dc2626' : '#d97706'};color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:14px 32px;border-radius:8px">
@@ -203,11 +414,10 @@ async function sendRentReminder({ name, email, house, rent, month, dueDate, arre
               </div>
 
               <p style="color:#94a3b8;font-size:12px;line-height:1.6;margin:0">
-                If you have already made payment, please ignore this email. Contact your landlord via the dashboard chat if you have any concerns.
+                If you have already made payment, please ignore this email.
               </p>
             </div>
 
-            <!-- Footer -->
             <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 32px;text-align:center">
               <p style="color:#cbd5e1;font-size:11px;margin:0">
                 © ${new Date().getFullYear()} Affordable Rentals · <a href="https://affordablerentals.site" style="color:#94a3b8;text-decoration:none">affordablerentals.site</a>
@@ -226,8 +436,7 @@ async function sendRentReminder({ name, email, house, rent, month, dueDate, arre
 
 
 // ═══════════════════════════════════════════════════════
-// 3. MOVE-OUT GOODBYE EMAIL
-// Call inside PUT /move-out/:tenantId before clearing house
+// 4. MOVE-OUT GOODBYE EMAIL
 // ═══════════════════════════════════════════════════════
 
 async function sendMoveOutEmail({ name, email, house, moveOutDate }) {
@@ -242,30 +451,21 @@ async function sendMoveOutEmail({ name, email, house, moveOutDate }) {
         <body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif">
           <div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
 
-            <!-- Header -->
             <div style="background:linear-gradient(135deg,#0f172a,#1e293b);padding:40px 32px;text-align:center">
               <div style="font-size:48px;margin-bottom:12px">🚪</div>
-              <h1 style="color:#ffffff;margin:0;font-size:24px;font-weight:700">
-                Goodbye, ${name.split(' ')[0]}
-              </h1>
+              <h1 style="color:#ffffff;margin:0;font-size:24px;font-weight:700">Goodbye, ${name.split(' ')[0]}</h1>
               <p style="color:#94a3b8;margin:8px 0 0;font-size:13px">We hope to see you again someday.</p>
             </div>
 
-            <!-- Body -->
             <div style="padding:36px 32px">
-              <p style="color:#1e293b;font-size:16px;margin:0 0 16px">
-                Hi <strong>${name.split(' ')[0]}</strong>,
-              </p>
+              <p style="color:#1e293b;font-size:16px;margin:0 0 16px">Hi <strong>${name.split(' ')[0]}</strong>,</p>
               <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">
                 Your move-out from <strong>${house}</strong> has been confirmed.
                 It has been a pleasure having you as a tenant. We wish you all the best in your new place!
               </p>
 
-              <!-- Summary -->
               <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:20px 24px;margin-bottom:28px">
-                <p style="color:#64748b;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;margin:0 0 12px;font-weight:600">
-                  MOVE-OUT SUMMARY
-                </p>
+                <p style="color:#64748b;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;margin:0 0 12px;font-weight:600">MOVE-OUT SUMMARY</p>
                 <table style="width:100%;border-collapse:collapse">
                   <tr>
                     <td style="color:#94a3b8;font-size:13px;padding:6px 0">Tenant</td>
@@ -284,31 +484,25 @@ async function sendMoveOutEmail({ name, email, house, moveOutDate }) {
                   <tr>
                     <td style="color:#94a3b8;font-size:13px;padding:6px 0">Status</td>
                     <td style="text-align:right">
-                      <span style="background:#dcfce7;color:#16a34a;font-size:11px;font-weight:600;padding:2px 10px;border-radius:99px">
-                        Moved Out ✓
-                      </span>
+                      <span style="background:#dcfce7;color:#16a34a;font-size:11px;font-weight:600;padding:2px 10px;border-radius:99px">Moved Out ✓</span>
                     </td>
                   </tr>
                 </table>
               </div>
 
-              <!-- Quote -->
               <div style="background:#eff6ff;border-radius:10px;padding:20px 24px;margin-bottom:28px;text-align:center">
                 <p style="color:#1d4ed8;font-size:14px;line-height:1.7;margin:0;font-style:italic">
                   "Thank you for being part of our community.
-                   Your receipts and payment history remain accessible
-                   via your account should you ever need them."
+                   Your receipts and payment history remain accessible via your account."
                 </p>
               </div>
 
               <p style="color:#94a3b8;font-size:12px;line-height:1.6;margin:0">
-                Your account remains active and you can still access your payment history and receipts.
-                If you believe this move-out was processed in error, please contact your landlord immediately
-                or email us at <a href="mailto:support@affordablerentals.site" style="color:#1d4ed8">support@affordablerentals.site</a>.
+                If you believe this move-out was processed in error, contact your landlord or email
+                <a href="mailto:support@affordablerentals.site" style="color:#1d4ed8">support@affordablerentals.site</a>.
               </p>
             </div>
 
-            <!-- Footer -->
             <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 32px;text-align:center">
               <p style="color:#cbd5e1;font-size:11px;margin:0">
                 © ${new Date().getFullYear()} Affordable Rentals · <a href="https://affordablerentals.site" style="color:#94a3b8;text-decoration:none">affordablerentals.site</a>
@@ -327,8 +521,7 @@ async function sendMoveOutEmail({ name, email, house, moveOutDate }) {
 
 
 // ═══════════════════════════════════════════════════════
-// 4. PASSWORD RESET EMAIL
-// Call from POST /forgot-password route
+// 5. PASSWORD RESET EMAIL
 // ═══════════════════════════════════════════════════════
 
 async function sendPasswordResetEmail({ name, email, code }) {
@@ -343,41 +536,27 @@ async function sendPasswordResetEmail({ name, email, code }) {
         <body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif">
           <div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
 
-            <!-- Header -->
             <div style="background:linear-gradient(135deg,#1d4ed8,#0ea5e9);padding:40px 32px;text-align:center">
               <div style="font-size:48px;margin-bottom:12px">🔑</div>
-              <h1 style="color:#ffffff;margin:0;font-size:24px;font-weight:700">
-                Password Reset
-              </h1>
+              <h1 style="color:#ffffff;margin:0;font-size:24px;font-weight:700">Password Reset</h1>
               <p style="color:#bae6fd;margin:8px 0 0;font-size:13px">Use the code below to reset your password</p>
             </div>
 
-            <!-- Body -->
             <div style="padding:36px 32px">
-              <p style="color:#1e293b;font-size:16px;margin:0 0 16px">
-                Hi <strong>${name.split(' ')[0]}</strong>,
-              </p>
+              <p style="color:#1e293b;font-size:16px;margin:0 0 16px">Hi <strong>${name.split(' ')[0]}</strong>,</p>
               <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 28px">
                 We received a request to reset your password. Use the 6-digit code below to proceed.
                 This code expires in <strong>15 minutes</strong>.
               </p>
 
-              <!-- OTP Code box -->
               <div style="background:#f0f9ff;border:2px dashed #0ea5e9;border-radius:12px;padding:28px 24px;text-align:center;margin-bottom:28px">
-                <p style="color:#64748b;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;margin:0 0 16px;font-weight:600">
-                  YOUR RESET CODE
-                </p>
-                <div style="display:inline-block">
-                  <span style="font-family:'Courier New',monospace;font-size:42px;font-weight:900;letter-spacing:12px;color:#1d4ed8;display:block;line-height:1">
-                    ${code}
-                  </span>
-                </div>
-                <p style="color:#94a3b8;font-size:12px;margin:16px 0 0">
-                  Expires in 15 minutes · Do not share this code
-                </p>
+                <p style="color:#64748b;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;margin:0 0 16px;font-weight:600">YOUR RESET CODE</p>
+                <span style="font-family:'Courier New',monospace;font-size:42px;font-weight:900;letter-spacing:12px;color:#1d4ed8;display:block;line-height:1">
+                  ${code}
+                </span>
+                <p style="color:#94a3b8;font-size:12px;margin:16px 0 0">Expires in 15 minutes · Do not share this code</p>
               </div>
 
-              <!-- Direct link -->
               <div style="text-align:center;margin-bottom:28px">
                 <a href="${DASHBOARD_URL}/forgot-password.html"
                    style="display:inline-block;background:linear-gradient(135deg,#1d4ed8,#0ea5e9);color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:14px 32px;border-radius:8px;letter-spacing:0.02em">
@@ -385,24 +564,20 @@ async function sendPasswordResetEmail({ name, email, code }) {
                 </a>
               </div>
 
-              <!-- Security warning -->
               <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:16px 20px;margin-bottom:20px">
-                <p style="color:#991b1b;font-size:12px;line-height:1.6;margin:0;font-weight:600">
-                  🛡️ Security Notice
-                </p>
+                <p style="color:#991b1b;font-size:12px;line-height:1.6;margin:0;font-weight:600">🛡️ Security Notice</p>
                 <p style="color:#b91c1c;font-size:12px;line-height:1.6;margin:8px 0 0">
-                  If you did not request a password reset, please ignore this email. Your account is safe.
-                  Never share this code with anyone — Affordable Rentals staff will never ask for it.
+                  If you did not request a password reset, please ignore this email.
+                  Never share this code with anyone.
                 </p>
               </div>
 
               <p style="color:#94a3b8;font-size:12px;line-height:1.6;margin:0">
-                Having trouble? Reply to this email or contact us at
+                Having trouble? Contact us at
                 <a href="mailto:support@affordablerentals.site" style="color:#1d4ed8">support@affordablerentals.site</a>
               </p>
             </div>
 
-            <!-- Footer -->
             <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 32px;text-align:center">
               <p style="color:#cbd5e1;font-size:11px;margin:0">
                 © ${new Date().getFullYear()} Affordable Rentals · <a href="https://affordablerentals.site" style="color:#94a3b8;text-decoration:none">affordablerentals.site</a>
@@ -424,6 +599,7 @@ async function sendPasswordResetEmail({ name, email, code }) {
 
 module.exports = {
     sendWelcomeEmail,
+    sendTenantWelcomeEmail,
     sendRentReminder,
     sendMoveOutEmail,
     sendPasswordResetEmail

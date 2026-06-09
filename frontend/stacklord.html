@@ -36,15 +36,10 @@
 
   body {
     font-family: 'Space Grotesk', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    height: 100%;
-    display: flex;
-    overflow: hidden;
-    font-size: 14px;
+    background: var(--bg); color: var(--text);
+    height: 100%; display: flex; overflow: hidden; font-size: 14px;
   }
 
-  /* Grid bg */
   body::before {
     content: '';
     position: fixed; inset: 0;
@@ -55,188 +50,122 @@
     pointer-events: none; z-index: 0;
   }
 
-  /* ── Login Screen ── */
+  /* ══════════════════════════════
+     LOGIN SCREEN
+  ══════════════════════════════ */
   #loginScreen {
     position: fixed; inset: 0; z-index: 1000;
     background: var(--bg);
     display: flex; align-items: center; justify-content: center;
   }
-
   .login-box {
     width: min(420px, 92vw);
-    background: var(--panel);
-    border: 1px solid var(--border2);
-    border-radius: 16px;
-    padding: 2.5rem;
+    background: var(--panel); border: 1px solid var(--border2);
+    border-radius: 16px; padding: 2.5rem;
     box-shadow: 0 0 60px rgba(139,92,246,0.15);
-    position: relative;
-    overflow: hidden;
+    position: relative; overflow: hidden;
   }
-
   .login-box::before {
-    content: '';
-    position: absolute; top: 0; left: 0; right: 0;
-    height: 2px;
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
     background: linear-gradient(90deg, var(--accent), var(--cyan));
   }
-
-  .login-logo {
-    text-align: center; margin-bottom: 2rem;
-  }
-
-  .login-logo-icon {
-    font-size: 3rem; display: block; margin-bottom: 0.75rem;
-    filter: drop-shadow(0 0 20px rgba(139,92,246,0.5));
-  }
-
-  .login-title {
-    font-family: 'Instrument Serif', serif;
-    font-style: italic; font-size: 1.8rem;
-    color: var(--accent); letter-spacing: 0.02em;
-  }
-
-  .login-sub {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.62rem; letter-spacing: 0.2em;
-    text-transform: uppercase; color: var(--text-dim);
-    margin-top: 0.25rem;
-  }
-
-  .login-field {
-    position: relative; margin-bottom: 1rem;
-  }
-
+  .login-logo { text-align: center; margin-bottom: 2rem; }
+  .login-logo-icon { font-size: 3rem; display: block; margin-bottom: 0.75rem; filter: drop-shadow(0 0 20px rgba(139,92,246,0.5)); }
+  .login-title { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.8rem; color: var(--accent); letter-spacing: 0.02em; }
+  .login-sub { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); margin-top: 0.25rem; }
   .login-field input {
-    width: 100%; background: var(--bg3);
-    border: 1px solid var(--border);
+    width: 100%; background: var(--bg3); border: 1px solid var(--border);
     border-radius: 8px; color: var(--text);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.85rem; padding: 0.75rem 1rem;
-    outline: none; letter-spacing: 0.1em;
-    transition: border-color 0.2s, box-shadow 0.2s;
-    margin: 0;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;
+    padding: 0.75rem 1rem; outline: none;
+    letter-spacing: 0.1em; transition: border-color 0.2s, box-shadow 0.2s;
+    margin-bottom: 1rem;
   }
-
-  .login-field input:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-dim);
-  }
-
+  .login-field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
   .login-field input::placeholder { color: var(--text-dim); letter-spacing: 0.05em; }
-
-  .btn-login {
+  .btn-login-submit {
     width: 100%; background: linear-gradient(135deg, var(--accent), var(--cyan));
     border: none; border-radius: 8px; color: #fff;
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 0.82rem; font-weight: 700;
+    font-family: 'Space Grotesk', sans-serif; font-size: 0.82rem; font-weight: 700;
     letter-spacing: 0.15em; text-transform: uppercase;
     padding: 0.85rem; cursor: pointer;
-    transition: all 0.2s;
-    box-shadow: 0 4px 20px rgba(139,92,246,0.3);
+    transition: all 0.2s; box-shadow: 0 4px 20px rgba(139,92,246,0.3);
   }
+  .btn-login-submit:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(139,92,246,0.5); }
+  .login-error { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--red); text-align: center; margin-top: 0.75rem; letter-spacing: 0.06em; }
 
-  .btn-login:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(139,92,246,0.5); }
-
-  .login-error {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem; color: var(--red);
-    text-align: center; margin-top: 0.75rem;
-    letter-spacing: 0.06em;
+  /* ══════════════════════════════
+     SIDEBAR OVERLAY (mobile)
+  ══════════════════════════════ */
+  .sidebar-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.65); z-index: 149;
+    backdrop-filter: blur(3px);
   }
+  .sidebar-overlay.open { display: block; }
 
-  /* ── SIDEBAR ── */
+  /* ══════════════════════════════
+     SIDEBAR
+  ══════════════════════════════ */
   .sidebar {
     width: var(--sidebar-w); flex-shrink: 0;
-    background: var(--bg2);
-    border-right: 1px solid var(--border);
+    background: var(--bg2); border-right: 1px solid var(--border);
     display: flex; flex-direction: column;
-    height: 100vh; position: fixed;
-    left: 0; top: 0; z-index: 100;
+    height: 100vh; position: fixed; left: 0; top: 0; z-index: 150;
+    transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
   }
-
-  .sidebar-header {
-    padding: 1.5rem 1.25rem 1rem;
-    border-bottom: 1px solid var(--border);
-  }
-
+  .sidebar-header { padding: 1.5rem 1.25rem 1rem; border-bottom: 1px solid var(--border); }
   .sidebar-logo {
-    font-family: 'Instrument Serif', serif;
-    font-style: italic; font-size: 1.4rem;
-    color: var(--accent);
+    font-family: 'Instrument Serif', serif; font-style: italic;
+    font-size: 1.4rem; color: var(--accent);
     display: flex; align-items: center; gap: 0.5rem;
     filter: drop-shadow(0 0 8px rgba(139,92,246,0.4));
   }
-
-  .sidebar-role {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.58rem; letter-spacing: 0.2em;
-    text-transform: uppercase; color: var(--cyan);
-    margin-top: 0.25rem;
-  }
-
+  .sidebar-role { font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--cyan); margin-top: 0.25rem; }
   .sidebar-nav { flex: 1; overflow-y: auto; padding: 0.75rem 0; }
-
-  .nav-section {
-    padding: 0.5rem 1.25rem 0.25rem;
-    font-size: 0.58rem; font-weight: 600;
-    letter-spacing: 0.2em; text-transform: uppercase;
-    color: var(--text-dim); margin-top: 0.5rem;
-  }
-
+  .nav-section { padding: 0.5rem 1.25rem 0.25rem; font-size: 0.58rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); margin-top: 0.5rem; }
   .nav-item {
     display: flex; align-items: center; gap: 0.65rem;
     padding: 0.6rem 1.25rem; cursor: pointer;
     color: var(--text-muted); font-size: 0.82rem; font-weight: 500;
-    transition: all 0.15s; border-left: 2px solid transparent;
-    user-select: none;
+    transition: all 0.15s; border-left: 2px solid transparent; user-select: none;
   }
-
   .nav-item:hover { background: var(--accent-dim); color: var(--text); border-left-color: var(--border2); }
   .nav-item.active { background: var(--accent-dim); color: var(--accent); border-left-color: var(--accent); }
   .nav-item .icon { font-size: 0.95rem; width: 18px; text-align: center; }
-
-  .sidebar-footer {
-    padding: 1rem 1.25rem;
-    border-top: 1px solid var(--border);
+  .nav-badge {
+    margin-left: auto;
+    font-size: 0.6rem; font-weight: 700;
+    padding: 1px 6px; border-radius: 99px;
+    font-family: 'JetBrains Mono', monospace;
   }
-
+  .nav-badge-red    { background: var(--red);   color: #fff; }
+  .nav-badge-amber  { background: var(--amber);  color: #000; }
+  .nav-badge-cyan   { background: var(--cyan);   color: #000; }
+  .sidebar-footer { padding: 1rem 1.25rem; border-top: 1px solid var(--border); }
   .stacklord-badge {
     display: flex; align-items: center; gap: 0.5rem;
     background: var(--accent-dim); border: 1px solid var(--border2);
-    border-radius: 8px; padding: 0.6rem 0.85rem;
-    margin-bottom: 0.75rem;
+    border-radius: 8px; padding: 0.6rem 0.85rem; margin-bottom: 0.75rem;
   }
-
   .stacklord-badge-dot {
     width: 8px; height: 8px; border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 0 0 8px var(--accent);
-    animation: pulse 2s ease infinite;
+    background: var(--accent); box-shadow: 0 0 8px var(--accent);
+    animation: pulse 2s ease infinite; flex-shrink: 0;
   }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50%       { opacity: 0.5; transform: scale(0.8); }
-  }
-
-  .stacklord-badge-text {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem; letter-spacing: 0.1em;
-    color: var(--accent); text-transform: uppercase;
-  }
-
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
+  .stacklord-badge-text { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; letter-spacing: 0.1em; color: var(--accent); text-transform: uppercase; }
   .btn-logout {
-    width: 100%; background: transparent;
-    border: 1px solid var(--border2); color: var(--text-muted);
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 0.75rem; font-weight: 500;
-    letter-spacing: 0.08em; padding: 0.5rem;
-    border-radius: 6px; cursor: pointer;
-    transition: all 0.15s;
+    width: 100%; background: transparent; border: 1px solid var(--border2);
+    color: var(--text-muted); font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.75rem; font-weight: 500; letter-spacing: 0.08em;
+    padding: 0.5rem; border-radius: 6px; cursor: pointer; transition: all 0.15s;
   }
   .btn-logout:hover { border-color: var(--red); color: var(--red); }
 
-  /* ── MAIN ── */
+  /* ══════════════════════════════
+     MAIN LAYOUT
+  ══════════════════════════════ */
   .main {
     margin-left: var(--sidebar-w); flex: 1;
     height: 100vh; overflow-y: auto;
@@ -244,120 +173,95 @@
     position: relative; z-index: 1;
   }
 
+  /* ══════════════════════════════
+     TOPBAR
+  ══════════════════════════════ */
   .topbar {
     position: sticky; top: 0; z-index: 50;
-    background: rgba(6,8,18,0.9);
-    border-bottom: 1px solid var(--border);
+    background: rgba(6,8,18,0.9); border-bottom: 1px solid var(--border);
     padding: 0.85rem 2rem;
     display: flex; align-items: center; justify-content: space-between;
-    backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px); gap: 1rem;
   }
-
-  .topbar-title {
-    font-family: 'Instrument Serif', serif;
-    font-style: italic; font-size: 1.3rem; color: var(--text);
-  }
-
+  .topbar-left  { display: flex; align-items: center; gap: 1rem; }
   .topbar-right { display: flex; align-items: center; gap: 1rem; }
-
+  .topbar-title { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.3rem; color: var(--text); }
   .stacklord-chip {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.62rem;
+    letter-spacing: 0.12em; text-transform: uppercase;
     background: var(--accent-dim); color: var(--accent);
-    border: 1px solid var(--border2);
-    padding: 0.3rem 0.7rem; border-radius: 99px;
+    border: 1px solid var(--border2); padding: 0.3rem 0.7rem; border-radius: 99px;
   }
 
-  /* ── SECTIONS ── */
+  /* ── Pending alert banner in topbar ── */
+  .topbar-alert {
+    display: none;
+    align-items: center; gap: 0.5rem;
+    background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.3);
+    border-radius: 8px; padding: 0.3rem 0.75rem; cursor: pointer;
+    transition: background 0.2s;
+  }
+  .topbar-alert:hover { background: rgba(251,191,36,0.18); }
+  .topbar-alert.visible { display: flex; }
+  .topbar-alert-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 6px var(--amber); animation: pulse 1.5s ease infinite; }
+  .topbar-alert-text { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--amber); }
+
+  /* ── Hamburger ── */
+  .hamburger {
+    display: none; background: none; border: none;
+    color: var(--text); cursor: pointer;
+    padding: 6px; flex-direction: column; gap: 5px; flex-shrink: 0;
+  }
+  .hamburger span {
+    display: block; width: 22px; height: 2px;
+    background: currentColor; border-radius: 2px; transition: all 0.3s;
+  }
+
+  /* ══════════════════════════════
+     SECTIONS
+  ══════════════════════════════ */
   .section { display: none; padding: 2rem; animation: fadeIn 0.2s ease both; }
   .section.active { display: block; }
-
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
   .section-header {
     display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 1.75rem;
+    margin-bottom: 1.75rem; flex-wrap: wrap; gap: 0.75rem;
   }
+  .section-title { font-family: 'Instrument Serif', serif; font-size: 1.6rem; font-style: italic; color: var(--text); }
 
-  .section-title {
-    font-family: 'Instrument Serif', serif;
-    font-size: 1.6rem; font-style: italic; color: var(--text);
-  }
-
-  /* ── CARDS ── */
-  .card {
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: 10px; padding: 1.5rem; transition: border-color 0.2s;
-  }
+  /* ══════════════════════════════
+     CARDS
+  ══════════════════════════════ */
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem; transition: border-color 0.2s; }
   .card:hover { border-color: var(--border2); }
-  .card-title {
-    font-size: 0.65rem; font-weight: 600; letter-spacing: 0.2em;
-    text-transform: uppercase; color: var(--text-dim); margin-bottom: 1.1rem;
-  }
+  .card-title { font-size: 0.65rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 1.1rem; }
 
-  /* ── STAT CARDS ── */
-  .stats-grid {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 1rem; margin-bottom: 1.5rem;
-  }
-
+  /* ══════════════════════════════
+     STATS
+  ══════════════════════════════ */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
   .stat-card {
     background: var(--panel); border: 1px solid var(--border);
     border-radius: 10px; padding: 1.25rem 1.5rem;
     transition: border-color 0.2s, transform 0.2s; position: relative; overflow: hidden;
   }
-
   .stat-card:hover { border-color: var(--border2); transform: translateY(-2px); }
-
-  .stat-card::before {
-    content: '';
-    position: absolute; top: 0; left: 0; right: 0; height: 2px;
-    background: linear-gradient(90deg, var(--accent), var(--cyan));
-    opacity: 0; transition: opacity 0.2s;
-  }
-
-  .stat-card:hover::before { opacity: 1; }
-
-  .stat-label {
-    font-size: 0.62rem; font-weight: 600; letter-spacing: 0.2em;
-    text-transform: uppercase; color: var(--text-dim); margin-bottom: 0.5rem;
-  }
-
-  .stat-value {
-    font-family: 'Instrument Serif', serif;
-    font-size: 2.2rem; color: var(--accent); line-height: 1;
-  }
-
+  .stat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,var(--accent),var(--cyan)); opacity:0; transition:opacity 0.2s; }
+  .stat-card:hover::before { opacity:1; }
+  .stat-label { font-size: 0.62rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 0.5rem; }
+  .stat-value { font-family: 'Instrument Serif', serif; font-size: 2.2rem; color: var(--accent); line-height: 1; }
+  .stat-value.amber { color: var(--amber); }
   .stat-sub { font-size: 0.7rem; color: var(--text-dim); margin-top: 0.25rem; }
 
+  /* ══════════════════════════════
+     GRIDS
+  ══════════════════════════════ */
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
 
-  /* ── STATUS BADGE ── */
-  .status-badge {
-    display: inline-flex; align-items: center; gap: 0.4rem;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem; font-weight: 600;
-    padding: 4px 10px; border-radius: 99px; letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .status-badge-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-
-  .badge-trial    { background: rgba(6,182,212,0.12);  color: var(--cyan);  border: 1px solid rgba(6,182,212,0.3); }
-  .badge-trial    .status-badge-dot { background: var(--cyan); box-shadow: 0 0 6px var(--cyan); }
-  .badge-active   { background: rgba(52,211,153,0.12); color: var(--green); border: 1px solid rgba(52,211,153,0.3); }
-  .badge-active   .status-badge-dot { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s ease infinite; }
-  .badge-grace    { background: rgba(251,191,36,0.12); color: var(--amber); border: 1px solid rgba(251,191,36,0.3); }
-  .badge-grace    .status-badge-dot { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
-  .badge-expired  { background: rgba(248,113,113,0.12);color: var(--red);   border: 1px solid rgba(248,113,113,0.3); }
-  .badge-expired  .status-badge-dot { background: var(--red); }
-  .badge-suspended{ background: rgba(248,113,113,0.2); color: var(--red);   border: 2px solid var(--red); }
-  .badge-suspended .status-badge-dot { background: var(--red); animation: pulse 1s ease infinite; }
-
-  /* ── INPUTS & BUTTONS ── */
+  /* ══════════════════════════════
+     INPUTS & BUTTONS
+  ══════════════════════════════ */
   input, textarea, select {
     width: 100%; background: var(--bg3); border: 1px solid var(--border);
     border-radius: 7px; color: var(--text);
@@ -365,12 +269,7 @@
     padding: 0.6rem 0.85rem; margin-bottom: 0.6rem; outline: none;
     transition: border-color 0.15s, box-shadow 0.15s;
   }
-
-  input:focus, textarea:focus, select:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-dim);
-  }
-
+  input:focus, textarea:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
   input::placeholder, textarea::placeholder { color: var(--text-dim); }
   textarea { resize: vertical; min-height: 80px; }
   select option { background: var(--panel); }
@@ -378,173 +277,297 @@
   .btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 0.4em;
     border: none; border-radius: 7px;
-    font-family: 'Space Grotesk', sans-serif; font-size: 0.78rem;
-    font-weight: 600; letter-spacing: 0.06em; padding: 0.55rem 1.1rem;
+    font-family: 'Space Grotesk', sans-serif; font-size: 0.78rem; font-weight: 600;
+    letter-spacing: 0.06em; padding: 0.55rem 1.1rem;
     cursor: pointer; transition: all 0.15s; white-space: nowrap;
   }
-
   .btn-primary   { background: var(--accent); color: #fff; }
-  .btn-primary:hover { filter: brightness(1.15); transform: translateY(-1px); }
+  .btn-primary:hover   { filter: brightness(1.15); transform: translateY(-1px); }
   .btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border2); }
   .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
-  .btn-danger    { background: rgba(248,113,113,0.12); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
-  .btn-danger:hover { background: rgba(248,113,113,0.22); }
-  .btn-success   { background: rgba(52,211,153,0.12); color: var(--green); border: 1px solid rgba(52,211,153,0.3); }
-  .btn-success:hover { background: rgba(52,211,153,0.22); }
-  .btn-warn      { background: rgba(251,191,36,0.12); color: var(--amber); border: 1px solid rgba(251,191,36,0.3); }
-  .btn-warn:hover { background: rgba(251,191,36,0.22); }
-  .btn-cyan      { background: rgba(6,182,212,0.12); color: var(--cyan); border: 1px solid rgba(6,182,212,0.3); }
-  .btn-cyan:hover { background: rgba(6,182,212,0.22); }
-  .btn-sm  { padding: 0.3rem 0.65rem; font-size: 0.72rem; }
-  .btn-full{ width: 100%; }
+  .btn-danger    { background: rgba(248,113,113,0.12); color: var(--red);   border: 1px solid rgba(248,113,113,0.3); }
+  .btn-danger:hover    { background: rgba(248,113,113,0.22); }
+  .btn-success   { background: rgba(52,211,153,0.12);  color: var(--green); border: 1px solid rgba(52,211,153,0.3); }
+  .btn-success:hover   { background: rgba(52,211,153,0.22); }
+  .btn-warn      { background: rgba(251,191,36,0.12);  color: var(--amber); border: 1px solid rgba(251,191,36,0.3); }
+  .btn-warn:hover      { background: rgba(251,191,36,0.22); }
+  .btn-cyan      { background: rgba(6,182,212,0.12);   color: var(--cyan);  border: 1px solid rgba(6,182,212,0.3); }
+  .btn-cyan:hover      { background: rgba(6,182,212,0.22); }
+  .btn-sm   { padding: 0.3rem 0.65rem; font-size: 0.72rem; }
+  .btn-full { width: 100%; }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; filter: none !important; }
 
-  /* ── SUBSCRIPTION CARD ── */
-  .sub-card {
-    background: var(--panel2);
-    border: 1px solid var(--border2);
-    border-radius: 12px; padding: 1.5rem;
-    position: relative; overflow: hidden;
-  }
+  /* ══════════════════════════════
+     STATUS BADGES
+  ══════════════════════════════ */
+  .status-badge { display: inline-flex; align-items: center; gap: 0.4rem; font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; font-weight: 600; padding: 4px 10px; border-radius: 99px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .status-badge-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .badge-trial    { background: rgba(6,182,212,0.12);   color: var(--cyan);  border: 1px solid rgba(6,182,212,0.3); }
+  .badge-trial    .status-badge-dot { background: var(--cyan);  box-shadow: 0 0 6px var(--cyan); }
+  .badge-active   { background: rgba(52,211,153,0.12);  color: var(--green); border: 1px solid rgba(52,211,153,0.3); }
+  .badge-active   .status-badge-dot { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s ease infinite; }
+  .badge-grace    { background: rgba(251,191,36,0.12);  color: var(--amber); border: 1px solid rgba(251,191,36,0.3); }
+  .badge-grace    .status-badge-dot { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+  .badge-expired  { background: rgba(248,113,113,0.12); color: var(--red);   border: 1px solid rgba(248,113,113,0.3); }
+  .badge-expired  .status-badge-dot { background: var(--red); }
+  .badge-suspended{ background: rgba(248,113,113,0.2);  color: var(--red);   border: 2px solid var(--red); }
+  .badge-suspended .status-badge-dot { background: var(--red); animation: pulse 1s ease infinite; }
 
-  .sub-card::before {
-    content: '';
-    position: absolute; top: 0; left: 0; right: 0; height: 3px;
-    background: linear-gradient(90deg, var(--accent), var(--cyan));
-  }
-
-  .sub-card-row {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 0.5rem 0; border-bottom: 1px solid var(--border);
-    font-size: 0.82rem;
-  }
+  /* ══════════════════════════════
+     SUB CARD
+  ══════════════════════════════ */
+  .sub-card { background: var(--panel2); border: 1px solid var(--border2); border-radius: 12px; padding: 1.5rem; position: relative; overflow: hidden; }
+  .sub-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--accent),var(--cyan)); }
+  .sub-card-row { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--border); font-size: 0.82rem; }
   .sub-card-row:last-child { border: none; }
   .sub-card-label { color: var(--text-dim); }
   .sub-card-value { color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; }
 
-  /* ── PROGRESS ── */
+  /* ══════════════════════════════
+     PROGRESS
+  ══════════════════════════════ */
   .progress-track { background: var(--bg3); border-radius: 99px; height: 6px; overflow: hidden; margin: 0.5rem 0; }
   .progress-fill  { height: 100%; border-radius: 99px; transition: width 0.6s ease; }
-  .progress-fill.green  { background: linear-gradient(90deg, var(--green), var(--cyan)); }
-  .progress-fill.amber  { background: linear-gradient(90deg, var(--amber), var(--red)); }
-  .progress-fill.red    { background: var(--red); width: 100% !important; }
+  .progress-fill.green { background: linear-gradient(90deg, var(--green), var(--cyan)); }
+  .progress-fill.amber { background: linear-gradient(90deg, var(--amber), var(--red)); }
+  .progress-fill.red   { background: var(--red); width: 100% !important; }
 
-  /* ── PLANS GRID ── */
-  .plans-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 1rem; margin-top: 1rem;
-  }
-
-  .plan-card {
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: 10px; padding: 1.25rem;
-    transition: all 0.2s; position: relative;
-  }
-
+  /* ══════════════════════════════
+     PLANS
+  ══════════════════════════════ */
+  .plans-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; margin-top: 1rem; }
+  .plan-card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; transition: all 0.2s; position: relative; }
   .plan-card:hover { border-color: var(--border2); transform: translateY(-2px); }
   .plan-card.inactive { opacity: 0.5; }
-
-  .plan-card-name {
-    font-family: 'Instrument Serif', serif; font-style: italic;
-    font-size: 1.3rem; color: var(--accent); margin-bottom: 0.25rem;
-  }
-
-  .plan-card-price {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 1.5rem; font-weight: 700; color: var(--text);
-    margin-bottom: 0.25rem;
-  }
-
-  .plan-card-duration {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem; color: var(--text-dim); letter-spacing: 0.1em;
-    margin-bottom: 0.75rem;
-  }
-
+  .plan-card-name { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.3rem; color: var(--accent); margin-bottom: 0.25rem; }
+  .plan-card-price { font-family: 'JetBrains Mono', monospace; font-size: 1.5rem; font-weight: 700; color: var(--text); margin-bottom: 0.25rem; }
+  .plan-card-duration { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--text-dim); letter-spacing: 0.1em; margin-bottom: 0.75rem; }
   .plan-card-desc { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem; line-height: 1.6; }
-
   .plan-features { list-style: none; margin-bottom: 1rem; }
-  .plan-features li {
-    font-size: 0.78rem; color: var(--text-muted);
-    padding: 0.2rem 0; display: flex; align-items: center; gap: 0.5rem;
-  }
+  .plan-features li { font-size: 0.78rem; color: var(--text-muted); padding: 0.2rem 0; display: flex; align-items: center; gap: 0.5rem; }
   .plan-features li::before { content: '✓'; color: var(--green); font-weight: 700; }
-
   .plan-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 
-  /* ── TABLE ── */
-  .table-wrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-  th {
-    text-align: left; padding: 0.6rem 0.85rem;
-    font-size: 0.6rem; font-weight: 600; letter-spacing: 0.18em;
-    text-transform: uppercase; color: var(--text-dim);
-    border-bottom: 1px solid var(--border);
+  /* ══════════════════════════════
+     LANDLORD ROW CARD
+  ══════════════════════════════ */
+  .landlord-row-card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1rem 1.25rem;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; flex-wrap: wrap;
+    transition: border-color 0.2s, transform 0.15s; cursor: pointer;
+    margin-bottom: 0.6rem;
   }
-  td { padding: 0.65rem 0.85rem; border-bottom: 1px solid var(--border); color: var(--text-muted); }
+  .landlord-row-card:hover { border-color: var(--border2); transform: translateY(-1px); }
+  .landlord-row-card.suspended { border-left: 3px solid var(--red); }
+  .landlord-row-card.expired   { border-left: 3px solid rgba(248,113,113,0.4); }
+  .landlord-row-card.grace     { border-left: 3px solid var(--amber); }
+  .landlord-row-card.active    { border-left: 3px solid var(--green); }
+  .landlord-row-card.trial     { border-left: 3px solid var(--cyan); }
+  .landlord-row-left { flex: 1; min-width: 0; }
+  .landlord-row-name { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.1rem; color: var(--text); margin-bottom: 0.2rem; }
+  .landlord-row-meta { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--text-dim); letter-spacing: 0.03em; }
+  .landlord-row-property { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.15rem; }
+  .landlord-row-right { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; flex-shrink: 0; }
+
+  /* ══════════════════════════════
+     TABLE
+  ══════════════════════════════ */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.8rem; min-width: 500px; }
+  th { text-align: left; padding: 0.6rem 0.85rem; font-size: 0.6rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-dim); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 0.65rem 0.85rem; border-bottom: 1px solid var(--border); color: var(--text-muted); vertical-align: top; }
   tr:last-child td { border: none; }
   tr:hover td { background: var(--panel2); color: var(--text); }
   .td-mono { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; }
 
-  /* ── MODAL ── */
-  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 500; align-items: center; justify-content: center; }
+  /* ══════════════════════════════
+     MODAL
+  ══════════════════════════════ */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 500; align-items: center; justify-content: center; padding: 1.5rem; }
   .modal-overlay.open { display: flex; }
-  .modal { background: var(--panel); border: 1px solid var(--border2); border-radius: 12px; padding: 2rem; width: min(480px, 92vw); max-height: 90vh; overflow-y: auto; animation: modalIn 0.25s cubic-bezier(0.34,1.2,0.64,1) both; box-shadow: 0 24px 80px rgba(0,0,0,0.7), 0 0 40px rgba(139,92,246,0.1); }
-  @keyframes modalIn { from { opacity:0; transform: scale(0.93) translateY(10px); } to { opacity:1; transform: scale(1) translateY(0); } }
+  .modal { background: var(--panel); border: 1px solid var(--border2); border-radius: 12px; padding: 2rem; width: min(480px,100%); max-height: 90vh; overflow-y: auto; animation: modalIn 0.25s cubic-bezier(0.34,1.2,0.64,1) both; box-shadow: 0 24px 80px rgba(0,0,0,0.7), 0 0 40px rgba(139,92,246,0.1); }
+  @keyframes modalIn { from{opacity:0;transform:scale(0.93) translateY(10px)} to{opacity:1;transform:scale(1) translateY(0)} }
   .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
   .modal-title { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.3rem; color: var(--text); }
   .modal-close { background: transparent; border: none; color: var(--text-dim); font-size: 1.1rem; cursor: pointer; width: auto; padding: 0; margin: 0; line-height: 1; transition: color 0.15s; }
   .modal-close:hover { color: var(--red); }
 
-  /* ── TOAST ── */
-  #toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--panel2); border: 1px solid var(--border2); border-radius: 8px; padding: 0.65rem 1.1rem; font-size: 0.78rem; font-family: 'JetBrains Mono', monospace; color: var(--text); opacity: 0; transform: translateY(10px); transition: all 0.25s ease; z-index: 9999; pointer-events: none; max-width: 320px; box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
-  #toast.show    { opacity: 1; transform: translateY(0); }
+  /* ══════════════════════════════
+     TOAST
+  ══════════════════════════════ */
+  #toast {
+    position: fixed; bottom: 1.5rem; right: 1.5rem;
+    background: var(--panel2); border: 1px solid var(--border2);
+    border-radius: 8px; padding: 0.65rem 1.1rem;
+    font-size: 0.78rem; font-family: 'JetBrains Mono', monospace;
+    color: var(--text); opacity: 0; transform: translateY(10px);
+    transition: all 0.25s ease; z-index: 9999; pointer-events: none;
+    max-width: min(320px, calc(100vw - 2rem));
+    box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+  }
+  #toast.show    { opacity:1; transform:translateY(0); }
   #toast.success { border-color: var(--green); color: var(--green); }
   #toast.error   { border-color: var(--red);   color: var(--red); }
   #toast.warn    { border-color: var(--amber);  color: var(--amber); }
 
-  /* ── MISC ── */
+  /* ══════════════════════════════
+     MISC UTILITIES
+  ══════════════════════════════ */
   .empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--text-dim); font-size: 0.8rem; }
   .empty-state .icon { font-size: 2rem; margin-bottom: 0.5rem; display: block; }
   .pill { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; padding: 2px 8px; border-radius: 99px; font-weight: 600; }
-  .pill-green  { background: rgba(52,211,153,0.12); color: var(--green); border: 1px solid rgba(52,211,153,0.2); }
+  .pill-green  { background: rgba(52,211,153,0.12);  color: var(--green); border: 1px solid rgba(52,211,153,0.2); }
   .pill-red    { background: rgba(248,113,113,0.12); color: var(--red);   border: 1px solid rgba(248,113,113,0.2); }
   .pill-yellow { background: rgba(251,191,36,0.12);  color: var(--amber); border: 1px solid rgba(251,191,36,0.2); }
   .pill-cyan   { background: rgba(6,182,212,0.12);   color: var(--cyan);  border: 1px solid rgba(6,182,212,0.2); }
-  .flex  { display: flex; align-items: center; gap: 0.75rem; }
+  .pill-purple { background: var(--accent-dim);      color: var(--accent); border: 1px solid var(--border2); }
+  .flex  { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
   .mb-2  { margin-bottom: 1rem; }
   .mb-3  { margin-bottom: 1.5rem; }
   .divider { border: none; border-top: 1px solid var(--border); margin: 1.25rem 0; }
 
-  /* ── DANGER ZONE ── */
-  .danger-zone {
-    background: rgba(248,113,113,0.05);
-    border: 1px solid rgba(248,113,113,0.2);
-    border-radius: 10px; padding: 1.5rem;
+  /* ══════════════════════════════
+     DANGER ZONE
+  ══════════════════════════════ */
+  .danger-zone { background: rgba(248,113,113,0.05); border: 1px solid rgba(248,113,113,0.2); border-radius: 10px; padding: 1.5rem; }
+  .danger-zone-title { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--red); margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(248,113,113,0.2); }
+
+  /* ══════════════════════════════
+     STATUS BREAKDOWN (overview)
+  ══════════════════════════════ */
+  .status-breakdown { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.75rem; }
+  .status-breakdown-item { display: flex; align-items: center; gap: 0.4rem; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem 0.85rem; }
+  .status-breakdown-count { font-family: 'Instrument Serif', serif; font-size: 1.4rem; color: var(--text); line-height: 1; }
+  .status-breakdown-label { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: var(--text-dim); letter-spacing: 0.1em; text-transform: uppercase; }
+
+  /* ══════════════════════════════
+     PENDING ALERT (overview)
+  ══════════════════════════════ */
+  .pending-listings-alert {
+    display: none;
+    align-items: center; gap: 1rem;
+    background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.3);
+    border-radius: 10px; padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem; cursor: pointer; transition: background 0.2s;
+    flex-wrap: wrap;
+  }
+  .pending-listings-alert:hover { background: rgba(251,191,36,0.14); }
+  .pending-listings-alert.visible { display: flex; }
+  .pla-icon { font-size: 1.75rem; flex-shrink: 0; }
+  .pla-body { flex: 1; }
+  .pla-count { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.5rem; color: var(--amber); line-height: 1; margin-bottom: 0.15rem; }
+  .pla-label { font-size: 0.78rem; color: var(--text-muted); }
+
+  /* ══════════════════════════════
+     TAB SWITCHER
+  ══════════════════════════════ */
+  .tab-row {
+    display: flex;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 8px; padding: 3px; margin-bottom: 1.25rem;
+    width: fit-content;
+  }
+  .tab-btn {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    background: none; border: none; color: var(--text-muted);
+    cursor: pointer; font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.78rem; font-weight: 500;
+    padding: 0.45rem 1rem; border-radius: 5px;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .tab-btn.active { background: var(--accent); color: #fff; box-shadow: 0 2px 12px rgba(139,92,246,0.3); }
+  .tab-btn:not(.active):hover { color: var(--text); }
+  .tab-badge {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; font-weight: 700;
+    padding: 1px 6px; border-radius: 99px;
+    background: var(--amber); color: #000;
   }
 
-  .danger-zone-title {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem; letter-spacing: 0.2em;
-    text-transform: uppercase; color: var(--red);
-    margin-bottom: 1rem; padding-bottom: 0.5rem;
-    border-bottom: 1px solid rgba(248,113,113,0.2);
+  /* ══════════════════════════════
+     LISTING CARD
+  ══════════════════════════════ */
+  .listing-card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 0.6rem;
+    display: flex; align-items: flex-start; gap: 1rem; flex-wrap: wrap;
+    transition: border-color 0.2s;
   }
+  .listing-card:hover { border-color: var(--border2); }
+  .listing-card.pending { border-left: 3px solid var(--amber); }
+  .listing-card.approved { border-left: 3px solid var(--green); }
+  .listing-thumb {
+    width: 64px; height: 64px; border-radius: 8px; overflow: hidden;
+    background: var(--bg3); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem; color: var(--text-dim);
+  }
+  .listing-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .listing-info { flex: 1; min-width: 200px; }
+  .listing-name { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.1rem; color: var(--text); margin-bottom: 0.2rem; }
+  .listing-meta { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.15rem; }
+  .listing-landlord { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: var(--text-dim); }
+  .listing-actions { display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; flex-wrap: wrap; }
 
+  /* ══════════════════════════════
+     INQUIRY FILTER ROW
+  ══════════════════════════════ */
+  .filter-row { display: flex; gap: 0.6rem; margin-bottom: 1.25rem; flex-wrap: wrap; align-items: center; }
+  .filter-row select { width: auto; margin-bottom: 0; }
+  .filter-row input[type="text"] { flex: 1; min-width: 160px; margin-bottom: 0; }
+
+  /* ══════════════════════════════
+     PAGINATION
+  ══════════════════════════════ */
+  .pagination { display: flex; gap: 0.4rem; align-items: center; margin-top: 1rem; flex-wrap: wrap; }
+
+  /* ══════════════════════════════
+     SCROLLBAR
+  ══════════════════════════════ */
   ::-webkit-scrollbar { width: 4px; height: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 
+  /* ══════════════════════════════
+     RESPONSIVE
+  ══════════════════════════════ */
+  @media (min-width: 769px) {
+    .hamburger { display: none !important; }
+    .main { margin-left: var(--sidebar-w); }
+  }
+
   @media (max-width: 768px) {
-    :root { --sidebar-w: 0px; }
-    .sidebar { display: none; }
-    .main { margin-left: 0; }
-    .grid-2 { grid-template-columns: 1fr; }
+    .sidebar { transform: translateX(-100%); }
+    .sidebar.open { transform: translateX(0); }
+    .main { margin-left: 0 !important; }
+    .hamburger { display: flex !important; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .plans-grid { grid-template-columns: 1fr; }
+    .section { padding: 1rem; }
+    .topbar { padding: 0.75rem 1rem; }
+    .section-header { flex-direction: column; align-items: flex-start; }
+    .tab-row { width: 100%; }
+    .tab-btn { flex: 1; justify-content: center; }
+    .landlord-row-card { flex-direction: column; align-items: flex-start; }
+    .landlord-row-right { width: 100%; }
+    .stacklord-chip { display: none; }
+    .listing-card { flex-direction: column; }
+    .listing-actions { width: 100%; }
+  }
+
+  @media (max-width: 480px) {
+    .stats-grid { grid-template-columns: 1fr; }
+    .section { padding: 0.75rem; }
+    .topbar-title { font-size: 1.05rem; }
+    .topbar-alert-text { display: none; }
   }
   </style>
 </head>
 <body>
 
-<!-- ═══ LOGIN SCREEN ═══ -->
+<!-- ═══ LOGIN ═══ -->
 <div id="loginScreen">
   <div class="login-box">
     <div class="login-logo">
@@ -553,12 +576,15 @@
       <div class="login-sub">// super admin console</div>
     </div>
     <div class="login-field">
-      <input type="password" id="masterKey" placeholder="Enter master key..." onkeydown="if(event.key==='Enter') login()">
+      <input type="password" id="masterKey" placeholder="Enter master key…" onkeydown="if(event.key==='Enter') login()">
     </div>
-    <button class="btn-login" onclick="login()">Access Console →</button>
+    <button class="btn-login-submit" onclick="login()">Access Console →</button>
     <div class="login-error" id="loginError"></div>
   </div>
 </div>
+
+<!-- ═══ SIDEBAR OVERLAY (mobile) ═══ -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
 <!-- ═══ SIDEBAR ═══ -->
 <aside class="sidebar" id="sidebar">
@@ -569,16 +595,31 @@
 
   <nav class="sidebar-nav">
     <div class="nav-section">Platform</div>
-    <div class="nav-item active" onclick="showSection('overview')">  <span class="icon">📊</span> Overview     </div>
-    <div class="nav-item"        onclick="showSection('landlord')">  <span class="icon">🏠</span> Landlord     </div>
-    <div class="nav-item"        onclick="showSection('payments')">  <span class="icon">💳</span> Sub Payments </div>
+    <div class="nav-item active" onclick="showSection('overview')">
+      <span class="icon">📊</span> Overview
+    </div>
+    <div class="nav-item" onclick="showSection('landlords')">
+      <span class="icon">🏠</span> All Landlords
+      <span class="nav-badge nav-badge-red" id="landlordsBadge" style="display:none">0</span>
+    </div>
 
-    <div class="nav-section">Plans</div>
-    <div class="nav-item"        onclick="showSection('plans')">     <span class="icon">📦</span> Manage Plans </div>
+    <div class="nav-section">Listings</div>
+    <div class="nav-item" onclick="showSection('listings')">
+      <span class="icon">🏡</span> Property Listings
+      <span class="nav-badge nav-badge-amber" id="listingsBadge" style="display:none">0</span>
+    </div>
+    <div class="nav-item" onclick="showSection('inquiries')">
+      <span class="icon">📩</span> Inquiries
+      <span class="nav-badge nav-badge-cyan" id="inquiriesBadge" style="display:none">0</span>
+    </div>
 
-    <div class="nav-section">Control</div>
-    <div class="nav-item"        onclick="showSection('controls')">  <span class="icon">🎛️</span> Controls     </div>
-    <div class="nav-item"        onclick="showSection('danger')">    <span class="icon">⚠️</span> Danger Zone  </div>
+    <div class="nav-section">Billing</div>
+    <div class="nav-item" onclick="showSection('payments')">
+      <span class="icon">💳</span> Sub Payments
+    </div>
+    <div class="nav-item" onclick="showSection('plans')">
+      <span class="icon">📦</span> Manage Plans
+    </div>
   </nav>
 
   <div class="sidebar-footer">
@@ -594,8 +635,19 @@
 <main class="main" id="mainApp" style="display:none">
 
   <div class="topbar">
-    <span class="topbar-title" id="topbarTitle">Overview</span>
+    <div class="topbar-left">
+      <button class="hamburger" onclick="toggleSidebar()" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+      <span class="topbar-title" id="topbarTitle">Overview</span>
+    </div>
     <div class="topbar-right">
+      <!-- Pending listings alert — visible when count > 0 -->
+      <div class="topbar-alert" id="topbarPendingAlert" onclick="showSection('listings')">
+        <span class="topbar-alert-dot"></span>
+        <span class="topbar-alert-text"><span id="topbarPendingCount">0</span> pending approval</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:0.6rem;color:var(--amber)">→</span>
+      </div>
       <span class="stacklord-chip">⚡ Stacklord</span>
     </div>
   </div>
@@ -607,6 +659,16 @@
       <button class="btn btn-secondary btn-sm" onclick="loadOverview()">↻ Refresh</button>
     </div>
 
+    <!-- Pending listings alert -->
+    <div class="pending-listings-alert" id="pendingListingsAlert" onclick="showSection('listings')">
+      <span class="pla-icon">⚠️</span>
+      <div class="pla-body">
+        <div class="pla-count" id="overviewPendingCount">0</div>
+        <div class="pla-label">Properties pending listing approval — click to review</div>
+      </div>
+      <button class="btn btn-warn btn-sm">Review Now →</button>
+    </div>
+
     <div class="stats-grid">
       <div class="stat-card">
         <div class="stat-label">💰 Total Revenue</div>
@@ -614,67 +676,216 @@
         <div class="stat-sub">Ksh subscription income</div>
       </div>
       <div class="stat-card">
+        <div class="stat-label">🏠 Landlords</div>
+        <div class="stat-value" id="statLandlords">0</div>
+        <div class="stat-sub">Registered accounts</div>
+      </div>
+      <div class="stat-card">
         <div class="stat-label">👥 Total Tenants</div>
         <div class="stat-value" id="statTenants">0</div>
-        <div class="stat-sub">Registered on platform</div>
+        <div class="stat-sub">Across all landlords</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">🏡 Total Houses</div>
         <div class="stat-value" id="statHouses">0</div>
-        <div class="stat-sub">Listed properties</div>
+        <div class="stat-sub">Listed units</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">📋 Sub Payments</div>
         <div class="stat-value" id="statSubPayments">0</div>
-        <div class="stat-sub">Total transactions</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">⏳ Days Remaining</div>
-        <div class="stat-value" id="statDays" style="color:var(--cyan)">—</div>
-        <div class="stat-sub">Landlord subscription</div>
+        <div class="stat-sub">Paid transactions</div>
       </div>
     </div>
 
-    <!-- Landlord subscription quick view -->
+    <div class="grid-2 mb-3">
+      <!-- Status breakdown -->
+      <div class="card">
+        <div class="card-title">Landlords by Subscription Status</div>
+        <div id="statusBreakdown" class="status-breakdown">
+          <div style="color:var(--text-dim);font-size:0.8rem">Loading…</div>
+        </div>
+      </div>
+
+      <!-- Quick stats -->
+      <div class="card">
+        <div class="card-title">Listings at a Glance</div>
+        <div style="display:flex;flex-direction:column;gap:0.75rem">
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.82rem">
+            <span style="color:var(--text-muted)">Pending approval</span>
+            <span class="pill pill-yellow" id="overviewPendingBadge">—</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.82rem">
+            <span style="color:var(--text-muted)">Live &amp; approved</span>
+            <span class="pill pill-green" id="overviewApprovedBadge">—</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.82rem">
+            <span style="color:var(--text-muted)">Total inquiries</span>
+            <span class="pill pill-cyan" id="overviewInquiriesBadge">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Attention list -->
     <div class="card">
-      <div class="card-title">Landlord Subscription Status</div>
-      <div id="overviewSubStatus">Loading...</div>
+      <div class="card-title">Needs Attention</div>
+      <div id="attentionList"><div class="empty-state"><span class="icon">✅</span>All landlords in good standing</div></div>
     </div>
   </div>
 
-  <!-- ─── LANDLORD ─── -->
-  <div class="section" id="sec-landlord">
+  <!-- ─── ALL LANDLORDS ─── -->
+  <div class="section" id="sec-landlords">
     <div class="section-header">
-      <div class="section-title">Landlord Details</div>
-      <button class="btn btn-secondary btn-sm" onclick="loadLandlord()">↻ Refresh</button>
+      <div class="section-title">All Landlords</div>
+      <div class="flex">
+        <input type="text" id="landlordSearch" placeholder="Search name or email…" oninput="filterLandlords()" style="width:200px;margin:0">
+        <select id="landlordStatusFilter" onchange="filterLandlords()" style="width:130px;margin:0">
+          <option value="">All statuses</option>
+          <option value="trial">Trial</option>
+          <option value="active">Active</option>
+          <option value="grace">Grace</option>
+          <option value="expired">Expired</option>
+          <option value="suspended">Suspended</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" onclick="loadAllLandlords()">↻ Refresh</button>
+      </div>
+    </div>
+    <div id="landlordsGrid">
+      <div class="empty-state"><span class="icon">🏠</span>Click Refresh to load landlords</div>
+    </div>
+  </div>
+
+  <!-- ─── LANDLORD DETAIL ─── -->
+  <div class="section" id="sec-landlord-detail">
+    <div class="section-header">
+      <div class="section-title" id="detailLandlordName">Landlord Detail</div>
+      <button class="btn btn-secondary btn-sm" onclick="showSection('landlords')">← Back to All</button>
     </div>
 
-    <div class="grid-2">
-      <div class="sub-card" id="landlordSubCard">
-        <div style="color:var(--text-dim);font-size:0.8rem">Loading...</div>
+    <div class="grid-2 mb-3">
+      <div class="sub-card" id="detailSubCard">
+        <div style="color:var(--text-dim);font-size:0.8rem">Loading…</div>
       </div>
-
       <div class="card">
         <div class="card-title">Subscription Timeline</div>
         <canvas id="subChart" height="180"></canvas>
       </div>
+    </div>
+
+    <div class="grid-2 mb-3">
+      <div class="card">
+        <div class="card-title">Extend Subscription</div>
+        <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1rem;line-height:1.6">Manually add days to this landlord's subscription. Works from today or from their current expiry — whichever is later.</p>
+        <input type="hidden" id="detailLandlordId">
+        <input type="number" id="extendDays" placeholder="Number of days to add" min="1">
+        <input type="text"   id="extendNote" placeholder="Reason / note (optional)">
+        <button class="btn btn-success btn-full" onclick="extendSubscription()">✚ Extend Subscription</button>
+      </div>
+
+      <div class="danger-zone">
+        <div class="danger-zone-title">⚠️ Account Control</div>
+        <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1rem;line-height:1.6">Suspending immediately blocks this landlord's dashboard access. Tenants are NOT affected.</p>
+        <input type="text" id="suspendReason" placeholder="Suspension reason (required)" style="margin-bottom:0.6rem">
+        <button class="btn btn-danger btn-full" onclick="suspendLandlord()" style="margin-bottom:0.6rem">🔒 Suspend Landlord</button>
+        <button class="btn btn-success btn-full" onclick="unsuspendLandlord()">🔓 Restore Access</button>
+      </div>
+    </div>
+
+    <!-- Subscription payment history for this landlord -->
+    <div class="card">
+      <div class="card-title">Subscription Payment History</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Plan</th><th>Amount</th><th>M-Pesa Code</th><th>Expires</th><th>Status</th><th>Type</th></tr></thead>
+          <tbody id="detailPaymentsTable"><tr><td colspan="7"><div class="empty-state">Loading…</div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── PROPERTY LISTINGS ─── -->
+  <div class="section" id="sec-listings">
+    <div class="section-header">
+      <div class="section-title">Property Listings</div>
+      <button class="btn btn-secondary btn-sm" onclick="loadListings()">↻ Refresh</button>
+    </div>
+
+    <!-- Tab switcher -->
+    <div class="tab-row">
+      <button class="tab-btn active" id="tabPending" onclick="switchListingsTab('pending')">
+        ⏳ Pending Approval
+        <span class="tab-badge" id="pendingTabBadge" style="display:none">0</span>
+      </button>
+      <button class="tab-btn" id="tabApproved" onclick="switchListingsTab('approved')">
+        ✅ Live &amp; Approved
+      </button>
+    </div>
+
+    <!-- Pending container -->
+    <div id="listingsPendingContainer">
+      <div class="empty-state"><span class="icon">⏳</span>Loading…</div>
+    </div>
+
+    <!-- Approved container -->
+    <div id="listingsApprovedContainer" style="display:none">
+      <div class="empty-state"><span class="icon">⏳</span>Loading…</div>
+    </div>
+  </div>
+
+  <!-- ─── INQUIRIES ─── -->
+  <div class="section" id="sec-inquiries">
+    <div class="section-header">
+      <div class="section-title">All Inquiries</div>
+      <button class="btn btn-secondary btn-sm" onclick="loadInquiries(1)">↻ Refresh</button>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-row">
+      <select id="inquiryStatusFilter" onchange="loadInquiries(1)" style="width:140px;margin:0">
+        <option value="">All statuses</option>
+        <option value="new">New</option>
+        <option value="read">Read</option>
+        <option value="contacted">Contacted</option>
+        <option value="archived">Archived</option>
+      </select>
+    </div>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Property</th>
+              <th>Inquirer</th>
+              <th>Message</th>
+              <th>Landlord</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="inquiriesTable">
+            <tr><td colspan="6"><div class="empty-state">Click Refresh to load inquiries</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination" id="inquiriesPagination"></div>
     </div>
   </div>
 
   <!-- ─── SUBSCRIPTION PAYMENTS ─── -->
   <div class="section" id="sec-payments">
     <div class="section-header">
-      <div class="section-title">Subscription Payments</div>
+      <div class="section-title">All Subscription Payments</div>
       <button class="btn btn-secondary btn-sm" onclick="loadSubPayments()">↻ Refresh</button>
     </div>
     <div class="card">
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Date</th><th>Plan</th><th>Amount</th><th>M-Pesa Code</th><th>Expires</th><th>Status</th><th>Type</th></tr>
+            <tr><th>Date</th><th>Landlord</th><th>Plan</th><th>Amount</th><th>M-Pesa Code</th><th>Expires</th><th>Status</th><th>Type</th></tr>
           </thead>
           <tbody id="paymentsTable">
-            <tr><td colspan="7"><div class="empty-state">Click Refresh to load payments</div></td></tr>
+            <tr><td colspan="8"><div class="empty-state">Click Refresh to load payments</div></td></tr>
           </tbody>
         </table>
       </div>
@@ -687,60 +898,8 @@
       <div class="section-title">Subscription Plans</div>
       <button class="btn btn-primary btn-sm" onclick="openModal('modal-plan')">＋ New Plan</button>
     </div>
-
     <div class="plans-grid" id="plansGrid">
       <div class="empty-state" style="grid-column:1/-1"><span class="icon">📦</span>No plans yet — create one</div>
-    </div>
-  </div>
-
-  <!-- ─── CONTROLS ─── -->
-  <div class="section" id="sec-controls">
-    <div class="section-header">
-      <div class="section-title">Subscription Controls</div>
-    </div>
-
-    <div class="grid-2">
-      <!-- Extend subscription -->
-      <div class="card">
-        <div class="card-title">Extend Subscription</div>
-        <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1rem;line-height:1.6">
-          Manually add days to the landlord's subscription. Use this for compensation or testing.
-        </p>
-        <input type="number" id="extendDays" placeholder="Number of days to add" min="1">
-        <input type="text"   id="extendNote" placeholder="Reason / note (optional)">
-        <button class="btn btn-success btn-full" onclick="extendSubscription()">✚ Extend Subscription</button>
-      </div>
-
-      <!-- Subscription info -->
-      <div class="card">
-        <div class="card-title">Current Status</div>
-        <div id="controlsSubInfo">Loading...</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ─── DANGER ZONE ─── -->
-  <div class="section" id="sec-danger">
-    <div class="section-header">
-      <div class="section-title">Danger Zone</div>
-    </div>
-
-    <div class="danger-zone mb-3">
-      <div class="danger-zone-title">⚠️ Suspend Landlord</div>
-      <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1rem;line-height:1.6">
-        Suspending the landlord will immediately block their access to the admin dashboard.
-        They will see a suspension message with your reason. Tenants are NOT affected.
-      </p>
-      <input type="text" id="suspendReason" placeholder="Suspension reason (required)">
-      <button class="btn btn-danger btn-full" onclick="suspendLandlord()">🔒 Suspend Landlord Access</button>
-    </div>
-
-    <div class="card">
-      <div class="card-title">Restore Access</div>
-      <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1rem;line-height:1.6">
-        Unsuspend the landlord and restore their access. Status will be restored based on their subscription expiry.
-      </p>
-      <button class="btn btn-success btn-full" onclick="unsuspendLandlord()">🔓 Restore Landlord Access</button>
     </div>
   </div>
 
@@ -748,18 +907,20 @@
 
 <!-- ═══ MODALS ═══ -->
 
-<!-- Create / Edit Plan Modal -->
+<!-- Create / Edit Plan -->
 <div class="modal-overlay" id="modal-plan">
   <div class="modal">
     <div class="modal-header">
       <div class="modal-title" id="planModalTitle">Create Plan</div>
-      <button class="modal-close" onclick="closeModal('modal-plan')">✕</button>
+      <button class="modal-close" onclick="closeModal('modal-plan')" aria-label="Close">✕</button>
     </div>
     <input type="hidden" id="planModalId">
     <input type="text"   id="planName"        placeholder="Plan name (e.g. Basic, Pro) *">
     <input type="number" id="planPrice"       placeholder="Price in Ksh *" min="1">
     <input type="number" id="planDuration"    placeholder="Duration in days (e.g. 30) *" min="1">
-    <textarea            id="planDescription" placeholder="Short description (optional)" style="min-height:60px"></textarea>
+    <input type="number" id="planMaxProps"    placeholder="Max properties (-1 = unlimited, default 1)" value="1">
+    <input type="number" id="planMaxTenants"  placeholder="Max tenants per property (-1 = unlimited)" value="20">
+    <textarea  id="planDescription" placeholder="Short description (optional)" style="min-height:60px"></textarea>
     <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--text-dim);margin-bottom:0.4rem;letter-spacing:0.1em">FEATURES (one per line)</div>
     <textarea id="planFeatures" placeholder="Unlimited tenants&#10;M-Pesa integration&#10;Email receipts" style="min-height:80px"></textarea>
     <input type="number" id="planSortOrder" placeholder="Sort order (0 = first)" min="0" value="0">
@@ -769,7 +930,7 @@
 
 <div id="toast"></div>
 
-<script src="config.js"></script>
+<script src="config.js" onerror="void 0"></script>
 <script src="stacklord.js"></script>
 </body>
 </html>

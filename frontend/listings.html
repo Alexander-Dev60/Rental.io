@@ -1,0 +1,1665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="./public/favicon.svg">
+  <title>Browse Properties — Affordable Rentals</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    /* ══════════════════════════════
+       THEME TOKENS — system adaptive
+    ══════════════════════════════ */
+    :root {
+      --bg: #0b1220;
+      --card: rgba(255,255,255,.08);
+      --card-hover: rgba(255,255,255,.12);
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --muted2: #4a6382;
+      --primary: #60a5fa;
+      --accent: #818cf8;
+      --success: #4ade80;
+      --error: #f87171;
+      --gold: #c8a96e;
+      --gold-lt: #e8c98a;
+      --gold-dim: rgba(200,169,110,.14);
+      --border: rgba(255,255,255,.08);
+      --border2: rgba(255,255,255,.16);
+      --input-bg: rgba(0,0,0,.22);
+      --toast-bg: rgba(15,23,42,.97);
+      --overlay-a: rgba(0,0,0,.72);
+      --overlay-b: rgba(0,0,0,.28);
+      --img-filter: blur(4px) brightness(.38);
+      --topbar-bg: rgba(11,18,32,.88);
+      --modal-bg: rgba(11,18,32,.97);
+      --skeleton-a: rgba(255,255,255,.03);
+      --skeleton-b: rgba(255,255,255,.07);
+      --font-d: 'DM Serif Display', Georgia, serif;
+      --font-s: 'DM Sans', sans-serif;
+      --font-m: 'Space Mono', monospace;
+      --ease: cubic-bezier(.4,0,.2,1);
+      --spring: cubic-bezier(.34,1.56,.64,1);
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #eef2f7;
+        --card: rgba(255,255,255,.62);
+        --card-hover: rgba(255,255,255,.82);
+        --text: #0f172a;
+        --muted: #64748b;
+        --muted2: #94a3b8;
+        --primary: #2563eb;
+        --accent: #6366f1;
+        --success: #16a34a;
+        --error: #dc2626;
+        --gold: #92660a;
+        --gold-lt: #b07e1e;
+        --gold-dim: rgba(146,102,10,.1);
+        --border: rgba(0,0,0,.07);
+        --border2: rgba(0,0,0,.14);
+        --input-bg: rgba(255,255,255,.7);
+        --toast-bg: rgba(255,255,255,.98);
+        --overlay-a: rgba(220,232,248,.6);
+        --overlay-b: rgba(220,232,248,.15);
+        --img-filter: blur(4px) brightness(.72);
+        --topbar-bg: rgba(238,242,247,.9);
+        --modal-bg: rgba(238,242,247,.98);
+        --skeleton-a: rgba(0,0,0,.04);
+        --skeleton-b: rgba(0,0,0,.08);
+      }
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font-s);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── BG SLIDESHOW ── */
+    .bg { position: fixed; inset: 0; z-index: -2; }
+    .bg img {
+      position: absolute; width: 100%; height: 100%;
+      object-fit: cover; opacity: 0;
+      transition: opacity 1.6s ease;
+      filter: var(--img-filter);
+    }
+    .bg img.active { opacity: 1; }
+    .overlay {
+      position: fixed; inset: 0; z-index: -1;
+      background: linear-gradient(130deg, var(--overlay-a), var(--overlay-b));
+    }
+
+    /* ── TOPBAR ── */
+    .topbar {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--topbar-bg);
+      backdrop-filter: blur(22px) saturate(1.4);
+      -webkit-backdrop-filter: blur(22px) saturate(1.4);
+      border-bottom: 1px solid var(--border2);
+      padding: 0 1.5rem; height: 60px;
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    }
+    .topbar::after {
+      content: '';
+      position: absolute; bottom: 0; left: 8%; right: 8%; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--primary), transparent);
+      opacity: .18;
+    }
+    .site-logo {
+      display: flex; align-items: center; gap: 9px;
+      text-decoration: none; flex-shrink: 0;
+    }
+    .site-logo-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    }
+    .site-logo-icon svg { width: 18px; height: 18px; }
+    .site-logo-name {
+      font-family: var(--font-m); font-size: .58rem; font-weight: 700;
+      letter-spacing: .18em; text-transform: uppercase;
+      color: var(--primary); opacity: .82;
+    }
+    @media (max-width: 400px) { .site-logo-name { display: none; } }
+    .topbar-actions { display: flex; align-items: center; gap: 8px; }
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border2); border-radius: 8px;
+      color: var(--muted); font-family: var(--font-s); font-size: .75rem; font-weight: 500;
+      padding: 6px 14px; cursor: pointer; text-decoration: none;
+      transition: all .2s;
+    }
+    .btn-ghost:hover { color: var(--text); border-color: var(--primary); }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border: none; border-radius: 8px; color: #fff;
+      font-family: var(--font-s); font-size: .75rem; font-weight: 500;
+      padding: 6px 16px; cursor: pointer; text-decoration: none;
+      box-shadow: 0 2px 16px rgba(96,165,250,.3);
+      transition: opacity .2s, transform .15s; white-space: nowrap;
+    }
+    .btn-primary:hover { opacity: .9; transform: translateY(-1px); }
+    @media (max-width: 480px) { .btn-ghost { display: none; } }
+
+    /* ── LANDLORD STRIP ── */
+    .landlord-strip {
+      position: relative; z-index: 1;
+      max-width: 980px; margin: 20px auto 0; padding: 0 20px;
+    }
+    .landlord-strip-inner {
+      display: flex; align-items: center; gap: 14px;
+      background: rgba(96,165,250,.07);
+      border: 1px solid rgba(96,165,250,.18);
+      border-radius: 12px; padding: 13px 18px; flex-wrap: wrap;
+    }
+    .strip-text { flex: 1; font-size: .82rem; color: var(--muted); line-height: 1.5; min-width: 180px; }
+    .strip-text strong { color: var(--text); font-weight: 600; }
+    .strip-badge {
+      display: inline-flex; align-items: center;
+      background: rgba(74,222,128,.1); border: 1px solid rgba(74,222,128,.25);
+      border-radius: 99px; padding: 2px 9px;
+      font-family: var(--font-m); font-size: .52rem; letter-spacing: .1em;
+      color: var(--success); margin-left: 6px; white-space: nowrap;
+    }
+    @media (max-width: 520px) { .landlord-strip-inner { flex-direction: column; text-align: center; } }
+
+    /* ── PAGE HERO ── */
+    .page-hero {
+      position: relative; z-index: 1;
+      padding: clamp(1.8rem,5vw,3rem) 1.5rem 1rem;
+      text-align: center; max-width: 680px; margin: 0 auto;
+    }
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: 7px;
+      font-family: var(--font-m); font-size: .58rem;
+      letter-spacing: .22em; text-transform: uppercase;
+      color: var(--gold); opacity: .8; margin-bottom: 12px;
+    }
+    .hero-eyebrow-dot {
+      width: 5px; height: 5px; border-radius: 50%; background: var(--gold);
+      animation: blink 2.4s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.75)} }
+    .hero-title {
+      font-family: var(--font-d); font-style: italic;
+      font-size: clamp(1.75rem,5vw,2.8rem); font-weight: 400;
+      line-height: 1.1; color: var(--text); margin-bottom: 10px;
+    }
+    .hero-title em { color: var(--gold); }
+    .hero-subtitle { font-size: .86rem; color: var(--muted); line-height: 1.7; }
+
+    /* ── STATS BAR ── */
+    .stats-bar {
+      position: relative; z-index: 1;
+      display: flex; justify-content: center; gap: clamp(1.5rem,4vw,3rem);
+      flex-wrap: wrap; padding: 16px 1.5rem 24px;
+      max-width: 680px; margin: 0 auto;
+    }
+    .stat-item { text-align: center; }
+    .stat-num {
+      font-family: var(--font-d); font-style: italic;
+      font-size: 1.6rem; color: var(--gold); line-height: 1;
+      transition: all .4s var(--ease);
+    }
+    .stat-lbl {
+      font-family: var(--font-m); font-size: .54rem;
+      letter-spacing: .15em; text-transform: uppercase;
+      color: var(--muted2); margin-top: 3px;
+    }
+
+    /* ── FILTERS ── */
+    .filters-section {
+      position: relative; z-index: 1;
+      max-width: 980px; margin: 0 auto 24px; padding: 0 20px;
+    }
+    .filters-card {
+      background: var(--card);
+      border: 1px solid var(--border2);
+      border-radius: 18px; padding: 18px 22px;
+      backdrop-filter: blur(24px) saturate(1.4);
+      -webkit-backdrop-filter: blur(24px) saturate(1.4);
+      box-shadow: 0 20px 60px rgba(0,0,0,.4);
+    }
+    .filters-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto auto auto;
+      gap: 10px; align-items: end;
+    }
+    @media (max-width: 700px) {
+      .filters-row { grid-template-columns: 1fr 1fr; }
+      .filter-search, .filter-btn, .filter-available { grid-column: 1 / -1; }
+    }
+    .filter-group { display: flex; flex-direction: column; gap: 5px; }
+    .filter-label {
+      font-family: var(--font-m); font-size: .56rem;
+      letter-spacing: .14em; text-transform: uppercase; color: var(--muted2);
+    }
+    .filter-input {
+      background: var(--input-bg);
+      border: 1px solid var(--border2);
+      border-radius: 10px; color: var(--text);
+      font-family: var(--font-s); font-size: .84rem;
+      padding: 10px 14px; outline: none; width: 100%;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .filter-input::placeholder { color: var(--muted2); font-size: .8rem; }
+    .filter-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(96,165,250,.12);
+    }
+    .filter-available {
+      display: flex; align-items: center; gap: 7px;
+      cursor: pointer; padding-bottom: 10px;
+    }
+    .filter-available input[type="checkbox"] {
+      width: 15px; height: 15px;
+      accent-color: var(--primary); cursor: pointer;
+    }
+    .filter-available span {
+      font-family: var(--font-m); font-size: .55rem;
+      letter-spacing: .1em; text-transform: uppercase;
+      color: var(--muted2); white-space: nowrap;
+    }
+    .filter-btn {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border: none; border-radius: 10px; color: #fff;
+      font-family: var(--font-s); font-size: .8rem; font-weight: 500;
+      letter-spacing: .06em; padding: 10px 22px;
+      cursor: pointer; align-self: end; white-space: nowrap;
+      transition: opacity .2s, transform .15s;
+      box-shadow: 0 2px 16px rgba(96,165,250,.3);
+    }
+    .filter-btn:hover { opacity: .9; transform: translateY(-1px); }
+    .filter-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+    .active-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+    .active-filter-tag {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--gold-dim); border: 1px solid rgba(200,169,110,.22);
+      border-radius: 99px; padding: 3px 10px;
+      font-family: var(--font-m); font-size: .56rem;
+      color: var(--gold); cursor: pointer; transition: background .15s;
+    }
+    .active-filter-tag:hover { background: rgba(200,169,110,.22); }
+
+    /* ── RESULTS HEADER ── */
+    .results-header {
+      position: relative; z-index: 1;
+      max-width: 980px; margin: 0 auto 18px; padding: 0 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 1rem; flex-wrap: wrap;
+    }
+    .results-count {
+      font-family: var(--font-m); font-size: .62rem;
+      letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+    }
+    .results-count strong { color: var(--primary); }
+    .sort-select {
+      background: var(--input-bg); border: 1px solid var(--border2);
+      border-radius: 8px; color: var(--text);
+      font-family: var(--font-m); font-size: .6rem;
+      padding: 6px 12px; outline: none; cursor: pointer;
+    }
+    .sort-select option { background: #071428; }
+    @media (prefers-color-scheme: light) { .sort-select option { background: #fff; } }
+
+    /* ── SECTION DIVIDER ── */
+    .section-divider {
+      position: relative; z-index: 1;
+      max-width: 980px; margin: 0 auto 20px; padding: 0 20px;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .section-divider-line { flex: 1; height: 1px; background: var(--border2); }
+    .section-divider-label {
+      font-family: var(--font-m); font-size: .57rem;
+      letter-spacing: .18em; text-transform: uppercase;
+      color: var(--muted2); white-space: nowrap;
+    }
+
+    /* ── FEATURED CARD ── */
+    .featured-wrap {
+      position: relative; z-index: 1;
+      max-width: 980px; margin: 0 auto 20px; padding: 0 20px;
+    }
+    .featured-inner {
+      background: var(--card);
+      border: 1px solid rgba(200,169,110,.22);
+      border-radius: 20px; overflow: hidden;
+      display: grid; grid-template-columns: 340px 1fr;
+      min-height: 220px;
+      backdrop-filter: blur(24px) saturate(1.4);
+      -webkit-backdrop-filter: blur(24px) saturate(1.4);
+      box-shadow: 0 20px 60px rgba(0,0,0,.45);
+      transition: transform .28s var(--ease), box-shadow .28s var(--ease);
+      position: relative;
+    }
+    .featured-inner::before {
+      content: '';
+      position: absolute; top: 0; left: 12%; right: 12%; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+      opacity: .5; z-index: 2;
+    }
+    .featured-inner:hover { transform: translateY(-4px); box-shadow: 0 30px 80px rgba(0,0,0,.55); }
+    @media (max-width: 640px) {
+      .featured-inner { grid-template-columns: 1fr; }
+      .featured-photo { height: 200px; }
+    }
+    .featured-photo { position: relative; overflow: hidden; }
+    .featured-photo img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s var(--ease); }
+    .featured-inner:hover .featured-photo img { transform: scale(1.05); }
+    .featured-photo-placeholder {
+      width: 100%; height: 100%; min-height: 220px;
+      background: radial-gradient(ellipse at 30% 40%, rgba(20,70,160,.45) 0%, transparent 55%),
+        linear-gradient(160deg, #06102a 0%, #040c1e 100%);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .featured-initial {
+      font-family: var(--font-d); font-style: italic;
+      font-size: 6rem; color: rgba(200,169,110,.1);
+    }
+    .featured-badge {
+      position: absolute; top: 12px; left: 12px; z-index: 3;
+      font-family: var(--font-m); font-size: .52rem; letter-spacing: .1em;
+      background: var(--gold-dim); border: 1px solid rgba(200,169,110,.4);
+      color: var(--gold); padding: 3px 9px; border-radius: 4px;
+    }
+    .featured-body {
+      padding: 24px; display: flex; flex-direction: column; justify-content: center;
+    }
+    .featured-location {
+      font-family: var(--font-m); font-size: .54rem; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--gold); opacity: .8;
+      margin-bottom: 6px; display: flex; align-items: center; gap: 5px;
+    }
+    .featured-name {
+      font-family: var(--font-d); font-style: italic;
+      font-size: 1.5rem; color: var(--text); line-height: 1.15; margin-bottom: 8px;
+    }
+    .featured-desc {
+      font-size: .78rem; color: var(--muted); line-height: 1.65; margin-bottom: 12px;
+      display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+    }
+
+    /* ── LISTINGS GRID ── */
+    .listings-grid {
+      position: relative; z-index: 1;
+      max-width: 980px; margin: 0 auto;
+      padding: 0 20px 80px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+      gap: 18px;
+    }
+    @media (max-width: 640px) { .listings-grid { grid-template-columns: 1fr; } }
+
+    /* ── PROPERTY CARD ── */
+    .property-card {
+      background: var(--card);
+      border: 1px solid var(--border2);
+      border-radius: 20px; overflow: hidden;
+      backdrop-filter: blur(24px) saturate(1.4);
+      -webkit-backdrop-filter: blur(24px) saturate(1.4);
+      box-shadow: 0 8px 40px rgba(0,0,0,.38);
+      transition: transform .28s var(--ease), box-shadow .28s var(--ease), border-color .2s;
+      position: relative;
+      animation: cardReveal .5s var(--ease) both;
+    }
+    @keyframes cardReveal {
+      from { opacity:0; transform:translateY(18px) scale(.97); }
+      to   { opacity:1; transform:translateY(0) scale(1); }
+    }
+    .property-card::before {
+      content: '';
+      position: absolute; top: 0; left: 14%; right: 14%; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--primary), transparent);
+      opacity: .22; z-index: 2;
+    }
+    .property-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 22px 60px rgba(0,0,0,.5);
+      border-color: rgba(96,165,250,.3);
+    }
+    .property-card.fully-occupied { opacity: .5; }
+    .property-card.fully-occupied:hover { opacity: .78; transform: translateY(-3px); }
+
+    /* card photo */
+    .card-photo { position: relative; height: 200px; overflow: hidden; background: #050e1e; }
+    .card-photo img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s var(--ease); display: block; }
+    .property-card:hover .card-photo img { transform: scale(1.06); }
+    .card-photo-placeholder {
+      width: 100%; height: 100%;
+      background: radial-gradient(ellipse at 30% 40%, rgba(20,70,160,.4) 0%, transparent 55%),
+        linear-gradient(160deg, #06102a 0%, #040c1e 100%);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .card-photo-initial {
+      font-family: var(--font-d); font-style: italic;
+      font-size: 5rem; color: rgba(96,165,250,.1);
+    }
+    .gallery-dots {
+      position: absolute; bottom: 9px; left: 50%; transform: translateX(-50%);
+      display: flex; gap: 4px; z-index: 3;
+    }
+    .gallery-dot {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: rgba(255,255,255,.3); cursor: pointer; border: none; padding: 0;
+      transition: all .2s;
+    }
+    .gallery-dot.active { width: 14px; border-radius: 3px; background: var(--primary); }
+    .gallery-dot:hover:not(.active) { background: rgba(255,255,255,.55); }
+    .vacancy-badge {
+      position: absolute; top: 10px; right: 10px; z-index: 3;
+      font-family: var(--font-m); font-size: .52rem; letter-spacing: .07em;
+      padding: 3px 8px; border-radius: 5px;
+    }
+    .vacancy-badge.available {
+      background: rgba(96,165,250,.2); border: 1px solid rgba(96,165,250,.4); color: #93c5fd;
+    }
+    .vacancy-badge.full {
+      background: rgba(248,113,113,.12); border: 1px solid rgba(248,113,113,.3); color: #fca5a5;
+    }
+
+    /* card body */
+    .card-body { padding: 16px 18px 0; }
+    .card-location {
+      display: flex; align-items: center; gap: 4px;
+      font-family: var(--font-m); font-size: .54rem; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--gold); opacity: .8; margin-bottom: 5px;
+    }
+    .card-name {
+      font-family: var(--font-d); font-style: italic;
+      font-size: 1.15rem; color: var(--text); line-height: 1.2;
+      margin-bottom: 8px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .card-desc-short {
+      font-size: .75rem; color: var(--muted); line-height: 1.6; margin-bottom: 10px;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .card-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+    .card-chip {
+      font-family: var(--font-m); font-size: .52rem; letter-spacing: .05em;
+      padding: 3px 8px; border-radius: 4px;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .chip-rent { background: rgba(96,165,250,.12); border: 1px solid rgba(96,165,250,.25); color: #93c5fd; }
+    .chip-units { background: var(--gold-dim); border: 1px solid rgba(200,169,110,.28); color: var(--gold); }
+    .chip-full { background: rgba(248,113,113,.1); border: 1px solid rgba(248,113,113,.22); color: #fca5a5; }
+    .chip-total { background: rgba(129,140,248,.1); border: 1px solid rgba(129,140,248,.22); color: #c4b5fd; }
+
+    /* units summary row */
+    .units-summary {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 14px; margin: 0 0 0;
+      background: rgba(96,165,250,.06);
+      border-top: 1px solid var(--border);
+      font-size: .73rem; color: var(--muted); flex-wrap: wrap;
+    }
+    .units-bar-wrap { flex: 1; min-width: 80px; height: 4px; background: var(--border2); border-radius: 2px; overflow: hidden; }
+    .units-bar-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--primary), var(--accent)); transition: width .6s var(--ease); }
+    .units-summary strong { color: var(--text); }
+
+    /* card actions */
+    .card-actions {
+      border-top: 1px solid var(--border);
+      padding: 10px 14px;
+      display: flex; gap: 6px; flex-wrap: wrap;
+    }
+    .action-btn {
+      flex: 1; padding: 7px 8px;
+      border-radius: 8px; border: none; cursor: pointer;
+      font-family: var(--font-m); font-size: .56rem;
+      letter-spacing: .07em; text-transform: uppercase;
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+      transition: all .18s var(--ease); text-decoration: none; white-space: nowrap;
+    }
+    .action-call { background: rgba(74,222,128,.1); border: 1px solid rgba(74,222,128,.2); color: #4ade80; }
+    .action-call:hover { background: rgba(74,222,128,.18); border-color: rgba(74,222,128,.38); }
+    .action-wa { background: rgba(37,211,102,.1); border: 1px solid rgba(37,211,102,.2); color: #25d366; }
+    .action-wa:hover { background: rgba(37,211,102,.18); border-color: rgba(37,211,102,.38); }
+    .action-inquiry { background: rgba(96,165,250,.1); border: 1px solid rgba(96,165,250,.22); color: #93c5fd; }
+    .action-inquiry:hover { background: rgba(96,165,250,.18); border-color: rgba(96,165,250,.4); }
+    .action-view {
+      background: rgba(129,140,248,.1); border: 1px solid rgba(129,140,248,.22); color: #c4b5fd;
+      flex: 1 1 100%;
+    }
+    .action-view:hover { background: rgba(129,140,248,.18); border-color: rgba(129,140,248,.4); }
+
+    /* ── VIEW MORE MODAL ── */
+    .view-modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.65);
+      backdrop-filter: blur(8px); z-index: 400;
+      align-items: center; justify-content: center; padding: 20px;
+    }
+    .view-modal-overlay.open { display: flex; }
+    .view-modal {
+      background: var(--modal-bg);
+      border: 1px solid var(--border2);
+      border-radius: 22px;
+      width: min(600px, 100%);
+      max-height: 90dvh; overflow-y: auto;
+      box-shadow: 0 40px 100px rgba(0,0,0,.7);
+      animation: modalIn .32s var(--spring) both;
+      position: relative;
+      scrollbar-width: thin; scrollbar-color: var(--border2) transparent;
+    }
+    .view-modal::before {
+      content: '';
+      position: absolute; top: 0; left: 12%; right: 12%; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--primary), transparent);
+      opacity: .4;
+    }
+    @keyframes modalIn {
+      from { opacity:0; transform:scale(.94) translateY(14px); }
+      to   { opacity:1; transform:scale(1) translateY(0); }
+    }
+    .view-modal-photo { position: relative; height: 260px; overflow: hidden; border-radius: 22px 22px 0 0; }
+    .view-modal-photo img { width: 100%; height: 100%; object-fit: cover; }
+    .view-modal-photo-placeholder {
+      width: 100%; height: 100%;
+      background: radial-gradient(ellipse at 30% 40%, rgba(20,70,160,.45) 0%, transparent 55%),
+        linear-gradient(160deg, #06102a 0%, #040c1e 100%);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .view-modal-initial { font-family: var(--font-d); font-style: italic; font-size: 7rem; color: rgba(96,165,250,.09); }
+    .vm-close {
+      position: absolute; top: 14px; right: 14px; z-index: 5;
+      background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.15);
+      border-radius: 50%; width: 32px; height: 32px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; cursor: pointer; font-size: .9rem;
+      transition: background .2s;
+    }
+    .vm-close:hover { background: rgba(220,40,40,.6); }
+    .vm-gallery-dots {
+      position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+      display: flex; gap: 5px; z-index: 4;
+    }
+    .vm-body { padding: 22px 26px 28px; }
+    .vm-location {
+      font-family: var(--font-m); font-size: .55rem; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--gold); opacity: .8;
+      margin-bottom: 6px; display: flex; align-items: center; gap: 4px;
+    }
+    .vm-name {
+      font-family: var(--font-d); font-style: italic;
+      font-size: 1.7rem; color: var(--text); line-height: 1.15; margin-bottom: 14px;
+    }
+    .vm-units-display {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+      margin-bottom: 18px;
+    }
+    .vm-unit-box {
+      background: rgba(96,165,250,.07);
+      border: 1px solid var(--border2);
+      border-radius: 12px; padding: 14px 16px; text-align: center;
+    }
+    .vm-unit-num {
+      font-family: var(--font-d); font-style: italic;
+      font-size: 2rem; color: var(--primary); line-height: 1;
+    }
+    .vm-unit-label {
+      font-family: var(--font-m); font-size: .54rem;
+      letter-spacing: .12em; text-transform: uppercase;
+      color: var(--muted2); margin-top: 4px;
+    }
+    .vm-occupancy-bar { margin-bottom: 18px; }
+    .vm-occ-label {
+      display: flex; justify-content: space-between;
+      font-family: var(--font-m); font-size: .58rem;
+      color: var(--muted); margin-bottom: 6px;
+    }
+    .vm-occ-track { height: 6px; background: var(--border2); border-radius: 3px; overflow: hidden; }
+    .vm-occ-fill {
+      height: 100%; border-radius: 3px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      transition: width .8s var(--ease);
+    }
+    .vm-section-label {
+      font-family: var(--font-m); font-size: .57rem;
+      letter-spacing: .14em; text-transform: uppercase;
+      color: var(--muted2); margin-bottom: 8px;
+    }
+    .vm-desc {
+      font-size: .84rem; color: var(--muted); line-height: 1.75;
+      margin-bottom: 20px;
+    }
+    .vm-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 20px; }
+    .vm-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .vm-action {
+      flex: 1; padding: 11px 10px; border-radius: 10px; border: none;
+      cursor: pointer; font-family: var(--font-m); font-size: .6rem;
+      letter-spacing: .08em; text-transform: uppercase;
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+      transition: all .18s; text-decoration: none;
+    }
+
+    /* ── INQUIRY MODAL ── */
+    .inq-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.65); backdrop-filter: blur(8px);
+      z-index: 500; align-items: center; justify-content: center; padding: 20px;
+    }
+    .inq-overlay.open { display: flex; }
+    .inq-modal {
+      background: var(--modal-bg); border: 1px solid var(--border2);
+      border-radius: 22px; padding: 26px;
+      width: min(480px, 100%); max-height: 90dvh; overflow-y: auto;
+      box-shadow: 0 40px 100px rgba(0,0,0,.7);
+      animation: modalIn .32s var(--spring) both; position: relative;
+    }
+    .inq-modal::before {
+      content: '';
+      position: absolute; top: 0; left: 12%; right: 12%; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent); opacity: .45;
+    }
+    .inq-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 18px; gap: 10px; }
+    .inq-title { font-family: var(--font-d); font-style: italic; font-size: 1.3rem; color: var(--text); }
+    .inq-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1.1rem; transition: color .2s; }
+    .inq-close:hover { color: var(--error); }
+    .inq-property {
+      background: rgba(96,165,250,.06); border: 1px solid var(--border2);
+      border-radius: 10px; padding: 10px 14px; margin-bottom: 18px;
+    }
+    .inq-prop-name { font-family: var(--font-d); font-style: italic; font-size: 1rem; color: var(--text); margin-bottom: 2px; }
+    .inq-prop-loc { font-family: var(--font-m); font-size: .58rem; color: var(--gold); opacity: .8; }
+    .inq-field { margin-bottom: 12px; }
+    .inq-label {
+      display: block; font-family: var(--font-m); font-size: .56rem;
+      letter-spacing: .14em; text-transform: uppercase; color: var(--muted2); margin-bottom: 5px;
+    }
+    .inq-input {
+      width: 100%; background: var(--input-bg); border: 1px solid var(--border2);
+      border-radius: 10px; color: var(--text); font-family: var(--font-s); font-size: .86rem;
+      padding: 10px 14px; outline: none; transition: border-color .2s, box-shadow .2s;
+    }
+    .inq-input::placeholder { color: var(--muted2); font-size: .8rem; }
+    .inq-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(96,165,250,.12); }
+    textarea.inq-input { resize: vertical; min-height: 85px; }
+    .inq-submit {
+      width: 100%; margin-top: 4px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border: none; border-radius: 10px; color: #fff;
+      font-family: var(--font-s); font-size: .82rem; font-weight: 500;
+      letter-spacing: .08em; text-transform: uppercase;
+      padding: 12px; cursor: pointer;
+      transition: opacity .2s, transform .15s;
+      box-shadow: 0 4px 20px rgba(96,165,250,.35);
+    }
+    .inq-submit:hover { opacity: .9; transform: translateY(-1px); }
+    .inq-submit:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+    /* ── EMPTY / ERROR / SKELETON ── */
+    .empty-state {
+      position: relative; z-index: 1;
+      max-width: 420px; margin: 3rem auto;
+      text-align: center; padding: 3rem 2rem;
+      background: var(--card); border: 1px solid var(--border2);
+      border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,.4);
+      backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+    }
+    .empty-icon { font-size: 2.8rem; display: block; margin-bottom: 14px; }
+    .empty-title { font-family: var(--font-d); font-style: italic; font-size: 1.4rem; color: var(--text); margin-bottom: 8px; }
+    .empty-sub { font-size: .8rem; color: var(--muted); line-height: 1.7; }
+    .skeleton-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; }
+    .skeleton-photo { height: 200px; background: linear-gradient(90deg, var(--skeleton-a) 25%, var(--skeleton-b) 50%, var(--skeleton-a) 75%); background-size: 200% 100%; animation: shimmer 1.5s linear infinite; }
+    .skeleton-body { padding: 16px 18px 14px; }
+    .skeleton-line { height: 12px; border-radius: 4px; margin-bottom: 9px; background: linear-gradient(90deg, var(--skeleton-a) 25%, var(--skeleton-b) 50%, var(--skeleton-a) 75%); background-size: 200% 100%; animation: shimmer 1.5s linear infinite; }
+    .skeleton-line:nth-child(1) { width: 38%; }
+    .skeleton-line:nth-child(2) { width: 70%; height: 19px; }
+    .skeleton-line:nth-child(3) { width: 88%; }
+    .skeleton-line:nth-child(4) { width: 55%; }
+    @keyframes shimmer { to { background-position: -200% 0; } }
+
+    /* ── PAGINATION ── */
+    .pagination {
+      position: relative; z-index: 1;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 0 20px 40px;
+    }
+    .page-btn {
+      background: var(--card); border: 1px solid var(--border2);
+      border-radius: 8px; color: var(--muted);
+      font-family: var(--font-m); font-size: .6rem;
+      padding: 6px 13px; cursor: pointer; transition: all .18s;
+    }
+    .page-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .page-btn.active { background: rgba(96,165,250,.15); border-color: rgba(96,165,250,.4); color: var(--primary); }
+    .page-btn:disabled { opacity: .3; cursor: not-allowed; }
+
+    /* ── BUBBLE NOTIFICATIONS ── */
+    .bubble-container {
+      position: fixed; bottom: 100px; left: 24px;
+      z-index: 300; display: flex; flex-direction: column-reverse;
+      gap: 10px; pointer-events: none;
+    }
+    .bubble {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--card);
+      border: 1px solid var(--border2);
+      backdrop-filter: blur(18px) saturate(1.3);
+      -webkit-backdrop-filter: blur(18px) saturate(1.3);
+      border-radius: 99px;
+      padding: 9px 16px;
+      font-family: var(--font-s); font-size: .74rem;
+      color: var(--text); line-height: 1.3;
+      box-shadow: 0 8px 30px rgba(0,0,0,.35);
+      max-width: 280px; pointer-events: all;
+      animation: bubbleRise 6s ease forwards;
+      opacity: 0;
+    }
+    .bubble-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .bubble-dot.green { background: var(--success); box-shadow: 0 0 8px rgba(74,222,128,.5); }
+    .bubble-dot.blue  { background: var(--primary); box-shadow: 0 0 8px rgba(96,165,250,.5); }
+    .bubble-dot.gold  { background: var(--gold);    box-shadow: 0 0 8px rgba(200,169,110,.5); }
+    .bubble-dot.purple{ background: var(--accent);  box-shadow: 0 0 8px rgba(129,140,248,.5); }
+    .bubble strong { font-weight: 600; color: var(--text); }
+    @keyframes bubbleRise {
+      0%   { opacity: 0; transform: translateY(30px) scale(.9); }
+      10%  { opacity: 1; transform: translateY(0) scale(1); }
+      75%  { opacity: 1; transform: translateY(-40px); }
+      100% { opacity: 0; transform: translateY(-80px) scale(.95); }
+    }
+
+    /* ── TOAST ── */
+    #toast {
+      position: fixed; bottom: 28px; left: 50%;
+      transform: translateX(-50%) translateY(12px);
+      background: var(--toast-bg); border: 1px solid var(--border2);
+      border-radius: 10px; padding: 9px 18px;
+      font-family: var(--font-m); font-size: .7rem; letter-spacing: .05em; color: var(--text);
+      opacity: 0; transition: opacity .3s, transform .3s;
+      z-index: 999; pointer-events: none; white-space: nowrap;
+      backdrop-filter: blur(12px); box-shadow: 0 8px 30px rgba(0,0,0,.4);
+    }
+    #toast.show   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.error  { border-color: rgba(248,113,113,.4); color: #fca5a5; }
+    #toast.success{ border-color: rgba(74,222,128,.4);  color: #86efac; }
+
+    /* ── FOOTER ── */
+    .site-footer {
+      position: relative; z-index: 1;
+      border-top: 1px solid var(--border); padding: 20px 1.5rem 28px; text-align: center;
+    }
+    .site-footer p {
+      font-family: var(--font-m); font-size: .55rem;
+      letter-spacing: .1em; color: var(--muted2); line-height: 2.4;
+    }
+    .site-footer a { color: var(--muted); text-decoration: none; transition: color .2s; }
+    .site-footer a:hover { color: var(--primary); }
+    .footer-sep { margin: 0 8px; opacity: .3; }
+
+    @media (max-width: 480px) {
+      .card-actions { flex-wrap: wrap; }
+      .action-btn { flex: 1 1 calc(50% - 3px); }
+      .action-view { flex: 1 1 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Background -->
+  <div class="bg" id="bgEl">
+    <img class="active" src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=1400&q=80" alt="">
+    <img src="https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1400&q=80" alt="">
+    <img src="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1400&q=80" alt="">
+    <img src="https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=1400&q=80" alt="">
+    <img src="https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=1400&q=80" alt="">
+  </div>
+  <div class="overlay"></div>
+
+  <div id="toast"></div>
+  <div class="bubble-container" id="bubbleContainer"></div>
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <a href="index.html" class="site-logo">
+      <div class="site-logo-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+          <defs>
+            <linearGradient id="lg1" x1="0%" y1="100%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#2563eb"/>
+              <stop offset="60%" stop-color="#10b981"/>
+              <stop offset="100%" stop-color="#6ee7b7"/>
+            </linearGradient>
+            <filter id="glow1">
+              <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#10b981" flood-opacity="0.12"/>
+            </filter>
+          </defs>
+          <rect width="100%" height="100%" fill="#0a0c10" rx="24"/>
+          <g filter="url(#glow1)">
+            <path d="M250,90L410,210L375,210L250,116L125,210L90,210Z" fill="url(#lg1)"/>
+            <path d="M242,160L258,160L258,340L285,340L285,365L258,365L258,390L242,390Z" fill="url(#lg1)"/>
+            <path d="M250,140C275,140 295,160 295,185C295,210 275,230 250,230C225,230 205,210 205,185C205,160 225,140 250,140Z" fill="none" stroke="url(#lg1)" stroke-width="7"/>
+            <circle cx="250" cy="185" r="10" fill="#6ee7b7"/>
+            <rect x="145" y="260" width="20" height="20" rx="3" fill="#3b82f6" opacity="0.4"/>
+            <rect x="145" y="300" width="20" height="20" rx="3" fill="#3b82f6" opacity="0.4"/>
+            <rect x="335" y="260" width="20" height="20" rx="3" fill="#6ee7b7" opacity="0.4"/>
+            <rect x="335" y="300" width="20" height="20" rx="3" fill="#6ee7b7" opacity="0.4"/>
+          </g>
+        </svg>
+      </div>
+      <span class="site-logo-name">Affordable Rentals</span>
+    </a>
+    <div class="topbar-actions">
+      <a href="auth.html" class="btn-ghost">Login</a>
+      <a href="auth.html?tab=register" class="btn-primary">For Landlords →</a>
+    </div>
+  </header>
+
+  <!-- Landlord strip -->
+  <div class="landlord-strip">
+    <div class="landlord-strip-inner">
+      <span style="font-size:1.2rem;flex-shrink:0">🏠</span>
+      <p class="strip-text">
+        <strong>Are you a landlord?</strong>
+        List your properties on Affordable Rentals — tenants browse and contact you directly.
+        <span class="strip-badge">14-day free trial</span>
+      </p>
+      <a href="auth.html?tab=register" class="btn-primary" style="flex-shrink:0">Get Started Free →</a>
+    </div>
+  </div>
+
+  <!-- Page hero -->
+  <div class="page-hero">
+    <div class="hero-eyebrow">
+      <span class="hero-eyebrow-dot"></span>
+      Properties Available Now
+    </div>
+    <h1 class="hero-title">Find your next<br><em>home in Kenya.</em></h1>
+    <p class="hero-subtitle">Browse verified rental properties. No account needed — contact landlords directly via call, WhatsApp, or inquiry form.</p>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-bar">
+    <div class="stat-item">
+      <div class="stat-num" id="statListings">—</div>
+      <div class="stat-lbl">Properties Listed</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num" id="statUnits">—</div>
+      <div class="stat-lbl">Available Units</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num" id="statLocations">—</div>
+      <div class="stat-lbl">Locations</div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-section">
+    <div class="filters-card">
+      <div class="filters-row">
+        <div class="filter-group filter-search">
+          <label class="filter-label">Search Location</label>
+          <input type="text" class="filter-input" id="filterLocation"
+            placeholder="e.g. Westlands, Kilimani, Thika…"
+            onkeydown="if(event.key==='Enter') applyFilters()">
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Min Rent (Ksh)</label>
+          <input type="number" class="filter-input" id="filterMinRent"
+            placeholder="e.g. 10000" style="max-width:128px"
+            onkeydown="if(event.key==='Enter') applyFilters()">
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Max Rent (Ksh)</label>
+          <input type="number" class="filter-input" id="filterMaxRent"
+            placeholder="e.g. 30000" style="max-width:128px"
+            onkeydown="if(event.key==='Enter') applyFilters()">
+        </div>
+        <label class="filter-available">
+          <input type="checkbox" id="filterAvailable" onchange="applyFilters()">
+          <span>Available only</span>
+        </label>
+        <button class="filter-btn" id="searchBtn" onclick="applyFilters()">Search</button>
+      </div>
+      <div class="active-filters" id="activeFilters" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <div id="mainContent"></div>
+
+  <!-- Pagination -->
+  <div class="pagination" id="pagination" style="display:none"></div>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <p>&copy; 2026 Affordable Rentals. All rights reserved.</p>
+    <p>
+      <a href="index.html">Home</a>
+      <span class="footer-sep">·</span>
+      <a href="auth.html">Landlord Login / Register</a>
+      <span class="footer-sep">·</span>
+      <a href="terms.html">Terms</a>
+      <span class="footer-sep">·</span>
+      <a href="privacy.html">Privacy</a>
+    </p>
+  </footer>
+
+  <!-- View More Modal -->
+  <div class="view-modal-overlay" id="viewModal">
+    <div class="view-modal" id="viewModalInner">
+      <!-- injected dynamically -->
+    </div>
+  </div>
+
+  <!-- Inquiry Modal -->
+  <div class="inq-overlay" id="inquiryModal">
+    <div class="inq-modal">
+      <div class="inq-header">
+        <div class="inq-title">Send an Inquiry</div>
+        <button class="inq-close" onclick="closeInquiry()" aria-label="Close">✕</button>
+      </div>
+      <div class="inq-property">
+        <div class="inq-prop-name" id="inqPropName">—</div>
+        <div class="inq-prop-loc"  id="inqPropLoc">—</div>
+      </div>
+      <div id="inqFormBody">
+        <div class="inq-field">
+          <label class="inq-label" for="inqName">Your Name</label>
+          <input type="text" class="inq-input" id="inqName" placeholder="Full name">
+        </div>
+        <div class="inq-field">
+          <label class="inq-label" for="inqPhone">Phone Number</label>
+          <input type="tel" class="inq-input" id="inqPhone" placeholder="07XX XXX XXX">
+        </div>
+        <div class="inq-field">
+          <label class="inq-label" for="inqEmail">Email <span style="opacity:.5;font-size:.9em">(optional)</span></label>
+          <input type="email" class="inq-input" id="inqEmail" placeholder="you@example.com">
+        </div>
+        <div class="inq-field">
+          <label class="inq-label" for="inqMsg">Message</label>
+          <textarea class="inq-input" id="inqMsg" placeholder="I'm interested in viewing this property…"></textarea>
+        </div>
+        <button class="inq-submit" id="inqSubmitBtn" onclick="submitInquiry()">Send Inquiry</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js" onerror="void 0"></script>
+  <script>
+    // ── CONFIG ──
+    const API_BASE = (window.API) || 'http://localhost:3000';
+
+    // ── BG SLIDESHOW ──
+    const bgImgs = document.querySelectorAll('.bg img');
+    let bgIdx = 0;
+    setInterval(() => {
+      bgImgs[bgIdx].classList.remove('active');
+      bgIdx = (bgIdx + 1) % bgImgs.length;
+      bgImgs[bgIdx].classList.add('active');
+    }, 5000);
+
+    // ── STATE ──
+    let _all = [], _filtered = [], _currentPage = 1;
+    const PAGE_SIZE = 9;
+    let _activeFilters = {}, _sortMode = 'newest';
+    let _inquiryPropId = null;
+    const _galleryState = {}, _galleryTimers = {};
+    const GALLERY_INTERVAL = 3500, GALLERY_PAUSE = 6000;
+
+    // ════════════
+    // TOAST
+    // ════════════
+    function showToast(msg, type = '') {
+      const t = document.getElementById('toast');
+      t.textContent = msg; t.className = 'show ' + type;
+      clearTimeout(t._timer);
+      t._timer = setTimeout(() => { t.className = ''; }, 3400);
+    }
+
+    // ════════════════════════════════════════
+    // BUBBLE NOTIFICATIONS
+    // ════════════════════════════════════════
+    const BUBBLE_EVENTS = [
+      { text: (names) => `Tenant registered in <strong>${names[0]}</strong>`, dot: 'green' },
+      { text: (names) => `New listing: <strong>${names[1]}</strong>`, dot: 'blue' },
+      { text: (names) => `Payment received at <strong>${names[0]}</strong>`, dot: 'gold' },
+      { text: (names) => `Inquiry sent to <strong>${names[1] || names[0]}</strong>`, dot: 'purple' },
+      { text: (names) => `Unit vacated at <strong>${names[0]}</strong>`, dot: 'gold' },
+      { text: (names) => `New tenant inquiry for <strong>${names[1] || names[0]}</strong>`, dot: 'blue' },
+      { text: (names) => `Rent reminder sent — <strong>${names[0]}</strong>`, dot: 'purple' },
+      { text: (names) => `Lease renewed at <strong>${names[0]}</strong>`, dot: 'green' },
+    ];
+
+    let _bubbleNames = ['Sunrise Apartments', 'GreenView Estate', 'Palm Court', 'Blue Ridge Flats', 'Westlands Heights'];
+
+    function spawnBubble() {
+      if (_all.length) {
+        _bubbleNames = _all.map(p => p.name).filter(Boolean);
+      }
+      if (!_bubbleNames.length) return;
+
+      const event = BUBBLE_EVENTS[Math.floor(Math.random() * BUBBLE_EVENTS.length)];
+      const shuffled = [..._bubbleNames].sort(() => Math.random() - .5);
+      const html = event.text(shuffled);
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.innerHTML = `<span class="bubble-dot ${event.dot}"></span><span>${html}</span>`;
+      document.getElementById('bubbleContainer').appendChild(bubble);
+
+      // Remove after animation completes
+      setTimeout(() => bubble.remove(), 6200);
+    }
+
+    // Spawn bubbles at random intervals between 5s and 14s
+    function scheduleBubble() {
+      const delay = 5000 + Math.random() * 9000;
+      setTimeout(() => { spawnBubble(); scheduleBubble(); }, delay);
+    }
+    setTimeout(scheduleBubble, 3000); // first bubble after 3s
+
+    // ════════════════════════
+    // FETCH LISTINGS
+    // ════════════════════════
+    async function fetchListings(params = {}) {
+      const btn = document.getElementById('searchBtn');
+      if (btn) { btn.disabled = true; btn.textContent = '…'; }
+      showSkeletons();
+      try {
+        const qs = new URLSearchParams();
+        if (params.location) qs.set('location', params.location);
+        if (params.minRent)  qs.set('minRent',  params.minRent);
+        if (params.maxRent)  qs.set('maxRent',  params.maxRent);
+        const url = `${API_BASE}/public/listings${qs.toString() ? '?' + qs.toString() : ''}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        return Array.isArray(data) ? data : [];
+      } catch (err) {
+        console.error('fetchListings:', err.message);
+        showError(); return [];
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Search'; }
+      }
+    }
+
+    // ════════════
+    // FILTERS
+    // ════════════
+    function applyFilters() {
+      const location      = document.getElementById('filterLocation').value.trim();
+      const minRent       = document.getElementById('filterMinRent').value.trim();
+      const maxRent       = document.getElementById('filterMaxRent').value.trim();
+      const availableOnly = document.getElementById('filterAvailable').checked;
+      _activeFilters = {};
+      if (location)      _activeFilters.location      = location;
+      if (minRent)       _activeFilters.minRent        = minRent;
+      if (maxRent)       _activeFilters.maxRent        = maxRent;
+      if (availableOnly) _activeFilters.availableOnly  = true;
+      renderActiveFilterTags();
+      _currentPage = 1;
+      fetchListings(_activeFilters).then(data => {
+        _all = data; _filtered = sortAndFilter(data);
+        updateStats(data); renderPage();
+      });
+    }
+
+    function clearFilter(key) {
+      delete _activeFilters[key];
+      if (key === 'location')      document.getElementById('filterLocation').value    = '';
+      if (key === 'minRent')       document.getElementById('filterMinRent').value     = '';
+      if (key === 'maxRent')       document.getElementById('filterMaxRent').value     = '';
+      if (key === 'availableOnly') document.getElementById('filterAvailable').checked = false;
+      renderActiveFilterTags(); applyFilters();
+    }
+
+    function renderActiveFilterTags() {
+      const c = document.getElementById('activeFilters');
+      const tags = Object.entries(_activeFilters);
+      if (!tags.length) { c.style.display = 'none'; c.innerHTML = ''; return; }
+      c.style.display = 'flex';
+      c.innerHTML = tags.map(([k, v]) => {
+        const label =
+          k === 'location'      ? `📍 ${v}` :
+          k === 'minRent'       ? `Min: Ksh ${Number(v).toLocaleString()}` :
+          k === 'maxRent'       ? `Max: Ksh ${Number(v).toLocaleString()}` :
+          k === 'availableOnly' ? `✓ Available only` : v;
+        return `<span class="active-filter-tag" onclick="clearFilter('${k}')"><span>${label}</span> ✕</span>`;
+      }).join('');
+    }
+
+    // ════════════════
+    // SORT + FILTER
+    // ════════════════
+    function sortAndFilter(data) {
+      let copy = [...data];
+      if (_activeFilters.availableOnly) copy = copy.filter(p => (p.vacantCount||0) > 0);
+      copy.sort((a, b) => {
+        const aF = (a.vacantCount||0) === 0 ? 1 : 0;
+        const bF = (b.vacantCount||0) === 0 ? 1 : 0;
+        if (aF !== bF) return aF - bF;
+        if (_sortMode === 'newest')    return new Date(b.createdAt||0) - new Date(a.createdAt||0);
+        if (_sortMode === 'units')     return (b.vacantCount||0) - (a.vacantCount||0);
+        if (_sortMode === 'rent-asc')  return (a.rentRange?.min||0) - (b.rentRange?.min||0);
+        if (_sortMode === 'rent-desc') return (b.rentRange?.max||0) - (a.rentRange?.max||0);
+        return 0;
+      });
+      return copy;
+    }
+
+    function changeSort(val) {
+      _sortMode = val; _filtered = sortAndFilter(_all); _currentPage = 1; renderPage();
+    }
+
+    // ════════
+    // STATS
+    // ════════
+    function updateStats(data) {
+      document.getElementById('statListings').textContent  = data.length;
+      document.getElementById('statUnits').textContent     = data.reduce((s,p) => s + (p.vacantCount||0), 0);
+      const locs = new Set(data.map(p => (p.location||'').split(',')[0].trim().toLowerCase()).filter(Boolean));
+      document.getElementById('statLocations').textContent = locs.size;
+    }
+
+    // ═════════════
+    // RENDER PAGE
+    // ═════════════
+    function renderPage() {
+      Object.values(_galleryTimers).forEach(id => clearInterval(id));
+      Object.keys(_galleryTimers).forEach(k => delete _galleryTimers[k]);
+
+      const content = document.getElementById('mainContent');
+      const total   = _filtered.length;
+
+      if (!total) {
+        content.innerHTML = `
+          <div class="empty-state">
+            <span class="empty-icon">🏡</span>
+            <div class="empty-title">No properties found</div>
+            <p class="empty-sub">Try adjusting your filters or check back soon.</p>
+          </div>`;
+        document.getElementById('pagination').style.display = 'none';
+        return;
+      }
+
+      const start = (_currentPage - 1) * PAGE_SIZE;
+      const end   = Math.min(start + PAGE_SIZE, total);
+      const page  = _filtered.slice(start, end);
+
+      let featuredHtml = '';
+      if (_currentPage === 1 && !Object.keys(_activeFilters).length) {
+        const avail = _all.filter(p => (p.vacantCount||0) > 0);
+        if (avail.length) {
+          const feat = [...avail].sort((a,b) => (b.vacantCount||0) - (a.vacantCount||0))[0];
+          featuredHtml = renderFeatured(feat);
+        }
+      }
+
+      const sortHtml = `
+        <div class="results-header">
+          <div class="results-count">
+            Showing <strong>${start+1}–${end}</strong> of <strong>${total}</strong>
+            propert${total === 1 ? 'y' : 'ies'}
+            ${Object.keys(_activeFilters).length ? ' · Filtered results' : ''}
+          </div>
+          <select class="sort-select" onchange="changeSort(this.value)">
+            <option value="newest"    ${_sortMode==='newest'   ?'selected':''}>Newest first</option>
+            <option value="units"     ${_sortMode==='units'    ?'selected':''}>Most available</option>
+            <option value="rent-asc"  ${_sortMode==='rent-asc' ?'selected':''}>Rent: Low → High</option>
+            <option value="rent-desc" ${_sortMode==='rent-desc'?'selected':''}>Rent: High → Low</option>
+          </select>
+        </div>`;
+
+      const cards = page.map((p, i) => renderCard(p, i)).join('');
+
+      content.innerHTML =
+        (featuredHtml ? `
+          <div class="section-divider">
+            <div class="section-divider-line"></div>
+            <span class="section-divider-label">✦ Featured Listing</span>
+            <div class="section-divider-line"></div>
+          </div>${featuredHtml}
+          <div class="section-divider" style="margin-top:28px">
+            <div class="section-divider-line"></div>
+            <span class="section-divider-label">All Properties</span>
+            <div class="section-divider-line"></div>
+          </div>` : '')
+        + sortHtml
+        + `<div class="listings-grid">${cards}</div>`;
+
+      renderPagination(total);
+
+      const initializedIds = new Set();
+      page.forEach(p => { initGallery(p); initializedIds.add(p._id); });
+
+      if (_currentPage === 1 && !Object.keys(_activeFilters).length) {
+        const avail = _all.filter(p => (p.vacantCount||0) > 0);
+        if (avail.length) {
+          const feat = [...avail].sort((a,b) => (b.vacantCount||0) - (a.vacantCount||0))[0];
+          if (!initializedIds.has(feat._id)) initGallery(feat);
+        }
+      }
+    }
+
+    // ═════════════════
+    // FEATURED CARD
+    // ═════════════════
+    function renderFeatured(p) {
+      const hasPhoto = p.photos?.length > 0;
+      const photoHtml = hasPhoto
+        ? `<img src="${esc(p.photos[0])}" alt="${esc(p.name)}" loading="lazy" id="img-${p._id}">`
+        : `<div class="featured-photo-placeholder"><span class="featured-initial">${(p.name||'?')[0].toUpperCase()}</span></div>`;
+      const galleryDots = hasPhoto && p.photos.length > 1
+        ? `<div class="gallery-dots">${p.photos.map((_,i) =>
+            `<button class="gallery-dot ${i===0?'active':''}" onclick="goPhoto('${p._id}',${i},true)"></button>`
+          ).join('')}</div>` : '';
+      const rentStr = rentLabel(p);
+      const waHref = p.phone ? `https://wa.me/${fmtPhone(p.phone)}?text=${encodeURIComponent(`Hi, I'm interested in ${p.name}. Is a unit available?`)}` : null;
+      return `
+        <div class="featured-wrap">
+          <div class="featured-inner">
+            <div class="featured-photo">
+              ${photoHtml}${galleryDots}
+              <span class="featured-badge">✦ Featured</span>
+              <div class="vacancy-badge ${p.vacantCount>0?'available':'full'}">
+                ${p.vacantCount>0 ? p.vacantCount+' unit'+(p.vacantCount>1?'s':'')+' available' : 'Fully Occupied'}
+              </div>
+            </div>
+            <div class="featured-body">
+              <div class="featured-location">📍 ${esc(p.location||'—')}</div>
+              <div class="featured-name">${esc(p.name)}</div>
+              <div class="featured-desc">${esc(p.description||'Contact the landlord for more details.')}</div>
+              <div class="card-meta" style="margin-bottom:16px">
+                ${rentStr ? `<span class="card-chip chip-rent">💰 ${rentStr}</span>` : ''}
+                ${p.vacantCount>0 ? `<span class="card-chip chip-units">🏠 ${p.vacantCount} available</span>` : `<span class="card-chip chip-full">Fully occupied</span>`}
+                ${p.totalHouses ? `<span class="card-chip chip-total">${p.totalHouses} total units</span>` : ''}
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                ${p.phone ? `<a href="tel:${p.phone}" class="action-btn action-call">📞 Call</a>` : ''}
+                ${waHref  ? `<a href="${waHref}" target="_blank" rel="noopener" class="action-btn action-wa">💬 WhatsApp</a>` : ''}
+                <button class="action-btn action-inquiry" onclick='openInquiry(${JSON.stringify({_id:p._id,name:p.name,location:p.location})})'>✉️ Inquire</button>
+                <button class="action-btn action-view" onclick='openViewModal("${p._id}")'>🔍 View Details</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    // ═════════════════
+    // PROPERTY CARD
+    // ═════════════════
+    function renderCard(p, idx) {
+      const photos  = p.photos || [];
+      const hasPhoto = photos.length > 0;
+      const photoHtml = hasPhoto
+        ? `<img src="${esc(photos[0])}" alt="${esc(p.name)}" loading="lazy" id="img-${p._id}">`
+        : `<div class="card-photo-placeholder"><span class="card-photo-initial">${(p.name||'?')[0].toUpperCase()}</span></div>`;
+      const galleryDots = photos.length > 1
+        ? `<div class="gallery-dots">${photos.map((_,i) =>
+            `<button class="gallery-dot ${i===0?'active':''}" onclick="goPhoto('${p._id}',${i},true)"></button>`
+          ).join('')}</div>` : '';
+      const rentStr = rentLabel(p);
+      const waHref = p.phone ? `https://wa.me/${fmtPhone(p.phone)}?text=${encodeURIComponent(`Hi, I'm interested in ${p.name}. Is a unit available?`)}` : null;
+      const isFull  = (p.vacantCount||0) === 0;
+      const total   = p.totalHouses || 0;
+      const vacant  = p.vacantCount || 0;
+      const occupied = total > 0 ? total - vacant : 0;
+      const fillPct  = total > 0 ? Math.round((occupied / total) * 100) : 0;
+
+      return `
+        <div class="property-card${isFull?' fully-occupied':''}" style="animation-delay:${idx*.065}s">
+          <div class="card-photo">
+            ${photoHtml}${galleryDots}
+            <div class="vacancy-badge ${isFull?'full':'available'}">${isFull?'Fully Occupied':vacant+' available'}</div>
+          </div>
+          <div class="card-body">
+            <div class="card-location">📍 ${esc(p.location||'—')}</div>
+            <div class="card-name" title="${esc(p.name)}">${esc(p.name)}</div>
+            <div class="card-desc-short">${esc(p.description||'Contact the landlord for more details.')}</div>
+            <div class="card-meta">
+              ${rentStr ? `<span class="card-chip chip-rent">💰 ${rentStr}</span>` : ''}
+              ${!isFull ? `<span class="card-chip chip-units">🏠 ${vacant} available</span>` : `<span class="card-chip chip-full">Fully occupied</span>`}
+              ${total ? `<span class="card-chip chip-total">${total} total</span>` : ''}
+            </div>
+          </div>
+          ${total > 0 ? `
+          <div class="units-summary">
+            <span><strong>${vacant}</strong> of <strong>${total}</strong> units available</span>
+            <div class="units-bar-wrap">
+              <div class="units-bar-fill" style="width:${100 - fillPct}%"></div>
+            </div>
+            <span>${100 - fillPct}%</span>
+          </div>` : ''}
+          <div class="card-actions">
+            ${p.phone ? `<a href="tel:${p.phone}" class="action-btn action-call">📞 Call</a>` : ''}
+            ${waHref  ? `<a href="${waHref}" target="_blank" rel="noopener" class="action-btn action-wa">💬 WA</a>` : ''}
+            <button class="action-btn action-inquiry" onclick='openInquiry(${JSON.stringify({_id:p._id,name:p.name,location:p.location})})'>✉️ Inquire</button>
+            <button class="action-btn action-view" onclick='openViewModal("${p._id}")'>🔍 View More</button>
+          </div>
+        </div>`;
+    }
+
+    // ══════════════════════
+    // VIEW MORE MODAL
+    // ══════════════════════
+    function openViewModal(id) {
+      const p = _all.find(x => x._id === id);
+      if (!p) return;
+      const photos   = p.photos || [];
+      const hasPhoto = photos.length > 0;
+      const rentStr  = rentLabel(p);
+      const total    = p.totalHouses || 0;
+      const vacant   = p.vacantCount || 0;
+      const occupied = total > 0 ? total - vacant : 0;
+      const fillPct  = total > 0 ? Math.round((occupied / total) * 100) : 0;
+      const waHref   = p.phone ? `https://wa.me/${fmtPhone(p.phone)}?text=${encodeURIComponent(`Hi, I'm interested in ${p.name}. Is a unit available?`)}` : null;
+
+      const photosHtml = hasPhoto
+        ? `<img src="${esc(photos[0])}" id="vm-img-${p._id}" style="width:100%;height:100%;object-fit:cover" alt="${esc(p.name)}" loading="lazy">
+           ${photos.length > 1 ? `<div class="vm-gallery-dots">${photos.map((_,i) =>
+             `<button class="gallery-dot ${i===0?'active':''}" onclick="vmGoPhoto('${p._id}',${i})"
+               style="width:${i===0?'14px':'5px'};border-radius:${i===0?'3px':'50%'};background:${i===0?'var(--primary)':'rgba(255,255,255,.3)'}"></button>`
+           ).join('')}</div>` : ''}`
+        : `<div class="view-modal-photo-placeholder"><span class="view-modal-initial">${(p.name||'?')[0].toUpperCase()}</span></div>`;
+
+      document.getElementById('viewModalInner').innerHTML = `
+        <div class="view-modal-photo">
+          ${photosHtml}
+          <button class="vm-close" onclick="closeViewModal()">✕</button>
+          <div class="vacancy-badge ${vacant>0?'available':'full'}" style="top:12px;right:52px">
+            ${vacant>0 ? vacant+' available' : 'Fully Occupied'}
+          </div>
+        </div>
+        <div class="vm-body">
+          <div class="vm-location">📍 ${esc(p.location||'—')}</div>
+          <div class="vm-name">${esc(p.name)}</div>
+
+          <div class="vm-units-display">
+            <div class="vm-unit-box">
+              <div class="vm-unit-num">${total || '—'}</div>
+              <div class="vm-unit-label">Total Units</div>
+            </div>
+            <div class="vm-unit-box" style="border-color:rgba(96,165,250,.25);background:rgba(96,165,250,.07)">
+              <div class="vm-unit-num" style="color:var(--primary)">${vacant}</div>
+              <div class="vm-unit-label">Available Now</div>
+            </div>
+          </div>
+
+          ${total > 0 ? `
+          <div class="vm-occupancy-bar">
+            <div class="vm-occ-label">
+              <span>Occupancy</span>
+              <span>${fillPct}% occupied (${occupied} of ${total} units)</span>
+            </div>
+            <div class="vm-occ-track">
+              <div class="vm-occ-fill" style="width:${fillPct}%"></div>
+            </div>
+          </div>` : ''}
+
+          <div class="vm-section-label">About this property</div>
+          <div class="vm-desc">${esc(p.description || 'No description provided. Contact the landlord directly for more information about this property.')}</div>
+
+          <div class="vm-chips">
+            ${rentStr ? `<span class="card-chip chip-rent" style="font-size:.65rem;padding:4px 10px">💰 ${rentStr}</span>` : ''}
+            ${vacant>0 ? `<span class="card-chip chip-units" style="font-size:.65rem;padding:4px 10px">🏠 ${vacant} unit${vacant>1?'s':''} available</span>` : `<span class="card-chip chip-full" style="font-size:.65rem;padding:4px 10px">Fully Occupied</span>`}
+            ${total ? `<span class="card-chip chip-total" style="font-size:.65rem;padding:4px 10px">${total} units total</span>` : ''}
+            ${p.phone ? `<span class="card-chip" style="background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.2);color:#4ade80;font-size:.65rem;padding:4px 10px">📞 ${esc(p.phone)}</span>` : ''}
+          </div>
+
+          <div class="vm-actions">
+            ${p.phone ? `<a href="tel:${p.phone}" class="vm-action action-call">📞 Call Landlord</a>` : ''}
+            ${waHref  ? `<a href="${waHref}" target="_blank" rel="noopener" class="vm-action action-wa">💬 WhatsApp</a>` : ''}
+            <button class="vm-action action-inquiry" onclick='closeViewModal();openInquiry(${JSON.stringify({_id:p._id,name:p.name,location:p.location})})'>✉️ Send Inquiry</button>
+          </div>
+        </div>`;
+
+      document.getElementById('viewModal').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeViewModal() {
+      document.getElementById('viewModal').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    let _vmPhotoStates = {};
+    function vmGoPhoto(id, idx) {
+      const p = _all.find(x => x._id === id); if (!p || !p.photos) return;
+      _vmPhotoStates[id] = idx;
+      const img = document.getElementById(`vm-img-${id}`);
+      if (img) {
+        img.style.opacity = '0'; img.style.transition = 'opacity .2s';
+        setTimeout(() => {
+          img.src = p.photos[idx];
+          img.onload = () => { img.style.opacity = '1'; };
+          if (img.complete) img.style.opacity = '1';
+        }, 120);
+      }
+      const modal = document.getElementById('viewModalInner');
+      if (modal) {
+        modal.querySelectorAll('.vm-gallery-dots .gallery-dot').forEach((d, i) => {
+          d.classList.toggle('active', i === idx);
+          d.style.width = i === idx ? '14px' : '5px';
+          d.style.borderRadius = i === idx ? '3px' : '50%';
+          d.style.background = i === idx ? 'var(--primary)' : 'rgba(255,255,255,.3)';
+        });
+      }
+    }
+
+    // close on backdrop
+    document.getElementById('viewModal').addEventListener('click', function(e) {
+      if (e.target === this) closeViewModal();
+    });
+
+    // ════════════════════
+    // GALLERY (cards)
+    // ════════════════════
+    function initGallery(p) {
+      if (!p.photos || p.photos.length <= 1) return;
+      _galleryState[p._id] = 0;
+      _galleryTimers[p._id] = setInterval(() => {
+        const next = (_galleryState[p._id] + 1) % p.photos.length;
+        goPhoto(p._id, next);
+      }, GALLERY_INTERVAL);
+    }
+
+    function goPhoto(propertyId, idx, manual) {
+      const p = _all.find(x => x._id === propertyId); if (!p || !p.photos) return;
+      _galleryState[propertyId] = idx;
+      const img = document.getElementById(`img-${propertyId}`);
+      if (img) {
+        img.style.opacity = '0'; img.style.transition = 'opacity .25s';
+        setTimeout(() => {
+          img.src = p.photos[idx];
+          img.onload = () => { img.style.opacity = '1'; };
+          if (img.complete) img.style.opacity = '1';
+        }, 120);
+      }
+      const parent = img ? (img.closest('.property-card') || img.closest('.featured-inner')) : null;
+      if (parent) {
+        parent.querySelectorAll('.gallery-dot').forEach((d, i) => d.classList.toggle('active', i === idx));
+      }
+      if (manual && _galleryTimers[propertyId]) {
+        clearInterval(_galleryTimers[propertyId]);
+        _galleryTimers[propertyId] = setTimeout(() => {
+          _galleryTimers[propertyId] = setInterval(() => {
+            const next = (_galleryState[propertyId] + 1) % p.photos.length;
+            goPhoto(propertyId, next);
+          }, GALLERY_INTERVAL);
+        }, GALLERY_PAUSE);
+      }
+    }
+
+    // ══════════════════
+    // INQUIRY MODAL
+    // ══════════════════
+    function openInquiry(property) {
+      _inquiryPropId = property._id;
+      document.getElementById('inqPropName').textContent = property.name || '—';
+      document.getElementById('inqPropLoc').textContent  = property.location ? `📍 ${property.location}` : '';
+      document.getElementById('inqFormBody').innerHTML = `
+        <div class="inq-field">
+          <label class="inq-label" for="inqName">Your Name</label>
+          <input type="text" class="inq-input" id="inqName" placeholder="Full name">
+        </div>
+        <div class="inq-field">
+          <label class="inq-label" for="inqPhone">Phone Number</label>
+          <input type="tel" class="inq-input" id="inqPhone" placeholder="07XX XXX XXX">
+        </div>
+        <div class="inq-field">
+          <label class="inq-label" for="inqEmail">Email <span style="opacity:.5;font-size:.9em">(optional)</span></label>
+          <input type="email" class="inq-input" id="inqEmail" placeholder="you@example.com">
+        </div>
+        <div class="inq-field">
+          <label class="inq-label" for="inqMsg">Message</label>
+          <textarea class="inq-input" id="inqMsg" placeholder="I'm interested in viewing this property…"></textarea>
+        </div>
+        <button class="inq-submit" id="inqSubmitBtn" onclick="submitInquiry()">Send Inquiry</button>`;
+      document.getElementById('inquiryModal').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeInquiry() {
+      document.getElementById('inquiryModal').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    async function submitInquiry() {
+      const name    = document.getElementById('inqName')?.value.trim();
+      const phone   = document.getElementById('inqPhone')?.value.trim();
+      const email   = document.getElementById('inqEmail')?.value.trim();
+      const message = document.getElementById('inqMsg')?.value.trim();
+      if (!name)    { showToast('Name is required', 'error'); return; }
+      if (!phone)   { showToast('Phone number is required', 'error'); return; }
+      if (phone.replace(/\s/g,'').length < 9) { showToast('Enter a valid phone number', 'error'); return; }
+      if (!message) { showToast('Please write a short message', 'error'); return; }
+      const btn = document.getElementById('inqSubmitBtn');
+      if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+      try {
+        await fetch(`${API_BASE}/public/inquiries`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ propertyId: _inquiryPropId, name, phone, email, message })
+        });
+      } catch {}
+      document.getElementById('inqFormBody').innerHTML = `
+        <div style="text-align:center;padding:2rem 0">
+          <div style="font-size:3rem;margin-bottom:14px">✅</div>
+          <div style="font-family:var(--font-d);font-style:italic;font-size:1.3rem;color:var(--success);margin-bottom:8px">Inquiry sent!</div>
+          <p style="font-size:.8rem;color:var(--muted);line-height:1.7">
+            The landlord will contact you at <strong style="color:var(--text)">${esc(phone)}</strong> shortly.
+          </p>
+          <button onclick="closeInquiry()" style="margin-top:18px;background:var(--gold-dim);border:1px solid var(--border2);color:var(--gold);font-family:var(--font-m);font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;padding:8px 20px;border-radius:8px;cursor:pointer;">Close</button>
+        </div>`;
+    }
+
+    document.getElementById('inquiryModal').addEventListener('click', function(e) { if (e.target === this) closeInquiry(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeInquiry(); closeViewModal(); } });
+
+    // ════════════════════
+    // PAGINATION
+    // ════════════════════
+    function renderPagination(total) {
+      const pg = document.getElementById('pagination');
+      const pages = Math.ceil(total / PAGE_SIZE);
+      if (pages <= 1) { pg.style.display = 'none'; return; }
+      pg.style.display = 'flex';
+      let html = `<button class="page-btn" onclick="goPage(${_currentPage-1})" ${_currentPage===1?'disabled':''}>← Prev</button>`;
+      for (let i = 1; i <= pages; i++) {
+        if (pages > 7 && i > 2 && i < pages-1 && Math.abs(i - _currentPage) > 1) {
+          if (i === 3 || i === pages-2) html += `<span style="color:var(--muted2);padding:4px;font-family:var(--font-m);font-size:.7rem">…</span>`;
+          continue;
+        }
+        html += `<button class="page-btn ${i===_currentPage?'active':''}" onclick="goPage(${i})">${i}</button>`;
+      }
+      html += `<button class="page-btn" onclick="goPage(${_currentPage+1})" ${_currentPage===pages?'disabled':''}>Next →</button>`;
+      pg.innerHTML = html;
+    }
+
+    function goPage(page) {
+      const pages = Math.ceil(_filtered.length / PAGE_SIZE);
+      if (page < 1 || page > pages) return;
+      _currentPage = page; renderPage();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ════════════
+    // UTILS
+    // ════════════
+    function esc(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    function fmtPhone(phone) {
+      if (!phone) return '';
+      const c = phone.replace(/\s+/g,'');
+      if (c.startsWith('0') && c.length === 10) return '254' + c.slice(1);
+      if (c.startsWith('+')) return c.slice(1);
+      return c;
+    }
+    function rentLabel(p) {
+      if (!p.rentRange) return '';
+      const mn = Number(p.rentRange.min).toLocaleString();
+      const mx = Number(p.rentRange.max).toLocaleString();
+      return mn === mx ? `Ksh ${mn}` : `Ksh ${mn} – ${mx}`;
+    }
+
+    // ════════════════════
+    // SKELETON / ERROR
+    // ════════════════════
+    function showSkeletons() {
+      document.getElementById('mainContent').innerHTML =
+        `<div class="listings-grid">${Array.from({length:6}, () => `
+          <div class="skeleton-card">
+            <div class="skeleton-photo"></div>
+            <div class="skeleton-body">
+              <div class="skeleton-line"></div><div class="skeleton-line"></div>
+              <div class="skeleton-line"></div><div class="skeleton-line"></div>
+            </div>
+          </div>`).join('')}</div>`;
+    }
+    function showError() {
+      document.getElementById('mainContent').innerHTML = `
+        <div class="empty-state">
+          <span class="empty-icon">⚠️</span>
+          <div class="empty-title">Couldn't load listings</div>
+          <p class="empty-sub">Check your connection and try again.</p>
+          <button onclick="initPage()" style="margin-top:18px;background:var(--primary);border:none;color:#fff;font-family:var(--font-m);font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;padding:8px 20px;border-radius:8px;cursor:pointer">↻ Retry</button>
+        </div>`;
+    }
+
+    // ════════════
+    // INIT
+    // ════════════
+    async function initPage() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlLoc    = urlParams.get('location');
+      if (urlLoc) {
+        document.getElementById('filterLocation').value = urlLoc;
+        _activeFilters.location = urlLoc;
+        renderActiveFilterTags();
+      }
+      const data = await fetchListings(_activeFilters);
+      _all = data; _filtered = sortAndFilter(data);
+      updateStats(data); renderPage();
+    }
+
+    window.addEventListener('DOMContentLoaded', initPage);
+
+    // Silent background refresh every 45s
+    setInterval(async () => {
+      try {
+        const qs = new URLSearchParams();
+        if (_activeFilters.location) qs.set('location', _activeFilters.location);
+        if (_activeFilters.minRent)  qs.set('minRent',  _activeFilters.minRent);
+        if (_activeFilters.maxRent)  qs.set('maxRent',  _activeFilters.maxRent);
+        const res   = await fetch(`${API_BASE}/public/listings${qs.toString() ? '?' + qs.toString() : ''}`);
+        if (!res.ok) return;
+        const fresh = await res.json();
+        _all = fresh; _filtered = sortAndFilter(fresh);
+        updateStats(fresh); renderPage();
+      } catch {}
+    }, 45_000);
+  </script>
+</body>
+</html>

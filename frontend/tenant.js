@@ -6,13 +6,13 @@ const API = window.API;
 
 // ─── State ───
 let _tenant   = null;
-let _payments = [];   // paid + partial only (from GET /tenant/:id)
+let _payments = [];
 let _tenantId = null;
 let _phone    = null;
 
+
 // ═══════════════════════════════════════════════════════
 // TYPING / DELETING ENGINE
-// Drives the live rotating text in the dashboard.
 // ═══════════════════════════════════════════════════════
 
 const _typers = {};
@@ -99,11 +99,22 @@ function logout() {
 }
 
 // Guard — redirect if not tenant
+// Resolves the tenant ID from the JWT regardless of which field
+// the backend uses: tenantId, id, _id, or sub.
 (function guard() {
     const p = getPayload();
     if (!p) { window.location.href = 'auth.html'; return; }
-    if (p.role === 'admin') { window.location.href = 'index.html'; return; }
-    _tenantId = p.tenantId;
+    if (p.role === 'landlord') { window.location.href = 'index.html'; return; }
+
+    // Try all common JWT ID field names
+    _tenantId = p.tenantId || p.id || p._id || p.sub || null;
+
+    if (!_tenantId) {
+        // Token valid but no recognisable ID — log which fields are present
+        console.error('JWT has no tenant ID field. Keys present:', Object.keys(p));
+        localStorage.removeItem('token');
+        window.location.href = 'auth.html';
+    }
 })();
 
 
@@ -113,7 +124,7 @@ function logout() {
 
 async function checkMaintenance() {
     try {
-        const res  = await fetch(`${API}/maintenance`);
+        const res  = await fetch(`${API}/maintenance`, { headers: authHeaders() });
         const data = await res.json();
         if (data.maintenanceMode) {
             showMaintenanceScreen(data.maintenanceMessage);
@@ -216,6 +227,139 @@ function showToast(msg, type = '') {
 
 
 // ═══════════════════════════════════════════════════════
+// PROPERTY BADGE — shows property name in header
+// ═══════════════════════════════════════════════════════
+
+function showPropertyBadge(propName) {
+    const existing = document.getElementById('headerPropertyBadge');
+    if (existing) existing.remove();
+    if (!propName) return;
+
+    const badge = document.createElement('span');
+    badge.id = 'headerPropertyBadge';
+    Object.assign(badge.style, {
+        fontFamily:    "'DM Mono', monospace",
+        fontSize:      '0.58rem',
+        letterSpacing: '0.06em',
+        background:    'var(--accent-dim)',
+        color:         'var(--accent)',
+        border:        '1px solid rgba(167,139,250,0.2)',
+        padding:       '2px 8px',
+        borderRadius:  '99px',
+        whiteSpace:    'nowrap',
+        maxWidth:      '140px',
+        overflow:      'hidden',
+        textOverflow:  'ellipsis',
+        flexShrink:    '0'
+    });
+    badge.title       = propName;
+    badge.textContent = `🏢 ${propName}`;
+
+    const headerRight = document.querySelector('.header-right');
+    const statusPill  = document.getElementById('headerStatus');
+    if (headerRight && statusPill) {
+        headerRight.insertBefore(badge, statusPill);
+    }
+}
+
+
+// ═══════════════════════════════════════════════════════
+// PASSWORD STRENGTH & MATCH INDICATORS
+// ═══════════════════════════════════════════════════════
+
+function getPasswordStrength(password) {
+    if (!password) return { score: 0, label: '', color: 'transparent', width: '0%' };
+
+    let score = 0;
+    if (password.length >= 6)           score++;
+    if (password.length >= 10)          score++;
+    if (/[A-Z]/.test(password))         score++;
+    if (/[0-9]/.test(password))         score++;
+    if (/[^A-Za-z0-9]/.test(password))  score++;
+
+    const levels = [
+        { score: 0, label: '',            color: 'transparent',  width: '0%'   },
+        { score: 1, label: 'Weak',        color: 'var(--red)',    width: '20%'  },
+        { score: 2, label: 'Fair',        color: 'var(--amber)',  width: '40%'  },
+        { score: 3, label: 'Good',        color: '#eab308',       width: '60%'  },
+        { score: 4, label: 'Strong',      color: 'var(--green)',  width: '80%'  },
+        { score: 5, label: 'Very Strong', color: '#10b981',       width: '100%' },
+    ];
+
+    return levels[Math.min(score, 5)];
+}
+
+function updatePasswordStrength() {
+    const password = document.getElementById('newPassword')?.value || '';
+    const bar      = document.getElementById('pwStrengthBar');
+    const label    = document.getElementById('pwStrengthLabel');
+    if (!bar || !label) return;
+
+    const s = getPasswordStrength(password);
+    bar.style.width      = s.width;
+    bar.style.background = s.color;
+    label.textContent    = s.label ? `Strength: ${s.label}` : '';
+    label.style.color    = s.color;
+
+    updatePasswordMatch();
+}
+
+function updatePasswordMatch() {
+    const newPw     = document.getElementById('newPassword')?.value    || '';
+    const confirm   = document.getElementById('confirmPassword')?.value || '';
+    const indicator = document.getElementById('pwMatchIndicator');
+    if (!indicator) return;
+
+    if (!confirm) { indicator.textContent = ''; return; }
+
+    if (newPw === confirm) {
+        indicator.textContent = '✓ Passwords match';
+        indicator.style.color = 'var(--green)';
+    } else {
+        indicator.textContent = '✗ Passwords don\'t match';
+        indicator.style.color = 'var(--red)';
+    }
+}
+
+function initPasswordStrength() {
+    const newPwInput   = document.getElementById('newPassword');
+    const confirmInput = document.getElementById('confirmPassword');
+    if (!newPwInput || !confirmInput)             return;
+    if (document.getElementById('pwStrengthWrap')) return;
+
+    // Strength bar injected after #newPassword's wrapper div
+    // insertAdjacentHTML('afterend') on the input exits the .pw-field-wrap,
+    // so we target the parent .pw-field-wrap instead for clean placement.
+    const newPwWrap    = newPwInput.closest('.pw-field-wrap') || newPwInput;
+    const confirmWrap  = confirmInput.closest('.pw-field-wrap') || confirmInput;
+
+    newPwWrap.insertAdjacentHTML('afterend', `
+        <div id="pwStrengthWrap" style="margin-top:-0.35rem;margin-bottom:0.62rem">
+            <div style="height:4px;background:var(--bg3);border-radius:99px;overflow:hidden;margin-bottom:0.28rem">
+                <div id="pwStrengthBar"
+                     style="height:100%;border-radius:99px;width:0%;transition:width 0.3s ease,background 0.3s ease">
+                </div>
+            </div>
+            <div id="pwStrengthLabel"
+                 style="font-family:'DM Mono',monospace;font-size:0.58rem;min-height:1em;transition:color 0.3s">
+            </div>
+        </div>
+    `);
+
+    confirmWrap.insertAdjacentHTML('afterend', `
+        <div id="pwMatchIndicator"
+             style="font-family:'DM Mono',monospace;font-size:0.6rem;
+                    margin-top:-0.35rem;margin-bottom:0.62rem;
+                    min-height:1em;transition:color 0.3s">
+        </div>
+    `);
+
+    newPwInput.addEventListener('input',  updatePasswordStrength);
+    confirmInput.addEventListener('input', updatePasswordMatch);
+}
+
+
+// ═══════════════════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════════════════
 
@@ -248,30 +392,17 @@ function showSection(name) {
 // PAYMENT STATUS HELPERS
 // ═══════════════════════════════════════════════════════
 
-// Get the most recent payment record for a given month
-function _getMonthPayment(month) {
-    // Sort by createdAt desc, find last entry for month
-    return _payments
-        .filter(p => p.month === month)
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0] || null;
-}
-
-// Get effective status for a month considering all payments
-// 'paid' = totalPaid >= rentAmount, 'partial' = some paid, 'unpaid' = none
 function _getMonthStatus(month, rent) {
     const monthPayments = _payments.filter(p => p.month === month);
     if (!monthPayments.length) return { status: 'unpaid', totalPaid: 0, balance: rent };
-
-    // Use the most recent record's totalPaid/balance (most accurate)
     const latest = monthPayments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
     return {
-        status:    latest.status,           // 'paid' | 'partial'
+        status:    latest.status,
         totalPaid: latest.totalPaid || 0,
         balance:   latest.balance   || 0
     };
 }
 
-// Pill HTML by status
 function _statusPill(status) {
     switch (status) {
         case 'paid':    return '<span class="pill pill-green">Paid ✅</span>';
@@ -282,7 +413,6 @@ function _statusPill(status) {
     }
 }
 
-// Format date safely — null datePaid shows '—'
 function _fmtDate(d) {
     if (!d) return '—';
     return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -298,7 +428,14 @@ function _fmtKsh(n) {
 // ═══════════════════════════════════════════════════════
 
 async function loadProfile() {
-    if (!_tenantId) { showToast('Session error — please log in again', 'error'); return; }
+    if (!_tenantId) {
+        // Still null after guard ran — show what the JWT contains for debugging
+        const p = getPayload();
+        console.error('_tenantId is null. JWT payload:', p);
+        showToast('Session error — please log in again', 'error');
+        setTimeout(() => { window.location.href = 'auth.html'; }, 2000);
+        return;
+    }
 
     try {
         const res  = await fetch(`${API}/tenant/${_tenantId}`, { headers: authHeaders() });
@@ -323,7 +460,7 @@ async function loadProfile() {
 
 
 // ═══════════════════════════════════════════════════════
-// RENDER — HEADER (FIX 7)
+// RENDER — HEADER
 // ═══════════════════════════════════════════════════════
 
 function renderHeader(data) {
@@ -331,7 +468,9 @@ function renderHeader(data) {
     document.getElementById('headerName').textContent = t.name.split(' ')[0];
     applyAvatar(t.name);
 
-    // FIX 7: correct status — check actual payment status not just existence
+    const propName = t.property?.name;
+    showPropertyBadge(propName || null);
+
     const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
     const rent         = t.house ? t.house.rent : 0;
     const ms           = _getMonthStatus(currentMonth, rent);
@@ -351,16 +490,38 @@ function renderHeader(data) {
 
 
 // ═══════════════════════════════════════════════════════
-// RENDER — HOME (FIX 5, 6)
+// RENDER — HOME
 // ═══════════════════════════════════════════════════════
 
 function renderHome(data) {
+    const t        = data.tenant;
+    const propName = t.property?.name;
+
+    // ── Greeting + property name ──────────────────────
+    // #homeGreeting: personalised with the tenant's first name
+    const firstName   = t.name.split(' ')[0];
+    const greetingEl  = document.getElementById('homeGreeting');
+    if (greetingEl) greetingEl.textContent = `Hey ${firstName} 👋`;
+
+    // #homePropertyName: "Welcome back to [Property Name]"
+    // Shown only when a property is assigned; hidden otherwise.
+    const propNameEl = document.getElementById('homePropertyName');
+    if (propNameEl) {
+        if (propName) {
+            propNameEl.textContent = `Welcome back to ${propName}`;
+            propNameEl.style.display = 'block';
+        } else {
+            propNameEl.style.display = 'none';
+        }
+    }
+
+    // ── Stats ─────────────────────────────────────────
     document.getElementById('statPaid').textContent    = Number(data.totalPaid || 0).toLocaleString();
     document.getElementById('statArrears').textContent = Number(data.arrears   || 0).toLocaleString();
-    document.getElementById('statHouse').textContent   = data.tenant.house ? data.tenant.house.name : 'Not assigned';
+    document.getElementById('statHouse').textContent   = t.house ? t.house.name : 'Not assigned';
 
     const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
-    const house        = data.tenant.house;
+    const house        = t.house;
     const rent         = house ? house.rent : 0;
     const ms           = _getMonthStatus(currentMonth, rent);
     const statusEl     = document.getElementById('monthStatus');
@@ -371,7 +532,6 @@ function renderHome(data) {
         return;
     }
 
-    // FIX 6: distinguish paid / partial / unpaid
     const progressWrap = document.getElementById('homeProgressWrap');
     progressWrap.style.display = 'block';
 
@@ -416,7 +576,7 @@ function renderHome(data) {
 
 
 // ═══════════════════════════════════════════════════════
-// RENDER — PROFILE (FIX 1, 2, 3)
+// RENDER — PROFILE
 // ═══════════════════════════════════════════════════════
 
 function renderProfile(data) {
@@ -431,6 +591,25 @@ function renderProfile(data) {
     document.getElementById('profileSince').textContent = _fmtDate(t.createdAt);
     document.getElementById('profileTotalPaid').textContent = _fmtKsh(data.totalPaid);
 
+    // ── Property row injected after House row ──
+    const propName = t.property?.name;
+    const propLoc  = t.property?.location;
+
+    let propRow = document.getElementById('profilePropertyRow');
+    if (!propRow) {
+        propRow = document.createElement('div');
+        propRow.id        = 'profilePropertyRow';
+        propRow.className = 'info-row';
+        const houseRow = document.getElementById('profileHouse')?.closest('.info-row');
+        if (houseRow) houseRow.insertAdjacentElement('afterend', propRow);
+    }
+    propRow.innerHTML = `
+        <span class="info-row-label">Property</span>
+        <span class="info-row-value" style="color:var(--accent);font-family:'DM Mono',monospace;font-size:0.72rem">
+            🏢 ${propName || '—'}${propLoc ? ` <span style="color:var(--text-dim)">· ${propLoc}</span>` : ''}
+        </span>`;
+
+    // ── Payment history table ──
     const tbody = document.getElementById('payHistoryTable');
 
     if (!_payments.length) {
@@ -438,9 +617,6 @@ function renderProfile(data) {
         return;
     }
 
-    // FIX 1: all 6 columns in correct order — Month | Amount | Total Paid | Balance | Status | Date
-    // FIX 2: guard datePaid null
-    // FIX 3: status pill by actual status
     tbody.innerHTML = _payments
         .slice()
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
@@ -460,7 +636,7 @@ function renderProfile(data) {
 
 
 // ═══════════════════════════════════════════════════════
-// RENDER — PAY SECTION (FIX 8, 11, 21)
+// RENDER — PAY SECTION
 // ═══════════════════════════════════════════════════════
 
 function renderPaySection(data) {
@@ -468,7 +644,9 @@ function renderPaySection(data) {
     const house = t.house;
 
     const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
-    const ms           = house ? _getMonthStatus(currentMonth, house.rent) : { status: 'unpaid', totalPaid: 0, balance: house ? house.rent : 0 };
+    const ms           = house
+        ? _getMonthStatus(currentMonth, house.rent)
+        : { status: 'unpaid', totalPaid: 0, balance: 0 };
     const summaryEl    = document.getElementById('rentSummary');
 
     if (!house) {
@@ -476,13 +654,9 @@ function renderPaySection(data) {
         return;
     }
 
-    // Pre-fill month
-    document.getElementById('payMonth').value = currentMonth;
-
-    // FIX 11 & 21: pre-fill amount with REMAINING BALANCE, not full rent
+    document.getElementById('payMonth').value  = currentMonth;
     document.getElementById('payAmount').value = ms.balance > 0 ? ms.balance : '';
 
-    // FIX 8: show paid/partial/unpaid correctly
     let statusBadge;
     if (ms.status === 'paid')         statusBadge = `<span class="pill pill-green">Paid ✅</span>`;
     else if (ms.status === 'partial') statusBadge = `<span class="pill pill-amber">Partial ⚠️</span>`;
@@ -490,6 +664,12 @@ function renderPaySection(data) {
 
     summaryEl.innerHTML = `
         <div style="display:flex;flex-direction:column;gap:0.5rem">
+            <div style="display:flex;justify-content:space-between;font-size:0.8rem">
+                <span style="color:var(--text-dim)">Property</span>
+                <span style="font-family:'DM Mono',monospace;color:var(--accent)">
+                    🏢 ${t.property?.name || '—'}
+                </span>
+            </div>
             <div style="display:flex;justify-content:space-between;font-size:0.8rem">
                 <span style="color:var(--text-dim)">House</span>
                 <span style="font-family:'DM Mono',monospace">${house.name}</span>
@@ -519,7 +699,6 @@ function renderPaySection(data) {
             </div>` : ''}
         </div>`;
 
-    // Show progress bar in pay section
     const payProgressWrap = document.getElementById('payProgressWrap');
     if (payProgressWrap) {
         payProgressWrap.style.display = 'block';
@@ -543,13 +722,29 @@ function renderSettings(data) {
     document.getElementById('settingsName').textContent  = t.name;
     document.getElementById('settingsEmail').textContent = t.email;
     document.getElementById('settingsPhone').textContent = t.phone || '—';
+
+    // ── Property row injected after Phone row in settings ──
+    const propName = t.property?.name;
+    const propLoc  = t.property?.location;
+
+    let settingsPropRow = document.getElementById('settingsPropertyRow');
+    if (!settingsPropRow) {
+        settingsPropRow = document.createElement('div');
+        settingsPropRow.id        = 'settingsPropertyRow';
+        settingsPropRow.className = 'info-row';
+        const phoneRow = document.getElementById('settingsPhone')?.closest('.info-row');
+        if (phoneRow) phoneRow.insertAdjacentElement('afterend', settingsPropRow);
+    }
+    settingsPropRow.innerHTML = `
+        <span class="info-row-label">Property</span>
+        <span class="info-row-value" style="color:var(--accent);font-family:'DM Mono',monospace;font-size:0.72rem">
+            🏢 ${propName || '—'}${propLoc ? ` · ${propLoc}` : ''}
+        </span>`;
 }
 
 
 // ═══════════════════════════════════════════════════════
-// CHECK MONTH BALANCE — FIX 12
-// Called by #payMonth oninput in tenant.html
-// Fetches live summary from backend and updates pay section UI
+// CHECK MONTH BALANCE
 // ═══════════════════════════════════════════════════════
 
 async function checkMonthBalance() {
@@ -572,10 +767,8 @@ async function checkMonthBalance() {
         const data = await res.json();
         const rent = data.rentAmount || (_tenant?.house?.rent) || 0;
 
-        // Update amount field with remaining balance
         document.getElementById('payAmount').value = data.balance > 0 ? data.balance : '';
 
-        // Update progress bar
         if (payProgressWrap) {
             payProgressWrap.style.display = 'block';
             const pct = rent > 0 ? Math.min(100, Math.round((data.totalPaid / rent) * 100)) : 0;
@@ -587,7 +780,6 @@ async function checkMonthBalance() {
             bar.className   = `pay-progress-fill ${data.status === 'paid' ? 'status-paid' : data.status === 'partial' ? 'status-partial' : 'status-unpaid'}`;
         }
 
-        // Update rent summary text
         const summaryEl = document.getElementById('rentSummary');
         if (summaryEl) {
             let badge;
@@ -629,7 +821,7 @@ async function checkMonthBalance() {
 
 
 // ═══════════════════════════════════════════════════════
-// M-PESA PAYMENT (FIX 13)
+// M-PESA PAYMENT
 // ═══════════════════════════════════════════════════════
 
 async function payWithMpesa() {
@@ -639,7 +831,6 @@ async function payWithMpesa() {
     if (!amount || !month) { showToast('Enter amount and month', 'warn'); return; }
     if (!_phone)            { showToast('No phone number on your account', 'error'); return; }
 
-    // FIX 13: only block if FULLY paid — allow partial top-ups
     const ms = _getMonthStatus(month, _tenant?.house?.rent || 0);
     if (ms.status === 'paid') {
         showToast(`${month} is already fully paid ✅`, 'warn');
@@ -699,7 +890,7 @@ async function pollPaymentStatus(checkoutRequestId, month) {
                     month
                 });
                 showToast('Payment confirmed ✅', 'success');
-                await loadProfile(); // refresh stats
+                await loadProfile();
                 return;
             }
 
@@ -724,7 +915,6 @@ async function pollPaymentStatus(checkoutRequestId, month) {
                 return;
             }
 
-            // Still pending — update countdown
             const secondsLeft = (maxAttempts - attempts) * 3;
             renderPayStatus('waiting', { phone: _phone, secondsLeft });
 
@@ -787,7 +977,7 @@ function renderPayStatus(status, data) {
 
 
 // ═══════════════════════════════════════════════════════
-// RECEIPTS (FIX 9)
+// RECEIPTS
 // ═══════════════════════════════════════════════════════
 
 async function loadReceipts() {
@@ -803,7 +993,6 @@ async function loadReceipts() {
             return;
         }
 
-        // Show paid and partial payments only — sorted newest first
         const visible = data
             .filter(p => p.status === 'paid' || p.status === 'partial')
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -941,14 +1130,13 @@ async function sendMessage() {
     }
 }
 
-// Enter key sends
 document.getElementById('msgInput').addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
 });
 
 
 // ═══════════════════════════════════════════════════════
-// UNREAD BADGE — FIX 17: single definition using /unread-mine
+// UNREAD BADGE
 // ═══════════════════════════════════════════════════════
 
 async function checkUnreadBadge() {
@@ -974,16 +1162,16 @@ async function checkUnreadBadge() {
 
 
 // ═══════════════════════════════════════════════════════
-// NOTICES (ANNOUNCEMENTS)
+// NOTICES
 // ═══════════════════════════════════════════════════════
 
 async function loadNotices() {
     try {
-        const res  = await fetch(`${API}/announcements`);
+        const res  = await fetch(`${API}/announcements`, { headers: authHeaders() });
         const data = await res.json();
         const el   = document.getElementById('noticesList');
 
-        if (!data.length) {
+        if (!res.ok || !Array.isArray(data) || !data.length) {
             el.innerHTML = `<div class="empty-state"><span class="empty-icon">📢</span>No announcements yet</div>`;
             return;
         }
@@ -1003,11 +1191,11 @@ async function loadNotices() {
 
 async function loadRules() {
     try {
-        const res   = await fetch(`${API}/rules`);
+        const res   = await fetch(`${API}/rules`, { headers: authHeaders() });
         const rules = await res.json();
         const el    = document.getElementById('rulesList');
 
-        if (!rules.length) {
+        if (!res.ok || !Array.isArray(rules) || !rules.length) {
             el.innerHTML = `<div class="empty-state"><span class="empty-icon">📜</span>No rules posted yet</div>`;
             return;
         }
@@ -1035,8 +1223,14 @@ async function changePassword() {
     const confirm = document.getElementById('confirmPassword').value;
 
     if (!current || !newPw || !confirm) { showToast('Fill all password fields', 'warn'); return; }
-    if (newPw !== confirm) { showToast('New passwords do not match', 'error'); return; }
-    if (newPw.length < 6)  { showToast('Password must be at least 6 characters', 'warn'); return; }
+    if (newPw.length < 6)               { showToast('Password must be at least 6 characters', 'warn'); return; }
+    if (newPw !== confirm)              { showToast('New passwords do not match', 'error'); return; }
+
+    const strength = getPasswordStrength(newPw);
+    if (strength.score < 2) {
+        showToast('Password is too weak — add uppercase letters, numbers or symbols', 'warn');
+        return;
+    }
 
     try {
         const res  = await fetch(`${API}/change-password`, {
@@ -1046,58 +1240,39 @@ async function changePassword() {
         });
         const data = await res.json();
         if (!res.ok) { showToast(data.message || 'Failed to change password', 'error'); return; }
+
         showToast('Password updated successfully ✅', 'success');
+
         ['currentPassword', 'newPassword', 'confirmPassword'].forEach(id => {
             document.getElementById(id).value = '';
         });
+        const bar   = document.getElementById('pwStrengthBar');
+        const label = document.getElementById('pwStrengthLabel');
+        const match = document.getElementById('pwMatchIndicator');
+        if (bar)   { bar.style.width = '0%'; bar.style.background = 'transparent'; }
+        if (label) { label.textContent = ''; }
+        if (match) { match.textContent = ''; }
+
     } catch (err) {
         showToast('Network error', 'error');
+        console.error(err);
     }
 }
 
 
 // ═══════════════════════════════════════════════════════
-// TYPING ANIMATION — LIVE DASHBOARD TEXT
-// Suggestions shown to landlord/tenant to make system feel alive
-// ═══════════════════════════════════════════════════════
-
-const TENANT_GREETINGS = [
-    '// your home, managed simply',
-    '// M-Pesa payments in seconds',
-    '// track every payment, every month',
-    '// receipts always at your fingertips',
-    '// your landlord is a message away',
-    '// Affordable Rentals — built for Kenya',
-    '// never miss a due date again',
-    '// all your records in one place',
-    '// rent on time, stress-free living',
-    '// pay partial or full — we track it all',
-];
-
-function startGreetingTyper() {
-    startTyper('headerGreeting', TENANT_GREETINGS, {
-        typeSpeed: 35, deleteSpeed: 18, pauseAfter: 2800, pauseBefore: 500, loop: true
-    });
-}
-
-
-// ═══════════════════════════════════════════════════════
-// INIT (FIX 16, 18)
+// INIT
 // ═══════════════════════════════════════════════════════
 
 window.addEventListener('DOMContentLoaded', async () => {
-    // 1. Maintenance check first
     const underMaintenance = await checkMaintenance();
     if (underMaintenance) return;
 
-    // 2. Load dashboard data
+    initPasswordStrength();
+
     await loadProfile();
     await checkUnreadBadge();
 
-    // 3. Start typing animation
-    startGreetingTyper();
-
-    // 4. Re-check maintenance every 2 minutes
     setInterval(async () => {
         const still = await checkMaintenance();
         if (still && !document.getElementById('maintenanceScreen')) {
@@ -1106,10 +1281,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     }, 2 * 60 * 1000);
 });
 
-// FIX 16: single interval registration — not duplicated at bottom
-setInterval(checkUnreadBadge, 30000);           // unread badge every 30s
-setInterval(loadProfile, 300000);               // FIX 18: profile every 5 min (was 30s)
-setInterval(loadNotices, 300000);               // notices every 5 min
-setInterval(loadRules, 600000);                 // rules every 10 min
-setInterval(loadMessages, 20000);               // messages every 20s if open
-setInterval(loadReceipts, 120000);              // receipts every 2 min
+// ── Polling intervals ──
+setInterval(checkUnreadBadge, 30000);
+setInterval(loadProfile,      300000);
+setInterval(loadNotices,      300000);
+setInterval(loadRules,        600000);
+setInterval(loadMessages,     20000);
+setInterval(loadReceipts,     120000);
