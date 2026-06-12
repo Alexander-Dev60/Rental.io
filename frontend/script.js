@@ -1592,10 +1592,19 @@ async function submitDeleteTenant() {
 // INQUIRIES — API calls
 // ═══════════════════════════════════════
 
+
 let _inquiryPage  = 1;
 const INQ_LIMIT   = 20;
 let _inquiryTotal = 0;
 let _inquiryPages = 1;
+
+let _currentInquiries = [];
+
+function openInquiryDetailById(id) {
+    const inq = _currentInquiries.find(i => i._id === id);
+    if (!inq) { showToast('Inquiry not found — try refreshing', 'warn'); return; }
+    openInquiryDetail(inq);
+}
 
 async function loadInquiries() {
     const status     = document.getElementById('inquiryStatusFilter')?.value || '';
@@ -1622,10 +1631,12 @@ async function loadInquiries() {
         const totEl  = document.getElementById('inqStatTotal');
         if (newEl) newEl.textContent = data.unreadCount ?? '—';
         if (totEl) totEl.textContent = _inquiryTotal;
+        
 
         _loadInquiryContactedCount(propertyId);
 
-        renderInquiriesTable(data.inquiries || []);
+        _currentInquiries = data.inquiries || [];
+        renderInquiriesTable(_currentInquiries);
         _renderInquiryPagination();
         _updateInquiryBadge(data.unreadCount || 0);
 

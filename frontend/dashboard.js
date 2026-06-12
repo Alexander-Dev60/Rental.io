@@ -1354,7 +1354,6 @@ function renderInquiriesTable(inquiries) {
         const msgPreview = (inq.message || '').slice(0, 55) + (inq.message?.length > 55 ? '…' : '');
         const propName   = inq.property?.name || '—';
         const ago        = _inqTimeAgo(inq.createdAt);
-        const inqSafe    = encodeURIComponent(JSON.stringify(inq));
 
         return `<tr style="${inq.status === 'new' ? 'background:rgba(59,130,246,0.035)' : ''}">
             <td><strong style="color:var(--text)">${_escHtmlInq(inq.name)}</strong></td>
@@ -1367,7 +1366,7 @@ function renderInquiriesTable(inquiries) {
             <td class="td-mono" style="font-size:0.65rem;color:var(--text-dim)">${ago}</td>
             <td>
               <button class="btn btn-secondary btn-sm"
-                onclick='openInquiryDetail(JSON.parse(decodeURIComponent("${inqSafe}")))'>
+                onclick="openInquiryDetailById('${inq._id}')">
                 View
               </button>
             </td>
