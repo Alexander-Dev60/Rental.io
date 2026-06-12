@@ -88,7 +88,9 @@ const propertySchema = new mongoose.Schema({
     isApproved: {
         type:    Boolean,
         default: false
-    }
+    },
+
+    paymentLastUpdated: { type: Date, default: null }
 
 }, { timestamps: true });
 

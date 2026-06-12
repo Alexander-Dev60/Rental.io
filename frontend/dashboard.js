@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════
-//  index.js renamed to dashboard.js — Landlord UI / DOM Rendering Layer
+//  dashboard.js — Landlord UI / DOM Rendering Layer
 //  No fetch() calls here — those are in script.js.
 // ═══════════════════════════════════════════════════════
 
@@ -21,7 +21,7 @@ const SECTION_TITLES = {
     messages:      'Messages',
     announcements: 'Announcements',
     rules:         'House Rules',
-    inquiries:     'Rental Inquiries'   // NEW
+    inquiries:     'Rental Inquiries'
 };
 
 function showSection(name) {
@@ -52,7 +52,7 @@ function showSection(name) {
     if (name === 'rules')         { loadRules(); }
     if (name === 'houses')        { loadHouses(); }
     if (name === 'properties')    { loadProperties(); }
-    if (name === 'inquiries')     { loadInquiries(); }   // NEW
+    if (name === 'inquiries')     { loadInquiries(); }
 }
 
 function toggleSidebar() {
@@ -142,7 +142,6 @@ function updatePaymentSetupPropertySelect(properties) {
     ).join('');
 }
 
-// ── UPDATED: renderPropertiesGrid now includes listing controls ──
 function renderPropertiesGrid(properties) {
     const grid = document.getElementById('propertiesGrid');
     if (!grid) return;
@@ -158,7 +157,6 @@ function renderPropertiesGrid(properties) {
     properties.map(p => `
         <div style="background:var(--panel);border:1px solid ${p._id === activeId ? 'var(--accent)' : 'var(--border)'};border-radius:10px;overflow:hidden;transition:border-color 0.2s">
 
-          <!-- Property header — click to switch active property -->
           <div style="padding:1rem 1.25rem;cursor:pointer;border-bottom:1px solid var(--border)"
                onclick="switchProperty('${p._id}', '${p.name.replace(/'/g, "\\'")}')">
             <div style="font-family:'Instrument Serif',serif;font-style:italic;font-size:1.2rem;color:var(--text);margin-bottom:0.25rem">${p.name}</div>
@@ -175,11 +173,9 @@ function renderPropertiesGrid(properties) {
             </div>
           </div>
 
-          <!-- Public listing controls -->
           <div style="padding:0.85rem 1.25rem">
             <div style="font-size:0.6rem;font-weight:600;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin-bottom:0.65rem">Public Listing</div>
 
-            <!-- isListed toggle -->
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.65rem">
               <span style="font-size:0.78rem;color:var(--text-muted)">Visible on listings page</span>
               <div style="position:relative;width:36px;height:20px;flex-shrink:0;display:inline-block;cursor:pointer"
@@ -191,7 +187,6 @@ function renderPropertiesGrid(properties) {
               </div>
             </div>
 
-            <!-- Approval status notice -->
             ${p.isListed && !p.isApproved ? `
             <div style="font-family:'JetBrains Mono',monospace;font-size:0.6rem;color:var(--warn);background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);border-radius:6px;padding:0.4rem 0.65rem;margin-bottom:0.65rem">
               ⏳ Pending admin approval before going live
@@ -202,13 +197,11 @@ function renderPropertiesGrid(properties) {
               ✅ Live on public listings page
             </div>` : ''}
 
-            <!-- Edit description button -->
             <button class="btn btn-secondary btn-sm btn-full"
               style="margin-bottom:0.5rem"
               onclick="openListingEditor('${p._id}')">
               ✏️ Edit Description &amp; Details
             </button>
-            <!-- Preview link — only when live -->
             ${p.isListed && p.isApproved ? `
             <a href="listings.html${p.location ? '?location=' + encodeURIComponent(p.location.split(',')[0].trim()) : ''}"
                target="_blank"
@@ -358,7 +351,7 @@ function handleMovedOutTenantClick(event, tenant) {
     menu.dataset.tenantId = tenant._id;
 
     menu.innerHTML = `
-        <div class="ctx-item" onclick="_ctxViewProfile('${tenant._id}')">👁️ View Profile & History</div>
+        <div class="ctx-item" onclick="_ctxViewProfile('${tenant._id}')">👁️ View Profile &amp; History</div>
         <div class="ctx-divider"></div>
         <div class="ctx-item" style="color:var(--accent)" onclick="_ctxReactivate('${tenant._id}')">🔄 Reactivate Tenant</div>
         <div class="ctx-divider"></div>
@@ -654,7 +647,6 @@ function renderHouseGrid(houses) {
 
     grid.innerHTML = houses.map(h => `
         <div class="house-card ${h.status}"
-             style="position:relative"
              onclick="houseOptions(event, ${JSON.stringify(h).replace(/"/g, '&quot;')})">
             <div class="house-name">${h.name}</div>
             <div class="house-rent">Ksh ${Number(h.rent).toLocaleString()} / mo</div>
@@ -665,18 +657,20 @@ function renderHouseGrid(houses) {
         </div>`).join('');
 }
 
+// ── FIXED: Menu is appended to document.body with position:fixed so it always
+//    floats above all cards regardless of stacking context, multi-line cards,
+//    or grid layout. Also dismisses on any scroll event. ──
 function houseOptions(event, house) {
     event.stopPropagation();
-    document.querySelectorAll('.ctx-menu').forEach(m => m.remove());
+
+    // Remove any existing house context menus
+    document.querySelectorAll('.house-ctx-menu').forEach(m => m.remove());
 
     const card = event.currentTarget;
+    const rect  = card.getBoundingClientRect();
+
     const menu = document.createElement('div');
-    menu.className    = 'ctx-menu';
-    menu.style.top    = '100%';
-    menu.style.bottom = 'auto';
-    menu.style.right  = '0';
-    menu.style.left   = 'auto';
-    menu.style.zIndex = '999';
+    menu.className = 'ctx-menu house-ctx-menu';
 
     if (house.status === 'available') {
         menu.innerHTML = `
@@ -696,20 +690,55 @@ function houseOptions(event, house) {
             <div class="ctx-item danger" onclick="deleteHouse('${house._id}')">🗑️ Delete House</div>`;
     }
 
-    card.appendChild(menu);
+    // ── Compute fixed position below card, with overflow guards ──
+    const menuW = 210;
+    const menuH = 140; // approximate
+
+    let top  = rect.bottom + 4;
+    let left = rect.left;
+
+    // Prevent overflow off right edge
+    if (left + menuW > window.innerWidth - 8) left = window.innerWidth - menuW - 8;
+    if (left < 8) left = 8;
+
+    // Flip above card if menu would go off bottom edge
+    if (top + menuH > window.innerHeight - 8) top = rect.top - menuH - 4;
+    if (top < 8) top = 8;
+
+    menu.style.cssText = `
+        position: fixed;
+        top: ${top}px;
+        left: ${left}px;
+        z-index: 9999;
+        width: max-content;
+        min-width: 180px;
+        max-width: 260px;
+    `;
+
+    document.body.appendChild(menu);
+
+    // Dismiss on click outside or any scroll
+    function dismiss(e) {
+        if (!menu.contains(e.target)) {
+            menu.remove();
+            document.removeEventListener('click', dismiss);
+            window.removeEventListener('scroll', onScroll, true);
+        }
+    }
+    function onScroll() {
+        menu.remove();
+        document.removeEventListener('click', dismiss);
+        window.removeEventListener('scroll', onScroll, true);
+    }
 
     setTimeout(() => {
-        document.addEventListener('click', function close(e) {
-            if (!menu.contains(e.target)) {
-                menu.remove();
-                document.removeEventListener('click', close);
-            }
-        });
+        document.addEventListener('click', dismiss);
+        window.addEventListener('scroll', onScroll, true);
     }, 0);
 }
 
 function openAssignModal(houseId, houseName) {
-    document.querySelectorAll('.ctx-menu').forEach(m => m.remove());
+    document.querySelectorAll('.house-ctx-menu').forEach(m => m.remove());
 
     let modal = document.getElementById('modal-assign-house');
     if (!modal) {
@@ -775,7 +804,7 @@ async function submitAssignFromModal() {
 }
 
 function confirmMoveOutByHouse(houseId, houseName, tenantId, tenantName) {
-    document.querySelectorAll('.ctx-menu').forEach(m => m.remove());
+    document.querySelectorAll('.house-ctx-menu').forEach(m => m.remove());
 
     if (!tenantId) {
         showToast('Could not identify the tenant. Use Move Out from the Houses section.', 'warn');
@@ -807,7 +836,6 @@ function confirmMoveOutByHouse(houseId, houseName, tenantId, tenantName) {
 // ═══════════════════════════════════════
 
 function populateTenantSelects(tenants) {
-    // ── Exclude chatTenant — messaging now uses its own panel ──
     const ids = ['tenantSelect', 'payTenantSelect', 'moveOutSelect'];
     ids.forEach(id => {
         const el = document.getElementById(id);
@@ -816,7 +844,16 @@ function populateTenantSelects(tenants) {
             tenants.map(t => `<option value="${t._id}">${t.name}</option>`).join('');
     });
 
-    // Also refresh the messaging tenant panel whenever tenants reload
+    // ── Restore saved assign-section tenant selection across page refreshes ──
+    const savedTenantId = localStorage.getItem('assignTenantId');
+    if (savedTenantId) {
+        const el = document.getElementById('tenantSelect');
+        if (el && el.querySelector(`option[value="${savedTenantId}"]`)) {
+            el.value = savedTenantId;
+        }
+    }
+
+    // Refresh the messaging tenant panel whenever tenants reload
     renderMsgTenantList(tenants);
 }
 
@@ -828,6 +865,14 @@ function populateHouseSelects(houses) {
             .filter(h => h.status === 'available')
             .map(h => `<option value="${h._id}">${h.name} (Ksh ${Number(h.rent).toLocaleString()})</option>`)
             .join('');
+
+    // ── Restore saved assign-section house selection across page refreshes ──
+    const savedHouseId = localStorage.getItem('assignHouseId');
+    if (savedHouseId) {
+        if (el.querySelector(`option[value="${savedHouseId}"]`)) {
+            el.value = savedHouseId;
+        }
+    }
 }
 
 
@@ -1255,10 +1300,9 @@ window.setTheme = function(theme) {
 
 
 // ═══════════════════════════════════════
-// INQUIRIES — Rendering (NEW)
+// INQUIRIES — Rendering
 // ═══════════════════════════════════════
 
-// Status pill HTML helper
 function _inqStatusPill(status) {
     const map = {
         new:       `<span class="pill" style="background:rgba(59,130,246,0.12);color:#60a5fa;border:1px solid rgba(59,130,246,0.25)">🆕 New</span>`,
@@ -1310,7 +1354,6 @@ function renderInquiriesTable(inquiries) {
         const msgPreview = (inq.message || '').slice(0, 55) + (inq.message?.length > 55 ? '…' : '');
         const propName   = inq.property?.name || '—';
         const ago        = _inqTimeAgo(inq.createdAt);
-        // Encode inquiry as safe JSON for the onclick
         const inqSafe    = encodeURIComponent(JSON.stringify(inq));
 
         return `<tr style="${inq.status === 'new' ? 'background:rgba(59,130,246,0.035)' : ''}">
@@ -1338,23 +1381,21 @@ function openInquiryDetail(inq) {
     document.getElementById('inqDetailMsg').textContent  = inq.message || '(no message)';
     document.getElementById('inqDetailNotes').value      = inq.notes  || '';
 
-    // Meta info
     const metaEl = document.getElementById('inqDetailMeta');
     const metaLines = [
         `📞 ${_escHtmlInq(inq.phone)}`,
-        inq.email  ? `✉️ ${_escHtmlInq(inq.email)}`                                                              : null,
+        inq.email  ? `✉️ ${_escHtmlInq(inq.email)}` : null,
         `🏢 ${_escHtmlInq(inq.property?.name || '—')}${inq.property?.location ? ' · ' + inq.property.location : ''}`,
         `🕐 ${new Date(inq.createdAt).toLocaleString('en-GB', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}`
     ].filter(Boolean);
     metaEl.innerHTML = metaLines.map(s => `<span>${s}</span>`).join('');
 
-    // Status action buttons — show transitions from current status
     const actionsEl = document.getElementById('inqDetailActions');
     const transitions = [
-        { val: 'read',      label: '👁 Mark as Read',    cls: 'btn-secondary' },
-        { val: 'contacted', label: '📞 Mark Contacted',   cls: 'btn-primary'   },
-        { val: 'archived',  label: '🗃 Archive',           cls: 'btn-secondary' },
-        { val: 'new',       label: '🔄 Reset to New',      cls: 'btn-secondary' }
+        { val: 'read',      label: '👁 Mark as Read',  cls: 'btn-secondary' },
+        { val: 'contacted', label: '📞 Mark Contacted', cls: 'btn-primary'   },
+        { val: 'archived',  label: '🗃 Archive',         cls: 'btn-secondary' },
+        { val: 'new',       label: '🔄 Reset to New',    cls: 'btn-secondary' }
     ];
     actionsEl.innerHTML = transitions
         .filter(s => s.val !== inq.status)
@@ -1362,7 +1403,6 @@ function openInquiryDetail(inq) {
                      onclick="updateInquiryStatus('${inq._id}','${s.val}')">${s.label}</button>`)
         .join('');
 
-    // Contact quick-action buttons
     const waText = encodeURIComponent(`Hi ${inq.name}, thanks for your inquiry about ${inq.property?.name || 'our property'}!`);
     const waHref = `https://wa.me/${_formatPhoneInq(inq.phone)}?text=${waText}`;
     document.getElementById('inqDetailContact').innerHTML = `
@@ -1371,9 +1411,13 @@ function openInquiryDetail(inq) {
         ${inq.email ? `<a href="mailto:${_escHtmlInq(inq.email)}" class="btn btn-secondary btn-sm">✉️ Email</a>` : ''}
         <button class="btn btn-danger btn-sm" onclick="deleteInquiry('${inq._id}')">🗑️ Delete</button>`;
 
-    openModal('modal-inquiry-detail');
+    // Close dropdown before opening detail modal, then open detail
+    closeNotifDropdown();
+    // ── Open the detail modal — #modal-danger.open { z-index: 9998 } ensures
+    //    the danger confirm always floats above this modal if Delete is clicked ──
+    const detailModal = document.getElementById('modal-inquiry-detail');
+    if (detailModal) detailModal.classList.add('open');
 
-    // Auto-mark as read if new — silent (no toast)
     if (inq.status === 'new') {
         updateInquiryStatus(inq._id, 'read', true);
     }
@@ -1381,13 +1425,9 @@ function openInquiryDetail(inq) {
 
 
 // ═══════════════════════════════════════
-// LISTING CONTROLS — Property Editor (NEW)
+// LISTING CONTROLS — Property Editor
 // ═══════════════════════════════════════
 
-// pendingIsListed: true  = this was triggered by the toggle turning ON,
-//                          so saving should also set isListed:true.
-// pendingIsListed: false = triggered by the "Edit Description" button,
-//                          isListed state is not changed on save.
 function openListingEditor(propertyId, pendingIsListed) {
     const prop = _propertiesCache.find(p => p._id === propertyId);
     if (!prop) { showToast('Property not found — try refreshing', 'error'); return; }
@@ -1403,17 +1443,11 @@ function openListingEditor(propertyId, pendingIsListed) {
               <div class="modal-title">✏️ Edit Public Listing</div>
               <button class="modal-close" onclick="closeModal('modal-listing-editor')">✕</button>
             </div>
-
-            <!-- Which property -->
             <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--accent);background:var(--accent-dim);border:1px solid rgba(110,231,183,0.2);border-radius:7px;padding:0.5rem 0.85rem;margin-bottom:0.75rem"
                  id="listingEditorPropName"></div>
-
-            <!-- Guidance note shown when triggered by toggle -->
             <div id="listingEditorGuide" style="display:none;font-size:0.78rem;color:var(--text-muted);background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.2);border-radius:7px;padding:0.65rem 0.85rem;margin-bottom:0.85rem;line-height:1.6">
               📝 Before your property goes live, add a description and up to 5 photos so prospective tenants know what to expect.
             </div>
-
-            <!-- Description -->
             <label style="font-family:'JetBrains Mono',monospace;font-size:0.58rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-dim);display:block;margin-bottom:0.4rem">
               Public Description <span style="color:var(--danger)">*</span>
             </label>
@@ -1422,21 +1456,15 @@ function openListingEditor(propertyId, pendingIsListed) {
             <div style="font-family:'JetBrains Mono',monospace;font-size:0.6rem;color:var(--text-dim);margin-bottom:1.25rem;line-height:1.5">
               Appears on your public listing card. Keep it welcoming and informative.
             </div>
-
-            <!-- Photos -->
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem">
               <label style="font-family:'JetBrains Mono',monospace;font-size:0.58rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-dim)">
                 Photos <span id="listingEditorPhotoCount" style="color:var(--accent)"></span>
               </label>
               <span style="font-family:'JetBrains Mono',monospace;font-size:0.58rem;color:var(--text-dim)">Max 5 · JPG / PNG · 5 MB each</span>
             </div>
-
-            <!-- Existing photos grid -->
             <div id="listingEditorPhotos"
                  style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:0.5rem;margin-bottom:0.75rem;min-height:0">
             </div>
-
-            <!-- Upload button — hidden when at limit -->
             <div id="listingEditorUploadWrap" style="margin-bottom:1.25rem">
               <label id="listingEditorUploadLabel"
                      style="display:flex;align-items:center;justify-content:center;gap:0.5rem;
@@ -1447,7 +1475,8 @@ function openListingEditor(propertyId, pendingIsListed) {
                      onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text-muted)'">
                 <span style="font-size:1.1rem">📷</span>
                 <span id="listingEditorUploadText">Add Photo</span>
-                <input type="file" id="listingEditorFileInput" accept="image/*"
+                
+                <input type="file" id="listingEditorFileInput" accept="image/*" multiple
                        style="display:none" onchange="handlePhotoUpload(event)">
               </label>
               <div id="listingEditorUploadProgress"
@@ -1456,10 +1485,8 @@ function openListingEditor(propertyId, pendingIsListed) {
                 ⏳ Uploading…
               </div>
             </div>
-
             <input type="hidden" id="listingEditorPropertyId">
             <input type="hidden" id="listingEditorPendingListed">
-
             <button class="btn btn-primary btn-full" id="listingEditorSaveBtn"
                     onclick="saveListingDescription()">💾 Save Description</button>
           </div>`;
@@ -1467,13 +1494,11 @@ function openListingEditor(propertyId, pendingIsListed) {
         document.body.appendChild(modal);
     }
 
-    // Populate from cache — no HTML escaping issues
     document.getElementById('listingEditorPropName').textContent   = `🏢 ${prop.name}${prop.location ? '  ·  📍 ' + prop.location : ''}`;
     document.getElementById('listingEditorDesc').value             = prop.description || '';
     document.getElementById('listingEditorPropertyId').value       = propertyId;
     document.getElementById('listingEditorPendingListed').value    = pendingIsListed === true ? 'true' : '';
 
-    // Guide note + save button label
     const guide   = document.getElementById('listingEditorGuide');
     const saveBtn = document.getElementById('listingEditorSaveBtn');
     if (pendingIsListed === true) {
@@ -1484,18 +1509,10 @@ function openListingEditor(propertyId, pendingIsListed) {
         saveBtn.textContent = '💾 Save Description';
     }
 
-    // Render existing photos
     _renderListingEditorPhotos(prop.photos || [], propertyId);
-
     modal.classList.add('open');
 }
 
-
-
-
-
-// Renders the photo grid inside the listing editor modal.
-// Called on open and after every upload / delete so the UI stays in sync.
 function _renderListingEditorPhotos(photos, propertyId) {
     const grid      = document.getElementById('listingEditorPhotos');
     const countEl   = document.getElementById('listingEditorPhotoCount');
@@ -1506,10 +1523,7 @@ function _renderListingEditorPhotos(photos, propertyId) {
     const count   = photos.length;
     const atLimit = count >= 5;
 
-    // Update count label
     if (countEl) countEl.textContent = `(${count} / 5)`;
-
-    // Hide upload button when at limit
     if (uploadWrap) uploadWrap.style.display = atLimit ? 'none' : 'block';
     if (uploadText) uploadText.textContent   = count === 0 ? 'Add First Photo' : 'Add Another Photo';
 
@@ -1529,7 +1543,6 @@ function _renderListingEditorPhotos(photos, propertyId) {
             <img src="${url}" alt="Photo ${i + 1}"
                  style="width:100%;height:100%;object-fit:cover;display:block"
                  loading="lazy">
-            <!-- Delete button -->
             <button onclick="handlePhotoDelete('${propertyId}', '${url}')"
                     title="Remove photo"
                     style="position:absolute;top:4px;right:4px;
@@ -1540,7 +1553,6 @@ function _renderListingEditorPhotos(photos, propertyId) {
                            transition:background 0.15s"
                     onmouseover="this.style.background='rgba(248,113,113,0.85)'"
                     onmouseout="this.style.background='rgba(0,0,0,0.65)'">✕</button>
-            <!-- Position badge -->
             <span style="position:absolute;bottom:4px;left:4px;
                          font-family:'JetBrains Mono',monospace;font-size:0.5rem;
                          background:rgba(0,0,0,0.55);color:#fff;
@@ -1550,14 +1562,8 @@ function _renderListingEditorPhotos(photos, propertyId) {
         </div>`).join('');
 }
 
-
-
-// Called when landlord clicks the listing toggle on a property card.
-// If turning ON and no description exists → open editor first (description required).
-// If turning OFF, or already has a description → act immediately.
 function handleListingToggle(propertyId, turningOn) {
     if (!turningOn) {
-        // Turning off — no editor needed, just toggle
         togglePropertyListing(propertyId, false);
         return;
     }
@@ -1566,10 +1572,8 @@ function handleListingToggle(propertyId, turningOn) {
     if (!prop) { togglePropertyListing(propertyId, true); return; }
 
     if (!prop.description || !prop.description.trim()) {
-        // No description yet — open editor; saving will also set isListed:true
         openListingEditor(propertyId, true);
     } else {
-        // Already has description — toggle straight away
         togglePropertyListing(propertyId, true);
     }
 }

@@ -104,7 +104,7 @@ function logout() {
 (function guard() {
     const p = getPayload();
     if (!p) { window.location.href = 'auth.html'; return; }
-    if (p.role === 'landlord') { window.location.href = 'index.html'; return; }
+    if (p.role === 'landlord') { window.location.href = 'dashboard.html'; return; }
 
     // Try all common JWT ID field names
     _tenantId = p.tenantId || p.id || p._id || p.sub || null;

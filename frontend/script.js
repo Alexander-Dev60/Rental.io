@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════
 //  script.js — Landlord API Layer (SaaS multi-property)
 //  All fetch() calls live here.
-//  index.js handles rendering / DOM only.
+//  dashboard.js handles rendering / DOM only.
 // ═══════════════════════════════════════════════════════
 
 const API = CONFIG.API_URL;
@@ -36,6 +36,101 @@ function logout() {
 })();
 
 
+// ═══════════════════════════════════════
+// NOTIFICATION BELL
+// ═══════════════════════════════════════
+
+let _msgUnreadTotal  = 0;
+let _inquiryNewCount = 0;
+
+function _updateNotifBell() {
+    const total = _msgUnreadTotal + _inquiryNewCount;
+    const badge = document.getElementById('notifBadge');
+    if (!badge) return;
+    if (total > 0) {
+        badge.textContent   = total > 99 ? '99+' : String(total);
+        badge.style.display = 'flex';
+    } else {
+        badge.style.display = 'none';
+    }
+    // Refresh dropdown content if it is currently open
+    const dropdown = document.getElementById('notifDropdown');
+    if (dropdown && dropdown.style.display !== 'none') {
+        _renderNotifDropdown();
+    }
+}
+
+function toggleNotifDropdown() {
+    const dropdown = document.getElementById('notifDropdown');
+    if (!dropdown) return;
+    const isOpen = dropdown.style.display !== 'none';
+    if (isOpen) {
+        dropdown.style.display = 'none';
+        document.removeEventListener('click', _closeNotifOutside);
+    } else {
+        _renderNotifDropdown();
+        dropdown.style.display = 'block';
+        setTimeout(() => { document.addEventListener('click', _closeNotifOutside); }, 0);
+    }
+}
+
+function _closeNotifOutside(e) {
+    const bell = document.getElementById('notifBell');
+    if (bell && !bell.contains(e.target)) {
+        const dropdown = document.getElementById('notifDropdown');
+        if (dropdown) dropdown.style.display = 'none';
+        document.removeEventListener('click', _closeNotifOutside);
+    }
+}
+
+function closeNotifDropdown() {
+    const dropdown = document.getElementById('notifDropdown');
+    if (dropdown) dropdown.style.display = 'none';
+    document.removeEventListener('click', _closeNotifOutside);
+}
+
+function _renderNotifDropdown() {
+    const dropdown = document.getElementById('notifDropdown');
+    if (!dropdown) return;
+    const items = [];
+
+    if (_msgUnreadTotal > 0) {
+        items.push(`
+            <div class="notif-item" onclick="closeNotifDropdown();showSection('messages')">
+                <span class="notif-item-icon">💬</span>
+                <div class="notif-item-body">
+                    <div class="notif-item-title">Unread Messages</div>
+                    <div class="notif-item-sub">${_msgUnreadTotal} unread from tenant${_msgUnreadTotal !== 1 ? 's' : ''}</div>
+                </div>
+                <span class="notif-item-count" style="background:rgba(248,113,113,0.15);color:var(--danger);border:1px solid rgba(248,113,113,0.25)">${_msgUnreadTotal}</span>
+            </div>`);
+    }
+
+    if (_inquiryNewCount > 0) {
+        items.push(`
+            <div class="notif-item" onclick="closeNotifDropdown();showSection('inquiries')">
+                <span class="notif-item-icon">📩</span>
+                <div class="notif-item-body">
+                    <div class="notif-item-title">New Inquiries</div>
+                    <div class="notif-item-sub">${_inquiryNewCount} new from prospective tenant${_inquiryNewCount !== 1 ? 's' : ''}</div>
+                </div>
+                <span class="notif-item-count" style="background:rgba(59,130,246,0.12);color:#60a5fa;border:1px solid rgba(59,130,246,0.25)">${_inquiryNewCount}</span>
+            </div>`);
+    }
+
+    dropdown.innerHTML = `
+        <div class="notif-dropdown-header">
+            <span>Notifications</span>
+            ${items.length > 0
+                ? `<span style="color:var(--accent);font-weight:700">${_msgUnreadTotal + _inquiryNewCount}</span>`
+                : ''}
+        </div>
+        ${items.length > 0
+            ? items.join('')
+            : '<div class="notif-empty">🎉 All caught up!</div>'}`;
+}
+
+
 // ═══════════════════════════════════════════════════════
 //  PROPERTY CONTEXT
 // ═══════════════════════════════════════════════════════
@@ -50,11 +145,23 @@ function getPropertyName() {
     return localStorage.getItem('activePropertyName') || 'Property';
 }
 
+// ── Also updates the full-width property name strip at the top of the topbar ──
 function setActiveProperty(id, name) {
     localStorage.setItem('activePropertyId', id);
     localStorage.setItem('activePropertyName', name || 'Property');
+
+    // Property switcher button label
     const nameEl = document.getElementById('activePropertyName');
     if (nameEl) nameEl.textContent = name || 'Property';
+
+    // Full-width property name strip — update from cache for location too
+    const topbarEl = document.getElementById('topbarPropertyDisplay');
+    if (topbarEl) {
+        const prop = _propertiesCache.find(p => p._id === id);
+        topbarEl.textContent = prop
+            ? (prop.name + (prop.location ? '  ·  📍 ' + prop.location : ''))
+            : (name || '—');
+    }
 }
 
 async function loadProperties() {
@@ -75,6 +182,15 @@ async function loadProperties() {
             } else {
                 localStorage.removeItem('activePropertyId');
                 localStorage.removeItem('activePropertyName');
+            }
+        }
+
+        // ── Ensure topbar property strip reflects the active property ──
+        const topbarEl = document.getElementById('topbarPropertyDisplay');
+        if (topbarEl && getPropertyId()) {
+            const active = _propertiesCache.find(p => p._id === getPropertyId());
+            if (active) {
+                topbarEl.textContent = active.name + (active.location ? '  ·  📍 ' + active.location : '');
             }
         }
 
@@ -245,6 +361,15 @@ async function loadLandlordProfile() {
         if (mgrEl)  mgrEl.innerHTML    = `<span>👤</span> Managed by ${data.name || '—'}`;
         if (chipEl) chipEl.textContent = data.name || 'Landlord';
 
+        // ── Update full-width topbar property strip ──
+        const topbarEl = document.getElementById('topbarPropertyDisplay');
+        if (topbarEl) {
+            const displayName = activeProp
+                ? (activeProp.name + (activeProp.location ? '  ·  📍 ' + activeProp.location : ''))
+                : (data.propertyName || '—');
+            topbarEl.textContent = displayName;
+        }
+
         const anyConfigured    = (data.properties || []).some(p => p.paymentConfigured);
         const activeConfigured = activeProp ? activeProp.paymentConfigured : false;
 
@@ -290,6 +415,186 @@ async function skipOnboarding() {
     }
 }
 
+
+// ═══════════════════════════════════════════════════════
+//  PAYMENT SETUP — OTP & 30-day limit panel system
+//
+//  Three panels inside #modal-pay-setup:
+//    Panel A (paySetupPanelStatus)  — already configured; shows last-updated + OTP button
+//    Panel B (paySetupPanelOtp)     — OTP entry after email is sent
+//    Panel C (paySetupPanelForm)    — credential fields (first setup OR after OTP verified)
+//
+//  Backend endpoints needed:
+//    POST /landlord/payment-otp       → { success, message, attemptsRemaining }
+//    POST /landlord/setup-payments    → accepts optional `otp` field when editing
+//    Property model needs:  paymentLastUpdated: { type: Date }
+// ═══════════════════════════════════════════════════════
+
+let _paySetupOtp     = null;   // OTP code entered by landlord
+let _paySetupEditing = false;  // true when modifying existing credentials
+
+function _resetPaySetupState() {
+    _paySetupOtp     = null;
+    _paySetupEditing = false;
+}
+
+function openPaySetupModal() {
+    _resetPaySetupState();
+    document.getElementById('modal-pay-setup').classList.add('open');
+    // Small delay so the modal is visible before we evaluate which panel to show
+    setTimeout(onSetupPropertyChange, 60);
+}
+
+function showPaySetupPanel(panel) {
+    ['paySetupPanelStatus', 'paySetupPanelOtp', 'paySetupPanelForm'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
+    const panelMap = { status: 'paySetupPanelStatus', otp: 'paySetupPanelOtp', form: 'paySetupPanelForm' };
+    const el = document.getElementById(panelMap[panel]);
+    if (el) el.style.display = 'block';
+}
+
+function onSetupPropertyChange() {
+    const sel        = document.getElementById('setupPropertyId');
+    const propertyId = sel ? sel.value : '';
+    const titleEl    = document.getElementById('paySetupModalTitle');
+
+    if (!propertyId) {
+        // No property loaded yet — show form for first-time setup
+        if (titleEl) titleEl.textContent = '⚙️ M-Pesa Payment Setup';
+        showPaySetupPanel('form');
+        return;
+    }
+
+    const prop = _propertiesCache.find(p => p._id === propertyId);
+    if (!prop) return;
+
+    // Reset OTP state whenever property selection changes
+    _resetPaySetupState();
+
+    if (prop.paymentConfigured) {
+        // ── Panel A: already configured ──
+        if (titleEl) titleEl.textContent = '⚙️ M-Pesa Credentials';
+
+        // Compute 30-day eligibility
+        const lastUpdated = prop.paymentLastUpdated;
+        let   lastUpdStr  = 'Unknown';
+        let   canUpdate   = true;
+        let   nextUpdate  = null;
+
+        if (lastUpdated) {
+            const updDate   = new Date(lastUpdated);
+            lastUpdStr      = updDate.toLocaleString('en-GB', {
+                day: 'numeric', month: 'short', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+            const daysSince = (Date.now() - updDate.getTime()) / (1000 * 60 * 60 * 24);
+            if (daysSince < 30) {
+                canUpdate  = false;
+                nextUpdate = new Date(updDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+            }
+        }
+
+        const statusEl = document.getElementById('paySetupStatusInfo');
+        if (statusEl) {
+            statusEl.innerHTML = `
+                <div style="background:var(--accent-dim);border:1px solid rgba(110,231,183,0.2);border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.85rem">
+                    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem">
+                        <span style="color:var(--accent);font-size:1.1rem">✅</span>
+                        <span style="font-size:0.85rem;font-weight:600;color:var(--text)">M-Pesa Configured</span>
+                    </div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:0.62rem;color:var(--text-dim)">
+                        Last updated: ${lastUpdStr}
+                    </div>
+                </div>`;
+        }
+
+        const limitEl = document.getElementById('paySetupLimitMsg');
+        const otpBtn  = document.getElementById('paySetupRequestOtpBtn');
+        const rateEl  = document.getElementById('paySetupOtpRateMsg');
+
+        if (rateEl) { rateEl.style.display = 'none'; rateEl.textContent = ''; }
+
+        if (!canUpdate && nextUpdate) {
+            if (limitEl) {
+                limitEl.innerHTML = `
+                    <div style="background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);border-radius:8px;padding:0.65rem 0.9rem;margin-bottom:0.85rem;font-family:'JetBrains Mono',monospace;font-size:0.68rem;color:var(--danger);line-height:1.65">
+                        🔒 Credentials were recently updated.<br>
+                        Next update allowed: <strong>${nextUpdate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
+                    </div>`;
+            }
+            if (otpBtn) { otpBtn.disabled = true; otpBtn.style.opacity = '0.45'; otpBtn.title = 'Update not allowed yet'; }
+        } else {
+            if (limitEl) limitEl.innerHTML = '';
+            if (otpBtn)  { otpBtn.disabled = false; otpBtn.style.opacity = '1'; otpBtn.title = ''; }
+        }
+
+        showPaySetupPanel('status');
+
+    } else {
+        // ── Panel C: not yet configured — show form directly ──
+        if (titleEl) titleEl.textContent = '⚙️ M-Pesa Payment Setup';
+        showPaySetupPanel('form');
+    }
+}
+
+async function requestPaymentOtp() {
+    const btn    = document.getElementById('paySetupRequestOtpBtn');
+    const rateEl = document.getElementById('paySetupOtpRateMsg');
+
+    if (btn)    { btn.disabled = true; btn.textContent = '⏳ Sending OTP…'; }
+    if (rateEl) { rateEl.style.display = 'none'; rateEl.textContent = ''; }
+
+    try {
+        // Backend: POST /landlord/payment-otp
+        // Returns: { success: true, message }
+        // Rate limit (3/day): { success: false, message }  →  HTTP 429
+        const res  = await fetch(`${API}/landlord/payment-otp`, {
+            method: 'POST', headers: authHeaders()
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+            const msg = data.message || 'Failed to send OTP. Please try again.';
+            if (rateEl) { rateEl.textContent = msg; rateEl.style.display = 'block'; }
+            showToast(msg, 'error');
+            return;
+        }
+
+        showToast('OTP sent to your email 📧', 'success');
+        const otpInput = document.getElementById('setupOtpCode');
+        if (otpInput) otpInput.value = '';
+        showPaySetupPanel('otp');
+
+    } catch (err) {
+        const msg = 'Network error — could not send OTP';
+        if (rateEl) { rateEl.textContent = msg; rateEl.style.display = 'block'; }
+        showToast(msg, 'error');
+        console.error('requestPaymentOtp error:', err);
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '📧 Send OTP to Edit Credentials'; }
+    }
+}
+
+function verifyPaymentOtp() {
+    const code = (document.getElementById('setupOtpCode')?.value || '').trim();
+    if (!code || code.length < 4) {
+        showToast('Enter the OTP code from your email', 'warn');
+        return;
+    }
+
+    // OTP is verified server-side during save — store locally to include in request
+    _paySetupOtp     = code;
+    _paySetupEditing = true;
+
+    const titleEl = document.getElementById('paySetupModalTitle');
+    if (titleEl) titleEl.textContent = '✏️ Edit M-Pesa Credentials';
+
+    showPaySetupPanel('form');
+    showToast('OTP accepted — enter your new credentials below', 'success');
+}
+
 async function savePaymentSetup() {
     const propertyId     = document.getElementById('setupPropertyId')?.value;
     const paybillNumber  = document.getElementById('setupPaybill')?.value.trim();
@@ -302,23 +607,45 @@ async function savePaymentSetup() {
         showToast('All payment fields are required', 'warn'); return;
     }
 
+    // When editing existing credentials, OTP is required
+    if (_paySetupEditing && !_paySetupOtp) {
+        showToast('OTP verification required to update credentials', 'warn');
+        showPaySetupPanel('otp');
+        return;
+    }
+
     const btn = document.getElementById('savePaySetupBtn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving...'; }
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving…'; }
 
     try {
+        // Backend: POST /landlord/setup-payments
+        // First setup: no `otp` field needed
+        // Editing:     `otp` field required; backend validates and enforces 30-day limit
+        const body = { propertyId, paybillNumber, consumerKey, consumerSecret, passkey };
+        if (_paySetupEditing && _paySetupOtp) body.otp = _paySetupOtp;
+
         const res  = await fetch(`${API}/landlord/setup-payments`, {
             method:  'POST',
             headers: authHeaders(),
-            body:    JSON.stringify({ propertyId, paybillNumber, consumerKey, consumerSecret, passkey })
+            body:    JSON.stringify(body)
         });
         const data = await res.json();
 
-        if (!res.ok) { showToast(data.message || 'Failed to save credentials', 'error'); return; }
+        if (!res.ok) {
+            showToast(data.message || 'Failed to save credentials', 'error');
+            // If OTP was wrong (401) go back to OTP panel so landlord can retry
+            if (res.status === 401 && _paySetupEditing) {
+                _paySetupOtp = null;
+                showPaySetupPanel('otp');
+            }
+            return;
+        }
 
         showToast('Payment credentials saved securely 🔐', 'success');
         localStorage.setItem('paymentConfigured',  'true');
         localStorage.setItem('onboardingComplete', 'true');
 
+        _resetPaySetupState();
         closeModal('modal-pay-setup');
         closeModal('modal-onboarding');
 
@@ -329,7 +656,8 @@ async function savePaymentSetup() {
         showToast('Network error', 'error');
         console.error('savePaymentSetup error:', err.message);
     } finally {
-        if (btn) { btn.disabled = false; btn.textContent = '🔐 Save Credentials Securely'; }
+        const btnEl = document.getElementById('savePaySetupBtn');
+        if (btnEl) { btnEl.disabled = false; btnEl.textContent = '🔐 Save Credentials Securely'; }
     }
 }
 
@@ -599,7 +927,6 @@ async function loadHouses() {
         });
 
         _allHouses = enriched;
-
         renderHouseGrid(enriched);
         populateHouseSelects(enriched);
 
@@ -663,24 +990,40 @@ function deleteHouse(id) {
     });
 }
 
-async function assignHouse() {
+// ── UPDATED: shows a confirmation modal with tenant + house details
+//    before calling the API. Selection is saved to localStorage for
+//    persistence across page refreshes (onchange handlers in HTML). ──
+function assignHouse() {
     const tenantId = document.getElementById('tenantSelect').value;
     const houseId  = document.getElementById('houseSelect').value;
     if (!tenantId || !houseId) { showToast('Select both tenant and house', 'warn'); return; }
 
-    try {
-        const res  = await fetch(`${API}/assign-house/${tenantId}/${houseId}`, {
-            method: 'PUT', headers: authHeaders()
-        });
-        const data = await res.json();
-        if (!res.ok) { showToast(data.message || data.error || 'Assign failed', 'error'); return; }
-        showToast(data.message, 'success');
-        await loadHouses();
-        await loadTenants();
-    } catch (err) {
-        showToast('Network error', 'error');
-        console.error(err);
-    }
+    const tenant = _allTenants.find(t => t._id === tenantId);
+    const house  = _allHouses.find(h => h._id === houseId);
+
+    openDangerModal({
+        icon:    '🔑',
+        title:   'Confirm House Assignment',
+        message: `Assign <strong>${tenant?.name || '—'}</strong> to <strong>${house?.name || '—'}</strong>?<br><br>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;color:var(--text-muted)">
+                    Monthly Rent: Ksh ${Number(house?.rent || 0).toLocaleString()}
+                  </span>`,
+        label:   '🔑 Assign House',
+        type:    'warn',
+        onConfirm: async () => {
+            const res  = await fetch(`${API}/assign-house/${tenantId}/${houseId}`, {
+                method: 'PUT', headers: authHeaders()
+            });
+            const data = await res.json();
+            if (!res.ok) { showToast(data.message || data.error || 'Assign failed', 'error'); return; }
+            showToast(data.message, 'success');
+            // Clear saved selection after successful assignment
+            localStorage.removeItem('assignTenantId');
+            localStorage.removeItem('assignHouseId');
+            await loadHouses();
+            await loadTenants();
+        }
+    });
 }
 
 function moveOutTenant() {
@@ -991,6 +1334,8 @@ async function loadUnread() {
 
 function _refreshSidebarMsgBadge() {
     const total    = Object.values(_msgUnreadMap).reduce((s, c) => s + c, 0);
+    _msgUnreadTotal = total;   // ← keep in sync for bell
+
     const badge    = document.getElementById('msgBadge');
     const navBadge = document.querySelector('.nav-item[onclick*="messages"] .nav-badge');
     if (total > 0) {
@@ -1000,6 +1345,7 @@ function _refreshSidebarMsgBadge() {
         if (badge)    badge.style.display = 'none';
         if (navBadge) navBadge.style.display = 'none';
     }
+    _updateNotifBell();
 }
 
 
@@ -1243,7 +1589,7 @@ async function submitDeleteTenant() {
 
 
 // ═══════════════════════════════════════
-// INQUIRIES — API calls (NEW)
+// INQUIRIES — API calls
 // ═══════════════════════════════════════
 
 let _inquiryPage  = 1;
@@ -1272,13 +1618,11 @@ async function loadInquiries() {
         _inquiryTotal = data.total  || 0;
         _inquiryPages = data.pages  || 1;
 
-        // Update stat cards
         const newEl  = document.getElementById('inqStatNew');
         const totEl  = document.getElementById('inqStatTotal');
         if (newEl) newEl.textContent = data.unreadCount ?? '—';
         if (totEl) totEl.textContent = _inquiryTotal;
 
-        // Load contacted count separately for the stat card
         _loadInquiryContactedCount(propertyId);
 
         renderInquiriesTable(data.inquiries || []);
@@ -1327,10 +1671,14 @@ function inquiryPage(dir) {
 }
 
 function _updateInquiryBadge(count) {
+    _inquiryNewCount = count || 0;   // ← keep in sync for bell
+
     const badge = document.getElementById('inquiryBadge');
     if (!badge) return;
     badge.textContent   = count;
     badge.style.display = count > 0 ? 'inline-block' : 'none';
+
+    _updateNotifBell();
 }
 
 async function loadInquiryBadge() {
@@ -1342,7 +1690,7 @@ async function loadInquiryBadge() {
     } catch {}
 }
 
-// silent = true suppresses the success toast (used for auto-mark-read)
+// silent = true suppresses toast (used for auto-mark-read)
 async function updateInquiryStatus(id, status, silent = false) {
     const notes = document.getElementById('inqDetailNotes')?.value?.trim() || undefined;
     try {
@@ -1370,6 +1718,11 @@ async function updateInquiryStatus(id, status, silent = false) {
 }
 
 function deleteInquiry(id) {
+    // Close inquiry detail modal first so danger modal is not obscured.
+    // #modal-danger.open { z-index: 9998 } in CSS also guarantees it floats on top,
+    // but closing the detail modal first is the cleanest UX.
+    closeModal('modal-inquiry-detail');
+
     openDangerModal({
         icon:    '📩',
         title:   'Delete Inquiry',
@@ -1381,7 +1734,6 @@ function deleteInquiry(id) {
             const data = await res.json();
             if (!res.ok) { showToast(data.message || 'Delete failed', 'error'); return; }
             showToast('Inquiry deleted ✅', 'success');
-            closeModal('modal-inquiry-detail');
             loadInquiries();
             loadInquiryBadge();
         }
@@ -1390,11 +1742,9 @@ function deleteInquiry(id) {
 
 
 // ═══════════════════════════════════════
-// LISTING CONTROLS — API calls (NEW)
+// LISTING CONTROLS — API calls
 // ═══════════════════════════════════════
 
-// Toggle isListed on/off for a property.
-// Called from the toggle div in renderPropertiesGrid (index.js).
 async function togglePropertyListing(propertyId, isListed) {
     try {
         const res  = await fetch(`${API}/properties/${propertyId}/listing`, {
@@ -1405,11 +1755,11 @@ async function togglePropertyListing(propertyId, isListed) {
         const data = await res.json();
         if (!res.ok) {
             showToast(data.message || 'Update failed', 'error');
-            await loadProperties(); // re-render to reset toggle state
+            await loadProperties();
             return;
         }
         showToast(data.message, 'success');
-        await loadProperties(); // re-render cards with updated isListed / isApproved state
+        await loadProperties();
     } catch (err) {
         showToast('Network error', 'error');
         await loadProperties();
@@ -1417,7 +1767,6 @@ async function togglePropertyListing(propertyId, isListed) {
     }
 }
 
-// Save description from the listing editor modal (index.js opens it).
 async function saveListingDescription() {
     const propertyId    = document.getElementById('listingEditorPropertyId')?.value;
     const description   = (document.getElementById('listingEditorDesc')?.value || '').trim();
@@ -1425,7 +1774,6 @@ async function saveListingDescription() {
 
     if (!propertyId) { showToast('No property selected', 'warn'); return; }
 
-    // Description is required when going public for the first time
     if (pendingListed && !description) {
         showToast('Please add a description before making this property visible', 'warn');
         document.getElementById('listingEditorDesc')?.focus();
@@ -1436,7 +1784,6 @@ async function saveListingDescription() {
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving…'; }
 
     try {
-        // Build request body — include isListed:true only when triggered by the toggle
         const body = { description };
         if (pendingListed) body.isListed = true;
 
@@ -1464,86 +1811,135 @@ async function saveListingDescription() {
     }
 }
 
+// ═══════════════════════════════════════════════════════
+//  PATCH FILE — script.js  (one targeted replacement)
+// ═══════════════════════════════════════════════════════
 
+// ─────────────────────────────────────────────────────
+// REPLACEMENT — handlePhotoUpload()
+// Replaces the entire function so it:
+//  • iterates over ALL selected files (FileList)
+//  • validates each file individually (type + size)
+//  • stops uploading once the property hits 5 photos
+//  • gives clear per-file feedback
+//
+// FIND the entire existing handlePhotoUpload function:
+//
+//   async function handlePhotoUpload(event) { ... }
+//
+// REPLACE WITH the function below:
+// ─────────────────────────────────────────────────────
 
-// ── Photo upload ──
-// Called by the file input's onchange inside the listing editor modal.
 async function handlePhotoUpload(event) {
-    const file       = event.target.files[0];
+    const files      = Array.from(event.target.files || []);
     const propertyId = document.getElementById('listingEditorPropertyId')?.value;
-    if (!file || !propertyId) return;
 
-    // Reset input so the same file can be re-selected after a delete
+    // Reset the input immediately so the same file(s) can be re-selected if needed
     event.target.value = '';
 
-    // Client-side guard — server enforces this too
-    const prop = _propertiesCache.find(p => p._id === propertyId);
-    if (prop && (prop.photos || []).length >= 5) {
+    if (!files.length || !propertyId) return;
+
+    const prop         = _propertiesCache.find(p => p._id === propertyId);
+    const currentCount = (prop?.photos || []).length;
+    const slotsLeft    = 5 - currentCount;
+
+    if (slotsLeft <= 0) {
         showToast('Maximum 5 photos per property', 'warn');
         return;
     }
 
-    if (!file.type.startsWith('image/')) {
-        showToast('Only image files are allowed', 'error');
-        return;
+    // Warn if selection exceeds remaining slots; upload what we can
+    const toUpload = files.slice(0, slotsLeft);
+    if (files.length > slotsLeft) {
+        showToast(
+            `Only ${slotsLeft} slot${slotsLeft !== 1 ? 's' : ''} remaining — uploading first ${toUpload.length} photo${toUpload.length !== 1 ? 's' : ''}`,
+            'warn'
+        );
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-        showToast('Photo must be under 5 MB', 'error');
-        return;
+    // Validate all files before starting any upload
+    for (const file of toUpload) {
+        if (!file.type.startsWith('image/')) {
+            showToast(`"${file.name}" is not an image — skipped`, 'error');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            showToast(`"${file.name}" exceeds 5 MB — skipped`, 'error');
+            return;
+        }
     }
 
-    // Show progress indicator
     const progress  = document.getElementById('listingEditorUploadProgress');
     const uploadBtn = document.getElementById('listingEditorUploadLabel');
     if (progress)  progress.style.display  = 'block';
     if (uploadBtn) uploadBtn.style.opacity = '0.4';
 
-    try {
-        const formData = new FormData();
-        formData.append('photo', file);
+    let lastPhotos = prop?.photos || [];
+    let uploaded   = 0;
+    let failed     = 0;
 
-        const res  = await fetch(`${API}/properties/${propertyId}/photos`, {
-            method:  'POST',
-            headers: { 'Authorization': 'Bearer ' + getToken() },
-            // NOTE: do NOT set Content-Type — browser sets multipart boundary automatically
-            body:    formData
-        });
-        const data = await res.json();
+    for (let i = 0; i < toUpload.length; i++) {
+        const file = toUpload[i];
 
-        if (!res.ok) {
-            showToast(data.message || 'Upload failed', 'error');
-            return;
+        // Update progress text for multi-file uploads
+        if (toUpload.length > 1 && progress) {
+            progress.textContent = `⏳ Uploading ${i + 1} of ${toUpload.length}…`;
+        } else if (progress) {
+            progress.textContent = '⏳ Uploading…';
         }
 
-        showToast('Photo uploaded ✅', 'success');
+        try {
+            const formData = new FormData();
+            formData.append('photo', file);
 
-        // Update the cached property photos so the grid re-renders correctly
-        if (prop) prop.photos = data.photos || [];
+            const res  = await fetch(`${API}/properties/${propertyId}/photos`, {
+                method:  'POST',
+                headers: { 'Authorization': 'Bearer ' + getToken() },
+                body:    formData
+            });
+            const data = await res.json();
 
-        // Re-render photo grid in place — modal stays open
-        _renderListingEditorPhotos(prop ? prop.photos : [], propertyId);
+            if (!res.ok) {
+                showToast(data.message || `Failed to upload "${file.name}"`, 'error');
+                failed++;
+                continue;
+            }
 
-        // Refresh property cards in the background (non-blocking)
-        loadProperties().catch(() => {});
+            lastPhotos = data.photos || lastPhotos;
+            if (prop) prop.photos = lastPhotos;
+            uploaded++;
 
-    } catch (err) {
-        showToast('Network error during upload', 'error');
-        console.error('handlePhotoUpload error:', err);
-    } finally {
-        if (progress)  progress.style.display  = 'none';
-        if (uploadBtn) uploadBtn.style.opacity  = '1';
+        } catch (err) {
+            showToast(`Network error uploading "${file.name}"`, 'error');
+            console.error('handlePhotoUpload error:', err);
+            failed++;
+        }
     }
+
+    // Final status toast
+    if (uploaded > 0 && failed === 0) {
+        showToast(
+            uploaded === 1
+                ? 'Photo uploaded ✅'
+                : `${uploaded} photos uploaded ✅`,
+            'success'
+        );
+    } else if (uploaded > 0 && failed > 0) {
+        showToast(`${uploaded} uploaded, ${failed} failed`, 'warn');
+    }
+
+    // Re-render photo grid with final state
+    _renderListingEditorPhotos(lastPhotos, propertyId);
+    loadProperties().catch(() => {});
+
+    if (progress)  progress.style.display  = 'none';
+    if (uploadBtn) uploadBtn.style.opacity  = '1';
 }
 
 
-// ── Photo delete ──
-// Called by the ✕ button on each photo thumbnail.
 async function handlePhotoDelete(propertyId, photoUrl) {
     const prop = _propertiesCache.find(p => p._id === propertyId);
 
-    // Confirm before deleting — no danger modal needed, just a native confirm
-    // so the landlord doesn't lose a photo accidentally
     if (!confirm('Remove this photo? This cannot be undone.')) return;
 
     try {
@@ -1561,13 +1957,8 @@ async function handlePhotoDelete(propertyId, photoUrl) {
 
         showToast('Photo removed ✅', 'success');
 
-        // Update cached property photos
         if (prop) prop.photos = data.photos || [];
-
-        // Re-render photo grid in place
         _renderListingEditorPhotos(prop ? prop.photos : [], propertyId);
-
-        // Refresh property cards in the background
         loadProperties().catch(() => {});
 
     } catch (err) {
@@ -1575,6 +1966,7 @@ async function handlePhotoDelete(propertyId, photoUrl) {
         console.error('handlePhotoDelete error:', err);
     }
 }
+
 
 // ═══════════════════════════════════════
 // INIT
@@ -1604,7 +1996,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     loadRules();
     loadUnread();
     loadDashboard();
-    loadInquiryBadge();   // NEW — populate badge on load
+    loadInquiryBadge();
 });
 
 
@@ -1619,7 +2011,7 @@ setInterval(loadTenants,          30000);
 setInterval(loadMovedOutTenants,  30000);
 setInterval(loadLandlordProfile,  60000);
 setInterval(loadProperties,      120000);
-setInterval(loadInquiryBadge,     30000);   // NEW — keep badge fresh
+setInterval(loadInquiryBadge,     30000);
 
 // Poll active chat thread every 15 seconds
 setInterval(() => {

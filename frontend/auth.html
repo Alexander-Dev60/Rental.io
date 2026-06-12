@@ -1032,7 +1032,7 @@
         }
 
         showToast('Account created! Setting up your dashboard…', 'success');
-        setTimeout(() => { window.location.href = 'index.html'; }, 1000);
+        setTimeout(() => { window.location.href = dashboardFor(user.role); }, 1000);
 
       } catch (err) {
         console.error('Register error:', err);

@@ -3,214 +3,341 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" type="image/svg+xml" href="./public/favicon.svg">
   <title>Privacy Policy — Affordable Rentals</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Bebas+Neue&family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
+  /* ══════════════════════════════
+     THEME TOKENS — system adaptive
+  ══════════════════════════════ */
+  :root {
+    --bg: #0b1220;
+    --card: rgba(255,255,255,.08);
+    --card-solid: rgba(11,18,32,.97);
+    --text: #f8fafc;
+    --muted: #94a3b8;
+    --muted2: #4a6382;
+    --primary: #60a5fa;
+    --accent: #818cf8;
+    --success: #4ade80;
+    --gold: #c8a96e;
+    --gold-lt: #e8c98a;
+    --gold-dim: rgba(200,169,110,.14);
+    --border: rgba(255,255,255,.08);
+    --border2: rgba(255,255,255,.16);
+    --topbar-bg: rgba(11,18,32,.88);
+    --overlay-a: rgba(0,0,0,.72);
+    --overlay-b: rgba(0,0,0,.28);
+    --img-filter: blur(4px) brightness(.38);
+    --font-d: 'DM Serif Display', Georgia, serif;
+    --font-s: 'DM Sans', sans-serif;
+    --font-m: 'Space Mono', monospace;
+    --ease: cubic-bezier(.4,0,.2,1);
+  }
+  @media (prefers-color-scheme: light) {
     :root {
-      --ink:    #050810;
-      --ink2:   #080d1a;
-      --card:   #101828;
-      --line:   rgba(255,255,255,0.06);
-      --line2:  rgba(255,255,255,0.12);
-      --blue:   #3b82f6;
-      --cyan:   #06b6d4;
-      --white:  #f0f4ff;
-      --grey:   #94a3b8;
-      --grey2:  #475569;
-      --font-d: 'Bebas Neue', sans-serif;
-      --font-b: 'Outfit', sans-serif;
-      --font-m: 'Fira Code', monospace;
+      --bg: #eef2f7;
+      --card: rgba(255,255,255,.62);
+      --card-solid: rgba(238,242,247,.98);
+      --text: #0f172a;
+      --muted: #64748b;
+      --muted2: #94a3b8;
+      --primary: #2563eb;
+      --accent: #6366f1;
+      --success: #16a34a;
+      --gold: #92660a;
+      --gold-lt: #b07e1e;
+      --gold-dim: rgba(146,102,10,.1);
+      --border: rgba(0,0,0,.07);
+      --border2: rgba(0,0,0,.14);
+      --topbar-bg: rgba(238,242,247,.92);
+      --overlay-a: rgba(220,232,248,.62);
+      --overlay-b: rgba(220,232,248,.18);
+      --img-filter: blur(4px) brightness(.72);
     }
+  }
 
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { font-family: var(--font-s); color: var(--text); overflow-x: hidden; font-size: 15px; line-height: 1.7; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 2px; }
 
-    body { font-family: var(--font-b); background: var(--ink); color: var(--white); font-size: 15px; line-height: 1.7; }
+  /* BG SLIDESHOW */
+  .bg { position: fixed; inset: 0; z-index: -2; }
+  .bg img { position: absolute; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 1.6s ease; filter: var(--img-filter); }
+  .bg img.active { opacity: 1; }
+  .overlay { position: fixed; inset: 0; z-index: -1; background: linear-gradient(130deg, var(--overlay-a), var(--overlay-b)); }
 
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-thumb { background: var(--cyan); border-radius: 2px; }
+  /* NAVBAR */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--topbar-bg);
+    backdrop-filter: blur(22px) saturate(1.4);
+    -webkit-backdrop-filter: blur(22px) saturate(1.4);
+    border-bottom: 1px solid var(--border2);
+    padding: 0 2rem; height: 62px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  nav::after {
+    content: ''; position: absolute; bottom: 0; left: 8%; right: 8%; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--primary), transparent); opacity: .18;
+  }
+  .nav-logo { display: flex; align-items: center; gap: 9px; text-decoration: none; }
+  .nav-logo-icon {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .nav-logo-icon svg { width: 18px; height: 18px; }
+  .nav-logo-name {
+    font-family: var(--font-m); font-size: .6rem; font-weight: 700;
+    letter-spacing: .18em; text-transform: uppercase;
+    color: var(--primary); opacity: .85;
+  }
+  .nav-back {
+    font-family: var(--font-m); font-size: .62rem; letter-spacing: .1em;
+    color: var(--muted); text-decoration: none; transition: color .2s;
+  }
+  .nav-back:hover { color: var(--primary); }
 
-    nav {
-      position: sticky; top: 0; z-index: 100;
-      background: rgba(5,8,16,0.95);
-      backdrop-filter: blur(20px);
-      border-bottom: 1px solid var(--line);
-      padding: 1rem 2rem;
-      display: flex; align-items: center; justify-content: space-between;
-    }
+  /* HERO */
+  .doc-hero {
+    position: relative; z-index: 1;
+    padding: 5rem 2rem 3.5rem; text-align: center;
+    border-bottom: 1px solid var(--border2);
+  }
+  .doc-hero::before {
+    content: ''; position: absolute; inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 70% 100% at 50% 0%, black, transparent);
+    z-index: 0; pointer-events: none;
+  }
+  .doc-hero-tag {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: var(--font-m); font-size: .6rem; letter-spacing: .15em; text-transform: uppercase;
+    color: var(--primary);
+    background: rgba(96,165,250,.08); border: 1px solid rgba(96,165,250,.2);
+    padding: 5px 14px; border-radius: 99px;
+    margin-bottom: 18px; position: relative; z-index: 1;
+  }
+  .doc-hero-dot {
+    width: 5px; height: 5px; border-radius: 50%; background: var(--primary);
+    animation: pulseDot 2.4s ease infinite; flex-shrink: 0;
+  }
+  @keyframes pulseDot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+  .doc-hero h1 {
+    font-family: var(--font-d); font-style: italic;
+    font-size: clamp(2.4rem,6vw,4.2rem); font-weight: 400;
+    line-height: 1.1; color: var(--text);
+    margin-bottom: 12px; position: relative; z-index: 1;
+  }
+  .doc-hero h1 em { color: var(--gold); font-style: italic; }
+  .doc-hero p {
+    font-family: var(--font-m); font-size: .65rem; color: var(--muted);
+    letter-spacing: .12em; text-transform: uppercase;
+    position: relative; z-index: 1;
+  }
 
-    .nav-logo { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; }
-    .nav-logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--blue), var(--cyan)); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; }
-    .nav-logo-text { font-family: var(--font-d); font-size: 1.2rem; letter-spacing: 0.1em; color: var(--white); }
-    .nav-back { font-family: var(--font-m); font-size: 0.68rem; color: var(--grey); text-decoration: none; letter-spacing: 0.08em; transition: color 0.2s; }
-    .nav-back:hover { color: var(--cyan); }
+  /* CONTENT WRAPPER */
+  .doc-wrap { max-width: 760px; margin: 0 auto; padding: 3rem 2rem 5rem; position: relative; z-index: 1; }
 
-    .doc-hero {
-      background: linear-gradient(180deg, var(--ink2), var(--ink));
-      border-bottom: 1px solid var(--line);
-      padding: 4rem 2rem 3rem;
-      text-align: center;
-      position: relative; overflow: hidden;
-    }
+  /* TOC */
+  .toc {
+    background: var(--card); border: 1px solid var(--border2); border-radius: 18px;
+    padding: 22px 28px; margin-bottom: 3rem;
+    backdrop-filter: blur(24px) saturate(1.4);
+    -webkit-backdrop-filter: blur(24px) saturate(1.4);
+    box-shadow: 0 8px 40px rgba(0,0,0,.35);
+    position: relative; overflow: hidden;
+  }
+  .toc::before {
+    content: ''; position: absolute; top: 0; left: 12%; right: 12%; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--primary), transparent); opacity: .3;
+  }
+  .toc-title {
+    font-family: var(--font-m); font-size: .6rem; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--muted2); margin-bottom: 14px;
+  }
+  .toc ol { list-style: none; display: flex; flex-direction: column; gap: 5px; counter-reset: toc; }
+  .toc ol li { counter-increment: toc; }
+  .toc ol li a {
+    display: flex; align-items: center; gap: 12px;
+    font-size: .82rem; color: var(--muted); text-decoration: none; transition: color .2s; padding: 3px 0;
+  }
+  .toc ol li a::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: var(--font-m); font-size: .58rem; color: var(--primary);
+    flex-shrink: 0; width: 24px;
+  }
+  .toc ol li a:hover { color: var(--primary); }
 
-    .doc-hero::before {
-      content: '';
-      position: absolute; inset: 0;
-      background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
-      background-size: 40px 40px;
-      mask-image: radial-gradient(ellipse 60% 100% at 50% 0%, black, transparent);
-    }
+  /* SECTIONS */
+  .doc-section {
+    margin-bottom: 3rem;
+    background: var(--card); border: 1px solid var(--border2); border-radius: 18px;
+    padding: 28px 32px;
+    backdrop-filter: blur(24px) saturate(1.4);
+    -webkit-backdrop-filter: blur(24px) saturate(1.4);
+    box-shadow: 0 8px 40px rgba(0,0,0,.3);
+    position: relative; overflow: hidden;
+    animation: fadeUp .5s var(--ease) both;
+  }
+  .doc-section::before {
+    content: ''; position: absolute; top: 0; left: 14%; right: 14%; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent); opacity: .25;
+  }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
 
-    .doc-hero-tag {
-      display: inline-flex; align-items: center; gap: 0.5rem;
-      font-family: var(--font-m); font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase;
-      color: var(--cyan);
-      background: rgba(6,182,212,0.08); border: 1px solid rgba(6,182,212,0.2);
-      padding: 0.35rem 0.9rem; border-radius: 99px;
-      margin-bottom: 1.25rem; position: relative; z-index: 1;
-    }
+  .doc-section-num {
+    font-family: var(--font-m); font-size: .58rem; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--primary); opacity: .85; margin-bottom: 6px;
+  }
+  .doc-section h2 {
+    font-family: var(--font-d); font-style: italic;
+    font-size: 1.65rem; font-weight: 400; color: var(--text);
+    margin-bottom: 16px; padding-bottom: 12px;
+    border-bottom: 1px solid var(--border2);
+  }
+  .doc-section p { color: var(--muted); margin-bottom: 12px; font-size: .88rem; line-height: 1.75; }
+  .doc-section p:last-child { margin-bottom: 0; }
+  .doc-section ul, .doc-section ol { color: var(--muted); font-size: .88rem; padding-left: 22px; margin-bottom: 12px; }
+  .doc-section li { margin-bottom: 6px; }
+  .doc-section strong { color: var(--text); font-weight: 600; }
+  .doc-section a { color: var(--primary); text-decoration: none; }
+  .doc-section a:hover { text-decoration: underline; }
 
-    .doc-hero h1 { font-family: var(--font-d); font-size: clamp(3rem, 7vw, 5rem); letter-spacing: 0.05em; color: var(--white); margin-bottom: 0.75rem; position: relative; z-index: 1; }
-    .doc-hero p  { font-family: var(--font-m); font-size: 0.7rem; color: var(--grey); letter-spacing: 0.1em; position: relative; z-index: 1; }
+  /* DATA TABLE */
+  .data-table {
+    width: 100%; border-collapse: collapse; margin: 14px 0 18px; font-size: .84rem;
+    border-radius: 10px; overflow: hidden;
+  }
+  .data-table th {
+    text-align: left; padding: 10px 14px;
+    font-family: var(--font-m); font-size: .56rem; letter-spacing: .15em; text-transform: uppercase;
+    color: var(--muted2); border-bottom: 1px solid var(--border2);
+    background: rgba(96,165,250,.05);
+  }
+  .data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+  .data-table tr:last-child td { border: none; }
+  .data-table tr:hover td { background: rgba(96,165,250,.04); color: var(--text); }
 
-    .doc-wrap { max-width: 760px; margin: 0 auto; padding: 3rem 2rem 5rem; }
+  .highlight-box {
+    background: rgba(96,165,250,.06);
+    border: 1px solid rgba(96,165,250,.18);
+    border-left: 3px solid var(--primary);
+    border-radius: 0 10px 10px 0;
+    padding: 13px 18px; margin: 14px 0;
+    font-size: .84rem; color: var(--muted); line-height: 1.6;
+  }
 
-    .toc { background: var(--card); border: 1px solid var(--line2); border-radius: 12px; padding: 1.5rem 2rem; margin-bottom: 3rem; }
-    .toc-title { font-family: var(--font-m); font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--grey); margin-bottom: 1rem; }
-    .toc ol { list-style: none; display: flex; flex-direction: column; gap: 0.4rem; counter-reset: toc; }
-    .toc ol li { counter-increment: toc; }
-    .toc ol li a { display: flex; align-items: center; gap: 0.75rem; font-size: 0.82rem; color: var(--grey); text-decoration: none; transition: color 0.2s; }
-    .toc ol li a::before { content: counter(toc, decimal-leading-zero); font-family: var(--font-m); font-size: 0.6rem; color: var(--cyan); flex-shrink: 0; width: 24px; }
-    .toc ol li a:hover { color: var(--cyan); }
+  /* FOOTER */
+  .doc-footer {
+    position: relative; z-index: 1;
+    background: var(--card); backdrop-filter: blur(22px);
+    border-top: 1px solid var(--border2);
+    padding: 22px 2rem; text-align: center;
+    font-family: var(--font-m); font-size: .58rem;
+    color: var(--muted2); letter-spacing: .08em; line-height: 2.2;
+  }
+  .doc-footer a { color: var(--muted); text-decoration: none; transition: color .2s; }
+  .doc-footer a:hover { color: var(--primary); }
+  .footer-sep { margin: 0 8px; opacity: .3; }
 
-    .doc-section { margin-bottom: 3rem; }
-    .doc-section-num { font-family: var(--font-m); font-size: 0.62rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--cyan); margin-bottom: 0.4rem; }
-    .doc-section h2 { font-family: var(--font-d); font-size: 2rem; letter-spacing: 0.05em; color: var(--white); margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--line); }
-    .doc-section p  { color: var(--grey); margin-bottom: 0.85rem; font-size: 0.9rem; }
-    .doc-section ul { color: var(--grey); font-size: 0.9rem; padding-left: 1.5rem; margin-bottom: 0.85rem; }
-    .doc-section li { margin-bottom: 0.4rem; }
-    .doc-section strong { color: var(--white); font-weight: 600; }
-
-    .data-table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem; font-size: 0.85rem; }
-    .data-table th { text-align: left; padding: 0.6rem 0.85rem; font-family: var(--font-m); font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--grey2); border-bottom: 1px solid var(--line2); }
-    .data-table td { padding: 0.65rem 0.85rem; border-bottom: 1px solid var(--line); color: var(--grey); }
-    .data-table tr:last-child td { border: none; }
-    .data-table tr:hover td { background: rgba(255,255,255,0.02); color: var(--white); }
-
-    .highlight-box { background: rgba(6,182,212,0.06); border: 1px solid rgba(6,182,212,0.15); border-left: 3px solid var(--cyan); border-radius: 0 8px 8px 0; padding: 1rem 1.25rem; margin: 1rem 0; font-size: 0.85rem; color: var(--grey); }
-
-    .doc-footer { background: var(--ink2); border-top: 1px solid var(--line); padding: 2rem; text-align: center; font-family: var(--font-m); font-size: 0.65rem; color: var(--grey); letter-spacing: 0.08em; }
-    .doc-footer a { color: var(--cyan); text-decoration: none; }
-    .doc-footer a:hover { text-decoration: underline; }
+  @media (max-width: 600px) {
+    .doc-section { padding: 20px 18px; }
+    .doc-wrap { padding: 2rem 1rem 4rem; }
+    .data-table { font-size: .78rem; }
+    .data-table th, .data-table td { padding: 8px 10px; }
+  }
   </style>
 </head>
 <body>
 
+<!-- BG slideshow -->
+<div class="bg" id="bgEl">
+  <img class="active" src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=1400&q=80" alt="">
+  <img src="https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1400&q=80" alt="">
+  <img src="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1400&q=80" alt="">
+</div>
+<div class="overlay"></div>
+
+<!-- NAVBAR -->
 <nav>
   <a href="index.html" class="nav-logo">
-    <div class="nav-logo-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
-  <defs>
-    <!-- Tailored to sit flawlessly alongside your sophisticated emerald/blue css variables -->
-    <linearGradient id="rentalGradient" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#2563eb" /> <!-- Blue base -->
-      <stop offset="60%" stop-color="#10b981" /> <!-- Shift to emerald -->
-      <stop offset="100%" stop-color="#6ee7b7" /> <!-- Neon teal peak -->
-    </linearGradient>
-    
-    <!-- Depth shadow to lift the architecture off your dark background -->
-    <filter id="structureGlow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#10b981" flood-opacity="0.12"/>
-    </filter>
-  </defs>
-
-  <!-- Canvas Frame Background (matches var(--bg) seamless dark styling) -->
-  <rect width="100%" height="100%" fill="#0a0c10" rx="24"/>
-
-  <!-- Core Asset Vector Group -->
-  <g filter="url(#structureGlow)">
-    
-    <!-- Outer Protective Roof Structure (The Estate Silhouette) -->
-    <path d="M 250,90 
-             L 410,210 
-             L 370,210 
-             L 370,390 
-             L 320,390 
-             L 320,250 
-             L 180,250 
-             L 180,390 
-             L 130,390 
-             L 130,210 
-             L 90,210 Z" 
-          fill="url(#rentalGradient)" 
-          opacity="0.15" />
-
-    <!-- Sharp Primary Roofline -->
-    <path d="M 250,90 L 410,210 L 375,210 L 250,116 L 125,210 L 90,210 Z" fill="url(#rentalGradient)" />
-
-    <!-- The Rental Key/Data Nexus (Intersecting inside the property lines) -->
-    <!-- Key Shaft & Teeth -->
-    <path d="M 242,160 L 258,160 L 258,340 L 285,340 L 285,365 L 258,365 L 258,390 L 242,390 Z" fill="url(#rentalGradient)" />
-    
-    <!-- Key Bow (The Geometric Bow acts as a growth chart / structure at the top) -->
-    <path d="M 250,140 C 275,140 295,160 295,185 C 295,210 275,230 250,230 C 225,230 205,210 205,185 C 205,160 225,140 250,140 Z" 
-          fill="none" 
-          stroke="url(#rentalGradient)" 
-          stroke-width="7" />
-
-    <!-- Core Dynamic Data Node (Center of Key Head) -->
-    <circle cx="250" cy="185" r="10" fill="#6ee7b7" />
-    
-    <!-- Decorative Accent Grid lines representing floors/units -->
-    <rect x="145" y="260" width="20" height="20" rx="3" fill="#3b82f6" opacity="0.4"/>
-    <rect x="145" y="300" width="20" height="20" rx="3" fill="#3b82f6" opacity="0.4"/>
-    <rect x="335" y="260" width="20" height="20" rx="3" fill="#6ee7b7" opacity="0.4"/>
-    <rect x="335" y="300" width="20" height="20" rx="3" fill="#6ee7b7" opacity="0.4"/>
-
-  </g>
-</svg>
-</div>
-    <span class="nav-logo-text">RENTPORTAL</span>
+    <div class="nav-logo-icon">
+       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+          <defs>
+            <linearGradient id="lg1" x1="0%" y1="100%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#2563eb"/>
+              <stop offset="60%" stop-color="#10b981"/>
+              <stop offset="100%" stop-color="#6ee7b7"/>
+            </linearGradient>
+            <filter id="glow1">
+              <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#10b981" flood-opacity="0.12"/>
+            </filter>
+          </defs>
+          <rect width="100%" height="100%" fill="#0a0c10" rx="24"/>
+          <g filter="url(#glow1)">
+            <path d="M250,90L410,210L375,210L250,116L125,210L90,210Z" fill="url(#lg1)"/>
+            <path d="M242,160L258,160L258,340L285,340L285,365L258,365L258,390L242,390Z" fill="url(#lg1)"/>
+            <path d="M250,140C275,140 295,160 295,185C295,210 275,230 250,230C225,230 205,210 205,185C205,160 225,140 250,140Z" fill="none" stroke="url(#lg1)" stroke-width="7"/>
+            <circle cx="250" cy="185" r="10" fill="#6ee7b7"/>
+            <rect x="145" y="260" width="20" height="20" rx="3" fill="#3b82f6" opacity="0.4"/>
+            <rect x="145" y="300" width="20" height="20" rx="3" fill="#3b82f6" opacity="0.4"/>
+            <rect x="335" y="260" width="20" height="20" rx="3" fill="#6ee7b7" opacity="0.4"/>
+            <rect x="335" y="300" width="20" height="20" rx="3" fill="#6ee7b7" opacity="0.4"/>
+          </g>
+        </svg>
+    </div>
+    <span class="nav-logo-name">Affordable Rentals</span>
   </a>
   <a href="index.html" class="nav-back">← Back to Home</a>
 </nav>
 
+<!-- HERO -->
 <div class="doc-hero">
-  <div class="doc-hero-tag">Legal Document</div>
-  <h1>PRIVACY POLICY</h1>
-  <p>LAST UPDATED: JANUARY 2026 · KENYA DATA PROTECTION ACT COMPLIANT</p>
+  <div class="doc-hero-tag"><span class="doc-hero-dot"></span>Legal Document</div>
+  <h1>Privacy <em>Policy.</em></h1>
+  <p>Last Updated: January 2026 &nbsp;·&nbsp; Kenya Data Protection Act 2019 Compliant</p>
 </div>
 
+<!-- CONTENT -->
 <div class="doc-wrap">
 
+  <!-- TOC -->
   <div class="toc">
     <div class="toc-title">Table of Contents</div>
     <ol>
       <li><a href="#p1">Introduction</a></li>
       <li><a href="#p2">Data We Collect</a></li>
       <li><a href="#p3">How We Use Your Data</a></li>
-      <li><a href="#p4">Data Storage & Security</a></li>
+      <li><a href="#p4">Data Storage &amp; Security</a></li>
       <li><a href="#p5">Third-Party Services</a></li>
       <li><a href="#p6">Your Rights</a></li>
-      <li><a href="#p7">Cookies</a></li>
+      <li><a href="#p7">Cookies &amp; Local Storage</a></li>
       <li><a href="#p8">Children's Privacy</a></li>
       <li><a href="#p9">Changes to this Policy</a></li>
       <li><a href="#p10">Contact Us</a></li>
     </ol>
   </div>
 
+  <!-- SECTIONS -->
   <div class="doc-section" id="p1">
     <div class="doc-section-num">01</div>
-    <h2>INTRODUCTION</h2>
-    <p>RentPortal ("we", "us", "our") is committed to protecting your personal information. This Privacy Policy explains what data we collect, how we use it, and your rights as a user.</p>
-    <p>This policy is compliant with the <strong>Kenya Data Protection Act 2019</strong>. By using RentPortal, you consent to the data practices described in this policy.</p>
+    <h2>Introduction</h2>
+    <p>Affordable Rentals ("we", "us", "our") is committed to protecting your personal information. This Privacy Policy explains what data we collect, how we use it, and your rights as a user of our platform.</p>
+    <p>This policy is compliant with the <strong>Kenya Data Protection Act 2019</strong>. By using Affordable Rentals, you consent to the data practices described in this policy.</p>
     <div class="highlight-box">🔒 We never sell your personal data. Your information is only used to provide and improve our service.</div>
   </div>
 
   <div class="doc-section" id="p2">
     <div class="doc-section-num">02</div>
-    <h2>DATA WE COLLECT</h2>
+    <h2>Data We Collect</h2>
     <p>We collect the following categories of personal data:</p>
     <table class="data-table">
       <thead>
@@ -218,53 +345,57 @@
       </thead>
       <tbody>
         <tr><td>Identity</td><td>Full name, email address</td><td>On registration</td></tr>
-        <tr><td>Contact</td><td>Phone number (for M-Pesa)</td><td>On registration</td></tr>
-        <tr><td>Financial</td><td>Payment amounts, months, M-Pesa transaction codes</td><td>On payment</td></tr>
+        <tr><td>Contact</td><td>Phone number (for M-Pesa STK Push)</td><td>On registration</td></tr>
+        <tr><td>Financial</td><td>Payment amounts, months paid, M-Pesa transaction codes</td><td>On payment</td></tr>
         <tr><td>Communication</td><td>In-app messages between tenant and landlord</td><td>When messages are sent</td></tr>
-        <tr><td>Technical</td><td>Login timestamps, session tokens</td><td>On login</td></tr>
+        <tr><td>Property</td><td>House name, location, rent amount, unit details</td><td>When landlord adds property</td></tr>
+        <tr><td>Technical</td><td>Login timestamps, session tokens (JWT)</td><td>On login</td></tr>
       </tbody>
     </table>
-    <p>We do <strong>not</strong> collect your M-Pesa PIN, national ID number, or bank account details.</p>
+    <p>We do <strong>not</strong> collect your M-Pesa PIN, national ID number, or bank account details. PIN entry happens exclusively on Safaricom's secure STK Push interface.</p>
   </div>
 
   <div class="doc-section" id="p3">
     <div class="doc-section-num">03</div>
-    <h2>HOW WE USE YOUR DATA</h2>
-    <p>Your data is used for the following purposes:</p>
+    <h2>How We Use Your Data</h2>
+    <p>Your data is used exclusively for the following purposes:</p>
     <ul>
       <li>To create and manage your account</li>
       <li>To process rent payments via M-Pesa</li>
-      <li>To generate and email payment receipts</li>
+      <li>To generate and email payment receipts as PDF documents</li>
       <li>To send rent reminders and system notifications</li>
       <li>To enable communication between tenants and landlords</li>
       <li>To calculate and display arrears and payment history</li>
+      <li>To display your property publicly on the listings page (landlords only)</li>
       <li>To improve platform performance and fix bugs</li>
     </ul>
-    <p>We will never use your data for marketing, advertising or any purpose not listed above without your explicit consent.</p>
+    <p>We will never use your data for marketing, advertising, or any purpose not listed above without your explicit consent.</p>
   </div>
 
   <div class="doc-section" id="p4">
     <div class="doc-section-num">04</div>
-    <h2>DATA STORAGE & SECURITY</h2>
-    <p>Your data is stored securely in MongoDB Atlas cloud database hosted on AWS servers. We implement the following security measures:</p>
+    <h2>Data Storage &amp; Security</h2>
+    <p>Your data is stored securely in a MongoDB Atlas cloud database. We implement the following security measures:</p>
     <ul>
-      <li><strong>Password encryption</strong> — all passwords are hashed using bcrypt (salt rounds: 10)</li>
-      <li><strong>JWT authentication</strong> — sessions are protected by signed JSON Web Tokens</li>
+      <li><strong>Password encryption</strong> — all passwords are hashed using bcrypt (never stored in plain text)</li>
+      <li><strong>JWT authentication</strong> — all sessions are protected by signed JSON Web Tokens with expiry</li>
+      <li><strong>AES-256 encryption</strong> — M-Pesa consumer keys and secrets are encrypted at rest</li>
       <li><strong>HTTPS only</strong> — all data in transit is encrypted using TLS/SSL</li>
-      <li><strong>Access control</strong> — only authorized admins can access tenant data</li>
-      <li><strong>Environment variables</strong> — all secrets are stored securely and never exposed in code</li>
+      <li><strong>Access control</strong> — tenant data is only accessible to their assigned landlord and platform admins</li>
+      <li><strong>Environment variables</strong> — all secrets are stored securely and never exposed in source code</li>
     </ul>
     <div class="highlight-box">🛡️ Despite our best efforts, no system is 100% secure. Please use a strong unique password and keep your credentials private.</div>
   </div>
 
   <div class="doc-section" id="p5">
     <div class="doc-section-num">05</div>
-    <h2>THIRD-PARTY SERVICES</h2>
-    <p>RentPortal integrates with the following third-party services:</p>
+    <h2>Third-Party Services</h2>
+    <p>Affordable Rentals integrates with the following third-party services to deliver our platform:</p>
     <ul>
-      <li><strong>Safaricom M-Pesa</strong> — for payment processing. Their privacy policy applies to all payment transactions.</li>
+      <li><strong>Safaricom M-Pesa (Daraja API)</strong> — for payment processing. Their privacy policy applies to all payment transactions.</li>
       <li><strong>MongoDB Atlas</strong> — for database hosting. Data is stored in compliance with their data protection policies.</li>
-      <li><strong>Resend / Brevo</strong> — for transactional email delivery (receipts, reminders).</li>
+      <li><strong>Resend / Brevo</strong> — for transactional email delivery (receipts, rent reminders, welcome emails).</li>
+      <li><strong>Cloudinary</strong> — for property photo storage and delivery.</li>
       <li><strong>Railway / Render</strong> — for backend hosting infrastructure.</li>
     </ul>
     <p>We are not responsible for the privacy practices of these third-party services. We recommend reviewing their individual privacy policies.</p>
@@ -272,59 +403,81 @@
 
   <div class="doc-section" id="p6">
     <div class="doc-section-num">06</div>
-    <h2>YOUR RIGHTS</h2>
-    <p>Under the Kenya Data Protection Act 2019, you have the following rights:</p>
+    <h2>Your Rights</h2>
+    <p>Under the Kenya Data Protection Act 2019, you have the following rights regarding your personal data:</p>
     <ul>
       <li><strong>Right to access</strong> — request a copy of the data we hold about you</li>
-      <li><strong>Right to correction</strong> — request correction of inaccurate data</li>
-      <li><strong>Right to deletion</strong> — request deletion of your account and personal data</li>
-      <li><strong>Right to object</strong> — object to how we process your data</li>
-      <li><strong>Right to portability</strong> — receive your data in a portable format</li>
+      <li><strong>Right to correction</strong> — request correction of inaccurate or incomplete data</li>
+      <li><strong>Right to deletion</strong> — request deletion of your account and associated personal data</li>
+      <li><strong>Right to object</strong> — object to how we process your data in certain circumstances</li>
+      <li><strong>Right to portability</strong> — receive your data in a structured, portable format</li>
     </ul>
-    <p>To exercise any of these rights, contact us at <strong>support@rentportal.com</strong>. We will respond within 30 days.</p>
+    <p>To exercise any of these rights, contact us at <strong>support@affordablerentals.site</strong>. We will respond within 30 business days.</p>
   </div>
 
   <div class="doc-section" id="p7">
     <div class="doc-section-num">07</div>
-    <h2>COOKIES</h2>
-    <p>AFFORDABLE RENTALS uses <strong>localStorage</strong> (not cookies) to store your session token and theme preference on your device. This data is:</p>
+    <h2>Cookies &amp; Local Storage</h2>
+    <p>Affordable Rentals uses <strong>localStorage</strong> — not cookies — to store your session token and user preferences on your device. This data is:</p>
     <ul>
-      <li>Stored only on your device — not sent to our servers except as part of API requests</li>
-      <li>Cleared when you sign out</li>
-      <li>Never used for advertising or tracking</li>
+      <li>Stored only on your device and not shared with any third party</li>
+      <li>Sent to our servers only as part of authenticated API requests</li>
+      <li>Cleared automatically when you sign out of your account</li>
+      <li>Never used for advertising, profiling, or cross-site tracking</li>
     </ul>
-    <p>We do not use third-party tracking cookies or analytics tools that collect personal data.</p>
+    <p>We do not use third-party tracking cookies, advertising pixels, or analytics tools that collect personal data.</p>
   </div>
 
   <div class="doc-section" id="p8">
     <div class="doc-section-num">08</div>
-    <h2>CHILDREN'S PRIVACY</h2>
-    <p>RentPortal is not intended for use by persons under the age of 18. We do not knowingly collect personal data from minors. If you believe a minor has created an account, please contact us immediately and we will delete the account.</p>
+    <h2>Children's Privacy</h2>
+    <p>Affordable Rentals is not intended for use by persons under the age of 18. We do not knowingly collect personal data from minors.</p>
+    <p>If you believe a minor has created an account on our platform, please contact us immediately at <strong>support@affordablerentals.site</strong> and we will delete the account promptly.</p>
   </div>
 
   <div class="doc-section" id="p9">
     <div class="doc-section-num">09</div>
-    <h2>CHANGES TO THIS POLICY</h2>
-    <p>We may update this Privacy Policy from time to time. When we do, we will update the "Last Updated" date at the top of this page and notify registered users via email.</p>
-    <p>Continued use of RentPortal after changes are posted constitutes acceptance of the updated policy.</p>
+    <h2>Changes to this Policy</h2>
+    <p>We may update this Privacy Policy from time to time to reflect changes in our practices or applicable law. When we do, we will update the "Last Updated" date at the top of this page.</p>
+    <p>Registered users will be notified of material changes via email. Continued use of Affordable Rentals after changes are posted constitutes acceptance of the updated policy.</p>
   </div>
 
   <div class="doc-section" id="p10">
     <div class="doc-section-num">10</div>
-    <h2>CONTACT US</h2>
-    <p>For any privacy-related questions or to exercise your data rights, contact us:</p>
+    <h2>Contact Us</h2>
+    <p>For any privacy-related questions or to exercise your data rights, please reach us through any of the following:</p>
     <ul>
-      <li><strong>Email:</strong> alexanderbosire60@gmail.com</li>
+      <li><strong>Email:</strong> support@affordablerentals.site</li>
+      <li><strong>Developer Email:</strong> alexanderbosire60@gmail.com</li>
       <li><strong>WhatsApp:</strong> +254 702 276 609</li>
+      <li><strong>GitHub:</strong> <a href="https://github.com/Alexander-Dev60" target="_blank" rel="noopener">Alexander-Dev60</a></li>
       <li><strong>Response time:</strong> Within 30 business days</li>
     </ul>
   </div>
 
 </div>
 
+<!-- FOOTER -->
 <div class="doc-footer">
-  © 2026 AFFORDABLE RENTALS · <a href="terms.html">Terms & Conditions</a> · <a href="index.html">Home</a> · Kenya Data Protection Act 2019 Compliant
+  <p>© 2026 Affordable Rentals · All rights reserved · Built with ❤️ in Kenya</p>
+  <p>
+    <a href="terms.html">Terms &amp; Conditions</a>
+    <span class="footer-sep">·</span>
+    <a href="index.html">Home</a>
+    <span class="footer-sep">·</span>
+    <a href="auth.html">Login</a>
+    <span class="footer-sep">·</span>
+    <a href="listings.html">Browse Properties</a>
+    <span class="footer-sep">·</span>
+    Kenya Data Protection Act 2019 Compliant
+  </p>
 </div>
 
+<script>
+(function(){
+  const imgs = document.querySelectorAll('.bg img'); let i = 0;
+  setInterval(() => { imgs[i].classList.remove('active'); i = (i+1)%imgs.length; imgs[i].classList.add('active'); }, 5000);
+})();
+</script>
 </body>
 </html>

@@ -22,11 +22,17 @@ const { encrypt, decrypt, safeDecrypt } = require('./encrypt');
 
 // ── Email functions ──
 const {
-    sendWelcomeEmail,
-    sendRentReminder,
-    sendMoveOutEmail,
-    sendPasswordResetEmail,
-    sendTenantWelcomeEmail
+        sendWelcomeEmail,
+        sendLandlordWelcomeEmail,
+        sendRentReminder,
+        sendMoveOutEmail,
+        sendPasswordResetEmail,
+        sendTenantWelcomeEmail,
+        sendPaymentOtpEmail,
+        sendRentReceiptEmail,
+        sendMpesaConfirmationEmail,
+        sendSubscriptionRenewalEmail,
+        sendListingApprovalEmail
 } = require('./emails');
 
 // ── Models ──
@@ -46,7 +52,6 @@ const Property            = require('./models/Property');
 // ── DB ──
 const connectDB = require('./db');
 connectDB();
-
 // ── In-memory OTP store { email: { code, expiresAt, name } } ──
 // BUG 4 NOTE: This is in-memory. For multi-instance deployments, migrate to
 // a Redis/DB-backed store. For single-instance this is acceptable.
@@ -54,6 +59,14 @@ const otpStore = new Map();
 
 // ── OTP rate-limit store { email: { count, windowStart } } ── (FIX Bug 5)
 const otpRateLimit = new Map();
+
+// ── Payment-credential OTP store { landlordId: { code, expiresAt } } ──
+// Used by POST /landlord/payment-otp + POST /landlord/setup-payments
+const payOtpStore = new Map();
+
+// ── Payment OTP rate-limit store { landlordId: { count, windowStart } } ──
+// Limit: 3 OTP requests per 24-hour window per landlord
+const payOtpRateLimit = new Map();
 
 // ── Sanitize a string field: trim and cap length ── (FIX Bug 22)
 function sanitize(value, maxLen = 500) {
@@ -329,40 +342,50 @@ app.post('/landlord/register', async (req, res) => {
         await Settings.create({ landlord: landlord._id });
 
         const property = await Property.create({
-            landlord: landlord._id,
-            name:     propertyName,
-            location: propertyLocation,
-            phone:    phone
-        });
+        landlord: landlord._id,
+        name:     propertyName,
+        location: propertyLocation,
+        phone:    phone
+    });
 
-        const token = jwt.sign(
-            { id: landlord._id, role: landlord.role },
-            secret,
-            { expiresIn: '7d' }
-        );
+    const token = jwt.sign(
+                { id: landlord._id, role: landlord.role },
+                secret,
+                { expiresIn: '7d' }
+            );
 
-        res.status(201).json({
-            message:            'Account created successfully 🎉',
-            token,
-            onboardingComplete: false,
-            paymentConfigured:  false,
-            landlord: {
-                id:               landlord._id,
+            // Fire-and-forget — never block registration on email delivery
+            sendLandlordWelcomeEmail({
                 name:             landlord.name,
                 email:            landlord.email,
-                propertyName:     landlord.propertyName,
-                propertyLocation: landlord.propertyLocation
-            },
-            property: {
-                id:       property._id,
-                name:     property.name,
-                location: property.location
-            }
-        });
+                propertyName:     property.name,
+                propertyLocation: property.location
+            }).catch(err => console.error('Landlord welcome email failed:', err.message));
 
-    } catch (err) {
-        console.error('Landlord register error:', err.message);
-        res.status(500).json({ message: 'Registration failed — ' + err.message });
+    
+
+                res.status(201).json({
+                    message:            'Account created successfully 🎉',
+                    token,
+                    onboardingComplete: false,
+                    paymentConfigured:  false,
+                    landlord: {
+                        id:               landlord._id,
+                        name:             landlord.name,
+                        email:            landlord.email,
+                        propertyName:     landlord.propertyName,
+                        propertyLocation: landlord.propertyLocation
+                    },
+                    property: {
+                        id:       property._id,
+                        name:     property.name,
+                        location: property.location
+                    }
+                });
+
+            } catch (err) {
+                console.error('Landlord register error:', err.message);
+                res.status(500).json({ message: 'Registration failed — ' + err.message });
     }
 });
 
@@ -720,38 +743,125 @@ app.post('/landlord/complete-onboarding', authMiddleware, landlordOnly, async (r
     }
 });
 
+// FIX: rate-limit payment-credential OTP requests to 3 per 24-hour window
+function checkPayOtpRateLimit(landlordId) {
+const now    = Date.now();
+const window = 24 * 60 * 60 * 1000; // 24 hours
+const max    = 3;
+
+const key   = String(landlordId);
+const entry = payOtpRateLimit.get(key);
+
+if (!entry || (now - entry.windowStart) > window) {
+    payOtpRateLimit.set(key, { count: 1, windowStart: now });
+    return true;
+}
+
+if (entry.count >= max) return false;
+
+entry.count++;
+return true;
+}
+
+app.post('/landlord/payment-otp', authMiddleware, landlordOnly, async (req, res) => {
+try {
+if (!checkPayOtpRateLimit(req.user.id)) {
+return res.status(429).json({
+success: false,
+message: 'You have reached the maximum of 3 OTP requests in 24 hours. Please try again later.'
+});
+}
+
+const landlord = await User.findById(req.user.id).select('name email');
+    if (!landlord) return res.status(404).json({ success: false, message: 'Landlord not found' });
+
+    const code      = crypto.randomInt(100000, 999999).toString();
+    const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutes
+
+    payOtpStore.set(String(req.user.id), { code, expiresAt });
+
+    await sendPaymentOtpEmail({ name: landlord.name, email: landlord.email, code });
+
+    res.json({ success: true, message: 'OTP sent to your email 📧' });
+
+} catch (err) {
+    console.error('Payment OTP error:', err.message);
+    res.status(500).json({ success: false, message: 'Failed to send OTP. Please try again.' });
+}
+});
+
 app.post('/landlord/setup-payments', authMiddleware, landlordOnly, async (req, res) => {
-    try {
-        const { paybillNumber, consumerKey, consumerSecret, passkey, propertyId } = req.body;
+
+try {
+
+    const { paybillNumber, consumerKey, consumerSecret, passkey, propertyId, otp } = req.body;
 
         if (!paybillNumber || !consumerKey || !consumerSecret || !passkey || !propertyId) {
-            return res.status(400).json({ message: 'All payment fields and propertyId are required' });
-        }
+                return res.status(400).json({ message: 'All payment fields and propertyId are required' });
+            }
 
-        const property = await Property.findOne({ _id: propertyId, landlord: req.user.id });
-        if (!property) return res.status(404).json({ message: 'Property not found' });
+    const property = await Property.findOne({ _id: propertyId, landlord: req.user.id });
+            if (!property) return res.status(404).json({ message: 'Property not found' });
 
-        property.paybillNumber       = sanitize(paybillNumber);
-        property.mpesaConsumerKey    = encrypt(consumerKey);
-        property.mpesaConsumerSecret = encrypt(consumerSecret);
-        property.mpesaPasskey        = encrypt(passkey);
-        property.paymentConfigured   = true;
-        await property.save();
+    // ── Editing existing credentials requires OTP + 30-day cooldown ──
+            if (property.paymentConfigured) {
+                if (property.paymentLastUpdated) {
+                    const daysSince = (Date.now() - new Date(property.paymentLastUpdated).getTime()) / (1000 * 60 * 60 * 24);
+                    if (daysSince < 30) {
+                        const nextAllowed = new Date(new Date(property.paymentLastUpdated).getTime() + 30 * 24 * 60 * 60 * 1000);
+                        return res.status(403).json({
+                            message: `Credentials were recently updated. Next update allowed on ${nextAllowed.toDateString()}.`
+                        });
+                    }
+                }
 
-        await User.findByIdAndUpdate(req.user.id, {
-            paymentConfigured:  true,
-            onboardingComplete: true
-        });
+                if (!otp) {
+                    return res.status(401).json({ message: 'OTP verification required to update credentials' });
+                }
 
-        res.json({
-            message:           'Payment credentials saved securely ✅',
-            paymentConfigured: true,
-            property:          { id: property._id, name: property.name }
-        });
+        const entry = payOtpStore.get(String(req.user.id));
+                    if (!entry) {
+                        return res.status(401).json({ message: 'No OTP request found. Please request a new OTP.' });
+                    }
+                    if (Date.now() > entry.expiresAt) {
+                        payOtpStore.delete(String(req.user.id));
+                        return res.status(401).json({ message: 'OTP has expired. Please request a new one.' });
+                    }
+                    if (entry.code !== otp.toString()) {
+                        return res.status(401).json({ message: 'Invalid OTP code.' });
+                    }
 
-    } catch (err) {
-        console.error('Setup payments error:', err.message);
-        res.status(500).json({ message: 'Failed to save payment credentials' });
+                    // OTP valid — consume it so it cannot be reused
+                    payOtpStore.delete(String(req.user.id));
+                }
+
+                property.paybillNumber       = sanitize(paybillNumber);
+                property.mpesaConsumerKey    = encrypt(consumerKey);
+                property.mpesaConsumerSecret = encrypt(consumerSecret);
+                property.mpesaPasskey        = encrypt(passkey);
+                property.paymentConfigured   = true;
+                property.paymentLastUpdated  = new Date();
+                await property.save();
+
+                await User.findByIdAndUpdate(req.user.id, {
+                    paymentConfigured:  true,
+                    onboardingComplete: true
+                });
+
+            res.json({
+                message:           'Payment credentials saved securely ✅',
+                paymentConfigured: true,
+                property: {
+                    id:                 property._id,
+                    name:               property.name,
+                    paymentLastUpdated: property.paymentLastUpdated
+                }
+
+             });
+
+        } catch (err) {
+            console.error('Setup payments error:', err.message);
+            res.status(500).json({ message: 'Failed to save payment credentials' });
     }
 });
 
@@ -1539,71 +1649,30 @@ app.post('/payments', authMiddleware, landlordOnly, checkSubscription, async (re
         doc.text('Thank you for your payment — Affordable Rentals');
         doc.end();
 
-        doc.on('end', async () => {
-            const pdfData = Buffer.concat(buffers);
+        doc.on('end', () => {
+        const pdfData = Buffer.concat(buffers);
 
-            try {
-                const { Resend } = require('resend');
-                const resend     = new Resend(process.env.RESEND_API_KEY);
+        // Fire-and-forget — response is not blocked on email delivery
+        sendRentReceiptEmail({
+            tenant,
+            house:     tenant.house,
+            month,
+            amount,
+            rent,
+            newTotalPaid,
+            newBalance,
+            newStatus,
+            paymentId: payment._id,
+            pdfBuffer: pdfData
+        }).catch(err => console.error('Receipt email failed:', err.message));
 
-                const statusColor = newStatus === 'paid' ? '#16a34a' : '#d97706';
-                const statusLabel = newStatus === 'paid' ? 'Fully Paid ✓' : 'Partial Payment';
-                const statusBg    = newStatus === 'paid' ? '#dcfce7' : '#fef3c7';
-
-                await resend.emails.send({
-                    from:    'Affordable Rentals 🏠 <support@affordablerentals.site>',
-                    to:      tenant.email,
-                    subject: `${newStatus === 'paid' ? '✅' : '🔔'} Rent Receipt — ${month} | ${tenant.house.name}`,
-                    html: `
-                    <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:560px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
-                      <div style="background:linear-gradient(135deg,#1d4ed8,#0ea5e9);padding:32px;text-align:center">
-                        <div style="font-size:40px;margin-bottom:8px">🧾</div>
-                        <h1 style="color:#fff;margin:0;font-size:22px;font-weight:700">Payment Received</h1>
-                        <p style="color:#bae6fd;margin:6px 0 0;font-size:13px">${month}</p>
-                      </div>
-                      <div style="padding:32px">
-                        <p style="color:#1e293b;font-size:15px;margin:0 0 16px">Hi <strong>${tenant.name.split(' ')[0]}</strong>,</p>
-                        <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">
-                          Your payment of <strong>Ksh ${Number(amount).toLocaleString()}</strong> for <strong>${month}</strong> has been recorded successfully.
-                        </p>
-                        <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:20px 24px;margin-bottom:24px">
-                          <p style="color:#64748b;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;margin:0 0 12px;font-weight:600">PAYMENT BREAKDOWN</p>
-                          <table style="width:100%;border-collapse:collapse">
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">House</td>             <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${tenant.house.name}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Month</td>             <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${month}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Monthly Rent</td>      <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">Ksh ${Number(rent).toLocaleString()}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">This Payment</td>      <td style="color:#1d4ed8;font-size:15px;font-weight:700;text-align:right">Ksh ${Number(amount).toLocaleString()}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Total Paid</td>        <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">Ksh ${Number(newTotalPaid).toLocaleString()}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Balance Remaining</td> <td style="color:${newBalance > 0 ? '#d97706' : '#16a34a'};font-size:13px;font-weight:700;text-align:right">Ksh ${Number(newBalance).toLocaleString()}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Status</td>            <td style="text-align:right"><span style="background:${statusBg};color:${statusColor};font-size:11px;font-weight:600;padding:2px 10px;border-radius:99px">${statusLabel}</span></td></tr>
-                          </table>
-                        </div>
-                        ${newBalance > 0 ? `
-                        <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:14px 18px;margin-bottom:20px">
-                          <p style="color:#92400e;font-size:13px;margin:0">⚠️ You still have a balance of <strong>Ksh ${Number(newBalance).toLocaleString()}</strong> for ${month}. Please pay before your due date.</p>
-                        </div>` : ''}
-                        <p style="color:#94a3b8;font-size:12px;margin:0">PDF receipt is attached. Contact us at <a href="mailto:support@affordablerentals.site" style="color:#1d4ed8">support@affordablerentals.site</a> for queries.</p>
-                      </div>
-                      <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 32px;text-align:center">
-                        <p style="color:#cbd5e1;font-size:11px;margin:0">© ${new Date().getFullYear()} Affordable Rentals · <a href="https://affordablerentals.site" style="color:#94a3b8;text-decoration:none">affordablerentals.site</a></p>
-                      </div>
-                    </div>`,
-                    attachments: [{ filename: `receipt-${payment._id}.pdf`, content: pdfData.toString('base64') }]
-                });
-
-                console.log(`📧 Receipt email sent to ${tenant.email}`);
-
-            } catch (emailErr) {
-                console.error('Receipt email failed:', emailErr.message);
-            }
-
-            res.json({
-                message:   `Payment recorded — ${newStatus.toUpperCase()} 📄`,
-                paymentId: payment._id,
-                payment,
-                summary:   { rentAmount: rent, totalPaid: newTotalPaid, balance: newBalance, status: newStatus }
-            });
+        res.json({
+            message:   `Payment recorded — ${newStatus.toUpperCase()} 📄`,
+            paymentId: payment._id,
+            payment,
+            summary:   { rentAmount: rent, totalPaid: newTotalPaid, balance: newBalance, status: newStatus }
         });
+    });
 
     } catch (err) {
         console.error('Payment error:', err.message);
@@ -2007,47 +2076,16 @@ app.post('/callback', async (req, res) => {
             console.log(`✅ M-Pesa confirmed: ${mpesaCode} | ${payment.month} | ${newStatus}`);
 
             if (payment.tenant?.email) {
-                const { Resend } = require('resend');
-                const resend     = new Resend(process.env.RESEND_API_KEY);
-                const statusColor = newStatus === 'paid' ? '#16a34a' : '#d97706';
-                const statusLabel = newStatus === 'paid' ? 'Fully Paid ✓' : 'Partial Payment';
-                const statusBg    = newStatus === 'paid' ? '#dcfce7' : '#fef3c7';
-
-                resend.emails.send({
-                    from:    'Affordable Rentals 🏠 <support@affordablerentals.site>',
-                    to:      payment.tenant.email,
-                    subject: `${newStatus === 'paid' ? '✅' : '🔔'} M-Pesa Payment Confirmed — ${payment.month}`,
-                    html: `
-                    <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:560px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
-                      <div style="background:linear-gradient(135deg,#16a34a,#15803d);padding:32px;text-align:center">
-                        <div style="font-size:40px;margin-bottom:8px">✅</div>
-                        <h1 style="color:#fff;margin:0;font-size:22px;font-weight:700">Payment Confirmed</h1>
-                        <p style="color:#bbf7d0;margin:6px 0 0;font-size:13px">${payment.month}</p>
-                      </div>
-                      <div style="padding:32px">
-                        <p style="color:#1e293b;font-size:15px;margin:0 0 16px">Hi <strong>${payment.tenant.name.split(' ')[0]}</strong>,</p>
-                        <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">Your M-Pesa payment has been received and confirmed.</p>
-                        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:20px 24px;margin-bottom:24px">
-                          <table style="width:100%;border-collapse:collapse">
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">House</td>        <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${payment.house?.name || '—'}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Month</td>        <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${payment.month}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">This Payment</td> <td style="color:#16a34a;font-size:15px;font-weight:700;text-align:right">Ksh ${Number(payment.amount).toLocaleString()}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Total Paid</td>   <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">Ksh ${Number(newTotalPaid).toLocaleString()}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Balance</td>      <td style="color:${newBalance > 0 ? '#d97706' : '#16a34a'};font-size:13px;font-weight:700;text-align:right">Ksh ${Number(newBalance).toLocaleString()}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">M-Pesa Code</td>  <td style="color:#1e293b;font-size:13px;font-weight:700;text-align:right;font-family:monospace">${mpesaCode}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Status</td>       <td style="text-align:right"><span style="background:${statusBg};color:${statusColor};font-size:11px;font-weight:600;padding:2px 10px;border-radius:99px">${statusLabel}</span></td></tr>
-                          </table>
-                        </div>
-                        ${newBalance > 0 ? `<div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:14px 18px;margin-bottom:20px"><p style="color:#92400e;font-size:13px;margin:0">⚠️ Balance remaining: <strong>Ksh ${Number(newBalance).toLocaleString()}</strong>. Please pay before your due date.</p></div>` : ''}
-                        <p style="color:#94a3b8;font-size:12px;margin:0">Keep this as your receipt. Contact <a href="mailto:support@affordablerentals.site" style="color:#16a34a">support@affordablerentals.site</a> for queries.</p>
-                      </div>
-                      <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 32px;text-align:center">
-                        <p style="color:#cbd5e1;font-size:11px;margin:0">© ${new Date().getFullYear()} Affordable Rentals</p>
-                      </div>
-                    </div>`
-                }).catch(err => console.error('Confirmation email failed:', err.message));
-            }
-
+            sendMpesaConfirmationEmail({
+                tenant:       payment.tenant,
+                house:        payment.house,
+                payment,
+                mpesaCode,
+                newTotalPaid,
+                newBalance,
+                newStatus
+            }).catch(err => console.error('Confirmation email failed:', err.message));
+        }
         } else {
             payment.status = 'failed';
             await payment.save();
@@ -2459,44 +2497,13 @@ app.post('/subscription-callback', async (req, res) => {
 
             console.log(`✅ Subscription confirmed: ${mpesaCode} | ${plan.name} | Expires: ${newExpiry.toDateString()}`);
 
-            try {
-                const { Resend } = require('resend');
-                const resend     = new Resend(process.env.RESEND_API_KEY);
-
-                await resend.emails.send({
-                    from:    'Affordable Rentals 🏠 <support@affordablerentals.site>',
-                    to:      landlord.email,
-                    subject: `✅ Subscription Renewed — ${plan.name} Plan`,
-                    html: `
-                    <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:560px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
-                      <div style="background:linear-gradient(135deg,#1d4ed8,#0ea5e9);padding:32px;text-align:center">
-                        <div style="font-size:40px;margin-bottom:8px">🎉</div>
-                        <h1 style="color:#fff;margin:0;font-size:22px;font-weight:700">Subscription Renewed!</h1>
-                        <p style="color:#bae6fd;margin:6px 0 0;font-size:13px">${plan.name} Plan</p>
-                      </div>
-                      <div style="padding:32px">
-                        <p style="color:#1e293b;font-size:15px;margin:0 0 16px">Hi <strong>${landlord.name.split(' ')[0]}</strong>,</p>
-                        <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">Your subscription has been renewed. You have full access to your dashboard.</p>
-                        <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:20px 24px;margin-bottom:24px">
-                          <table style="width:100%;border-collapse:collapse">
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Plan</td>         <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${plan.name}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Amount Paid</td>  <td style="color:#1d4ed8;font-size:15px;font-weight:700;text-align:right">Ksh ${Number(plan.price).toLocaleString()}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Duration</td>     <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${plan.durationDays} days</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Valid Until</td>  <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${newExpiry.toDateString()}</td></tr>
-                            <tr><td style="color:#64748b;font-size:13px;padding:6px 0">M-Pesa Code</td> <td style="color:#1e293b;font-size:13px;font-weight:700;text-align:right;font-family:monospace">${mpesaCode}</td></tr>
-                          </table>
-                        </div>
-                        <p style="color:#94a3b8;font-size:12px;margin:0">Contact <a href="mailto:support@affordablerentals.site" style="color:#1d4ed8">support@affordablerentals.site</a> for any queries.</p>
-                      </div>
-                      <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 32px;text-align:center">
-                        <p style="color:#cbd5e1;font-size:11px;margin:0">© ${new Date().getFullYear()} Affordable Rentals</p>
-                      </div>
-                    </div>`
-                });
-
-            } catch (emailErr) {
-                console.error('Subscription email failed:', emailErr.message);
-            }
+        sendSubscriptionRenewalEmail({
+            landlord,
+            plan,
+            newExpiry,
+            mpesaCode
+        }).catch(err => console.error('Subscription email failed:', err.message));
+        
 
         } else {
             subPayment.status = 'failed';
@@ -3200,35 +3207,15 @@ app.post('/stacklord/properties/:id/approve', stacklordAuth, async (req, res) =>
         if (!property) return res.status(404).json({ message: 'Property not found' });
 
         // Notify landlord
-        if (property.landlord?.email) {
-            try {
-                const { Resend } = require('resend');
-                const resend = new Resend(process.env.RESEND_API_KEY);
-                await resend.emails.send({
-                    from:    'Affordable Rentals 🏠 <support@affordablerentals.site>',
-                    to:      property.landlord.email,
-                    subject: approve
-                        ? `✅ Your listing is live — ${property.name}`
-                        : `⚠️ Listing paused — ${property.name}`,
-                    html: approve
-                        ? `<div style="font-family:'Segoe UI',Arial,sans-serif;max-width:520px;margin:40px auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
-                             <div style="background:linear-gradient(135deg,#16a34a,#15803d);padding:28px;text-align:center">
-                               <div style="font-size:36px;margin-bottom:8px">🏡</div>
-                               <h1 style="color:#fff;margin:0;font-size:20px">Your listing is live!</h1>
-                             </div>
-                             <div style="padding:28px">
-                               <p style="color:#475569;font-size:14px;line-height:1.7"><strong>${property.name}</strong>${property.location ? ' in ' + property.location : ''} is now visible to prospective tenants on the Affordable Rentals listings page.</p>
-                               <a href="${process.env.BASE_URL || 'https://affordablerentals.site'}/listings.html" style="display:inline-block;background:#16a34a;color:#fff;text-decoration:none;padding:10px 22px;border-radius:8px;font-size:13px;font-weight:600;margin-top:12px">View Listings →</a>
-                             </div>
-                           </div>`
-                        : `<div style="font-family:'Segoe UI',Arial,sans-serif;max-width:520px;margin:40px auto;padding:28px;background:#fff;border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
-                             <p style="color:#475569;font-size:14px;line-height:1.7">Your listing for <strong>${property.name}</strong> has been paused by an administrator. Please contact support@affordablerentals.site for more information.</p>
-                           </div>`
-                });
-            } catch (emailErr) {
-                console.error('Listing approval email failed:', emailErr.message);
-            }
-        }
+        // Notify landlord
+    if (property.landlord?.email) {
+        sendListingApprovalEmail({
+            landlord: property.landlord,
+            property,
+            approved: approve,
+            baseUrl:  process.env.BASE_URL
+        }).catch(err => console.error('Listing approval email failed:', err.message));
+    }
 
         res.json({
             message:  approve
