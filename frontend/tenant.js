@@ -98,13 +98,30 @@ function logout() {
     window.location.href = 'auth.html';
 }
 
-// Guard — redirect if not tenant
-// Resolves the tenant ID from the JWT regardless of which field
-// the backend uses: tenantId, id, _id, or sub.
+// Guard — redirect if not tenant, token already expired, or password
+// change is still pending.
+// FIX: previously only checked role and extracted the tenant ID — it never
+// checked payload.exp (a stale token would render the whole dashboard then
+// break on every single API call) and never checked mustChangePassword
+// (a tenant holding their 1-hour temp-password token could land here
+// directly — bookmark, back button, etc. — and use the dashboard without
+// ever being forced to set a real password). Brings this to parity with
+// guardLandlord() in script.js.
 (function guard() {
     const p = getPayload();
     if (!p) { window.location.href = 'auth.html'; return; }
+
+    if (p.exp && Date.now() >= p.exp * 1000) {
+        localStorage.removeItem('token');
+        window.location.href = 'auth.html';
+        return;
+    }
+
     if (p.role === 'landlord') { window.location.href = 'dashboard.html'; return; }
+
+    // FIX: tenant still has a pending forced password change — send them
+    // to change it before they can use the dashboard with a temp password.
+    if (p.mustChangePassword) { window.location.href = 'change-password.html'; return; }
 
     // Try all common JWT ID field names
     _tenantId = p.tenantId || p.id || p._id || p.sub || null;
@@ -114,6 +131,24 @@ function logout() {
         console.error('JWT has no tenant ID field. Keys present:', Object.keys(p));
         localStorage.removeItem('token');
         window.location.href = 'auth.html';
+        return;
+    }
+
+    // FIX: hard-stop safety net, same as the landlord dashboard. sessionManager.js
+    // handles the idle-warning and silent-refresh flows, but this guarantees a
+    // clean redirect to login the moment the token actually expires even if
+    // that script fails to load or hits a bug, instead of the dashboard
+    // silently breaking with 401s on every request.
+    if (p.exp) {
+        const originalToken = getToken();
+        const msUntilExpiry = (p.exp * 1000) - Date.now();
+        setTimeout(() => {
+            const currentToken = getToken();
+            if (currentToken === originalToken) {
+                localStorage.removeItem('token');
+                window.location.href = 'auth.html';
+            }
+        }, msUntilExpiry + 1000);
     }
 })();
 

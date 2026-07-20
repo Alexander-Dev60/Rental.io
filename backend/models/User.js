@@ -145,6 +145,20 @@ const userSchema = new mongoose.Schema({
         trim:    true
     },
 
+    // ── Terms of Service / Privacy Policy acceptance (landlords only) ──
+    // Recorded at registration so there's a durable, queryable record of
+    // *when* and *which version* of the terms a landlord agreed to — the
+    // frontend checkbox alone proves nothing once the request leaves the browser.
+    termsAcceptedAt: {
+        type:    Date,
+        default: null
+    },
+
+    termsVersion: {
+        type:    String,
+        default: null
+    },
+
     suspendedReason: { type: String, default: null },
     suspendedAt:     { type: Date,   default: null },
     suspendedBy:     { type: String, default: null }
@@ -183,17 +197,3 @@ userSchema.set('toJSON',   { virtuals: true });
 userSchema.set('toObject', { virtuals: true });
 
 module.exports = mongoose.model('User', userSchema);
-
-
-
-
-
-
-
-
-
-
-
-
-
-

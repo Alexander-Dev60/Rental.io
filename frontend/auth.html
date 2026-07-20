@@ -37,7 +37,7 @@
         --card: rgba(255,255,255,.58);
         --text: #0f172a;
         --muted: #64748b;
-        --muted2: #94a3b8;
+        --muted2: #5b6b82;
         --primary: #2563eb;
         --accent: #6366f1;
         --border: rgba(0,0,0,.1);
@@ -60,6 +60,21 @@
       color: var(--text);
       overflow: hidden;
     }
+
+    /* ── FOCUS-VISIBLE BASELINE ──
+       Inputs already had a focus glow; buttons, tabs, the eye-toggle, and the
+       discovery-panel dots did not, so keyboard users lost their place. */
+    a, button, input, select, textarea, [tabindex] { outline: none; }
+    a:focus-visible,
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+    .disc-dot:focus-visible { outline-offset: 1px; }
 
     /* ── BG SLIDESHOW ── */
     .bg { position: fixed; inset: 0; z-index: -2; }
@@ -298,6 +313,19 @@
     }
     .badge-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--primary); flex-shrink: 0; }
 
+    /* ── TERMS AGREEMENT CHECKBOX ── */
+    .terms-check {
+      display: flex; align-items: flex-start; gap: 8px;
+      margin: 2px 0 14px; cursor: pointer;
+      font-size: .72rem; color: var(--muted); line-height: 1.55;
+    }
+    .terms-check input[type="checkbox"] {
+      width: 15px; height: 15px; flex-shrink: 0; margin-top: 1px;
+      accent-color: var(--primary); cursor: pointer;
+    }
+    .terms-check a { color: var(--primary); text-decoration: none; }
+    .terms-check a:hover { text-decoration: underline; }
+
     /* ── REGISTER NOTE ── */
     .register-note {
       margin-top: 11px; padding: 10px 13px;
@@ -420,10 +448,11 @@
       font-family: var(--font-m); font-size: .51rem; letter-spacing: .06em;
       padding: 2px 7px; border-radius: 4px;
       display: inline-flex; align-items: center;
+      border: 1px solid transparent;
     }
-    .chip-vacant { background: rgba(96,165,250,.18); border: 1px solid rgba(96,165,250,.38); color: #93c5fd; }
-    .chip-full   { background: rgba(248,113,113,.12); border: 1px solid rgba(248,113,113,.3); color: #fca5a5; }
-    .chip-rent   { background: rgba(129,140,248,.14); border: 1px solid rgba(129,140,248,.28); color: #c4b5fd; }
+    .disc-chip--vacant { background: rgba(96,165,250,.18);  border-color: rgba(96,165,250,.38);  color: #93c5fd; }
+    .disc-chip--full   { background: rgba(248,113,113,.12); border-color: rgba(248,113,113,.3);  color: #fca5a5; }
+    .disc-chip--rent   { background: rgba(129,140,248,.14); border-color: rgba(129,140,248,.28); color: #c4b5fd; }
     .disc-loader {
       position: absolute; inset: 0;
       display: flex; align-items: center; justify-content: center;
@@ -693,7 +722,11 @@
             </div>
           </div>
         </div>
-        <button class="submit-btn" id="registerBtn" onclick="submitRegister()">Create Landlord Account</button>
+        <label class="terms-check">
+          <input type="checkbox" id="regTerms" onchange="toggleRegisterBtn()">
+          <span>I've read and agree to the <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</span>
+        </label>
+        <button class="submit-btn" id="registerBtn" onclick="submitRegister()" disabled>Create Landlord Account</button>
         <div class="register-note">
           <strong>14-day free trial</strong> — No payment required to get started.
           Configure your M-Pesa credentials after your first login.
@@ -735,8 +768,8 @@
           <div class="disc-location">📍 <span id="discLocationText"></span></div>
           <div class="disc-name" id="discName"></div>
           <div class="disc-chips">
-            <span class="disc-chip chip-vacant" id="discVacant" style="display:none"></span>
-            <span class="disc-chip chip-rent"   id="discRent"   style="display:none"></span>
+            <span class="disc-chip disc-chip--vacant" id="discVacant" style="display:none"></span>
+            <span class="disc-chip disc-chip--rent"   id="discRent"   style="display:none"></span>
           </div>
         </div>
         <div class="disc-loader" id="discLoader">
@@ -833,6 +866,14 @@
       document.getElementById('panelRegister').classList.toggle('active', tab === 'register');
       const hint = document.getElementById('tenantHint');
       if (hint) hint.style.display = tab === 'login' ? 'flex' : 'none';
+    }
+
+    // ── TERMS AGREEMENT GATE ──
+    // Registration button stays disabled until the terms checkbox is checked.
+    function toggleRegisterBtn() {
+      const btn     = document.getElementById('registerBtn');
+      const checked = document.getElementById('regTerms')?.checked;
+      if (btn) btn.disabled = !checked;
     }
 
     // ── EYE TOGGLE ──
@@ -998,6 +1039,9 @@
       if (!password)         { showToast('Password is required.',           'error'); return; }
       if (password.length < 6) { showToast('Password must be at least 6 characters.', 'error'); return; }
       if (password !== confirm) { showToast('Passwords do not match.',      'error'); return; }
+      if (!document.getElementById('regTerms')?.checked) {
+        showToast('Please agree to the Terms of Service and Privacy Policy.', 'error'); return;
+      }
 
       setLoading('registerBtn', true, 'Create Landlord Account');
 
@@ -1005,7 +1049,10 @@
         const res  = await fetch(`${window.API}/landlord/register`, {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ name, email, phone, propertyName, propertyLocation, password }),
+          body:    JSON.stringify({
+            name, email, phone, propertyName, propertyLocation, password,
+            termsAccepted: document.getElementById('regTerms')?.checked === true
+          }),
         });
         const data = await res.json();
 
@@ -1102,13 +1149,13 @@
 
       const vEl = document.getElementById('discVacant');
       if (vEl) {
-        vEl.classList.remove('chip-full');
+        vEl.classList.remove('disc-chip--full');
         if (l.vacantCount > 0) {
           vEl.textContent = l.vacantCount === 1 ? '1 unit available' : `${l.vacantCount} units available`;
-          vEl.classList.add('chip-vacant'); vEl.style.display = 'inline-flex';
+          vEl.classList.add('disc-chip--vacant'); vEl.style.display = 'inline-flex';
         } else {
           vEl.textContent = 'Fully occupied';
-          vEl.classList.remove('chip-vacant'); vEl.classList.add('chip-full'); vEl.style.display = 'inline-flex';
+          vEl.classList.remove('disc-chip--vacant'); vEl.classList.add('disc-chip--full'); vEl.style.display = 'inline-flex';
         }
       }
 
@@ -1145,7 +1192,7 @@
       const c = document.getElementById('discDots');
       if (!c || _discListings.length <= 1) { if (c) c.style.display = 'none'; return; }
       c.innerHTML = _discListings.map((_, i) =>
-        `<button class="disc-dot${i === 0 ? ' active' : ''}" onclick="discGoTo(${i})"></button>`
+        `<button class="disc-dot${i === 0 ? ' active' : ''}" onclick="discGoTo(${i})" aria-label="Show property ${i + 1} of ${_discListings.length}"></button>`
       ).join('');
     }
 
@@ -1174,7 +1221,7 @@
     function showDiscEmpty() {
       showDiscLoader(false);
       const e = document.getElementById('discEmpty'); if (e) e.style.display = 'flex';
-      const d = document.getElementById('discDesc');  if (d) d.textContent = 'No properties listed yet. Check back soon.';
+      const d = document.getElementById('discDesc');  if (d) d.textContent = 'No properties are listed yet. Check back soon.';
     }
 
     // ── INIT ──

@@ -22,14 +22,43 @@ function logout() {
     window.location.href = 'auth.html';
 }
 
-// ── Guard: redirect if not logged in or not landlord ──
+// ── Guard: redirect if not logged in, not landlord, or token already expired ──
+// FIX: previously only checked role/mustChangePassword, never the token's own
+// exp claim. A stale token (e.g. laptop closed overnight) would let the page
+// render fully, then every single API call would fail with scattered 401s
+// and no clean redirect — this catches that case immediately at page load.
 (function guardLandlord() {
     const token = getToken();
     if (!token) { window.location.href = 'auth.html'; return; }
     try {
         const payload = JSON.parse(atob(token.split('.')[1]));
-        if (payload.role !== 'landlord') window.location.href = 'tenant.html';
-        if (payload.mustChangePassword)  window.location.href = 'change-password.html';
+
+        if (payload.exp && Date.now() >= payload.exp * 1000) {
+            localStorage.removeItem('token');
+            window.location.href = 'auth.html';
+            return;
+        }
+
+        if (payload.role !== 'landlord') { window.location.href = 'tenant.html'; return; }
+        if (payload.mustChangePassword)  { window.location.href = 'change-password.html'; return; }
+
+        // FIX: hard-stop safety net. session-manager.js handles the idle-warning
+        // and silent-refresh flows, but if it ever fails to load or a bug keeps
+        // it from refreshing in time, this guarantees the user is bounced to
+        // login the moment the token actually expires, instead of the app
+        // silently breaking with 401s on every request.
+        if (payload.exp) {
+            const msUntilExpiry = (payload.exp * 1000) - Date.now();
+            setTimeout(() => {
+                // Re-check current token at fire time — session-manager may have
+                // already refreshed it, in which case this stale timer is a no-op.
+                const currentToken = getToken();
+                if (currentToken === token) {
+                    localStorage.removeItem('token');
+                    window.location.href = 'auth.html';
+                }
+            }, msUntilExpiry + 1000); // +1s buffer past actual expiry
+        }
     } catch {
         window.location.href = 'auth.html';
     }
@@ -1825,21 +1854,6 @@ async function saveListingDescription() {
 // ═══════════════════════════════════════════════════════
 //  PATCH FILE — script.js  (one targeted replacement)
 // ═══════════════════════════════════════════════════════
-
-// ─────────────────────────────────────────────────────
-// REPLACEMENT — handlePhotoUpload()
-// Replaces the entire function so it:
-//  • iterates over ALL selected files (FileList)
-//  • validates each file individually (type + size)
-//  • stops uploading once the property hits 5 photos
-//  • gives clear per-file feedback
-//
-// FIND the entire existing handlePhotoUpload function:
-//
-//   async function handlePhotoUpload(event) { ... }
-//
-// REPLACE WITH the function below:
-// ─────────────────────────────────────────────────────
 
 async function handlePhotoUpload(event) {
     const files      = Array.from(event.target.files || []);

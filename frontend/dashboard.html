@@ -1399,6 +1399,7 @@
      INLINE SCRIPTS
 ════════════════════════════════════════ -->
 <script src="config.js"></script>
+<script src="sessionManager.js"></script>
 <script>
 // ── Theme — runs immediately to avoid flash ──
 (function () {
@@ -1848,5 +1849,18 @@ window.addEventListener('load', () => {
 
 <script src="script.js"></script>
 <script src="dashboard.js"></script>
+<script src="session-manager.js"></script>
+<script>
+  // Sliding session: idle-warning modal + silent background refresh.
+  // Only initializes if a token is already present (guardLandlord in
+  // script.js has already run by this point and redirected away if not).
+  SessionManager.init({
+    apiBase:        CONFIG.API_URL,
+    tokenKey:       'token',
+    loginUrl:       'auth.html',
+    idleMinutes:    20,
+    warningSeconds: 60
+  });
+</script>
 </body>
 </html>

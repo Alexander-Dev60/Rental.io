@@ -49,7 +49,7 @@
         --card-hover: rgba(255,255,255,.82);
         --text: #0f172a;
         --muted: #64748b;
-        --muted2: #94a3b8;
+        --muted2: #5b6b82;
         --primary: #2563eb;
         --accent: #6366f1;
         --success: #16a34a;
@@ -78,6 +78,24 @@
       color: var(--text);
       min-height: 100vh;
       overflow-x: hidden;
+    }
+
+    /* ── FOCUS-VISIBLE BASELINE ──
+       Every clickable element gets a visible ring on keyboard focus.
+       Mouse/touch clicks stay clean (focus-visible skips pointer input). */
+    a, button, input, select, textarea, [tabindex] { outline: none; }
+    a:focus-visible,
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+    .gallery-dot:focus-visible,
+    .page-btn:focus-visible {
+      outline-offset: 1px;
     }
 
     /* ── BG SLIDESHOW ── */
@@ -480,15 +498,22 @@
       display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
     }
     .card-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
-    .card-chip {
+    /* Single chip primitive + color modifiers. Previously chip-rent/units/full/total
+       each redeclared the same box model with only color changing — now one source
+       of truth for shape, three call sites (card, featured, modal) share it via
+       .chip--lg instead of six blocks of repeated inline styles. */
+    .card-chip, .chip {
       font-family: var(--font-m); font-size: .52rem; letter-spacing: .05em;
       padding: 3px 8px; border-radius: 4px;
       display: inline-flex; align-items: center; gap: 4px;
+      border: 1px solid transparent;
     }
-    .chip-rent { background: rgba(96,165,250,.12); border: 1px solid rgba(96,165,250,.25); color: #93c5fd; }
-    .chip-units { background: var(--gold-dim); border: 1px solid rgba(200,169,110,.28); color: var(--gold); }
-    .chip-full { background: rgba(248,113,113,.1); border: 1px solid rgba(248,113,113,.22); color: #fca5a5; }
-    .chip-total { background: rgba(129,140,248,.1); border: 1px solid rgba(129,140,248,.22); color: #c4b5fd; }
+    .chip--lg { font-size: .65rem; padding: 4px 10px; }
+    .chip--blue   { background: rgba(96,165,250,.12);  border-color: rgba(96,165,250,.25);  color: #93c5fd; }
+    .chip--gold   { background: var(--gold-dim);        border-color: rgba(200,169,110,.28); color: var(--gold); }
+    .chip--red    { background: rgba(248,113,113,.1);  border-color: rgba(248,113,113,.22); color: #fca5a5; }
+    .chip--purple { background: rgba(129,140,248,.1);  border-color: rgba(129,140,248,.22); color: #c4b5fd; }
+    .chip--green  { background: rgba(74,222,128,.1);   border-color: rgba(74,222,128,.2);   color: #4ade80; }
 
     /* units summary row */
     .units-summary {
@@ -1252,7 +1277,7 @@
         : `<div class="featured-photo-placeholder"><span class="featured-initial">${(p.name||'?')[0].toUpperCase()}</span></div>`;
       const galleryDots = hasPhoto && p.photos.length > 1
         ? `<div class="gallery-dots">${p.photos.map((_,i) =>
-            `<button class="gallery-dot ${i===0?'active':''}" onclick="goPhoto('${p._id}',${i},true)"></button>`
+            `<button class="gallery-dot ${i===0?'active':''}" onclick="goPhoto('${p._id}',${i},true)" aria-label="Photo ${i+1} of ${p.photos.length}"></button>`
           ).join('')}</div>` : '';
       const rentStr = rentLabel(p);
       const waHref = p.phone ? `https://wa.me/${fmtPhone(p.phone)}?text=${encodeURIComponent(`Hi, I'm interested in ${p.name}. Is a unit available?`)}` : null;
@@ -1271,9 +1296,9 @@
               <div class="featured-name">${esc(p.name)}</div>
               <div class="featured-desc">${esc(p.description||'Contact the landlord for more details.')}</div>
               <div class="card-meta" style="margin-bottom:16px">
-                ${rentStr ? `<span class="card-chip chip-rent">💰 ${rentStr}</span>` : ''}
-                ${p.vacantCount>0 ? `<span class="card-chip chip-units">🏠 ${p.vacantCount} available</span>` : `<span class="card-chip chip-full">Fully occupied</span>`}
-                ${p.totalHouses ? `<span class="card-chip chip-total">${p.totalHouses} total units</span>` : ''}
+                ${rentStr ? `<span class="chip chip--blue">💰 ${rentStr}</span>` : ''}
+                ${p.vacantCount>0 ? `<span class="chip chip--gold">🏠 ${p.vacantCount} available</span>` : `<span class="chip chip--red">Fully occupied</span>`}
+                ${p.totalHouses ? `<span class="chip chip--purple">${p.totalHouses} total units</span>` : ''}
               </div>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
                 ${p.phone ? `<a href="tel:${p.phone}" class="action-btn action-call">📞 Call</a>` : ''}
@@ -1297,7 +1322,7 @@
         : `<div class="card-photo-placeholder"><span class="card-photo-initial">${(p.name||'?')[0].toUpperCase()}</span></div>`;
       const galleryDots = photos.length > 1
         ? `<div class="gallery-dots">${photos.map((_,i) =>
-            `<button class="gallery-dot ${i===0?'active':''}" onclick="goPhoto('${p._id}',${i},true)"></button>`
+            `<button class="gallery-dot ${i===0?'active':''}" onclick="goPhoto('${p._id}',${i},true)" aria-label="Photo ${i+1} of ${photos.length}"></button>`
           ).join('')}</div>` : '';
       const rentStr = rentLabel(p);
       const waHref = p.phone ? `https://wa.me/${fmtPhone(p.phone)}?text=${encodeURIComponent(`Hi, I'm interested in ${p.name}. Is a unit available?`)}` : null;
@@ -1318,9 +1343,9 @@
             <div class="card-name" title="${esc(p.name)}">${esc(p.name)}</div>
             <div class="card-desc-short">${esc(p.description||'Contact the landlord for more details.')}</div>
             <div class="card-meta">
-              ${rentStr ? `<span class="card-chip chip-rent">💰 ${rentStr}</span>` : ''}
-              ${!isFull ? `<span class="card-chip chip-units">🏠 ${vacant} available</span>` : `<span class="card-chip chip-full">Fully occupied</span>`}
-              ${total ? `<span class="card-chip chip-total">${total} total</span>` : ''}
+              ${rentStr ? `<span class="chip chip--blue">💰 ${rentStr}</span>` : ''}
+              ${!isFull ? `<span class="chip chip--gold">🏠 ${vacant} available</span>` : `<span class="chip chip--red">Fully occupied</span>`}
+              ${total ? `<span class="chip chip--purple">${total} total</span>` : ''}
             </div>
           </div>
           ${total > 0 ? `
@@ -1358,7 +1383,7 @@
       const photosHtml = hasPhoto
         ? `<img src="${esc(photos[0])}" id="vm-img-${p._id}" style="width:100%;height:100%;object-fit:cover" alt="${esc(p.name)}" loading="lazy">
            ${photos.length > 1 ? `<div class="vm-gallery-dots">${photos.map((_,i) =>
-             `<button class="gallery-dot ${i===0?'active':''}" onclick="vmGoPhoto('${p._id}',${i})"
+             `<button class="gallery-dot ${i===0?'active':''}" onclick="vmGoPhoto('${p._id}',${i})" aria-label="Photo ${i+1} of ${photos.length}"
                style="width:${i===0?'14px':'5px'};border-radius:${i===0?'3px':'50%'};background:${i===0?'var(--primary)':'rgba(255,255,255,.3)'}"></button>`
            ).join('')}</div>` : ''}`
         : `<div class="view-modal-photo-placeholder"><span class="view-modal-initial">${(p.name||'?')[0].toUpperCase()}</span></div>`;
@@ -1366,7 +1391,7 @@
       document.getElementById('viewModalInner').innerHTML = `
         <div class="view-modal-photo">
           ${photosHtml}
-          <button class="vm-close" onclick="closeViewModal()">✕</button>
+          <button class="vm-close" onclick="closeViewModal()" aria-label="Close property details">✕</button>
           <div class="vacancy-badge ${vacant>0?'available':'full'}" style="top:12px;right:52px">
             ${vacant>0 ? vacant+' available' : 'Fully Occupied'}
           </div>
@@ -1401,10 +1426,10 @@
           <div class="vm-desc">${esc(p.description || 'No description provided. Contact the landlord directly for more information about this property.')}</div>
 
           <div class="vm-chips">
-            ${rentStr ? `<span class="card-chip chip-rent" style="font-size:.65rem;padding:4px 10px">💰 ${rentStr}</span>` : ''}
-            ${vacant>0 ? `<span class="card-chip chip-units" style="font-size:.65rem;padding:4px 10px">🏠 ${vacant} unit${vacant>1?'s':''} available</span>` : `<span class="card-chip chip-full" style="font-size:.65rem;padding:4px 10px">Fully Occupied</span>`}
-            ${total ? `<span class="card-chip chip-total" style="font-size:.65rem;padding:4px 10px">${total} units total</span>` : ''}
-            ${p.phone ? `<span class="card-chip" style="background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.2);color:#4ade80;font-size:.65rem;padding:4px 10px">📞 ${esc(p.phone)}</span>` : ''}
+            ${rentStr ? `<span class="chip chip--lg chip--blue">💰 ${rentStr}</span>` : ''}
+            ${vacant>0 ? `<span class="chip chip--lg chip--gold">🏠 ${vacant} unit${vacant>1?'s':''} available</span>` : `<span class="chip chip--lg chip--red">Fully Occupied</span>`}
+            ${total ? `<span class="chip chip--lg chip--purple">${total} units total</span>` : ''}
+            ${p.phone ? `<span class="chip chip--lg chip--green">📞 ${esc(p.phone)}</span>` : ''}
           </div>
 
           <div class="vm-actions">

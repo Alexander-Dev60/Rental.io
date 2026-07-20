@@ -68,10 +68,77 @@ const payOtpStore = new Map();
 // Limit: 3 OTP requests per 24-hour window per landlord
 const payOtpRateLimit = new Map();
 
+// ── Rent-reminder dedupe store { "tenantId:month:YYYY-MM-DD": true } ── (FIX Bug 18)
+// The cron checks this before sending so a tenant only gets one reminder per
+// day even though the underlying arrears check re-runs every day until paid.
+// In-memory is fine on a single Render instance; keys are cheap and self-limiting
+// since only "today"'s key is ever written/read.
+const reminderLog = new Map();
+
 // ── Sanitize a string field: trim and cap length ── (FIX Bug 22)
 function sanitize(value, maxLen = 500) {
     if (typeof value !== 'string') return value;
     return value.trim().slice(0, maxLen);
+}
+
+// ═══════════════════════════════════════
+// SUBSCRIPTION PLAN LIMITS
+// ═══════════════════════════════════════
+//
+// Trial is now a real (hidden) SubscriptionPlan document — see seedPlans.js —
+// assigned to `subscriptionPlan` at registration below. This constant is only
+// a fallback for landlords created BEFORE that migration (subscriptionPlan
+// still null in the DB). Keep these numbers in sync with the seeded "Trial"
+// plan (maxProperties: 1, maxTenantsPerProperty: 20) if you ever change one.
+const TRIAL_FALLBACK_LIMITS = {
+    maxProperties:         1,
+    maxTenantsPerProperty: 20
+};
+
+// ── Resolve a landlord's effective plan limits ──
+// Every landlord SHOULD have a subscriptionPlan (Trial or paid) after
+// registration. This only falls back to TRIAL_FALLBACK_LIMITS for legacy
+// accounts that predate assigning the seeded Trial plan at signup.
+function getPlanLimits(landlord) {
+    if (landlord.subscriptionPlan) {
+        return {
+            maxProperties:         landlord.subscriptionPlan.maxProperties,
+            maxTenantsPerProperty: landlord.subscriptionPlan.maxTenantsPerProperty,
+            planName:              landlord.subscriptionPlan.name
+        };
+    }
+    return { ...TRIAL_FALLBACK_LIMITS, planName: 'Trial' };
+}
+
+// ═══════════════════════════════════════
+// M-PESA ENVIRONMENT CONFIG (FIX: sandbox was hardcoded everywhere)
+// ═══════════════════════════════════════
+//
+// Set MPESA_ENV=production on Render once you have live Daraja credentials
+// and a real paybill per property. Defaults to sandbox so nothing goes live
+// by accident. Every STK push / OAuth / query call below now uses
+// MPESA_BASE_URL instead of a hardcoded host.
+//
+// Render env vars you'll need:
+//   MPESA_ENV               = sandbox | production
+//   MPESA_CALLBACK_SECRET   = a long random string (openssl rand -hex 32)
+//   MPESA_CALLBACK_URL      = https://<your-render-service>.onrender.com/callback/<MPESA_CALLBACK_SECRET>
+//   BASE_URL                = https://<your-render-service>.onrender.com
+// ═══════════════════════════════════════
+
+const MPESA_BASE_URL = process.env.MPESA_ENV === 'production'
+    ? 'https://api.safaricom.co.ke'
+    : 'https://sandbox.safaricom.co.ke';
+
+// ── Normalize any Kenyan phone format to 254XXXXXXXXX ── (FIX: phone wasn't normalized before STK push)
+// Safaricom requires PartyA/PhoneNumber in 254XXXXXXXXX format. Tenants/landlords
+// naturally type 07XXXXXXXX or +254XXXXXXXXX — this converts either into what
+// Daraja expects, so pushes stop silently failing on unnormalized numbers.
+function normalizePhone(phone) {
+    let p = String(phone || '').replace(/\s+/g, '').replace(/\+/g, '');
+    if (p.startsWith('0')) p = '254' + p.slice(1);
+    if (p.startsWith('7') || p.startsWith('1')) p = '254' + p;
+    return p;
 }
 
 
@@ -218,7 +285,7 @@ async function getRentToken(credentialHolder) {
     const auth = Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
 
     const res = await axios.get(
-        'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials',
+        `${MPESA_BASE_URL}/oauth/v1/generate?grant_type=client_credentials`,
         { headers: { Authorization: `Basic ${auth}` } }
     );
     return res.data.access_token;
@@ -230,22 +297,44 @@ async function getSystemToken() {
     ).toString('base64');
 
     const res = await axios.get(
-        'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials',
+        `${MPESA_BASE_URL}/oauth/v1/generate?grant_type=client_credentials`,
         { headers: { Authorization: `Basic ${auth}` } }
     );
     return res.data.access_token;
 }
 
-// ── FIX Bug 14: Safaricom callback signature validator ──
-function validateSafaricomCallback(req) {
-    // In production Safaricom signs callbacks — verify the source IP
-    // is within Safaricom's known range or validate a shared secret header.
-    // For sandbox this is a no-op but the structure is in place.
-    const allowedIPs = (process.env.SAFARICOM_ALLOWED_IPS || '').split(',').map(s => s.trim()).filter(Boolean);
-    if (!allowedIPs.length) return true; // not configured — pass through (sandbox)
+// ── FIX Bug 14: real callback authentication ──
+// IP-allowlisting was a no-op whenever SAFARICOM_ALLOWED_IPS wasn't set — which
+// meant anyone who found/guessed a checkoutRequestId could POST straight to
+// /callback and mark a rent payment "paid" with no real M-Pesa transaction.
+// Render (like most PaaS) also doesn't guarantee a fixed IP Safaricom would see
+// on the way in, so IP checking is unreliable either way.
+//
+// Real fix: a random secret embedded in the callback URL path itself
+// (/callback/:secret). Safaricom just echoes back whatever CallBackURL you
+// gave it, so this works regardless of hosting platform and can't be
+// bypassed by guessing a checkoutRequestId.
+function validateCallbackSecret(req, res) {
+    const configured = process.env.MPESA_CALLBACK_SECRET;
+    if (!configured) {
+        // Fail closed: refuse callbacks rather than silently trusting anyone,
+        // if you forgot to set this env var.
+        console.error('FATAL: MPESA_CALLBACK_SECRET is not set — rejecting callback');
+        res.status(500).end();
+        return false;
+    }
 
-    const clientIP = req.ip || req.connection.remoteAddress || '';
-    return allowedIPs.some(ip => clientIP.includes(ip));
+    const provided = req.params.secret || '';
+    const a = Buffer.from(provided);
+    const b = Buffer.from(configured);
+
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+        console.warn('⚠️  Callback rejected — invalid or missing secret');
+        res.status(404).end(); // 404, not 401 — don't confirm the route exists
+        return false;
+    }
+
+    return true;
 }
 
 
@@ -309,11 +398,21 @@ app.post('/landlord/register', async (req, res) => {
         const propertyName     = sanitize(req.body.propertyName || '');
         const propertyLocation = sanitize(req.body.propertyLocation || '');
 
+        // FIX: server-side terms gate — the frontend checkbox is a UX nicety,
+        // not a guarantee. Anyone hitting this endpoint directly (curl/Postman/
+        // a modified client) could otherwise register without ever agreeing to
+        // the Terms of Service / Privacy Policy. Coerce strictly to boolean true
+        // so anything other than an explicit `true` is rejected.
+        const termsAccepted = req.body.termsAccepted === true;
+
         if (!name || !email || !password || !phone || !propertyName || !propertyLocation) {
             return res.status(400).json({ message: 'All fields are required' });
         }
         if (password.length < 6) {
             return res.status(400).json({ message: 'Password must be at least 6 characters' });
+        }
+        if (!termsAccepted) {
+            return res.status(400).json({ message: 'You must agree to the Terms of Service and Privacy Policy to register' });
         }
 
         const existing = await User.findOne({ email });
@@ -324,6 +423,13 @@ app.post('/landlord/register', async (req, res) => {
         // FIX Bug 23: guard JWT_SECRET
         const secret = process.env.JWT_SECRET;
         if (!secret) return res.status(500).json({ message: 'Server configuration error' });
+
+        // FIX: assign the seeded (hidden) Trial SubscriptionPlan so trial landlords
+        // flow through the exact same plan.maxProperties / plan.maxTenantsPerProperty
+        // checks as paying landlords, instead of every route special-casing "no plan".
+        // If the plan hasn't been seeded yet (fresh DB, seedPlans.js not run), this
+        // simply stays null and getPlanLimits() falls back to TRIAL_FALLBACK_LIMITS.
+        const trialPlan = await SubscriptionPlan.findOne({ name: 'Trial' });
 
         const landlord = await User.create({
             name,
@@ -336,7 +442,11 @@ app.post('/landlord/register', async (req, res) => {
             onboardingComplete: false,
             paymentConfigured:  false,
             subscriptionStatus: 'trial',
-            trialEndsAt:        new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+            subscriptionPlan:   trialPlan ? trialPlan._id : null,
+            trialEndsAt:        new Date(Date.now() + (trialPlan?.durationDays || 14) * 24 * 60 * 60 * 1000),
+            // FIX: durable proof of consent — when, and against which terms version
+            termsAcceptedAt:    new Date(),
+            termsVersion:       process.env.TERMS_VERSION || '1.0'
         });
 
         await Settings.create({ landlord: landlord._id });
@@ -351,7 +461,7 @@ app.post('/landlord/register', async (req, res) => {
     const token = jwt.sign(
                 { id: landlord._id, role: landlord.role },
                 secret,
-                { expiresIn: '7d' }
+                { expiresIn: '2h' } // FIX: shortened from 7d — sliding session via /auth/refresh-token keeps active users logged in
             );
 
             // Fire-and-forget — never block registration on email delivery
@@ -432,7 +542,7 @@ app.post('/login', async (req, res) => {
                 landlordId: user.landlordId || null
             },
             secret,
-            { expiresIn: '7d' }
+            { expiresIn: '2h' } // FIX: shortened from 7d — sliding session via /auth/refresh-token keeps active users logged in
         );
 
         const response = { token };
@@ -489,12 +599,61 @@ app.post('/auth/force-change-password', authMiddleware, async (req, res) => {
                 landlordId: user.landlordId || null
             },
             secret,
-            { expiresIn: '7d' }
+            { expiresIn: '2h' } // FIX: shortened from 7d — matches login token lifetime
         );
 
         res.json({ message: 'Password updated successfully ✅', token });
 
     } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ═══════════════════════════════════════
+// SESSION REFRESH (extend session on activity)
+// ═══════════════════════════════════════
+//
+// Called by the frontend session-manager widget when the user clicks
+// "Extend Session" on the idle-timeout warning modal. authMiddleware has
+// already verified the CURRENT token is valid (not expired, correctly
+// signed) before this handler runs — so this simply re-issues a fresh
+// token with the same identity payload and a new 2h clock.
+//
+// If the token has already expired, authMiddleware rejects with 401
+// before this route body ever runs — which is correct: an expired
+// session cannot extend itself, the user must log in again.
+app.post('/auth/refresh-token', authMiddleware, async (req, res) => {
+    try {
+        const secret = process.env.JWT_SECRET;
+        if (!secret) return res.status(500).json({ message: 'Server configuration error' });
+
+        // Re-verify the user still exists and isn't suspended before extending —
+        // covers the edge case where a landlord gets suspended mid-session.
+        const user = await User.findById(req.user.id).select('role subscriptionStatus suspendedReason tenantId landlordId');
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        if (user.role === 'landlord' && user.subscriptionStatus === 'suspended') {
+            return res.status(403).json({
+                message: `Your account has been suspended. Reason: ${user.suspendedReason || 'Contact support.'}`,
+                code:    'ACCOUNT_SUSPENDED'
+            });
+        }
+
+        const token = jwt.sign(
+            {
+                id:         user._id,
+                role:       user.role,
+                tenantId:   user.tenantId   || null,
+                landlordId: user.landlordId || null
+            },
+            secret,
+            { expiresIn: '2h' }
+        );
+
+        res.json({ token, expiresIn: 7200 }); // seconds, for the frontend countdown to sync against
+
+    } catch (err) {
+        console.error('Refresh token error:', err.message);
         res.status(500).json({ error: err.message });
     }
 });
@@ -870,7 +1029,9 @@ try {
 // PROPERTIES
 // ═══════════════════════════════════════
 
-// FIX Bug 8: return upgrade:true when no plan is assigned (trial landlord adding second property)
+// FIX: use getPlanLimits() instead of hard-blocking whenever subscriptionPlan
+// is null. Trial landlords now carry the seeded Trial plan (assigned at
+// registration above), so this is the same code path for trial and paid.
 app.post('/properties/create', authMiddleware, landlordOnly, checkSubscription, async (req, res) => {
     try {
         const name     = sanitize(req.body.name     || '');
@@ -880,21 +1041,13 @@ app.post('/properties/create', authMiddleware, landlordOnly, checkSubscription, 
         if (!name) return res.status(400).json({ message: 'Property name is required' });
 
         const landlord = await User.findById(req.user.id).populate('subscriptionPlan');
-        const plan     = landlord.subscriptionPlan;
+        const { maxProperties, planName } = getPlanLimits(landlord);
 
-        // FIX Bug 8: no plan means they need to subscribe before adding more properties
-        if (!plan) {
-            return res.status(403).json({
-                message: 'You need an active subscription plan to add more properties. Please subscribe first.',
-                upgrade: true
-            });
-        }
-
-        if (plan.maxProperties !== -1) {
+        if (maxProperties !== -1) {
             const count = await Property.countDocuments({ landlord: req.user.id });
-            if (count >= plan.maxProperties) {
+            if (count >= maxProperties) {
                 return res.status(403).json({
-                    message: `Your ${plan.name} plan allows ${plan.maxProperties} ${plan.maxProperties === 1 ? 'property' : 'properties'}. Upgrade to add more.`,
+                    message: `Your ${planName} plan allows ${maxProperties} ${maxProperties === 1 ? 'property' : 'properties'}. Upgrade to add more.`,
                     upgrade: true
                 });
             }
@@ -1017,13 +1170,18 @@ app.post('/tenants/create', authMiddleware, landlordOnly, checkSubscription, asy
         if (!property) return res.status(404).json({ message: 'Property not found' });
 
         const landlordUser = await User.findById(req.user.id).populate('subscriptionPlan');
-        const plan         = landlordUser.subscriptionPlan;
 
-        if (plan && plan.maxTenantsPerProperty !== -1) {
+        // FIX: use getPlanLimits() instead of `plan && plan.maxTenantsPerProperty !== -1` —
+        // that guard SKIPPED the tenant cap entirely whenever subscriptionPlan was null,
+        // meaning trial landlords could previously add unlimited tenants to their one
+        // property. Now trial resolves to the same 20-tenant cap as everyone else.
+        const { maxTenantsPerProperty, planName } = getPlanLimits(landlordUser);
+
+        if (maxTenantsPerProperty !== -1) {
             const tenantCount = await Tenant.countDocuments({ property: propertyId, status: 'active' });
-            if (tenantCount >= plan.maxTenantsPerProperty) {
+            if (tenantCount >= maxTenantsPerProperty) {
                 return res.status(403).json({
-                    message: `Your ${plan.name} plan allows ${plan.maxTenantsPerProperty} tenants per property. Upgrade to add more.`,
+                    message: `Your ${planName} plan allows ${maxTenantsPerProperty} tenants per property. Upgrade to add more.`,
                     upgrade: true
                 });
             }
@@ -1457,7 +1615,11 @@ app.get('/tenant/:id', authMiddleware, async (req, res) => {
 // HOUSES
 // ═══════════════════════════════════════
 
-app.post('/houses', authMiddleware, landlordOnly, async (req, res) => {
+// FIX: added checkSubscription — this route had NO subscription gating at all,
+// meaning a suspended or expired landlord could still create houses even though
+// /properties/create and /tenants/create both correctly blocked them. Houses are
+// the actual billable unit of inventory here, so this was the biggest gap.
+app.post('/houses', authMiddleware, landlordOnly, checkSubscription, async (req, res) => {
     try {
         const propertyId = req.body.propertyId || null;
         const name       = sanitize(req.body.name || '');
@@ -1951,23 +2113,31 @@ app.post('/stkpush', authMiddleware, async (req, res) => {
             });
         }
 
-        const token     = await getRentToken(property);
-        const passkey   = decrypt(property.mpesaPasskey);
-        const shortcode = property.paybillNumber;
-        const timestamp = new Date().toISOString().replace(/[-T:.Z]/g, '').slice(0, 14);
-        const password  = Buffer.from(shortcode + passkey + timestamp).toString('base64');
+        const token          = await getRentToken(property);
+        const passkey        = decrypt(property.mpesaPasskey);
+        const shortcode      = property.paybillNumber;
+        const timestamp      = new Date().toISOString().replace(/[-T:.Z]/g, '').slice(0, 14);
+        const password       = Buffer.from(shortcode + passkey + timestamp).toString('base64');
+
+        // FIX: normalize phone (07... / +254... → 254...) — Safaricom rejects/mishandles
+        // anything that isn't 254XXXXXXXXX, and tenant.phone is stored however it was typed.
+        const normalizedPhone = normalizePhone(tenant.phone);
+
+        // FIX: Safaricom requires a whole-number amount — round up so a fractional
+        // balance (e.g. 2500.50) never gets sent raw.
+        const stkAmount = Math.ceil(amount);
 
         const stkRes = await axios.post(
-            'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest',
+            `${MPESA_BASE_URL}/mpesa/stkpush/v1/processrequest`,
             {
                 BusinessShortCode: shortcode,
                 Password:          password,
                 Timestamp:         timestamp,
                 TransactionType:   'CustomerPayBillOnline',
-                Amount:            amount,
-                PartyA:            tenant.phone,
+                Amount:            stkAmount,
+                PartyA:            normalizedPhone,
                 PartyB:            shortcode,
-                PhoneNumber:       tenant.phone,
+                PhoneNumber:       normalizedPhone,
                 CallBackURL:       process.env.MPESA_CALLBACK_URL,
                 AccountReference:  `Rent-${month}`,
                 TransactionDesc:   `Rent payment for ${month}`
@@ -2017,15 +2187,15 @@ app.post('/stkpush', authMiddleware, async (req, res) => {
     }
 });
 
-// FIX Bug 14: validate callback source before processing
-app.post('/callback', async (req, res) => {
-    res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+// FIX Bug 14: callback now requires the secret path segment to match
+// MPESA_CALLBACK_SECRET. Set MPESA_CALLBACK_URL to include it, e.g.:
+//   https://<your-render-service>.onrender.com/callback/<MPESA_CALLBACK_SECRET>
+// A legacy /callback (no secret) route is kept below purely to 404 cleanly
+// if something still points at the old URL, rather than 404'ing at the Express level.
+app.post('/callback/:secret', async (req, res) => {
+    if (!validateCallbackSecret(req, res)) return; // response already sent inside
 
-    // FIX Bug 14: reject if IP not in allowed list (no-op in sandbox)
-    if (!validateSafaricomCallback(req)) {
-        console.warn('⚠️  Callback rejected — unrecognised source IP:', req.ip);
-        return;
-    }
+    res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
 
     try {
         const stk = req.body?.Body?.stkCallback;
@@ -2097,6 +2267,10 @@ app.post('/callback', async (req, res) => {
     }
 });
 
+// Legacy path with no secret — reject cleanly rather than 404 at the framework level.
+// Safe to remove once you've confirmed MPESA_CALLBACK_URL is updated everywhere.
+app.post('/callback', (req, res) => res.status(404).end());
+
 app.get('/payment-status/:checkoutRequestId', authMiddleware, async (req, res) => {
     try {
         const payment = await Payment.findOne({ checkoutRequestId: req.params.checkoutRequestId });
@@ -2136,7 +2310,7 @@ app.post('/stk-query', authMiddleware, async (req, res) => {
         const password  = Buffer.from(shortcode + passkey + timestamp).toString('base64');
 
         const response = await axios.post(
-            'https://sandbox.safaricom.co.ke/mpesa/stkpushquery/v1/query',
+            `${MPESA_BASE_URL}/mpesa/stkpushquery/v1/query`,
             {
                 BusinessShortCode: shortcode,
                 Password:          password,
@@ -2392,18 +2566,23 @@ app.post('/subscribe', authMiddleware, landlordOnly, async (req, res) => {
             process.env.SYSTEM_PAYBILL + process.env.SYSTEM_PASSKEY + timestamp
         ).toString('base64');
 
+        // FIX: normalize phone before sending to Safaricom
+        const normalizedPhone = normalizePhone(phone);
+        // FIX: Safaricom requires a whole-number amount
+        const stkAmount = Math.ceil(Number(plan.price));
+
         const stkRes = await axios.post(
-            'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest',
+            `${MPESA_BASE_URL}/mpesa/stkpush/v1/processrequest`,
             {
                 BusinessShortCode: process.env.SYSTEM_PAYBILL,
                 Password:          password,
                 Timestamp:         timestamp,
                 TransactionType:   'CustomerPayBillOnline',
-                Amount:            plan.price,
-                PartyA:            phone,
+                Amount:            stkAmount,
+                PartyA:            normalizedPhone,
                 PartyB:            process.env.SYSTEM_PAYBILL,
-                PhoneNumber:       phone,
-                CallBackURL:       `${process.env.BASE_URL}/subscription-callback`,
+                PhoneNumber:       normalizedPhone,
+                CallBackURL:       `${process.env.BASE_URL}/subscription-callback/${process.env.MPESA_CALLBACK_SECRET}`,
                 AccountReference:  `Sub-${plan.name}`,
                 TransactionDesc:   `${plan.name} subscription — Affordable Rentals`
             },
@@ -2439,14 +2618,11 @@ app.post('/subscribe', authMiddleware, landlordOnly, async (req, res) => {
     }
 });
 
-// FIX Bug 14: validate callback source for subscription too
-app.post('/subscription-callback', async (req, res) => {
-    res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+// FIX Bug 14: same secret-path protection as /callback above.
+app.post('/subscription-callback/:secret', async (req, res) => {
+    if (!validateCallbackSecret(req, res)) return;
 
-    if (!validateSafaricomCallback(req)) {
-        console.warn('⚠️  Subscription callback rejected — unrecognised source IP:', req.ip);
-        return;
-    }
+    res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
 
     try {
         const stk = req.body?.Body?.stkCallback;
@@ -2515,6 +2691,9 @@ app.post('/subscription-callback', async (req, res) => {
         console.error('Subscription callback error:', err.message);
     }
 });
+
+// Legacy path with no secret — reject cleanly.
+app.post('/subscription-callback', (req, res) => res.status(404).end());
 
 app.get('/subscription-status-poll/:checkoutRequestId', authMiddleware, landlordOnly, async (req, res) => {
     try {
@@ -3834,14 +4013,8 @@ async function checkArrears() {
             if (balance === 0) continue;
 
             // FIX Bug 18: check if we already sent a reminder today for this tenant+month
-            const alreadySent = await Payment.findOne({
-                tenant: tenant._id,
-                month,
-                // We use a note field to track reminder sends without a separate model
-                // A cleaner alternative is a dedicated ReminderLog collection
-                note:   `reminder-sent-${todayKey}`
-            });
-            if (alreadySent) continue;
+            const reminderKey = `${tenant._id}:${month}:${todayKey}`;
+            if (reminderLog.has(reminderKey)) continue;
 
             console.log(`⚠️  ${tenant.name} — balance Ksh ${balance} for ${month} — sending reminder`);
 
@@ -3857,10 +4030,10 @@ async function checkArrears() {
                 console.error(`Reminder email failed for ${tenant.name}:`, err.message)
             );
 
-            // Record that reminder was sent today by creating a zero-amount marker payment
-            // Using a dedicated flag avoids polluting payment history
-            // Instead we simply log it to console and trust the daily cadence
-            // For production, add a ReminderLog model
+            // Mark as sent for today so subsequent cron runs / re-checks this
+            // same day skip this tenant. Map is small and short-lived — it's
+            // fine to just let it grow across a single day and reset on redeploy.
+            reminderLog.set(reminderKey, true);
         }
 
         console.log('✅ Rent check complete');
