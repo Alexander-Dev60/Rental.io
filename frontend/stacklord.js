@@ -1,32 +1,20 @@
 // ═══════════════════════════════════════════════════════
-//  stacklord.js — Stacklord Console Logic (SaaS version)
-//  Routes covered:
-//    GET  /stacklord/stats
-//    GET  /stacklord/landlords
-//    POST /stacklord/suspend/:id
-//    POST /stacklord/unsuspend/:id
-//    POST /stacklord/extend/:id
-//    GET  /stacklord/subscription-payments
-//    GET  /stacklord/plans
-//    POST /stacklord/plans
-//    PUT  /stacklord/plans/:id
-//    DELETE /stacklord/plans/:id
-//    POST /stacklord/plans/:id/toggle
-//    GET  /stacklord/listings-pending
-//    GET  /stacklord/listings-approved
-//    POST /stacklord/properties/:id/approve
-//    GET  /stacklord/inquiries
+//  stacklord.js — Stacklord Console Logic (commission model)
 // ═══════════════════════════════════════════════════════
 
 const API = window.API || (typeof CONFIG !== 'undefined' ? CONFIG.API_URL : '');
 
 let STACKLORD_KEY     = '';
-let subChartInstance  = null;
+let commissionChartInstance = null;
 let _allLandlords     = [];
 let _activeLandlordId = null;
 let _listingsTab      = 'pending';
 let _inquiriesPage    = 1;
+let _paymentsPage     = 1;
 let _pendingInterval  = null;
+let _selectedPendingIds = new Set();
+let _pendingListingsCache  = [];
+let _approvedListingsCache = [];
 
 // ═══════════════════════════════════════
 // UTILS
@@ -66,14 +54,8 @@ function openModal(id)  { document.getElementById(id)?.classList.add('open'); }
 function closeModal(id) { document.getElementById(id)?.classList.remove('open'); }
 
 function statusBadge(status) {
-    const map = {
-        trial:     `<span class="status-badge badge-trial">    <span class="status-badge-dot"></span>Trial     </span>`,
-        active:    `<span class="status-badge badge-active">   <span class="status-badge-dot"></span>Active    </span>`,
-        grace:     `<span class="status-badge badge-grace">    <span class="status-badge-dot"></span>Grace     </span>`,
-        expired:   `<span class="status-badge badge-expired">  <span class="status-badge-dot"></span>Expired   </span>`,
-        suspended: `<span class="status-badge badge-suspended"><span class="status-badge-dot"></span>Suspended </span>`
-    };
-    return map[status] || `<span class="status-badge">${escHtml(status || '—')}</span>`;
+    if (status === 'suspended') return `<span class="status-badge badge-suspended"><span class="status-badge-dot"></span>Suspended</span>`;
+    return `<span class="status-badge badge-active"><span class="status-badge-dot"></span>Active</span>`;
 }
 
 function formatDate(d) {
@@ -88,20 +70,8 @@ function formatDateShort(d) {
 
 function formatKsh(n) { return 'Ksh ' + Number(n || 0).toLocaleString(); }
 
-function daysColor(days) {
-    if (days > 14) return 'var(--green)';
-    if (days > 7)  return 'var(--amber)';
-    return 'var(--red)';
-}
-
-function daysRemaining(landlord) {
-    const now = new Date();
-    let expiry = null;
-    if (landlord.subscriptionStatus === 'trial')  expiry = landlord.trialEndsAt;
-    if (landlord.subscriptionStatus === 'active') expiry = landlord.subscriptionExpiry;
-    if (landlord.subscriptionStatus === 'grace')  expiry = landlord.gracePeriodUntil;
-    if (!expiry) return 0;
-    return Math.max(0, Math.ceil((new Date(expiry) - now) / (1000 * 60 * 60 * 24)));
+function currentMonthLabel() {
+    return new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
 }
 
 function _inquiryStatusBadge(status) {
@@ -112,6 +82,12 @@ function _inquiryStatusBadge(status) {
         archived:  `<span class="pill" style="background:rgba(74,85,104,0.2);color:var(--text-dim);border:1px solid var(--border)">Archived</span>`
     };
     return map[status] || `<span class="pill">${escHtml(status || '—')}</span>`;
+}
+
+function _paymentStatusPill(status) {
+    if (status === 'paid')    return '<span class="pill pill-green">Paid</span>';
+    if (status === 'pending') return '<span class="pill pill-yellow">Pending</span>';
+    return '<span class="pill pill-red">Failed</span>';
 }
 
 
@@ -130,6 +106,28 @@ function toggleSidebar() {
 function closeSidebar() {
     document.getElementById('sidebar')?.classList.remove('open');
     document.getElementById('sidebarOverlay')?.classList.remove('open');
+}
+
+
+// ═══════════════════════════════════════
+// PLATFORM MAINTENANCE — pre-login check
+// ═══════════════════════════════════════
+
+async function checkPlatformStatusForLockScreen() {
+    try {
+        const res  = await fetch(`${API}/platform-status`);
+        const data = await res.json();
+        const lock = document.getElementById('maintenanceLock');
+        if (data.maintenanceMode) {
+            document.getElementById('maintenanceLockDesc').textContent =
+                data.message || 'Affordable Rentals is temporarily down for maintenance.';
+            lock.classList.add('show');
+        } else {
+            lock.classList.remove('show');
+        }
+    } catch (err) {
+        console.error('platform-status check failed:', err.message);
+    }
 }
 
 
@@ -158,15 +156,14 @@ async function verifyKey(key) {
             return;
         }
 
+        document.getElementById('maintenanceLock').classList.remove('show');
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('mainApp').style.display     = 'block';
 
-        // Initial data loads
         loadOverview();
         loadAllLandlords();
-        loadPlans();
+        loadSystemStatus();
 
-        // Start polling for pending listings badge every 30 s
         pollPendingCount();
         if (_pendingInterval) clearInterval(_pendingInterval);
         _pendingInterval = setInterval(pollPendingCount, 30000);
@@ -189,9 +186,9 @@ function logout() {
     document.getElementById('loginScreen').style.display = 'flex';
     document.getElementById('mainApp').style.display     = 'none';
     document.getElementById('masterKey').value           = '';
-    // reset sections
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.getElementById('sec-overview')?.classList.add('active');
+    checkPlatformStatusForLockScreen();
 }
 
 
@@ -209,25 +206,25 @@ function showSection(name) {
     });
 
     const titles = {
-        overview:          'Platform Overview',
-        landlords:         'All Landlords',
-        'landlord-detail': 'Landlord Detail',
-        payments:          'Subscription Payments',
-        plans:             'Subscription Plans',
-        listings:          'Property Listings',
-        inquiries:         'Public Inquiries'
+        overview:            'Platform Overview',
+        landlords:           'All Landlords',
+        'landlord-detail':   'Landlord Detail',
+        listings:            'Property Listings',
+        inquiries:           'Public Inquiries',
+        commission:          'Commission',
+        'commission-payments': 'Commission Payment Log',
+        system:              'Platform Controls'
     };
     document.getElementById('topbarTitle').textContent = titles[name] || name;
 
-    // Lazy-load section data
-    if (name === 'overview')  loadOverview();
-    if (name === 'landlords') loadAllLandlords();
-    if (name === 'payments')  loadSubPayments();
-    if (name === 'plans')     loadPlans();
-    if (name === 'listings')  loadListings();
-    if (name === 'inquiries') loadInquiries(1);
+    if (name === 'overview')             loadOverview();
+    if (name === 'landlords')            loadAllLandlords();
+    if (name === 'listings')             loadListings();
+    if (name === 'inquiries')            loadInquiries(1);
+    if (name === 'commission')           loadCommissionSection();
+    if (name === 'commission-payments')  loadSubPayments(1);
+    if (name === 'system')               loadSystemSection();
 
-    // Close mobile sidebar after nav
     closeSidebar();
 }
 
@@ -238,21 +235,22 @@ function showSection(name) {
 
 async function loadOverview() {
     try {
-        const [statsRes, pendingRes, approvedRes, inquiryRes] = await Promise.all([
+        const [statsRes, pendingRes, approvedRes, inquiryRes, statusRes] = await Promise.all([
             stacklordFetch('/stacklord/stats'),
             stacklordFetch('/stacklord/listings-pending'),
             stacklordFetch('/stacklord/listings-approved'),
-            stacklordFetch('/stacklord/inquiries?page=1&limit=1')
+            stacklordFetch('/stacklord/inquiries?page=1&limit=1'),
+            fetch(`${API}/platform-status`)
         ]);
 
-        // --- Stats ---
         if (statsRes.ok) {
             const { stats } = await statsRes.json();
             document.getElementById('statRevenue').textContent     = formatKsh(stats.totalRevenue);
             document.getElementById('statLandlords').textContent   = stats.totalLandlords;
             document.getElementById('statTenants').textContent     = stats.totalTenants;
             document.getElementById('statHouses').textContent      = stats.totalHouses;
-            document.getElementById('statSubPayments').textContent = stats.totalPayments;
+            document.getElementById('statSubPayments').textContent = stats.totalCommissionPayments;
+            document.getElementById('statRate').textContent        = `${stats.commissionPercentage}%`;
 
             const landlordBadge = document.getElementById('landlordsBadge');
             if (landlordBadge) {
@@ -260,10 +258,9 @@ async function loadOverview() {
                 landlordBadge.style.display = stats.totalLandlords > 0 ? 'inline-block' : 'none';
             }
 
-            // Status breakdown
             const breakdownEl = document.getElementById('statusBreakdown');
             if (breakdownEl && stats.byStatus?.length) {
-                const colors = { trial:'var(--cyan)', active:'var(--green)', grace:'var(--amber)', expired:'var(--red)', suspended:'var(--red)' };
+                const colors = { active: 'var(--green)', suspended: 'var(--red)' };
                 breakdownEl.innerHTML = stats.byStatus.map(s => `
                     <div class="status-breakdown-item">
                         <div class="status-breakdown-count" style="color:${colors[s._id] || 'var(--text)'}">${s.count}</div>
@@ -272,27 +269,44 @@ async function loadOverview() {
             } else if (breakdownEl) {
                 breakdownEl.innerHTML = '<div style="color:var(--text-dim);font-size:0.8rem">No landlords yet</div>';
             }
-
-            _renderAttentionList();
         }
 
-        // --- Listings counts ---
-        const pendingCount  = pendingRes.ok  ? (await pendingRes.json()).count  || 0 : 0;
-        const approvedCount = approvedRes.ok ? (await approvedRes.json()).count || 0 : 0;
+        const pendingData  = pendingRes.ok  ? await pendingRes.json()  : { count: 0 };
+        const approvedData = approvedRes.ok ? await approvedRes.json() : { count: 0 };
 
-        _updatePendingBadge(pendingCount);
+        _updatePendingBadge(pendingData.count || 0);
 
         const el1 = document.getElementById('overviewPendingBadge');
         const el2 = document.getElementById('overviewApprovedBadge');
-        if (el1) el1.textContent = pendingCount;
-        if (el2) el2.textContent = approvedCount;
+        if (el1) el1.textContent = pendingData.count  || 0;
+        if (el2) el2.textContent = approvedData.count || 0;
 
-        // --- Inquiry count ---
+        document.getElementById('pendingListingsAlert')?.classList.toggle('visible', (pendingData.count || 0) > 0);
+
         if (inquiryRes.ok) {
             const { total } = await inquiryRes.json();
             const el3 = document.getElementById('overviewInquiriesBadge');
             if (el3) el3.textContent = total || 0;
         }
+
+        if (statusRes.ok) {
+            const status = await statusRes.json();
+            document.getElementById('maintAlert')?.classList.toggle('visible', !!status.maintenanceMode);
+            _updateMaintenanceChrome(!!status.maintenanceMode);
+        }
+
+        // Auto-approve badge + attention list both need /stacklord/commission-rate
+        const rateRes = await stacklordFetch('/stacklord/commission-rate');
+        if (rateRes.ok) {
+            const settings = await rateRes.json();
+            const el4 = document.getElementById('overviewAutoApproveBadge');
+            if (el4) {
+                el4.textContent = settings.autoApproveListings ? 'ON' : 'OFF';
+                el4.className   = 'pill ' + (settings.autoApproveListings ? 'pill-green' : 'pill-red');
+            }
+        }
+
+        _renderAttentionList();
 
     } catch (err) {
         showToast('Network error loading overview', 'error');
@@ -300,34 +314,67 @@ async function loadOverview() {
     }
 }
 
-function _renderAttentionList() {
+async function _renderAttentionList() {
     const el = document.getElementById('attentionList');
     if (!el) return;
 
-    const needsAttention = _allLandlords.filter(l =>
-        ['suspended', 'expired', 'grace'].includes(l.subscriptionStatus)
-    );
+    if (!_allLandlords.length) {
+        try {
+            const res  = await stacklordFetch('/stacklord/landlords');
+            if (res.ok) _allLandlords = await res.json();
+        } catch { /* ignore */ }
+    }
 
-    if (!needsAttention.length) {
+    const suspended = _allLandlords.filter(l => l.accountStatus === 'suspended');
+
+    let outstanding = [];
+    try {
+        const res = await stacklordFetch(`/stacklord/commission/outstanding?month=${encodeURIComponent(currentMonthLabel())}`);
+        if (res.ok) outstanding = (await res.json()).outstanding || [];
+    } catch { /* ignore */ }
+
+    if (!suspended.length && !outstanding.length) {
         el.innerHTML = '<div class="empty-state"><span class="icon">✅</span>All landlords in good standing</div>';
         return;
     }
 
-    el.innerHTML = needsAttention.map(l => {
-        const days = daysRemaining(l);
-        return `
+    let html = '';
+
+    suspended.forEach(l => {
+        html += `
             <div style="display:flex;align-items:center;justify-content:space-between;padding:0.65rem 0;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:0.5rem">
                 <div>
                     <div style="font-size:0.85rem;font-weight:600;color:var(--text)">${escHtml(l.name)}</div>
                     <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--text-dim)">${escHtml(l.email)}</div>
                 </div>
                 <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">
-                    ${statusBadge(l.subscriptionStatus)}
-                    ${days > 0 ? `<span style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:${daysColor(days)}">${days}d</span>` : ''}
+                    ${statusBadge('suspended')}
                     <button class="btn btn-secondary btn-sm" onclick="openLandlordDetail('${l._id}')">View →</button>
                 </div>
             </div>`;
-    }).join('');
+    });
+
+    outstanding.forEach(o => {
+        html += `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0.65rem 0;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:0.5rem">
+                <div>
+                    <div style="font-size:0.85rem;font-weight:600;color:var(--text)">${escHtml(o.landlordName)}</div>
+                    <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--text-dim)">${escHtml(o.landlordEmail)}</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">
+                    <span class="pill pill-yellow">💸 Owes ${formatKsh(o.totalOwed)}</span>
+                    <button class="btn btn-secondary btn-sm" onclick="openLandlordDetail('${o.landlordId}')">View →</button>
+                </div>
+            </div>`;
+    });
+
+    el.innerHTML = html;
+}
+
+function _updateMaintenanceChrome(isOn) {
+    document.getElementById('topbarMaintBadge')?.classList.toggle('visible', isOn);
+    const navBadge = document.getElementById('maintenanceBadge');
+    if (navBadge) navBadge.style.display = isOn ? 'inline-block' : 'none';
 }
 
 
@@ -342,30 +389,32 @@ async function pollPendingCount() {
         if (!res.ok) return;
         const data = await res.json();
         _updatePendingBadge(data.count || 0);
+
+        const statusRes = await fetch(`${API}/platform-status`);
+        if (statusRes.ok) {
+            const status = await statusRes.json();
+            _updateMaintenanceChrome(!!status.maintenanceMode);
+        }
     } catch { /* fail silently */ }
 }
 
 function _updatePendingBadge(count) {
-    // Sidebar nav badge
     const navBadge = document.getElementById('listingsBadge');
     if (navBadge) {
         navBadge.textContent   = count;
         navBadge.style.display = count > 0 ? 'inline-block' : 'none';
     }
 
-    // Topbar alert banner
     const topbarAlert = document.getElementById('topbarPendingAlert');
     const topbarCount = document.getElementById('topbarPendingCount');
     if (topbarAlert) topbarAlert.classList.toggle('visible', count > 0);
     if (topbarCount) topbarCount.textContent = count;
 
-    // Overview alert card
     const overviewAlert = document.getElementById('pendingListingsAlert');
     if (overviewAlert) overviewAlert.classList.toggle('visible', count > 0);
     const overviewCount = document.getElementById('overviewPendingCount');
     if (overviewCount) overviewCount.textContent = count;
 
-    // Tab badge
     const tabBadge = document.getElementById('pendingTabBadge');
     if (tabBadge) {
         tabBadge.textContent   = count;
@@ -390,7 +439,6 @@ async function loadAllLandlords() {
         const badge = document.getElementById('landlordsBadge');
         if (badge) { badge.textContent = data.length; badge.style.display = data.length > 0 ? 'inline-block' : 'none'; }
 
-        // Refresh attention list if overview is active
         _renderAttentionList();
 
     } catch (err) {
@@ -408,7 +456,7 @@ function filterLandlords() {
             l.name.toLowerCase().includes(q) ||
             l.email.toLowerCase().includes(q) ||
             (l.propertyName || '').toLowerCase().includes(q);
-        const matchesStatus = !status || l.subscriptionStatus === status;
+        const matchesStatus = !status || l.accountStatus === status;
         return matchesQ && matchesStatus;
     });
 
@@ -423,32 +471,28 @@ function _renderLandlordsGrid(landlords) {
         return;
     }
 
-    grid.innerHTML = landlords.map(l => {
-        const days = daysRemaining(l);
-        return `
-            <div class="landlord-row-card ${escHtml(l.subscriptionStatus)}" onclick="openLandlordDetail('${l._id}')">
-                <div class="landlord-row-left">
-                    <div class="landlord-row-name">${escHtml(l.name)}</div>
-                    <div class="landlord-row-meta">${escHtml(l.email)} · ${escHtml(l.phone || '—')}</div>
-                    <div class="landlord-row-property">
-                        🏢 ${escHtml(l.propertyName || '—')} · 📍 ${escHtml(l.propertyLocation || '—')}
-                    </div>
-                    <div style="display:flex;gap:0.5rem;margin-top:0.35rem;flex-wrap:wrap">
-                        <span class="pill pill-cyan">👥 ${l.tenantCount   || 0} tenants</span>
-                        <span class="pill pill-cyan">🏡 ${l.houseCount    || 0} houses</span>
-                        <span class="pill pill-cyan">🏢 ${l.propertyCount || 0} properties</span>
-                        <span class="pill ${l.paymentConfigured ? 'pill-green' : 'pill-yellow'}">
-                            ${l.paymentConfigured ? '💳 Payments Active' : '⚠️ Payments Not Set'}
-                        </span>
-                    </div>
+    grid.innerHTML = landlords.map(l => `
+        <div class="landlord-row-card ${escHtml(l.accountStatus)}" onclick="openLandlordDetail('${l._id}')">
+            <div class="landlord-row-left">
+                <div class="landlord-row-name">${escHtml(l.name)}</div>
+                <div class="landlord-row-meta">${escHtml(l.email)} · ${escHtml(l.phone || '—')}</div>
+                <div class="landlord-row-property">
+                    🏢 ${escHtml(l.propertyName || '—')} · 📍 ${escHtml(l.propertyLocation || '—')}
                 </div>
-                <div class="landlord-row-right">
-                    ${statusBadge(l.subscriptionStatus)}
-                    ${days > 0 ? `<span style="font-family:'JetBrains Mono',monospace;font-size:0.68rem;color:${daysColor(days)}">${days}d</span>` : ''}
-                    <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();openLandlordDetail('${l._id}')">Manage →</button>
+                <div style="display:flex;gap:0.5rem;margin-top:0.35rem;flex-wrap:wrap">
+                    <span class="pill pill-cyan">👥 ${l.tenantCount   || 0} tenants</span>
+                    <span class="pill pill-cyan">🏡 ${l.houseCount    || 0} houses</span>
+                    <span class="pill pill-cyan">🏢 ${l.propertyCount || 0} properties</span>
+                    <span class="pill ${l.paymentConfigured ? 'pill-green' : 'pill-yellow'}">
+                        ${l.paymentConfigured ? '💳 Payments Active' : '⚠️ Payments Not Set'}
+                    </span>
                 </div>
-            </div>`;
-    }).join('');
+            </div>
+            <div class="landlord-row-right">
+                ${statusBadge(l.accountStatus)}
+                <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();openLandlordDetail('${l._id}')">Manage →</button>
+            </div>
+        </div>`).join('');
 }
 
 
@@ -461,8 +505,6 @@ async function openLandlordDetail(landlordId) {
     showSection('landlord-detail');
 
     document.getElementById('detailLandlordId').value  = landlordId;
-    document.getElementById('extendDays').value        = '';
-    document.getElementById('extendNote').value        = '';
     document.getElementById('suspendReason').value     = '';
 
     await loadLandlordDetail(landlordId);
@@ -481,10 +523,6 @@ async function loadLandlordDetail(landlordId) {
 
         if (!landlord) { showToast('Landlord not found', 'error'); return; }
 
-        const days = daysRemaining(landlord);
-        const pct  = Math.min(100, Math.round((days / 30) * 100));
-        const barClass = days > 14 ? 'green' : days > 7 ? 'amber' : 'red';
-
         document.getElementById('detailLandlordName').textContent = landlord.name;
         document.getElementById('topbarTitle').textContent        = landlord.name;
 
@@ -494,29 +532,18 @@ async function loadLandlordDetail(landlordId) {
                 <div style="font-family:'JetBrains Mono',monospace;font-size:0.68rem;color:var(--text-dim)">${escHtml(landlord.email)}</div>
                 <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.25rem">🏢 ${escHtml(landlord.propertyName || '—')} · 📍 ${escHtml(landlord.propertyLocation || '—')}</div>
             </div>
-            <div class="sub-card-row"><span class="sub-card-label">Status</span>        <span>${statusBadge(landlord.subscriptionStatus)}</span></div>
-            <div class="sub-card-row"><span class="sub-card-label">Plan</span>           <span class="sub-card-value">${escHtml(landlord.subscriptionPlan?.name || '—')}</span></div>
-            <div class="sub-card-row"><span class="sub-card-label">Trial Ends</span>     <span class="sub-card-value">${formatDate(landlord.trialEndsAt)}</span></div>
-            <div class="sub-card-row"><span class="sub-card-label">Sub Expiry</span>     <span class="sub-card-value">${formatDate(landlord.subscriptionExpiry)}</span></div>
-            <div class="sub-card-row"><span class="sub-card-label">Grace Until</span>    <span class="sub-card-value">${formatDate(landlord.gracePeriodUntil)}</span></div>
-            <div class="sub-card-row"><span class="sub-card-label">Last Payment</span>   <span class="sub-card-value">${formatDate(landlord.lastSubscriptionPayment)}</span></div>
-            <div class="sub-card-row"><span class="sub-card-label">Days Remaining</span> <span class="sub-card-value" style="color:${daysColor(days)}">${days} days</span></div>
-            <div class="sub-card-row"><span class="sub-card-label">Tenants</span>        <span class="sub-card-value">${landlord.tenantCount   || 0}</span></div>
-            <div class="sub-card-row"><span class="sub-card-label">Houses</span>         <span class="sub-card-value">${landlord.houseCount    || 0}</span></div>
-            <div class="sub-card-row"><span class="sub-card-label">Properties</span>     <span class="sub-card-value">${landlord.propertyCount || 0}</span></div>
-            <div class="sub-card-row"><span class="sub-card-label">M-Pesa Config</span>  <span class="sub-card-value">${landlord.paymentConfigured ? '✅ Configured' : '⚠️ Not configured'}</span></div>
-            ${landlord.suspendedReason ? `<div class="sub-card-row"><span class="sub-card-label">Suspension Reason</span><span class="sub-card-value" style="color:var(--red)">${escHtml(landlord.suspendedReason)}</span></div>` : ''}
-            <div style="margin-top:1rem">
-                <div style="display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--text-dim);margin-bottom:0.35rem">
-                    <span>Subscription usage</span><span>${pct}%</span>
-                </div>
-                <div class="progress-track">
-                    <div class="progress-fill ${barClass}" style="width:${pct}%"></div>
-                </div>
-            </div>`;
+            <div class="sub-card-row" style="display:flex;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid var(--border);font-size:0.82rem"><span style="color:var(--text-dim)">Status</span><span>${statusBadge(landlord.accountStatus)}</span></div>
+            <div class="sub-card-row" style="display:flex;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid var(--border);font-size:0.82rem"><span style="color:var(--text-dim)">Tenants</span><span class="td-mono">${landlord.tenantCount   || 0}</span></div>
+            <div class="sub-card-row" style="display:flex;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid var(--border);font-size:0.82rem"><span style="color:var(--text-dim)">Houses</span><span class="td-mono">${landlord.houseCount    || 0}</span></div>
+            <div class="sub-card-row" style="display:flex;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid var(--border);font-size:0.82rem"><span style="color:var(--text-dim)">Properties</span><span class="td-mono">${landlord.propertyCount || 0}</span></div>
+            <div class="sub-card-row" style="display:flex;justify-content:space-between;padding:0.5rem 0;font-size:0.82rem"><span style="color:var(--text-dim)">M-Pesa Config</span><span>${landlord.paymentConfigured ? '✅ Configured' : '⚠️ Not configured'}</span></div>
+            ${landlord.suspendedReason ? `<div class="sub-card-row" style="display:flex;justify-content:space-between;padding:0.5rem 0;border-top:1px solid var(--border);font-size:0.82rem"><span style="color:var(--text-dim)">Suspension Reason</span><span style="color:var(--red)">${escHtml(landlord.suspendedReason)}</span></div>` : ''}
+        `;
 
+        _renderPropertyDrilldown(landlord.properties || []);
+        await loadDetailOutstanding(landlordId);
         await loadDetailPayments(landlordId);
-        await loadSubChart(landlordId);
+        await loadCommissionChart(landlordId);
 
     } catch (err) {
         showToast('Failed to load landlord details', 'error');
@@ -524,33 +551,92 @@ async function loadLandlordDetail(landlordId) {
     }
 }
 
+function _renderPropertyDrilldown(properties) {
+    const el = document.getElementById('detailPropertiesList');
+    if (!el) return;
+
+    if (!properties.length) {
+        el.innerHTML = '<div class="empty-state"><span class="icon">🏢</span>No properties yet</div>';
+        return;
+    }
+
+    el.innerHTML = properties.map(p => `
+        <div class="prop-drill-item">
+            <div class="prop-drill-name">${escHtml(p.name)}${p.location ? ` — 📍 ${escHtml(p.location)}` : ''}</div>
+            <div class="prop-drill-pills">
+                <span class="pill ${p.paymentConfigured ? 'pill-green' : 'pill-yellow'}">${p.paymentConfigured ? '💳 M-Pesa set' : '⚠️ No M-Pesa'}</span>
+                <span class="pill ${p.isListed ? 'pill-cyan' : ''}" ${!p.isListed ? 'style="background:rgba(74,85,104,0.15);color:var(--text-dim);border:1px solid var(--border)"' : ''}>${p.isListed ? '🏡 Listed' : 'Not listed'}</span>
+                ${p.isListed ? `<span class="pill ${p.isApproved ? 'pill-green' : 'pill-yellow'}">${p.isApproved ? '✅ Approved' : '⏳ Pending'}</span>` : ''}
+                <span class="pill ${p.hasLocation ? 'pill-green' : 'pill-yellow'}">${p.hasLocation ? '📍 Pinned' : '📍 Not pinned'}</span>
+            </div>
+        </div>`).join('');
+}
+
+async function loadDetailOutstanding(landlordId) {
+    const el = document.getElementById('detailOutstanding');
+    if (!el) return;
+    el.innerHTML = '<div class="empty-state">Loading…</div>';
+
+    try {
+        const res  = await stacklordFetch(`/stacklord/commission/outstanding?month=${encodeURIComponent(currentMonthLabel())}`);
+        const data = await res.json();
+        if (!res.ok) { el.innerHTML = '<div class="empty-state">Could not load</div>'; return; }
+
+        const entry = (data.outstanding || []).find(o => o.landlordId === landlordId);
+
+        if (!entry) {
+            el.innerHTML = '<div class="empty-state"><span class="icon">✅</span>Nothing owed this month</div>';
+            return;
+        }
+
+        el.innerHTML = `
+            <div class="outstanding-item">
+                <div class="outstanding-head">
+                    <span class="outstanding-landlord">${escHtml(data.month)}</span>
+                    <span class="outstanding-total">${formatKsh(entry.totalOwed)}</span>
+                </div>
+                ${entry.properties.map(p => `
+                    <div class="outstanding-prop-row">
+                        <span>${escHtml(p.name)}</span>
+                        <span style="display:flex;align-items:center;gap:0.5rem">
+                            <span class="td-mono" style="color:var(--amber)">${formatKsh(p.amountDue)}</span>
+                            <button class="btn btn-success btn-sm" onclick="markCommissionPaid('${p.propertyId}', '${escHtml(p.month)}')">Mark Paid</button>
+                        </span>
+                    </div>`).join('')}
+            </div>`;
+
+    } catch (err) {
+        el.innerHTML = '<div class="empty-state">Network error</div>';
+        console.error('loadDetailOutstanding error:', err.message);
+    }
+}
+
 async function loadDetailPayments(landlordId) {
     try {
-        const res  = await stacklordFetch('/stacklord/subscription-payments');
+        const res  = await stacklordFetch('/stacklord/commissions?limit=200');
         if (!res.ok) return;
-        const all  = await res.json();
+        const { payments } = await res.json();
 
-        const payments = all.filter(p =>
+        const filtered = (payments || []).filter(p =>
             (p.landlord?._id === landlordId) || (p.landlord === landlordId)
         );
 
         const tbody = document.getElementById('detailPaymentsTable');
         if (!tbody) return;
 
-        if (!payments.length) {
-            tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><span class="icon">💳</span>No payments yet</div></td></tr>';
+        if (!filtered.length) {
+            tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><span class="icon">💳</span>No payments yet</div></td></tr>';
             return;
         }
 
-        tbody.innerHTML = payments.map(p => `
+        tbody.innerHTML = filtered.map(p => `
             <tr>
                 <td class="td-mono">${formatDate(p.paidAt || p.createdAt)}</td>
-                <td>${escHtml(p.plan?.name || '—')}</td>
-                <td class="td-mono" style="color:var(--green)">${formatKsh(p.amount)}</td>
+                <td>${escHtml(p.property?.name || '—')}</td>
+                <td class="td-mono">${escHtml(p.month)}</td>
+                <td class="td-mono" style="color:var(--green)">${formatKsh(p.amountDue)}</td>
                 <td class="td-mono" style="color:var(--cyan)">${escHtml(p.mpesaCode || '—')}</td>
-                <td class="td-mono">${formatDate(p.expiresAt)}</td>
-                <td>${p.status === 'paid' ? '<span class="pill pill-green">Paid</span>' : p.status === 'pending' ? '<span class="pill pill-yellow">Pending</span>' : '<span class="pill pill-red">Failed</span>'}</td>
-                <td>${p.manuallyExtended ? '<span class="pill pill-cyan">Manual</span>' : '<span class="pill pill-purple">M-Pesa</span>'}</td>
+                <td>${_paymentStatusPill(p.status)}</td>
             </tr>`).join('');
 
     } catch (err) {
@@ -558,26 +644,26 @@ async function loadDetailPayments(landlordId) {
     }
 }
 
-async function loadSubChart(landlordId) {
+async function loadCommissionChart(landlordId) {
     try {
-        const res  = await stacklordFetch('/stacklord/subscription-payments');
+        const res  = await stacklordFetch('/stacklord/commissions?status=paid&limit=200');
         if (!res.ok) return;
-        const all  = await res.json();
+        const { payments } = await res.json();
 
-        const payments = all
-            .filter(p => ((p.landlord?._id === landlordId) || (p.landlord === landlordId)) && p.status === 'paid')
+        const filtered = (payments || [])
+            .filter(p => (p.landlord?._id === landlordId) || (p.landlord === landlordId))
             .slice(-8)
             .reverse();
 
-        const labels  = payments.map(p => formatDateShort(p.paidAt || p.createdAt));
-        const amounts = payments.map(p => p.amount);
+        const labels  = filtered.map(p => formatDateShort(p.paidAt || p.createdAt));
+        const amounts = filtered.map(p => p.amountDue);
 
-        const ctx = document.getElementById('subChart')?.getContext('2d');
+        const ctx = document.getElementById('commissionChart')?.getContext('2d');
         if (!ctx) return;
 
-        if (subChartInstance) subChartInstance.destroy();
+        if (commissionChartInstance) commissionChartInstance.destroy();
 
-        subChartInstance = new Chart(ctx, {
+        commissionChartInstance = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels,
@@ -599,85 +685,14 @@ async function loadSubChart(landlordId) {
         });
 
     } catch (err) {
-        console.error('loadSubChart error:', err.message);
+        console.error('loadCommissionChart error:', err.message);
     }
 }
 
 
 // ═══════════════════════════════════════
-// SUBSCRIPTION PAYMENTS (all landlords)
+// LANDLORD CONTROLS — Suspend / Unsuspend
 // ═══════════════════════════════════════
-
-async function loadSubPayments() {
-    try {
-        const res  = await stacklordFetch('/stacklord/subscription-payments');
-        const data = await res.json();
-        if (!res.ok) { showToast('Failed to load payments', 'error'); return; }
-
-        const tbody = document.getElementById('paymentsTable');
-        if (!tbody) return;
-
-        if (!data.length) {
-            tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><span class="icon">💳</span>No subscription payments yet</div></td></tr>';
-            return;
-        }
-
-        tbody.innerHTML = data.map(p => `
-            <tr>
-                <td class="td-mono">${formatDate(p.paidAt || p.createdAt)}</td>
-                <td>
-                    <div style="font-size:0.82rem;color:var(--text)">${escHtml(p.landlord?.name || '—')}</div>
-                    <div style="font-family:'JetBrains Mono',monospace;font-size:0.62rem;color:var(--text-dim)">${escHtml(p.landlord?.email || '—')}</div>
-                </td>
-                <td>${escHtml(p.plan?.name || '—')}</td>
-                <td class="td-mono" style="color:var(--green)">${formatKsh(p.amount)}</td>
-                <td class="td-mono" style="color:var(--cyan)">${escHtml(p.mpesaCode || '—')}</td>
-                <td class="td-mono">${formatDate(p.expiresAt)}</td>
-                <td>${p.status === 'paid' ? '<span class="pill pill-green">Paid</span>' : p.status === 'pending' ? '<span class="pill pill-yellow">Pending</span>' : '<span class="pill pill-red">Failed</span>'}</td>
-                <td>${p.manuallyExtended ? '<span class="pill pill-cyan">Manual</span>' : '<span class="pill pill-purple">M-Pesa</span>'}</td>
-            </tr>`).join('');
-
-    } catch (err) {
-        showToast('Network error', 'error');
-        console.error('loadSubPayments error:', err.message);
-    }
-}
-
-
-// ═══════════════════════════════════════
-// LANDLORD CONTROLS — Extend / Suspend / Unsuspend
-// ═══════════════════════════════════════
-
-async function extendSubscription() {
-    const landlordId = document.getElementById('detailLandlordId').value;
-    const days       = parseInt(document.getElementById('extendDays').value);
-    const note       = document.getElementById('extendNote').value.trim();
-
-    if (!landlordId) { showToast('No landlord selected', 'error'); return; }
-    if (!days || days < 1) { showToast('Enter a valid number of days', 'error'); return; }
-    if (!confirm(`Extend subscription by ${days} days?`)) return;
-
-    try {
-        const res  = await stacklordFetch(`/stacklord/extend/${landlordId}`, {
-            method: 'POST',
-            body:   JSON.stringify({ days, note })
-        });
-        const data = await res.json();
-        if (!res.ok) { showToast(data.message || 'Failed to extend', 'error'); return; }
-
-        showToast(`✅ Extended ${days} days — new expiry: ${data.newExpiry}`, 'success');
-        document.getElementById('extendDays').value = '';
-        document.getElementById('extendNote').value = '';
-
-        await loadAllLandlords();
-        await loadLandlordDetail(landlordId);
-        loadOverview();
-
-    } catch (err) {
-        showToast('Network error', 'error');
-        console.error('extendSubscription error:', err.message);
-    }
-}
 
 async function suspendLandlord() {
     const landlordId = document.getElementById('detailLandlordId').value;
@@ -711,7 +726,7 @@ async function suspendLandlord() {
 async function unsuspendLandlord() {
     const landlordId = document.getElementById('detailLandlordId').value;
     if (!landlordId) { showToast('No landlord selected', 'error'); return; }
-    if (!confirm("Restore this landlord's access? Their subscription status will be recalculated.")) return;
+    if (!confirm("Restore this landlord's access?")) return;
 
     try {
         const res  = await stacklordFetch(`/stacklord/unsuspend/${landlordId}`, { method: 'POST' });
@@ -732,139 +747,215 @@ async function unsuspendLandlord() {
 
 
 // ═══════════════════════════════════════
-// PLANS
+// COMMISSION SECTION
 // ═══════════════════════════════════════
 
-async function loadPlans() {
+async function loadCommissionSection() {
+    await loadCurrentRate();
+    await loadRateHistory();
+    await loadOutstanding();
+}
+
+async function loadCurrentRate() {
     try {
-        const res  = await stacklordFetch('/stacklord/plans');
+        const res  = await stacklordFetch('/stacklord/commission-rate');
         const data = await res.json();
         if (!res.ok) return;
+        document.getElementById('currentRateDisplay').textContent = `${data.commissionPercentage}%`;
+    } catch (err) {
+        console.error('loadCurrentRate error:', err.message);
+    }
+}
 
-        const grid = document.getElementById('plansGrid');
-        if (!grid) return;
+async function setCommissionRate() {
+    const percentage = parseFloat(document.getElementById('newCommissionRate').value);
+    if (!Number.isFinite(percentage) || percentage < 0 || percentage > 100) {
+        showToast('Enter a percentage between 0 and 100', 'error');
+        return;
+    }
+    if (!confirm(`Set the platform commission rate to ${percentage}%? This applies immediately to all properties.`)) return;
 
-        if (!data.length) {
-            grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><span class="icon">📦</span>No plans yet — create your first plan</div>';
+    try {
+        const res  = await stacklordFetch('/stacklord/commission-rate', {
+            method: 'POST',
+            body:   JSON.stringify({ percentage })
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.message || 'Failed to update rate', 'error'); return; }
+
+        showToast(data.message, 'success');
+        document.getElementById('newCommissionRate').value = '';
+        loadCurrentRate();
+        loadRateHistory();
+        loadOverview();
+
+    } catch (err) {
+        showToast('Network error', 'error');
+        console.error('setCommissionRate error:', err.message);
+    }
+}
+
+async function loadRateHistory() {
+    const el = document.getElementById('rateHistoryList');
+    if (!el) return;
+    el.innerHTML = '<div class="empty-state">Loading…</div>';
+
+    try {
+        const res  = await stacklordFetch('/stacklord/commission-rate-history');
+        const data = await res.json();
+        if (!res.ok) { el.innerHTML = '<div class="empty-state">Could not load history</div>'; return; }
+
+        const history = data.history || [];
+        if (!history.length) {
+            el.innerHTML = '<div class="empty-state">No rate changes recorded yet</div>';
             return;
         }
 
-        grid.innerHTML = data.map(plan => `
-            <div class="plan-card ${!plan.isActive ? 'inactive' : ''}">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;gap:0.5rem;flex-wrap:wrap">
-                    <div class="plan-card-name">${escHtml(plan.name)}</div>
-                    ${plan.isActive ? '<span class="pill pill-green">Active</span>' : '<span class="pill pill-red">Inactive</span>'}
-                </div>
-                <div class="plan-card-price">${formatKsh(plan.price)}</div>
-                <div class="plan-card-duration">${plan.durationDays} days · ${Math.round(plan.durationDays / 30 * 10) / 10} months</div>
-                <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:0.75rem">
-                    <span class="pill pill-cyan" style="font-size:0.58rem">Props: ${plan.maxProperties === -1 ? '∞' : plan.maxProperties}</span>
-                    <span class="pill pill-cyan" style="font-size:0.58rem">Tenants/prop: ${plan.maxTenantsPerProperty === -1 ? '∞' : plan.maxTenantsPerProperty}</span>
-                </div>
-                ${plan.description ? `<div class="plan-card-desc">${escHtml(plan.description)}</div>` : ''}
-                ${plan.features?.length ? `<ul class="plan-features">${plan.features.map(f => `<li>${escHtml(f)}</li>`).join('')}</ul>` : ''}
-                <div class="plan-actions">
-                    <button class="btn btn-secondary btn-sm" onclick="editPlan('${plan._id}')">✏️ Edit</button>
-                    <button class="btn btn-${plan.isActive ? 'warn' : 'success'} btn-sm" onclick="togglePlan('${plan._id}')">
-                        ${plan.isActive ? '⏸ Deactivate' : '▶ Activate'}
-                    </button>
-                    <button class="btn btn-danger btn-sm" onclick="deletePlan('${plan._id}','${escHtml(plan.name)}')">🗑</button>
-                </div>
+        el.innerHTML = history.map(h => `
+            <div class="rate-history-row">
+                <span style="color:var(--text-muted)">${formatDate(h.changedAt)}</span>
+                <span class="td-mono" style="color:var(--accent);font-weight:700">${h.percentage}%</span>
             </div>`).join('');
 
     } catch (err) {
-        showToast('Failed to load plans', 'error');
-        console.error('loadPlans error:', err.message);
+        el.innerHTML = '<div class="empty-state">Network error</div>';
+        console.error('loadRateHistory error:', err.message);
     }
 }
 
-async function savePlan() {
-    const id                  = document.getElementById('planModalId').value.trim();
-    const name                = document.getElementById('planName').value.trim();
-    const price               = parseFloat(document.getElementById('planPrice').value);
-    const durationDays        = parseInt(document.getElementById('planDuration').value);
-    const description         = document.getElementById('planDescription').value.trim();
-    const featuresRaw         = document.getElementById('planFeatures').value.trim();
-    const sortOrder           = parseInt(document.getElementById('planSortOrder').value) || 0;
-    const maxProperties       = parseInt(document.getElementById('planMaxProps').value)   ?? 1;
-    const maxTenantsPerProperty = parseInt(document.getElementById('planMaxTenants').value) ?? 20;
+async function loadOutstanding() {
+    const el    = document.getElementById('outstandingList');
+    const month = document.getElementById('outstandingMonth')?.value.trim() || currentMonthLabel();
+    if (!el) return;
 
-    if (!name || !price || !durationDays) { showToast('Name, price and duration are required', 'error'); return; }
+    if (document.getElementById('outstandingMonth') && !document.getElementById('outstandingMonth').value) {
+        document.getElementById('outstandingMonth').value = month;
+    }
 
-    const features = featuresRaw ? featuresRaw.split('\n').map(f => f.trim()).filter(Boolean) : [];
-    const body     = { name, price, durationDays, description, features, sortOrder, maxProperties, maxTenantsPerProperty };
-    const url      = id ? `/stacklord/plans/${id}` : '/stacklord/plans';
-    const method   = id ? 'PUT' : 'POST';
+    el.innerHTML = '<div class="empty-state">Loading…</div>';
 
     try {
-        const res  = await stacklordFetch(url, { method, body: JSON.stringify(body) });
+        const res  = await stacklordFetch(`/stacklord/commission/outstanding?month=${encodeURIComponent(month)}`);
         const data = await res.json();
-        if (!res.ok) { showToast(data.message || 'Failed to save plan', 'error'); return; }
-        showToast(`Plan ${id ? 'updated' : 'created'} ✅`, 'success');
-        closeModal('modal-plan');
-        clearPlanForm();
-        loadPlans();
+        if (!res.ok) { el.innerHTML = '<div class="empty-state">Could not load</div>'; return; }
+
+        const outstanding = data.outstanding || [];
+        if (!outstanding.length) {
+            el.innerHTML = `<div class="empty-state"><span class="icon">✅</span>Nothing outstanding for ${escHtml(month)}</div>`;
+            return;
+        }
+
+        el.innerHTML = outstanding.map(o => `
+            <div class="outstanding-item">
+                <div class="outstanding-head">
+                    <span class="outstanding-landlord">${escHtml(o.landlordName)} <span style="color:var(--text-dim);font-weight:400;font-size:0.7rem">(${escHtml(o.landlordEmail)})</span></span>
+                    <span class="outstanding-total">${formatKsh(o.totalOwed)}</span>
+                </div>
+                ${o.properties.map(p => `
+                    <div class="outstanding-prop-row">
+                        <span>${escHtml(p.name)}</span>
+                        <span style="display:flex;align-items:center;gap:0.5rem">
+                            <span class="td-mono" style="color:var(--amber)">${formatKsh(p.amountDue)}</span>
+                            <button class="btn btn-success btn-sm" onclick="markCommissionPaid('${p.propertyId}', '${escHtml(p.month)}')">Mark Paid</button>
+                        </span>
+                    </div>`).join('')}
+            </div>`).join('');
+
+    } catch (err) {
+        el.innerHTML = '<div class="empty-state">Network error</div>';
+        console.error('loadOutstanding error:', err.message);
+    }
+}
+
+async function markCommissionPaid(propertyId, month) {
+    const note = prompt(`Mark commission for ${month} as paid?\n\nOptional note (e.g. "paid via bank transfer"):`, '');
+    if (note === null) return; // cancelled
+
+    try {
+        const res  = await stacklordFetch('/stacklord/commissions/mark-paid', {
+            method: 'POST',
+            body:   JSON.stringify({ propertyId, month, note })
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.message || 'Failed to mark paid', 'error'); return; }
+
+        showToast('✅ Commission marked as paid', 'success');
+        loadOutstanding();
+        loadOverview();
+        if (_activeLandlordId) loadDetailOutstanding(_activeLandlordId);
+
     } catch (err) {
         showToast('Network error', 'error');
-        console.error('savePlan error:', err.message);
+        console.error('markCommissionPaid error:', err.message);
     }
 }
 
-async function editPlan(id) {
+
+// ═══════════════════════════════════════
+// COMMISSION PAYMENT LOG (all landlords)
+// ═══════════════════════════════════════
+
+async function loadSubPayments(page = 1) {
+    _paymentsPage = page;
+    const statusFilter = document.getElementById('paymentsStatusFilter')?.value || '';
+    const tbody      = document.getElementById('paymentsTable');
+    const pagination = document.getElementById('paymentsPagination');
+
+    if (tbody) tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state">Loading…</div></td></tr>';
+
     try {
-        const res  = await stacklordFetch('/stacklord/plans');
+        let url = `/stacklord/commissions?page=${page}&limit=25`;
+        if (statusFilter) url += `&status=${encodeURIComponent(statusFilter)}`;
+
+        const res  = await stacklordFetch(url);
         const data = await res.json();
-        const plan = data.find(p => p._id === id);
-        if (!plan) return;
+        if (!res.ok) { showToast('Failed to load payments', 'error'); return; }
 
-        document.getElementById('planModalId').value      = plan._id;
-        document.getElementById('planName').value         = plan.name;
-        document.getElementById('planPrice').value        = plan.price;
-        document.getElementById('planDuration').value     = plan.durationDays;
-        document.getElementById('planDescription').value  = plan.description || '';
-        document.getElementById('planFeatures').value     = (plan.features || []).join('\n');
-        document.getElementById('planSortOrder').value    = plan.sortOrder || 0;
-        document.getElementById('planMaxProps').value     = plan.maxProperties          ?? 1;
-        document.getElementById('planMaxTenants').value   = plan.maxTenantsPerProperty  ?? 20;
-        document.getElementById('planModalTitle').textContent = 'Edit Plan';
+        const { payments, total, pages } = data;
 
-        openModal('modal-plan');
+        if (!payments?.length) {
+            if (tbody) tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><span class="icon">💳</span>No commission payments yet</div></td></tr>';
+            if (pagination) pagination.innerHTML = '';
+            return;
+        }
+
+        if (tbody) {
+            tbody.innerHTML = payments.map(p => `
+                <tr>
+                    <td class="td-mono">${formatDate(p.paidAt || p.createdAt)}</td>
+                    <td>
+                        <div style="font-size:0.82rem;color:var(--text)">${escHtml(p.landlord?.name || '—')}</div>
+                        <div style="font-family:'JetBrains Mono',monospace;font-size:0.62rem;color:var(--text-dim)">${escHtml(p.landlord?.email || '—')}</div>
+                    </td>
+                    <td>${escHtml(p.property?.name || '—')}</td>
+                    <td class="td-mono">${escHtml(p.month)}</td>
+                    <td class="td-mono">${formatKsh(p.totalCollected)}</td>
+                    <td class="td-mono" style="color:var(--green)">${formatKsh(p.amountDue)}</td>
+                    <td class="td-mono" style="color:var(--cyan)">${escHtml(p.mpesaCode || '—')}</td>
+                    <td>${_paymentStatusPill(p.status)}</td>
+                </tr>`).join('');
+        }
+
+        if (pagination && pages > 1) {
+            let html = `<button class="btn btn-secondary btn-sm" onclick="loadSubPayments(${page - 1})" ${page <= 1 ? 'disabled' : ''}>← Prev</button>`;
+            for (let i = 1; i <= pages; i++) {
+                if (pages > 7 && i > 2 && i < pages - 1 && Math.abs(i - page) > 1) {
+                    if (i === 3 || i === pages - 2) html += `<span style="color:var(--text-dim);padding:0 0.25rem;font-family:'JetBrains Mono',monospace;font-size:0.7rem">…</span>`;
+                    continue;
+                }
+                html += `<button class="btn btn-sm ${i === page ? 'btn-primary' : 'btn-secondary'}" onclick="loadSubPayments(${i})">${i}</button>`;
+            }
+            html += `<button class="btn btn-secondary btn-sm" onclick="loadSubPayments(${page + 1})" ${page >= pages ? 'disabled' : ''}>Next →</button>`;
+            html += `<span style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--text-dim);margin-left:0.5rem">${total} total</span>`;
+            pagination.innerHTML = html;
+        } else if (pagination) {
+            pagination.innerHTML = `<span style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--text-dim)">${total} payment${total === 1 ? '' : 's'} total</span>`;
+        }
+
     } catch (err) {
-        showToast('Failed to load plan', 'error');
-        console.error('editPlan error:', err.message);
+        showToast('Network error', 'error');
+        console.error('loadSubPayments error:', err.message);
     }
-}
-
-async function togglePlan(id) {
-    try {
-        const res  = await stacklordFetch(`/stacklord/plans/${id}/toggle`, { method: 'POST' });
-        const data = await res.json();
-        if (!res.ok) { showToast(data.message || 'Failed', 'error'); return; }
-        showToast(data.message, 'success');
-        loadPlans();
-    } catch (err) { showToast('Network error', 'error'); }
-}
-
-async function deletePlan(id, name) {
-    if (!confirm(`Delete plan "${name}"? This cannot be undone.`)) return;
-    try {
-        const res  = await stacklordFetch(`/stacklord/plans/${id}`, { method: 'DELETE' });
-        const data = await res.json();
-        if (!res.ok) { showToast(data.message || 'Failed', 'error'); return; }
-        showToast('Plan deleted ✅', 'success');
-        loadPlans();
-    } catch (err) { showToast('Network error', 'error'); }
-}
-
-function clearPlanForm() {
-    ['planModalId','planName','planPrice','planDuration','planDescription','planFeatures'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = '';
-    });
-    document.getElementById('planSortOrder').value  = '0';
-    document.getElementById('planMaxProps').value   = '1';
-    document.getElementById('planMaxTenants').value = '20';
-    document.getElementById('planModalTitle').textContent = 'Create Plan';
 }
 
 
@@ -873,11 +964,14 @@ function clearPlanForm() {
 // ═══════════════════════════════════════
 
 async function loadListings() {
-    const pendingEl  = document.getElementById('listingsPendingContainer');
-    const approvedEl = document.getElementById('listingsApprovedContainer');
+    const pendingEl  = document.getElementById('pendingListingsList');
+    const approvedEl = document.getElementById('approvedListingsList');
 
     if (pendingEl)  pendingEl.innerHTML  = '<div class="empty-state"><span class="icon">⏳</span>Loading…</div>';
     if (approvedEl) approvedEl.innerHTML = '<div class="empty-state"><span class="icon">⏳</span>Loading…</div>';
+
+    _selectedPendingIds.clear();
+    _updateBulkBar();
 
     try {
         const [pendingRes, approvedRes] = await Promise.all([
@@ -888,11 +982,13 @@ async function loadListings() {
         const pendingData  = pendingRes.ok  ? await pendingRes.json()  : { count: 0, properties: [] };
         const approvedData = approvedRes.ok ? await approvedRes.json() : { count: 0, properties: [] };
 
-        _updatePendingBadge(pendingData.count || 0);
-        _renderPendingListings(pendingData.properties || []);
-        _renderApprovedListings(approvedData.properties || []);
+        _pendingListingsCache  = pendingData.properties  || [];
+        _approvedListingsCache = approvedData.properties || [];
 
-        // Update overview quick stats
+        _updatePendingBadge(pendingData.count || 0);
+        _renderPendingListings();
+        _renderApprovedListings();
+
         const el2 = document.getElementById('overviewApprovedBadge');
         if (el2) el2.textContent = approvedData.count || 0;
 
@@ -912,17 +1008,41 @@ function switchListingsTab(tab) {
     document.getElementById('listingsApprovedContainer').style.display = tab === 'approved' ? 'block' : 'none';
 }
 
-function _renderPendingListings(listings) {
-    const container = document.getElementById('listingsPendingContainer');
+function toggleSelectAll(scope) {
+    if (scope !== 'pending') return;
+    const checked = document.getElementById('selectAllPending').checked;
+    _selectedPendingIds.clear();
+    if (checked) _pendingListingsCache.forEach(p => _selectedPendingIds.add(p._id));
+    _renderPendingListings();
+    _updateBulkBar();
+}
+
+function togglePendingSelect(id) {
+    if (_selectedPendingIds.has(id)) _selectedPendingIds.delete(id);
+    else _selectedPendingIds.add(id);
+    _updateBulkBar();
+}
+
+function _updateBulkBar() {
+    const bar   = document.getElementById('bulkBarPending');
+    const count = document.getElementById('bulkPendingCount');
+    if (count) count.textContent = _selectedPendingIds.size;
+    if (bar)   bar.classList.toggle('visible', _selectedPendingIds.size > 0);
+}
+
+function _renderPendingListings() {
+    const container = document.getElementById('pendingListingsList');
     if (!container) return;
 
-    if (!listings.length) {
+    if (!_pendingListingsCache.length) {
         container.innerHTML = '<div class="empty-state"><span class="icon">✅</span>No listings pending approval — all clear!</div>';
+        document.getElementById('selectAllPending').checked = false;
         return;
     }
 
-    container.innerHTML = listings.map(p => `
+    container.innerHTML = _pendingListingsCache.map(p => `
         <div class="listing-card pending">
+            <input type="checkbox" class="listing-select" ${_selectedPendingIds.has(p._id) ? 'checked' : ''} onchange="togglePendingSelect('${p._id}')">
             <div class="listing-thumb">
                 ${p.photos?.length
                     ? `<img src="${escHtml(p.photos[0])}" alt="${escHtml(p.name)}" loading="lazy">`
@@ -935,25 +1055,27 @@ function _renderPendingListings(listings) {
                 <div style="margin-top:0.35rem;display:flex;gap:0.4rem;flex-wrap:wrap">
                     <span class="pill pill-yellow">⏳ Awaiting Approval</span>
                     ${p.photos?.length ? `<span class="pill pill-cyan">${p.photos.length} photo${p.photos.length > 1 ? 's' : ''}</span>` : '<span class="pill" style="background:rgba(74,85,104,0.15);color:var(--text-dim);border:1px solid var(--border)">No photos</span>'}
+                    <span class="pill ${p.geo ? 'pill-green' : 'pill-yellow'}">${p.geo ? '📍 Pinned' : '📍 Not pinned'}</span>
                 </div>
             </div>
             <div class="listing-actions">
                 <button class="btn btn-success" onclick="approveListing('${p._id}', true, '${escHtml(p.name)}')">✅ Approve</button>
                 <button class="btn btn-secondary btn-sm" onclick="approveListing('${p._id}', false, '${escHtml(p.name)}')">❌ Reject</button>
+                ${p.photos?.length ? `<button class="btn btn-secondary btn-sm" onclick="openPhotoModeration('${p._id}', '${escHtml(p.name)}')">🖼️ Photos</button>` : ''}
             </div>
         </div>`).join('');
 }
 
-function _renderApprovedListings(listings) {
-    const container = document.getElementById('listingsApprovedContainer');
+function _renderApprovedListings() {
+    const container = document.getElementById('approvedListingsList');
     if (!container) return;
 
-    if (!listings.length) {
+    if (!_approvedListingsCache.length) {
         container.innerHTML = '<div class="empty-state"><span class="icon">🏡</span>No approved listings yet</div>';
         return;
     }
 
-    container.innerHTML = listings.map(p => `
+    container.innerHTML = _approvedListingsCache.map(p => `
         <div class="listing-card approved">
             <div class="listing-thumb">
                 ${p.photos?.length
@@ -967,10 +1089,12 @@ function _renderApprovedListings(listings) {
                 <div style="margin-top:0.35rem;display:flex;gap:0.4rem;flex-wrap:wrap">
                     <span class="pill pill-green">✅ Live &amp; Public</span>
                     ${p.photos?.length ? `<span class="pill pill-cyan">${p.photos.length} photo${p.photos.length > 1 ? 's' : ''}</span>` : ''}
+                    <span class="pill ${p.geo ? 'pill-green' : 'pill-yellow'}">${p.geo ? '📍 Pinned' : '📍 Not pinned'}</span>
                 </div>
             </div>
             <div class="listing-actions">
                 <button class="btn btn-warn btn-sm" onclick="approveListing('${p._id}', false, '${escHtml(p.name)}')">⏸ Revoke</button>
+                ${p.photos?.length ? `<button class="btn btn-secondary btn-sm" onclick="openPhotoModeration('${p._id}', '${escHtml(p.name)}')">🖼️ Photos</button>` : ''}
             </div>
         </div>`).join('');
 }
@@ -994,6 +1118,87 @@ async function approveListing(id, approve, name) {
     }
 }
 
+async function bulkApprove(approve) {
+    const ids = Array.from(_selectedPendingIds);
+    if (!ids.length) { showToast('No listings selected', 'warn'); return; }
+    if (!confirm(`${approve ? 'Approve' : 'Reject'} ${ids.length} selected listing(s)?`)) return;
+
+    try {
+        const res  = await stacklordFetch('/stacklord/properties/bulk-approve', {
+            method: 'POST',
+            body:   JSON.stringify({ ids, approve })
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.message || 'Bulk action failed', 'error'); return; }
+
+        showToast(data.message, 'success');
+        _selectedPendingIds.clear();
+        await loadListings();
+
+    } catch (err) {
+        showToast('Network error', 'error');
+        console.error('bulkApprove error:', err.message);
+    }
+}
+
+
+// ═══════════════════════════════════════
+// PHOTO MODERATION
+// ═══════════════════════════════════════
+
+function openPhotoModeration(propertyId, name) {
+    const source = _pendingListingsCache.concat(_approvedListingsCache).find(p => p._id === propertyId);
+    if (!source) { showToast('Listing not found — refresh and try again', 'warn'); return; }
+
+    document.getElementById('photoModPropertyId').value = propertyId;
+    document.getElementById('photoModPropName').textContent = `🏢 ${name}`;
+    _renderPhotoModGrid(source.photos || [], propertyId);
+    openModal('modal-photo-mod');
+}
+
+function _renderPhotoModGrid(photos, propertyId) {
+    const grid = document.getElementById('photoModGrid');
+    if (!grid) return;
+
+    if (!photos.length) {
+        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1">No photos on this listing</div>';
+        return;
+    }
+
+    grid.innerHTML = photos.map(url => `
+        <div class="photo-mod-item">
+            <img src="${escHtml(url)}" alt="Property photo" loading="lazy">
+            <button class="photo-mod-del" onclick="deleteModeratedPhoto('${propertyId}', '${escHtml(url)}')" title="Remove photo">✕</button>
+        </div>`).join('');
+}
+
+async function deleteModeratedPhoto(propertyId, photoUrl) {
+    if (!confirm('Remove this photo? This cannot be undone.')) return;
+
+    try {
+        const res  = await stacklordFetch(`/stacklord/properties/${propertyId}/photos`, {
+            method: 'DELETE',
+            body:   JSON.stringify({ photoUrl })
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.message || 'Delete failed', 'error'); return; }
+
+        showToast('Photo removed ✅', 'success');
+        _renderPhotoModGrid(data.photos || [], propertyId);
+
+        [_pendingListingsCache, _approvedListingsCache].forEach(cache => {
+            const prop = cache.find(p => p._id === propertyId);
+            if (prop) prop.photos = data.photos || [];
+        });
+        _renderPendingListings();
+        _renderApprovedListings();
+
+    } catch (err) {
+        showToast('Network error', 'error');
+        console.error('deleteModeratedPhoto error:', err.message);
+    }
+}
+
 
 // ═══════════════════════════════════════
 // INQUIRIES
@@ -1002,9 +1207,9 @@ async function approveListing(id, approve, name) {
 async function loadInquiries(page = 1) {
     _inquiriesPage = page;
 
-    const tbody      = document.getElementById('inquiriesTable');
-    const pagination = document.getElementById('inquiriesPagination');
-    const statusFilter = document.getElementById('inquiryStatusFilter')?.value || '';
+    const tbody        = document.getElementById('inquiriesTable');
+    const pagination    = document.getElementById('inquiriesPagination');
+    const statusFilter  = document.getElementById('inquiryStatusFilter')?.value || '';
 
     if (tbody) tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><span class="icon">⏳</span>Loading…</div></td></tr>';
     if (pagination) pagination.innerHTML = '';
@@ -1019,14 +1224,12 @@ async function loadInquiries(page = 1) {
 
         const { inquiries, total, pages } = data;
 
-        // Update badge (total count)
         const badge = document.getElementById('inquiriesBadge');
         if (badge) {
             badge.textContent   = total || 0;
             badge.style.display = total > 0 ? 'inline-block' : 'none';
         }
 
-        // Update overview badge
         const overviewBadge = document.getElementById('overviewInquiriesBadge');
         if (overviewBadge) overviewBadge.textContent = total || 0;
 
@@ -1059,11 +1262,8 @@ async function loadInquiries(page = 1) {
                 </tr>`).join('');
         }
 
-        // Pagination
         if (pagination && pages > 1) {
-            let html = '';
-            html += `<button class="btn btn-secondary btn-sm" onclick="loadInquiries(${page - 1})" ${page <= 1 ? 'disabled' : ''}>← Prev</button>`;
-
+            let html = `<button class="btn btn-secondary btn-sm" onclick="loadInquiries(${page - 1})" ${page <= 1 ? 'disabled' : ''}>← Prev</button>`;
             for (let i = 1; i <= pages; i++) {
                 if (pages > 7 && i > 2 && i < pages - 1 && Math.abs(i - page) > 1) {
                     if (i === 3 || i === pages - 2) html += `<span style="color:var(--text-dim);padding:0 0.25rem;font-family:'JetBrains Mono',monospace;font-size:0.7rem">…</span>`;
@@ -1071,11 +1271,9 @@ async function loadInquiries(page = 1) {
                 }
                 html += `<button class="btn btn-sm ${i === page ? 'btn-primary' : 'btn-secondary'}" onclick="loadInquiries(${i})">${i}</button>`;
             }
-
             html += `<button class="btn btn-secondary btn-sm" onclick="loadInquiries(${page + 1})" ${page >= pages ? 'disabled' : ''}>Next →</button>`;
             html += `<span style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--text-dim);margin-left:0.5rem">${total} total</span>`;
             pagination.innerHTML = html;
-
         } else if (pagination && total > 0) {
             pagination.innerHTML = `<span style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--text-dim);margin-top:0.75rem;display:block">${total} inquir${total === 1 ? 'y' : 'ies'} total</span>`;
         }
@@ -1089,22 +1287,140 @@ async function loadInquiries(page = 1) {
 
 
 // ═══════════════════════════════════════
+// SYSTEM — Platform Controls
+// ═══════════════════════════════════════
+
+async function loadSystemSection() { await loadSystemStatus(); }
+
+async function loadSystemStatus() {
+    try {
+        const [statusRes, rateRes] = await Promise.all([
+            fetch(`${API}/platform-status`),
+            stacklordFetch('/stacklord/commission-rate')
+        ]);
+
+        if (statusRes.ok) {
+            const status = await statusRes.json();
+            const toggle = document.getElementById('maintenanceToggle');
+            const sub    = document.getElementById('maintenanceStatusSub');
+            const msgEl  = document.getElementById('maintenanceMessage');
+            if (toggle) toggle.checked = !!status.maintenanceMode;
+            if (sub)    sub.textContent = status.maintenanceMode
+                ? '🔴 ON — the entire platform is currently locked out'
+                : '🟢 OFF — platform is live and reachable';
+            if (msgEl && status.message) msgEl.value = status.message;
+            _updateMaintenanceChrome(!!status.maintenanceMode);
+        }
+
+        if (rateRes.ok) {
+            const settings = await rateRes.json();
+            const toggle = document.getElementById('autoApproveToggle');
+            const sub    = document.getElementById('autoApproveStatusSub');
+            if (toggle) toggle.checked = !!settings.autoApproveListings;
+            if (sub)    sub.textContent = settings.autoApproveListings
+                ? '✅ ON — new listings publish instantly, no review needed'
+                : '⏳ OFF — new listings wait in the Pending queue';
+        }
+
+    } catch (err) {
+        console.error('loadSystemStatus error:', err.message);
+    }
+}
+
+async function togglePlatformMaintenance() {
+    const enabled = document.getElementById('maintenanceToggle').checked;
+    const message = document.getElementById('maintenanceMessage')?.value.trim() || '';
+
+    if (enabled && !confirm('Turn ON platform-wide maintenance? This immediately blocks EVERY landlord and tenant from using the platform.')) {
+        document.getElementById('maintenanceToggle').checked = false;
+        return;
+    }
+
+    try {
+        const res  = await stacklordFetch('/stacklord/platform-maintenance', {
+            method: 'PUT',
+            body:   JSON.stringify({ enabled, message })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            showToast(data.message || 'Failed to update', 'error');
+            document.getElementById('maintenanceToggle').checked = !enabled;
+            return;
+        }
+
+        showToast(data.message, enabled ? 'warn' : 'success');
+        loadSystemStatus();
+        loadOverview();
+
+    } catch (err) {
+        showToast('Network error', 'error');
+        document.getElementById('maintenanceToggle').checked = !enabled;
+        console.error('togglePlatformMaintenance error:', err.message);
+    }
+}
+
+async function saveMaintenanceMessage() {
+    const enabled = document.getElementById('maintenanceToggle').checked;
+    const message = document.getElementById('maintenanceMessage')?.value.trim() || '';
+
+    try {
+        const res  = await stacklordFetch('/stacklord/platform-maintenance', {
+            method: 'PUT',
+            body:   JSON.stringify({ enabled, message })
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.message || 'Failed to save', 'error'); return; }
+        showToast('Maintenance message saved ✅', 'success');
+        loadSystemStatus();
+    } catch (err) {
+        showToast('Network error', 'error');
+        console.error('saveMaintenanceMessage error:', err.message);
+    }
+}
+
+async function toggleAutoApprove() {
+    const enabled = document.getElementById('autoApproveToggle').checked;
+
+    try {
+        const res  = await stacklordFetch('/stacklord/auto-approve-listings', {
+            method: 'PUT',
+            body:   JSON.stringify({ enabled })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            showToast(data.message || 'Failed to update', 'error');
+            document.getElementById('autoApproveToggle').checked = !enabled;
+            return;
+        }
+
+        showToast(data.message, 'success');
+        loadSystemStatus();
+        loadOverview();
+
+    } catch (err) {
+        showToast('Network error', 'error');
+        document.getElementById('autoApproveToggle').checked = !enabled;
+        console.error('toggleAutoApprove error:', err.message);
+    }
+}
+
+
+// ═══════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════
 
 window.addEventListener('DOMContentLoaded', () => {
-    // Auto-login if session key is saved
+    checkPlatformStatusForLockScreen();
+
     const saved = sessionStorage.getItem('stacklord_key');
     if (saved) { STACKLORD_KEY = saved; verifyKey(saved); }
 
-    // Close modal on overlay click
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
         overlay.addEventListener('click', function(e) {
             if (e.target === this) closeModal(this.id);
         });
     });
 
-    // Close modal on Escape
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
             document.querySelectorAll('.modal-overlay.open').forEach(m => closeModal(m.id));
@@ -1112,7 +1428,6 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Master key enter key
     const keyInput = document.getElementById('masterKey');
     if (keyInput) keyInput.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
 });

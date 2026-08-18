@@ -38,16 +38,19 @@ const {
 // ── Models ──
 const Tenant              = require('./models/Tenant');
 const House               = require('./models/House');
-const Payment             = require('./models/Payment');
+const Payment              = require('./models/Payment');
 const User                = require('./models/User');
 const Rule                = require('./models/Rule');
 const Announcement        = require('./models/Announcement');
 const Message             = require('./models/Message');
 const Settings            = require('./models/Settings');
-const SubscriptionPlan    = require('./models/SubscriptionPlan');
-const SubscriptionPayment = require('./models/SubscriptionPayment');
 const TenantMembership    = require('./models/TenantMembership');
 const Property            = require('./models/Property');
+const PlatformSettings    = require('./models/PlatformSettings');
+const CommissionPayment      = require('./models/CommissionPayment');
+const CommissionRateHistory  = require('./models/CommissionRateHistory');
+
+const { geocodeAndSaveProperty } = require('./utils/geocode');
 
 // ── DB ──
 const connectDB = require('./db');
@@ -82,33 +85,56 @@ function sanitize(value, maxLen = 500) {
 }
 
 // ═══════════════════════════════════════
-// SUBSCRIPTION PLAN LIMITS
+// COMMISSION SYSTEM — HELPERS
 // ═══════════════════════════════════════
 //
-// Trial is now a real (hidden) SubscriptionPlan document — see seedPlans.js —
-// assigned to `subscriptionPlan` at registration below. This constant is only
-// a fallback for landlords created BEFORE that migration (subscriptionPlan
-// still null in the DB). Keep these numbers in sync with the seeded "Trial"
-// plan (maxProperties: 1, maxTenantsPerProperty: 20) if you ever change one.
-const TRIAL_FALLBACK_LIMITS = {
-    maxProperties:         1,
-    maxTenantsPerProperty: 20
-};
+// FIX (plans → commission migration): the platform used to charge a fixed
+// monthly subscription fee per landlord. It's now free forever — instead,
+// the stacklord sets a single global commission percentage
+// (PlatformSettings.commissionPercentage), and each PROPERTY (not landlord —
+// each property has its own paybill, so commission is tracked per property)
+// owes that percentage of whatever rent was actually collected for it in a
+// given month, across ALL payment methods (cash, bank, mpesa, other).
+//
+// getPlatformSettings() is a singleton fetch-or-create — there is only ever
+// one PlatformSettings document.
+//
+// computeCommissionForProperty() is the SINGLE source of truth for "how much
+// is owed" — both the summary endpoint (what the landlord sees) and the pay
+// endpoint (what actually gets sent to Safaricom) call this same function,
+// so the displayed amount and the charged amount can never drift apart.
 
-// ── Resolve a landlord's effective plan limits ──
-// Every landlord SHOULD have a subscriptionPlan (Trial or paid) after
-// registration. This only falls back to TRIAL_FALLBACK_LIMITS for legacy
-// accounts that predate assigning the seeded Trial plan at signup.
-function getPlanLimits(landlord) {
-    if (landlord.subscriptionPlan) {
-        return {
-            maxProperties:         landlord.subscriptionPlan.maxProperties,
-            maxTenantsPerProperty: landlord.subscriptionPlan.maxTenantsPerProperty,
-            planName:              landlord.subscriptionPlan.name
-        };
+async function getPlatformSettings() {
+    let settings = await PlatformSettings.findOne();
+    if (!settings) {
+        settings = await PlatformSettings.create({ commissionPercentage: 0 });
     }
-    return { ...TRIAL_FALLBACK_LIMITS, planName: 'Trial' };
+    return settings;
 }
+
+async function computeCommissionForProperty(propertyId, month) {
+    const agg = await Payment.aggregate([
+        {
+            $match: {
+                property: new mongoose.Types.ObjectId(propertyId),
+                month,
+                status: { $in: ['paid', 'partial'] } // same "actually collected" filter used everywhere else (arrears, dashboard)
+            }
+        },
+        { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+
+    const totalCollected = agg[0]?.total || 0;
+    const settings        = await getPlatformSettings();
+    const percentage      = settings.commissionPercentage;
+
+    // Safaricom requires a whole-number STK amount — round up so a
+    // fractional commission (e.g. 1234.50) never gets sent raw.
+    const amountDue = Math.ceil(totalCollected * percentage / 100);
+
+    return { totalCollected, percentage, amountDue };
+}
+
 
 // ═══════════════════════════════════════
 // M-PESA ENVIRONMENT CONFIG (FIX: sandbox was hardcoded everywhere)
@@ -124,6 +150,9 @@ function getPlanLimits(landlord) {
 //   MPESA_CALLBACK_SECRET   = a long random string (openssl rand -hex 32)
 //   MPESA_CALLBACK_URL      = https://<your-render-service>.onrender.com/callback/<MPESA_CALLBACK_SECRET>
 //   BASE_URL                = https://<your-render-service>.onrender.com
+//   SYSTEM_PAYBILL / SYSTEM_CONSUMER_KEY / SYSTEM_CONSUMER_SECRET / SYSTEM_PASSKEY
+//                            = your (the platform owner's) own Paybill — this is
+//                              where commission STK pushes land.
 // ═══════════════════════════════════════
 
 const MPESA_BASE_URL = process.env.MPESA_ENV === 'production'
@@ -174,67 +203,27 @@ function landlordOnly(req, res, next) {
     next();
 }
 
-async function checkSubscription(req, res, next) {
+// ── FIX (plans → commission migration): replaces checkSubscription.
+// The platform is free forever now, so this ONLY checks the moderation
+// suspend switch — no more trial/grace/expired billing lifecycle. ──
+async function checkAccountStatus(req, res, next) {
     if (req.user.role !== 'landlord') return next();
 
     try {
-        const landlord = await User.findById(req.user.id).select(
-            'subscriptionStatus subscriptionExpiry trialEndsAt gracePeriodUntil suspendedReason'
-        );
-
+        const landlord = await User.findById(req.user.id).select('accountStatus suspendedReason');
         if (!landlord) return res.status(404).json({ message: 'Landlord not found' });
 
-        const now = new Date();
-
-        if (landlord.subscriptionStatus === 'trial' && landlord.trialEndsAt && now > landlord.trialEndsAt) {
-            landlord.subscriptionStatus = 'expired';
-            landlord.gracePeriodUntil   = null;
-            await landlord.save();
+        if (landlord.accountStatus === 'suspended') {
+            return res.status(403).json({
+                message:       `Your account has been suspended. Reason: ${landlord.suspendedReason || 'Contact support.'}`,
+                accountStatus: 'suspended',
+                code:          'ACCOUNT_SUSPENDED'
+            });
         }
 
-        if (landlord.subscriptionStatus === 'active' && landlord.subscriptionExpiry && now > landlord.subscriptionExpiry) {
-            landlord.subscriptionStatus = 'grace';
-            landlord.gracePeriodUntil   = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-            await landlord.save();
-        }
-
-        if (landlord.subscriptionStatus === 'grace' && landlord.gracePeriodUntil && now > landlord.gracePeriodUntil) {
-            landlord.subscriptionStatus = 'expired';
-            await landlord.save();
-        }
-
-        switch (landlord.subscriptionStatus) {
-            case 'trial':
-            case 'active':
-                return next();
-
-            case 'grace':
-                req.subscriptionWarning = {
-                    status:  'grace',
-                    message: `Your subscription has expired. You have until ${landlord.gracePeriodUntil.toDateString()} to renew before losing access.`,
-                    until:   landlord.gracePeriodUntil
-                };
-                return next();
-
-            case 'expired':
-                return res.status(403).json({
-                    message:            'Subscription expired. Please renew to continue.',
-                    subscriptionStatus: 'expired',
-                    code:               'SUBSCRIPTION_EXPIRED'
-                });
-
-            case 'suspended':
-                return res.status(403).json({
-                    message:            `Your account has been suspended. Reason: ${landlord.suspendedReason || 'Contact support.'}`,
-                    subscriptionStatus: 'suspended',
-                    code:               'ACCOUNT_SUSPENDED'
-                });
-
-            default:
-                return res.status(403).json({ message: 'Subscription status unknown.' });
-        }
+        return next();
     } catch (err) {
-        console.error('checkSubscription error:', err.message);
+        console.error('checkAccountStatus error:', err.message);
         next();
     }
 }
@@ -291,6 +280,8 @@ async function getRentToken(credentialHolder) {
     return res.data.access_token;
 }
 
+// Used for platform-owned STK pushes — now exclusively the commission flow
+// (previously also used for the old subscription flow).
 async function getSystemToken() {
     const auth = Buffer.from(
         `${process.env.SYSTEM_CONSUMER_KEY}:${process.env.SYSTEM_CONSUMER_SECRET}`
@@ -313,7 +304,8 @@ async function getSystemToken() {
 // Real fix: a random secret embedded in the callback URL path itself
 // (/callback/:secret). Safaricom just echoes back whatever CallBackURL you
 // gave it, so this works regardless of hosting platform and can't be
-// bypassed by guessing a checkoutRequestId.
+// bypassed by guessing a checkoutRequestId. Reused as-is for the commission
+// callback path below — same secret, same guarantee.
 function validateCallbackSecret(req, res) {
     const configured = process.env.MPESA_CALLBACK_SECRET;
     if (!configured) {
@@ -383,6 +375,56 @@ app.put('/maintenance', authMiddleware, landlordOnly, async (req, res) => {
     }
 });
 
+// ═══════════════════════════════════════
+// PLATFORM-WIDE MAINTENANCE (kill switch)
+// ═══════════════════════════════════════
+// Separate from per-landlord Settings.maintenanceMode above — this is a
+// single global flag, controlled only by the stacklord, that takes the
+// ENTIRE platform down (landlord + tenant + public) for planned downtime.
+//
+// Allowlisted so the console stays reachable to turn it back off, the
+// public status endpoint always answers, and M-Pesa callbacks are never
+// dropped mid-reconciliation:
+const PLATFORM_MAINTENANCE_ALLOWLIST = [
+    /^\/stacklord(\/|$)/,
+    /^\/platform-status$/,
+    /^\/callback\//,
+    /^\/commission-callback\//
+];
+
+app.use(async (req, res, next) => {
+    if (PLATFORM_MAINTENANCE_ALLOWLIST.some(rx => rx.test(req.path))) return next();
+
+    try {
+        const settings = await getPlatformSettings();
+        if (settings.platformMaintenanceMode) {
+            return res.status(503).json({
+                message: settings.platformMaintenanceMessage
+                    || 'Affordable Rentals is temporarily down for maintenance. Please check back shortly.',
+                code: 'PLATFORM_MAINTENANCE'
+            });
+        }
+        next();
+    } catch (err) {
+        // Fail open — a DB hiccup here should never take the whole platform down
+        console.error('Platform maintenance check error:', err.message);
+        next();
+    }
+});
+
+// Public — polled by the frontend to show a lock screen before login even loads
+app.get('/platform-status', async (req, res) => {
+    try {
+        const settings = await getPlatformSettings();
+        res.json({
+            maintenanceMode: !!settings.platformMaintenanceMode,
+            message:         settings.platformMaintenanceMessage || null
+        });
+    } catch (err) {
+        res.json({ maintenanceMode: false, message: null });
+    }
+});
+
 
 // ═══════════════════════════════════════
 // AUTH
@@ -424,13 +466,8 @@ app.post('/landlord/register', async (req, res) => {
         const secret = process.env.JWT_SECRET;
         if (!secret) return res.status(500).json({ message: 'Server configuration error' });
 
-        // FIX: assign the seeded (hidden) Trial SubscriptionPlan so trial landlords
-        // flow through the exact same plan.maxProperties / plan.maxTenantsPerProperty
-        // checks as paying landlords, instead of every route special-casing "no plan".
-        // If the plan hasn't been seeded yet (fresh DB, seedPlans.js not run), this
-        // simply stays null and getPlanLimits() falls back to TRIAL_FALLBACK_LIMITS.
-        const trialPlan = await SubscriptionPlan.findOne({ name: 'Trial' });
-
+        // FIX (plans → commission migration): no more trial/plan assignment —
+        // registration just creates the landlord with default accountStatus 'active'.
         const landlord = await User.create({
             name,
             email,
@@ -441,9 +478,6 @@ app.post('/landlord/register', async (req, res) => {
             propertyLocation,
             onboardingComplete: false,
             paymentConfigured:  false,
-            subscriptionStatus: 'trial',
-            subscriptionPlan:   trialPlan ? trialPlan._id : null,
-            trialEndsAt:        new Date(Date.now() + (trialPlan?.durationDays || 14) * 24 * 60 * 60 * 1000),
             // FIX: durable proof of consent — when, and against which terms version
             termsAcceptedAt:    new Date(),
             termsVersion:       process.env.TERMS_VERSION || '1.0'
@@ -510,7 +544,7 @@ app.post('/login', async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ message: 'Wrong password' });
 
-        if (user.role === 'landlord' && user.subscriptionStatus === 'suspended') {
+        if (user.role === 'landlord' && user.accountStatus === 'suspended') {
             return res.status(403).json({
                 message: `Your account has been suspended. Reason: ${user.suspendedReason || 'Contact support.'}`,
                 code:    'ACCOUNT_SUSPENDED'
@@ -629,10 +663,10 @@ app.post('/auth/refresh-token', authMiddleware, async (req, res) => {
 
         // Re-verify the user still exists and isn't suspended before extending —
         // covers the edge case where a landlord gets suspended mid-session.
-        const user = await User.findById(req.user.id).select('role subscriptionStatus suspendedReason tenantId landlordId');
+        const user = await User.findById(req.user.id).select('role accountStatus suspendedReason tenantId landlordId');
         if (!user) return res.status(404).json({ message: 'User not found' });
 
-        if (user.role === 'landlord' && user.subscriptionStatus === 'suspended') {
+        if (user.role === 'landlord' && user.accountStatus === 'suspended') {
             return res.status(403).json({
                 message: `Your account has been suspended. Reason: ${user.suspendedReason || 'Contact support.'}`,
                 code:    'ACCOUNT_SUSPENDED'
@@ -839,8 +873,7 @@ app.post('/reset-password-confirm', async (req, res) => {
 app.get('/landlord/profile', authMiddleware, landlordOnly, async (req, res) => {
     try {
         const landlord = await User.findById(req.user.id)
-            .select('-password -mpesaConsumerKey -mpesaConsumerSecret -mpesaPasskey')
-            .populate('subscriptionPlan');
+            .select('-password -mpesaConsumerKey -mpesaConsumerSecret -mpesaPasskey');
 
         if (!landlord) return res.status(404).json({ message: 'Landlord not found' });
 
@@ -859,11 +892,7 @@ app.get('/landlord/profile', authMiddleware, landlordOnly, async (req, res) => {
             onboardingComplete: landlord.onboardingComplete,
             paymentConfigured:  landlord.paymentConfigured,
             paybillNumber:      landlord.paybillNumber,
-            subscriptionStatus: landlord.subscriptionStatus,
-            subscriptionPlan:   landlord.subscriptionPlan,
-            trialEndsAt:        landlord.trialEndsAt,
-            subscriptionExpiry: landlord.subscriptionExpiry,
-            daysRemaining:      landlord.daysRemaining,
+            accountStatus:      landlord.accountStatus,
             properties
         });
 
@@ -1029,29 +1058,15 @@ try {
 // PROPERTIES
 // ═══════════════════════════════════════
 
-// FIX: use getPlanLimits() instead of hard-blocking whenever subscriptionPlan
-// is null. Trial landlords now carry the seeded Trial plan (assigned at
-// registration above), so this is the same code path for trial and paid.
-app.post('/properties/create', authMiddleware, landlordOnly, checkSubscription, async (req, res) => {
+// FIX (plans → commission migration): no more maxProperties enforcement —
+// landlords can add unlimited properties, it's free.
+app.post('/properties/create', authMiddleware, landlordOnly, checkAccountStatus, async (req, res) => {
     try {
         const name     = sanitize(req.body.name     || '');
         const location = sanitize(req.body.location || '');
         const phone    = sanitize(req.body.phone    || '');
 
         if (!name) return res.status(400).json({ message: 'Property name is required' });
-
-        const landlord = await User.findById(req.user.id).populate('subscriptionPlan');
-        const { maxProperties, planName } = getPlanLimits(landlord);
-
-        if (maxProperties !== -1) {
-            const count = await Property.countDocuments({ landlord: req.user.id });
-            if (count >= maxProperties) {
-                return res.status(403).json({
-                    message: `Your ${planName} plan allows ${maxProperties} ${maxProperties === 1 ? 'property' : 'properties'}. Upgrade to add more.`,
-                    upgrade: true
-                });
-            }
-        }
 
         const exists = await Property.findOne({ landlord: req.user.id, name });
         if (exists) return res.status(400).json({ message: 'You already have a property with that name' });
@@ -1112,6 +1127,47 @@ app.put('/properties/:id', authMiddleware, landlordOnly, async (req, res) => {
     }
 });
 
+
+app.put('/properties/:id/location', authMiddleware, landlordOnly, async (req, res) => {
+    try {
+        const property = await Property.findOne({ _id: req.params.id, landlord: req.user.id });
+        if (!property) return res.status(404).json({ message: 'Property not found' });
+ 
+        const lat     = Number(req.body.lat);
+        const lng     = Number(req.body.lng);
+        const address = typeof req.body.address === 'string' ? req.body.address : undefined;
+ 
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+            return res.status(400).json({ message: 'lat and lng are required and must be numbers' });
+        }
+        if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+            return res.status(400).json({ message: 'lat/lng out of valid range' });
+        }
+ 
+        const updated = await geocodeAndSaveProperty(property._id, { lat, lng, address });
+ 
+        if (!updated) {
+            // Coordinates were valid but we couldn't resolve/save — still a
+            // real failure, not a 404/400, since the property does exist.
+            return res.status(502).json({ message: 'Could not save location. Please try again.' });
+        }
+ 
+        res.json({
+            message:  'Location saved ✅',
+            property: {
+                _id:              updated._id,
+                geo:              updated.geo,
+                formattedAddress: updated.formattedAddress,
+                geocodedAt:       updated.geocodedAt
+            }
+        });
+ 
+    } catch (err) {
+        console.error('PUT /properties/:id/location error:', err.message);
+        res.status(500).json({ message: err.message });
+    }
+});
+
 // FIX Bug 7: cascade-delete all related data when property is deleted
 app.delete('/properties/:id', authMiddleware, landlordOnly, async (req, res) => {
     try {
@@ -1133,7 +1189,8 @@ app.delete('/properties/:id', authMiddleware, landlordOnly, async (req, res) => 
             Rule.deleteMany({ property: req.params.id }),
             Announcement.deleteMany({ property: req.params.id }),
             Message.deleteMany({ property: req.params.id }),
-            TenantMembership.deleteMany({ property: req.params.id })
+            TenantMembership.deleteMany({ property: req.params.id }),
+            CommissionPayment.deleteMany({ property: req.params.id })
         ]);
 
         await Property.findByIdAndDelete(req.params.id);
@@ -1149,7 +1206,7 @@ app.delete('/properties/:id', authMiddleware, landlordOnly, async (req, res) => 
 // TENANTS
 // ═══════════════════════════════════════
 
-app.post('/tenants/create', authMiddleware, landlordOnly, checkSubscription, async (req, res) => {
+app.post('/tenants/create', authMiddleware, landlordOnly, checkAccountStatus, async (req, res) => {
     try {
         // FIX Bug 22: sanitize inputs
         const name       = sanitize(req.body.name  || '');
@@ -1169,23 +1226,8 @@ app.post('/tenants/create', authMiddleware, landlordOnly, checkSubscription, asy
         const property = await Property.findOne({ _id: propertyId, landlord: req.user.id });
         if (!property) return res.status(404).json({ message: 'Property not found' });
 
-        const landlordUser = await User.findById(req.user.id).populate('subscriptionPlan');
-
-        // FIX: use getPlanLimits() instead of `plan && plan.maxTenantsPerProperty !== -1` —
-        // that guard SKIPPED the tenant cap entirely whenever subscriptionPlan was null,
-        // meaning trial landlords could previously add unlimited tenants to their one
-        // property. Now trial resolves to the same 20-tenant cap as everyone else.
-        const { maxTenantsPerProperty, planName } = getPlanLimits(landlordUser);
-
-        if (maxTenantsPerProperty !== -1) {
-            const tenantCount = await Tenant.countDocuments({ property: propertyId, status: 'active' });
-            if (tenantCount >= maxTenantsPerProperty) {
-                return res.status(403).json({
-                    message: `Your ${planName} plan allows ${maxTenantsPerProperty} tenants per property. Upgrade to add more.`,
-                    upgrade: true
-                });
-            }
-        }
+        // FIX (plans → commission migration): no more tenant-cap check — unlimited tenants per property.
+        const landlordUser = await User.findById(req.user.id);
 
         const existingTenantHere = await Tenant.findOne({ property: propertyId, email });
         if (existingTenantHere) {
@@ -1615,11 +1657,7 @@ app.get('/tenant/:id', authMiddleware, async (req, res) => {
 // HOUSES
 // ═══════════════════════════════════════
 
-// FIX: added checkSubscription — this route had NO subscription gating at all,
-// meaning a suspended or expired landlord could still create houses even though
-// /properties/create and /tenants/create both correctly blocked them. Houses are
-// the actual billable unit of inventory here, so this was the biggest gap.
-app.post('/houses', authMiddleware, landlordOnly, checkSubscription, async (req, res) => {
+app.post('/houses', authMiddleware, landlordOnly, checkAccountStatus, async (req, res) => {
     try {
         const propertyId = req.body.propertyId || null;
         const name       = sanitize(req.body.name || '');
@@ -1736,7 +1774,7 @@ async function getMonthSummary(tenantId, month, rent) {
 // PAYMENTS
 // ═══════════════════════════════════════
 
-app.post('/payments', authMiddleware, landlordOnly, checkSubscription, async (req, res) => {
+app.post('/payments', authMiddleware, landlordOnly, checkAccountStatus, async (req, res) => {
     try {
         const tenantId = req.body.tenantId || '';
         const amount   = Number(req.body.amount);
@@ -2405,7 +2443,7 @@ app.get('/receipt/pdf/:paymentId', authMiddleware, async (req, res) => {
 // ═══════════════════════════════════════
 
 // FIX Bug 15: batch payment aggregation instead of N+1 getMonthSummary calls
-app.get('/dashboard/:month', authMiddleware, landlordOnly, checkSubscription, async (req, res) => {
+app.get('/dashboard/:month', authMiddleware, landlordOnly, checkAccountStatus, async (req, res) => {
     try {
         const month       = req.params.month;
         const tenantQuery = { landlord: req.user.id, status: 'active' };
@@ -2456,7 +2494,7 @@ app.get('/dashboard/:month', authMiddleware, landlordOnly, checkSubscription, as
         }
 
         const landlord = await User.findById(req.user.id)
-            .select('name propertyName propertyLocation paymentConfigured subscriptionStatus trialEndsAt subscriptionExpiry gracePeriodUntil');
+            .select('name propertyName propertyLocation paymentConfigured accountStatus');
 
         res.json({
             month,
@@ -2472,8 +2510,7 @@ app.get('/dashboard/:month', authMiddleware, landlordOnly, checkSubscription, as
                 name:             landlord.name,
                 propertyName:     landlord.propertyName,
                 propertyLocation: landlord.propertyLocation
-            },
-            warning: req.subscriptionWarning || null
+            }
         });
 
     } catch (err) {
@@ -2483,45 +2520,30 @@ app.get('/dashboard/:month', authMiddleware, landlordOnly, checkSubscription, as
 
 
 // ═══════════════════════════════════════
-// SUBSCRIPTION SYSTEM
+// COMMISSION SYSTEM
 // ═══════════════════════════════════════
+//
+// FIX (plans → commission migration): replaces the old SUBSCRIPTION SYSTEM
+// section entirely. The platform is free forever — instead, each property
+// owes a percentage (set by the stacklord) of whatever rent it actually
+// collected in a given month. See computeCommissionForProperty() above for
+// the shared calculation logic both routes below rely on.
 
-app.get('/subscription-status', authMiddleware, landlordOnly, async (req, res) => {
+// ── Landlord: current global rate + whether they've seen the latest change ──
+app.get('/commission-rate', authMiddleware, landlordOnly, async (req, res) => {
     try {
-        const landlord = await User.findById(req.user.id)
-            .select('-password -mpesaConsumerKey -mpesaConsumerSecret -mpesaPasskey')
-            .populate('subscriptionPlan');
+        const settings = await getPlatformSettings();
+        const user     = await User.findById(req.user.id).select('lastSeenCommissionUpdatedAt');
 
-        if (!landlord) return res.status(404).json({ message: 'Landlord not found' });
-
-        const now           = new Date();
-        let   expiryDate    = null;
-        let   daysRemaining = 0;
-
-        if (landlord.subscriptionStatus === 'trial')  expiryDate = landlord.trialEndsAt;
-        if (landlord.subscriptionStatus === 'active') expiryDate = landlord.subscriptionExpiry;
-        if (landlord.subscriptionStatus === 'grace')  expiryDate = landlord.gracePeriodUntil;
-
-        if (expiryDate) {
-            daysRemaining = Math.max(0, Math.ceil((new Date(expiryDate) - now) / (1000 * 60 * 60 * 24)));
-        }
-
-        const lastPayment = await SubscriptionPayment.findOne({ landlord: landlord._id, status: 'paid' })
-            .sort({ paidAt: -1 })
-            .populate('plan', 'name price');
+        const hasUnseenUpdate = !user.lastSeenCommissionUpdatedAt
+            || new Date(user.lastSeenCommissionUpdatedAt) < new Date(settings.updatedAt);
 
         res.json({
-            subscriptionStatus:      landlord.subscriptionStatus,
-            subscriptionPlan:        landlord.subscriptionPlan,
-            subscriptionExpiry:      landlord.subscriptionExpiry,
-            trialEndsAt:             landlord.trialEndsAt,
-            gracePeriodUntil:        landlord.gracePeriodUntil,
-            lastSubscriptionPayment: landlord.lastSubscriptionPayment,
-            suspendedReason:         landlord.suspendedReason,
-            landlordPhone:           landlord.landlordPhone,
-            daysRemaining,
-            lastPayment:             lastPayment || null,
-            warning:                 req.subscriptionWarning || null
+            commissionPercentage: settings.commissionPercentage,
+            updatedAt:             settings.updatedAt,
+            notice: hasUnseenUpdate
+                ? { message: `📢 Platform commission rate is now ${settings.commissionPercentage}%, effective ${new Date(settings.updatedAt).toDateString()}.` }
+                : null
         });
 
     } catch (err) {
@@ -2529,35 +2551,73 @@ app.get('/subscription-status', authMiddleware, landlordOnly, async (req, res) =
     }
 });
 
-app.get('/subscription-plans', async (req, res) => {
+// ── Landlord: dismiss the "rate changed" banner ──
+app.put('/landlord/commission-notice/ack', authMiddleware, landlordOnly, async (req, res) => {
     try {
-        const plans = await SubscriptionPlan.find({ isActive: true }).sort({ sortOrder: 1, price: 1 });
-        res.json(plans);
+        await User.findByIdAndUpdate(req.user.id, { lastSeenCommissionUpdatedAt: new Date() });
+        res.json({ message: 'Acknowledged ✅' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-app.post('/subscribe', authMiddleware, landlordOnly, async (req, res) => {
+// ── Landlord: how much is owed for one property/month ──
+app.get('/commission/summary/:propertyId/:month', authMiddleware, landlordOnly, async (req, res) => {
     try {
-        const planId = req.body.planId || '';
-        const phone  = sanitize(req.body.phone || '');
+        const property = await Property.findOne({ _id: req.params.propertyId, landlord: req.user.id });
+        if (!property) return res.status(404).json({ message: 'Property not found' });
 
-        if (!planId || !phone) {
-            return res.status(400).json({ message: 'planId and phone are required' });
+        const { totalCollected, percentage, amountDue } = await computeCommissionForProperty(property._id, req.params.month);
+
+        const alreadyPaid = await CommissionPayment.findOne({
+            property: property._id,
+            month:    req.params.month,
+            status:   'paid'
+        });
+
+        res.json({
+            month:          req.params.month,
+            totalCollected,
+            percentage,
+            amountDue,
+            alreadyPaid: !!alreadyPaid,
+            paidAt:      alreadyPaid?.paidAt || null
+        });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ── Landlord: pay the commission owed for one property/month via STK push ──
+app.post('/commission/pay', authMiddleware, landlordOnly, async (req, res) => {
+    try {
+        const propertyId = req.body.propertyId || '';
+        const month       = sanitize(req.body.month || '');
+        const phone        = sanitize(req.body.phone || '');
+
+        if (!propertyId || !month || !phone) {
+            return res.status(400).json({ message: 'propertyId, month and phone are required' });
         }
 
-        const plan = await SubscriptionPlan.findById(planId);
-        if (!plan || !plan.isActive) {
-            return res.status(404).json({ message: 'Plan not found or inactive' });
+        const property = await Property.findOne({ _id: propertyId, landlord: req.user.id });
+        if (!property) return res.status(404).json({ message: 'Property not found' });
+
+        const alreadyPaid = await CommissionPayment.findOne({ property: property._id, month, status: 'paid' });
+        if (alreadyPaid) {
+            return res.status(400).json({ message: `Commission for ${month} on ${property.name} is already paid ✅` });
         }
 
-        const landlord = await User.findById(req.user.id);
-        if (!landlord) return res.status(404).json({ message: 'Landlord not found' });
+        // Always recompute server-side — never trust a client-supplied amount.
+        const { totalCollected, percentage, amountDue } = await computeCommissionForProperty(property._id, month);
 
-        if (!landlord.landlordPhone) {
-            landlord.landlordPhone = phone;
-            await landlord.save();
+        if (amountDue <= 0) {
+            return res.status(400).json({ message: `Nothing owed for ${month} — no commission due.` });
+        }
+
+        if (!process.env.SYSTEM_PAYBILL) {
+            console.error('FATAL: SYSTEM_PAYBILL is not set');
+            return res.status(500).json({ message: 'Server configuration error' });
         }
 
         const token     = await getSystemToken();
@@ -2566,10 +2626,7 @@ app.post('/subscribe', authMiddleware, landlordOnly, async (req, res) => {
             process.env.SYSTEM_PAYBILL + process.env.SYSTEM_PASSKEY + timestamp
         ).toString('base64');
 
-        // FIX: normalize phone before sending to Safaricom
         const normalizedPhone = normalizePhone(phone);
-        // FIX: Safaricom requires a whole-number amount
-        const stkAmount = Math.ceil(Number(plan.price));
 
         const stkRes = await axios.post(
             `${MPESA_BASE_URL}/mpesa/stkpush/v1/processrequest`,
@@ -2578,13 +2635,13 @@ app.post('/subscribe', authMiddleware, landlordOnly, async (req, res) => {
                 Password:          password,
                 Timestamp:         timestamp,
                 TransactionType:   'CustomerPayBillOnline',
-                Amount:            stkAmount,
+                Amount:            amountDue,
                 PartyA:            normalizedPhone,
                 PartyB:            process.env.SYSTEM_PAYBILL,
                 PhoneNumber:       normalizedPhone,
-                CallBackURL:       `${process.env.BASE_URL}/subscription-callback/${process.env.MPESA_CALLBACK_SECRET}`,
-                AccountReference:  `Sub-${plan.name}`,
-                TransactionDesc:   `${plan.name} subscription — Affordable Rentals`
+                CallBackURL:       `${process.env.BASE_URL}/commission-callback/${process.env.MPESA_CALLBACK_SECRET}`,
+                AccountReference:  `Commission-${month}`,
+                TransactionDesc:   `Platform commission — ${property.name} — ${month}`
             },
             { headers: { Authorization: `Bearer ${token}` } }
         );
@@ -2595,11 +2652,13 @@ app.post('/subscribe', authMiddleware, landlordOnly, async (req, res) => {
             return res.status(400).json({ message: data.ResponseDescription || 'STK push failed', data });
         }
 
-        await SubscriptionPayment.create({
-            landlord:          landlord._id,
-            plan:              plan._id,
-            amount:            plan.price,
-            durationDays:      plan.durationDays,
+        await CommissionPayment.create({
+            landlord:          req.user.id,
+            property:          property._id,
+            month,
+            totalCollected,
+            percentage,
+            amountDue,
             status:            'pending',
             phone,
             checkoutRequestId: data.CheckoutRequestID,
@@ -2609,17 +2668,17 @@ app.post('/subscribe', authMiddleware, landlordOnly, async (req, res) => {
         res.json({
             message:           `M-Pesa prompt sent to ${phone} 📱`,
             checkoutRequestId: data.CheckoutRequestID,
-            plan: { name: plan.name, price: plan.price, durationDays: plan.durationDays }
+            amountDue, totalCollected, percentage
         });
 
     } catch (err) {
-        console.error('🔥 Subscribe STK error:', err.response?.data || err.message);
-        res.status(500).json({ error: 'Subscription payment failed', details: err.response?.data || err.message });
+        console.error('🔥 Commission pay STK error:', err.response?.data || err.message);
+        res.status(500).json({ error: 'Commission payment failed', details: err.response?.data || err.message });
     }
 });
 
-// FIX Bug 14: same secret-path protection as /callback above.
-app.post('/subscription-callback/:secret', async (req, res) => {
+// FIX Bug 14 pattern reused: secret-path callback, same guarantee as /callback/:secret.
+app.post('/commission-callback/:secret', async (req, res) => {
     if (!validateCallbackSecret(req, res)) return;
 
     res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
@@ -2631,12 +2690,12 @@ app.post('/subscription-callback/:secret', async (req, res) => {
         const checkoutRequestId = stk.CheckoutRequestID;
         const resultCode        = stk.ResultCode;
 
-        const subPayment = await SubscriptionPayment.findOne({ checkoutRequestId })
-            .populate('plan')
+        const commissionPayment = await CommissionPayment.findOne({ checkoutRequestId })
+            .populate('property')
             .populate('landlord');
 
-        if (!subPayment) {
-            console.log('Subscription callback: no pending payment for', checkoutRequestId);
+        if (!commissionPayment) {
+            console.log('Commission callback: no pending payment for', checkoutRequestId);
             return;
         }
 
@@ -2645,76 +2704,26 @@ app.post('/subscription-callback/:secret', async (req, res) => {
             const getItem   = name => items.find(i => i.Name === name)?.Value;
             const mpesaCode = getItem('MpesaReceiptNumber') || '';
 
-            const now      = new Date();
-            const landlord = subPayment.landlord;
-            const plan     = subPayment.plan;
+            commissionPayment.status    = 'paid';
+            commissionPayment.mpesaCode = mpesaCode;
+            commissionPayment.paidAt    = new Date();
+            await commissionPayment.save();
 
-            let baseDate = now;
-            if (landlord.subscriptionStatus === 'active' && landlord.subscriptionExpiry && landlord.subscriptionExpiry > now) {
-                baseDate = landlord.subscriptionExpiry;
-            }
-
-            const newExpiry = new Date(baseDate.getTime() + plan.durationDays * 24 * 60 * 60 * 1000);
-
-            subPayment.status    = 'paid';
-            subPayment.mpesaCode = mpesaCode;
-            subPayment.paidAt    = now;
-            subPayment.expiresAt = newExpiry;
-            await subPayment.save();
-
-            await User.findByIdAndUpdate(landlord._id, {
-                subscriptionStatus:      'active',
-                subscriptionPlan:        plan._id,
-                subscriptionExpiry:      newExpiry,
-                gracePeriodUntil:        null,
-                suspendedReason:         null,
-                lastSubscriptionPayment: now
-            });
-
-            console.log(`✅ Subscription confirmed: ${mpesaCode} | ${plan.name} | Expires: ${newExpiry.toDateString()}`);
-
-        sendSubscriptionRenewalEmail({
-            landlord,
-            plan,
-            newExpiry,
-            mpesaCode
-        }).catch(err => console.error('Subscription email failed:', err.message));
-        
+            console.log(`✅ Commission confirmed: ${mpesaCode} | ${commissionPayment.property?.name} | ${commissionPayment.month}`);
 
         } else {
-            subPayment.status = 'failed';
-            await subPayment.save();
-            console.log(`❌ Subscription payment failed — ResultCode: ${resultCode}`);
+            commissionPayment.status = 'failed';
+            await commissionPayment.save();
+            console.log(`❌ Commission payment failed — ResultCode: ${resultCode}`);
         }
 
     } catch (err) {
-        console.error('Subscription callback error:', err.message);
+        console.error('Commission callback error:', err.message);
     }
 });
 
 // Legacy path with no secret — reject cleanly.
-app.post('/subscription-callback', (req, res) => res.status(404).end());
-
-app.get('/subscription-status-poll/:checkoutRequestId', authMiddleware, landlordOnly, async (req, res) => {
-    try {
-        const payment = await SubscriptionPayment.findOne({
-            checkoutRequestId: req.params.checkoutRequestId
-        }).populate('plan', 'name price durationDays');
-
-        if (!payment) return res.status(404).json({ status: 'not_found' });
-
-        res.json({
-            status:    payment.status,
-            mpesaCode: payment.mpesaCode || null,
-            plan:      payment.plan,
-            expiresAt: payment.expiresAt || null,
-            paidAt:    payment.paidAt    || null
-        });
-
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
+app.post('/commission-callback', (req, res) => res.status(404).end());
 
 
 // ═══════════════════════════════════════
@@ -3031,18 +3040,20 @@ app.get('/stacklord/stats', stacklordAuth, async (req, res) => {
         const totalTenants    = await User.countDocuments({ role: 'tenant' });
         const totalHouses     = await House.countDocuments();
         const totalProperties = await Property.countDocuments();
-        const totalPayments   = await SubscriptionPayment.countDocuments({ status: 'paid' });
+        const totalCommissionPayments = await CommissionPayment.countDocuments({ status: 'paid' });
 
-        const revenueResult = await SubscriptionPayment.aggregate([
+        const revenueResult = await CommissionPayment.aggregate([
             { $match: { status: 'paid' } },
-            { $group: { _id: null, total: { $sum: '$amount' } } }
+            { $group: { _id: null, total: { $sum: '$amountDue' } } }
         ]);
         const totalRevenue = revenueResult[0]?.total || 0;
 
         const byStatus = await User.aggregate([
             { $match: { role: 'landlord' } },
-            { $group: { _id: '$subscriptionStatus', count: { $sum: 1 } } }
+            { $group: { _id: '$accountStatus', count: { $sum: 1 } } }
         ]);
+
+        const settings = await getPlatformSettings();
 
         res.json({
             stats: {
@@ -3051,8 +3062,9 @@ app.get('/stacklord/stats', stacklordAuth, async (req, res) => {
                 totalHouses,
                 totalProperties,
                 totalRevenue,
-                totalPayments,
-                byStatus
+                totalCommissionPayments,
+                byStatus,
+                commissionPercentage: settings.commissionPercentage
             }
         });
 
@@ -3065,14 +3077,30 @@ app.get('/stacklord/landlords', stacklordAuth, async (req, res) => {
     try {
         const landlords = await User.find({ role: 'landlord' })
             .select('-password -mpesaConsumerKey -mpesaConsumerSecret -mpesaPasskey')
-            .populate('subscriptionPlan')
             .sort({ createdAt: -1 });
 
         const enriched = await Promise.all(landlords.map(async l => {
-            const tenantCount   = await Tenant.countDocuments({ landlord: l._id });
-            const houseCount    = await House.countDocuments({ landlord: l._id });
-            const propertyCount = await Property.countDocuments({ landlord: l._id });
-            return { ...l.toJSON(), tenantCount, houseCount, propertyCount };
+            const tenantCount = await Tenant.countDocuments({ landlord: l._id });
+            const houseCount  = await House.countDocuments({ landlord: l._id });
+            const properties  = await Property.find({ landlord: l._id })
+                .select('name location paymentConfigured isListed isApproved geo formattedAddress')
+                .lean();
+
+            return {
+                ...l.toJSON(),
+                tenantCount,
+                houseCount,
+                propertyCount: properties.length,
+                properties: properties.map(p => ({
+                    _id:               p._id,
+                    name:              p.name,
+                    location:          p.location,
+                    paymentConfigured: p.paymentConfigured,
+                    isListed:          p.isListed,
+                    isApproved:        p.isApproved,
+                    hasLocation:       !!(p.geo && Array.isArray(p.geo.coordinates))
+                }))
+            };
         }));
 
         res.json(enriched);
@@ -3081,14 +3109,306 @@ app.get('/stacklord/landlords', stacklordAuth, async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
-
-app.get('/stacklord/subscription-payments', stacklordAuth, async (req, res) => {
+// ── Stacklord: set the global commission percentage ──
+app.post('/stacklord/commission-rate', stacklordAuth, async (req, res) => {
     try {
-        const payments = await SubscriptionPayment.find()
-            .populate('plan', 'name price durationDays')
-            .populate('landlord', 'name email propertyName')
-            .sort({ createdAt: -1 });
-        res.json(payments);
+        const percentage = Number(req.body.percentage);
+        if (!Number.isFinite(percentage) || percentage < 0 || percentage > 100) {
+            return res.status(400).json({ message: 'percentage must be a number between 0 and 100' });
+        }
+
+        let settings = await PlatformSettings.findOne();
+        if (!settings) {
+            settings = await PlatformSettings.create({
+                commissionPercentage: percentage,
+                updatedAt:             new Date(),
+                updatedBy:             'stacklord'
+            });
+        } else {
+            settings.commissionPercentage = percentage;
+            settings.updatedAt            = new Date();
+            settings.updatedBy            = 'stacklord';
+            await settings.save();
+        }
+
+        await CommissionRateHistory.create({ percentage, changedBy: 'stacklord' });
+
+        res.json({ message: `Commission rate set to ${percentage}% ✅`, settings });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/stacklord/commission-rate', stacklordAuth, async (req, res) => {
+    try {
+        const settings = await getPlatformSettings();
+        res.json(settings);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ── Stacklord: commission rate change log ──
+app.get('/stacklord/commission-rate-history', stacklordAuth, async (req, res) => {
+    try {
+        const history = await CommissionRateHistory.find().sort({ changedAt: -1 }).limit(50).lean();
+        res.json({ history });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ── Stacklord: toggle auto-approval of new public listings ──
+app.put('/stacklord/auto-approve-listings', stacklordAuth, async (req, res) => {
+    try {
+        const enabled = Boolean(req.body.enabled);
+
+        let settings = await PlatformSettings.findOne();
+        if (!settings) settings = await PlatformSettings.create({ commissionPercentage: 0 });
+
+        settings.autoApproveListings = enabled;
+        await settings.save();
+
+        res.json({
+            message: `Auto-approve listings ${enabled ? 'enabled ✅ — new listings go live instantly' : 'disabled — new listings require manual review'}`,
+            autoApproveListings: settings.autoApproveListings
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ── Stacklord: toggle platform-wide maintenance (kill switch) ──
+app.put('/stacklord/platform-maintenance', stacklordAuth, async (req, res) => {
+    try {
+        const enabled = Boolean(req.body.enabled);
+        const message = sanitize(req.body.message || '', 500);
+
+        let settings = await PlatformSettings.findOne();
+        if (!settings) settings = await PlatformSettings.create({ commissionPercentage: 0 });
+
+        settings.platformMaintenanceMode    = enabled;
+        settings.platformMaintenanceMessage = message || (enabled
+            ? 'Affordable Rentals is temporarily down for maintenance. Please check back shortly.'
+            : '');
+        await settings.save();
+
+        res.json({
+            message: `Platform maintenance ${enabled ? 'enabled 🔧' : 'disabled ✅'}`,
+            platformMaintenanceMode:    settings.platformMaintenanceMode,
+            platformMaintenanceMessage: settings.platformMaintenanceMessage
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ── Stacklord: total commission currently owed, grouped by landlord ──
+app.get('/stacklord/commission/outstanding', stacklordAuth, async (req, res) => {
+    try {
+        const month = req.query.month || new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+
+        const properties     = await Property.find({}).select('name landlord').lean();
+        const owedByLandlord = {};
+
+        for (const prop of properties) {
+            const { amountDue } = await computeCommissionForProperty(prop._id, month);
+            if (amountDue <= 0) continue;
+
+            const alreadyPaid = await CommissionPayment.findOne({ property: prop._id, month, status: 'paid' });
+            if (alreadyPaid) continue;
+
+            const key = String(prop.landlord);
+            if (!owedByLandlord[key]) owedByLandlord[key] = { totalOwed: 0, properties: [] };
+            owedByLandlord[key].totalOwed += amountDue;
+            owedByLandlord[key].properties.push({ propertyId: prop._id, name: prop.name, amountDue, month });
+        }
+
+        const landlordIds = Object.keys(owedByLandlord);
+        const landlords    = await User.find({ _id: { $in: landlordIds } }).select('name email');
+        const landlordMap  = {};
+        landlords.forEach(l => { landlordMap[String(l._id)] = l; });
+
+        const result = landlordIds.map(id => ({
+            landlordId:    id,
+            landlordName:  landlordMap[id]?.name  || '—',
+            landlordEmail: landlordMap[id]?.email || '—',
+            totalOwed:     owedByLandlord[id].totalOwed,
+            properties:    owedByLandlord[id].properties
+        })).sort((a, b) => b.totalOwed - a.totalOwed);
+
+        res.json({ month, outstanding: result });
+
+    } catch (err) {
+        console.error('GET /stacklord/commission/outstanding error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ── Stacklord: manually mark a property's commission for a month as paid
+//    (e.g. landlord paid via bank transfer / cash outside M-Pesa) ──
+app.post('/stacklord/commissions/mark-paid', stacklordAuth, async (req, res) => {
+    try {
+        const propertyId = req.body.propertyId || '';
+        const month       = sanitize(req.body.month || '');
+        const note        = sanitize(req.body.note  || '', 300);
+
+        if (!propertyId || !month) {
+            return res.status(400).json({ message: 'propertyId and month are required' });
+        }
+
+        const property = await Property.findById(propertyId);
+        if (!property) return res.status(404).json({ message: 'Property not found' });
+
+        const existing = await CommissionPayment.findOne({ property: propertyId, month, status: 'paid' });
+        if (existing) return res.status(400).json({ message: `Commission for ${month} is already marked paid` });
+
+        const { totalCollected, percentage, amountDue } = await computeCommissionForProperty(propertyId, month);
+        if (amountDue <= 0) {
+            return res.status(400).json({ message: `Nothing owed for ${month} — no commission due.` });
+        }
+
+        const record = await CommissionPayment.findOneAndUpdate(
+            { property: propertyId, month },
+            {
+                landlord: property.landlord,
+                property: propertyId,
+                month,
+                totalCollected,
+                percentage,
+                amountDue,
+                status:    'paid',
+                mpesaCode: 'MANUAL',
+                paidAt:    new Date(),
+                note
+            },
+            { upsert: true, new: true }
+        );
+
+        res.json({ message: 'Commission marked as paid ✅', record });
+
+    } catch (err) {
+        console.error('POST /stacklord/commissions/mark-paid error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ── Stacklord: per-property commission summary (admin view of any property) ──
+app.get('/stacklord/commission/summary/:propertyId/:month', stacklordAuth, async (req, res) => {
+    try {
+        const property = await Property.findById(req.params.propertyId);
+        if (!property) return res.status(404).json({ message: 'Property not found' });
+
+        const { totalCollected, percentage, amountDue } = await computeCommissionForProperty(property._id, req.params.month);
+        const alreadyPaid = await CommissionPayment.findOne({ property: property._id, month: req.params.month, status: 'paid' });
+
+        res.json({
+            month: req.params.month,
+            totalCollected, percentage, amountDue,
+            alreadyPaid: !!alreadyPaid,
+            paidAt: alreadyPaid?.paidAt || null
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ── Stacklord: bulk approve/reject listings ──
+app.post('/stacklord/properties/bulk-approve', stacklordAuth, async (req, res) => {
+    try {
+        const ids     = Array.isArray(req.body.ids) ? req.body.ids : [];
+        const approve = req.body.approve !== false;
+
+        if (!ids.length) return res.status(400).json({ message: 'ids array is required' });
+
+        const properties = await Property.find({ _id: { $in: ids } }).populate('landlord', 'name email');
+        await Property.updateMany({ _id: { $in: ids } }, { isApproved: approve });
+
+        properties.forEach(property => {
+            if (property.landlord?.email) {
+                sendListingApprovalEmail({
+                    landlord: property.landlord,
+                    property,
+                    approved: approve,
+                    baseUrl:  process.env.BASE_URL
+                }).catch(err => console.error('Bulk listing approval email failed:', err.message));
+            }
+        });
+
+        res.json({ message: `${properties.length} listing(s) ${approve ? 'approved' : 'revoked'} ✅`, count: properties.length });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ── Stacklord: photo moderation — remove a photo from any property ──
+app.delete('/stacklord/properties/:id/photos', stacklordAuth, async (req, res) => {
+    try {
+        const { photoUrl } = req.body;
+        if (!photoUrl) return res.status(400).json({ message: 'photoUrl is required' });
+
+        const property = await Property.findById(req.params.id);
+        if (!property) return res.status(404).json({ message: 'Property not found' });
+
+        if (!property.photos.includes(photoUrl)) {
+            return res.status(404).json({ message: 'Photo not found on this property' });
+        }
+
+        const urlParts  = photoUrl.split('/');
+        const uploadIdx = urlParts.indexOf('upload');
+        const publicId  = urlParts.slice(uploadIdx + 2).join('/').replace(/\.[^/.]+$/, '');
+
+        cloudinary.uploader.destroy(publicId).catch(err =>
+            console.error('Cloudinary delete error:', err.message)
+        );
+
+        property.photos = property.photos.filter(p => p !== photoUrl);
+        await property.save();
+
+        res.json({ message: 'Photo removed by admin ✅', photos: property.photos });
+
+    } catch (err) {
+        console.error('DELETE /stacklord/properties/:id/photos error:', err.message);
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// ── Stacklord: view all commission payments (paid/pending/failed) ──
+app.get('/stacklord/commissions', stacklordAuth, async (req, res) => {
+    try {
+        const page  = Math.max(1, parseInt(req.query.page)  || 1);
+        const limit = Math.min(100, parseInt(req.query.limit) || 50);
+        const skip  = (page - 1) * limit;
+
+        const query = {};
+        if (req.query.status) query.status = req.query.status;
+
+        const [payments, total] = await Promise.all([
+            CommissionPayment.find(query)
+                .populate('landlord', 'name email')
+                .populate('property', 'name location')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+            CommissionPayment.countDocuments(query)
+        ]);
+
+        const totalsAgg = await CommissionPayment.aggregate([
+            { $match: { status: 'paid' } },
+            { $group: { _id: null, totalCollected: { $sum: '$amountDue' } } }
+        ]);
+
+        res.json({
+            payments,
+            total,
+            page,
+            pages:                     Math.ceil(total / limit),
+            totalCommissionCollected: totalsAgg[0]?.totalCollected || 0
+        });
+
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -3102,10 +3422,10 @@ app.post('/stacklord/suspend/:landlordId', stacklordAuth, async (req, res) => {
         const landlord = await User.findOneAndUpdate(
             { _id: req.params.landlordId, role: 'landlord' },
             {
-                subscriptionStatus: 'suspended',
-                suspendedReason:    reason,
-                suspendedAt:        new Date(),
-                suspendedBy:        'stacklord'
+                accountStatus:   'suspended',
+                suspendedReason: reason,
+                suspendedAt:     new Date(),
+                suspendedBy:     'stacklord'
             },
             { returnDocument: "after" }
         );
@@ -3120,175 +3440,20 @@ app.post('/stacklord/suspend/:landlordId', stacklordAuth, async (req, res) => {
 
 app.post('/stacklord/unsuspend/:landlordId', stacklordAuth, async (req, res) => {
     try {
-        const landlord = await User.findOne({ _id: req.params.landlordId, role: 'landlord' });
+        const landlord = await User.findOneAndUpdate(
+            { _id: req.params.landlordId, role: 'landlord' },
+            {
+                accountStatus:   'active',
+                suspendedReason: null,
+                suspendedAt:     null,
+                suspendedBy:     null
+            },
+            { returnDocument: "after" }
+        );
+
         if (!landlord) return res.status(404).json({ message: 'Landlord not found' });
+        res.json({ message: 'Landlord unsuspended ✅ — account restored to active' });
 
-        const now       = new Date();
-        let   newStatus = 'trial';
-
-        if (landlord.subscriptionExpiry && landlord.subscriptionExpiry > now) {
-            newStatus = 'active';
-        } else if (landlord.trialEndsAt && landlord.trialEndsAt > now) {
-            newStatus = 'trial';
-        } else {
-            newStatus = 'expired';
-        }
-
-        await User.findByIdAndUpdate(landlord._id, {
-            subscriptionStatus: newStatus,
-            suspendedReason:    null,
-            suspendedAt:        null,
-            suspendedBy:        null
-        });
-
-        res.json({ message: `Landlord unsuspended ✅ — Status restored to: ${newStatus}` });
-
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// FIX Bug 21: validate days, handle null plan gracefully
-app.post('/stacklord/extend/:landlordId', stacklordAuth, async (req, res) => {
-    try {
-        const days = parseInt(req.body.days);
-        const note = sanitize(req.body.note || '', 300);
-
-        if (!days || days < 1) return res.status(400).json({ message: 'days must be a positive number' });
-
-        const landlord = await User.findOne({ _id: req.params.landlordId, role: 'landlord' });
-        if (!landlord) return res.status(404).json({ message: 'Landlord not found' });
-
-        const now       = new Date();
-        const base      = (landlord.subscriptionExpiry && landlord.subscriptionExpiry > now)
-                          ? landlord.subscriptionExpiry
-                          : now;
-        const newExpiry = new Date(base.getTime() + days * 24 * 60 * 60 * 1000);
-
-        await User.findByIdAndUpdate(landlord._id, {
-            subscriptionStatus: 'active',
-            subscriptionExpiry: newExpiry,
-            gracePeriodUntil:   null,
-            suspendedReason:    null
-        });
-
-        // FIX Bug 21: only create SubscriptionPayment if a plan exists;
-        // set amount to 0 and mark clearly as manual extension
-        const paymentDoc = {
-            landlord:         landlord._id,
-            amount:           0,
-            durationDays:     days,
-            status:           'paid',
-            paidAt:           now,
-            expiresAt:        newExpiry,
-            manuallyExtended: true,
-            manualNote:       note || `Manually extended by Stacklord for ${days} days`
-        };
-
-        // plan is required by schema — only attach if one exists
-        if (landlord.subscriptionPlan) {
-            paymentDoc.plan = landlord.subscriptionPlan;
-        } else {
-            // Assign a placeholder plan (the cheapest active one) to satisfy the required field
-            const cheapestPlan = await SubscriptionPlan.findOne({ isActive: true }).sort({ price: 1 });
-            if (cheapestPlan) paymentDoc.plan = cheapestPlan._id;
-            // If no plan exists at all skip creating the payment record rather than crashing
-        }
-
-        if (paymentDoc.plan) {
-            await SubscriptionPayment.create(paymentDoc);
-        }
-
-        res.json({
-            message:   `Subscription extended by ${days} days ✅`,
-            newExpiry: newExpiry.toDateString(),
-            note:      note || null
-        });
-
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-app.get('/stacklord/plans', stacklordAuth, async (req, res) => {
-    try {
-        const plans = await SubscriptionPlan.find().sort({ sortOrder: 1 });
-        res.json(plans);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-app.post('/stacklord/plans', stacklordAuth, async (req, res) => {
-    try {
-        const name                   = sanitize(req.body.name        || '', 100);
-        const price                  = Number(req.body.price);
-        const durationDays           = Number(req.body.durationDays);
-        const description            = sanitize(req.body.description || '', 500);
-        const features               = Array.isArray(req.body.features) ? req.body.features.map(f => sanitize(f, 200)) : [];
-        const sortOrder              = Number(req.body.sortOrder)              || 0;
-        const maxProperties          = req.body.maxProperties          ?? 1;
-        const maxTenantsPerProperty  = req.body.maxTenantsPerProperty  ?? 20;
-
-        if (!name || !price || !durationDays) {
-            return res.status(400).json({ message: 'name, price and durationDays are required' });
-        }
-
-        const plan = await SubscriptionPlan.create({
-            name,
-            price,
-            durationDays,
-            description,
-            features,
-            sortOrder,
-            maxProperties,
-            maxTenantsPerProperty,
-            createdBy: 'stacklord'
-        });
-
-        res.status(201).json({ message: 'Plan created ✅', plan });
-
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// FIX Bug 22: whitelist plan update fields
-app.put('/stacklord/plans/:id', stacklordAuth, async (req, res) => {
-    try {
-        const allowed = ['name', 'price', 'durationDays', 'description', 'features', 'sortOrder', 'maxProperties', 'maxTenantsPerProperty', 'isActive'];
-        const updates = {};
-        for (const field of allowed) {
-            if (req.body[field] !== undefined) updates[field] = req.body[field];
-        }
-
-        const plan = await SubscriptionPlan.findByIdAndUpdate(req.params.id, updates, { returnDocument: "after" });
-        if (!plan) return res.status(404).json({ message: 'Plan not found' });
-        res.json({ message: 'Plan updated ✅', plan });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-app.delete('/stacklord/plans/:id', stacklordAuth, async (req, res) => {
-    try {
-        const plan = await SubscriptionPlan.findByIdAndDelete(req.params.id);
-        if (!plan) return res.status(404).json({ message: 'Plan not found' });
-        res.json({ message: 'Plan deleted ✅' });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-app.post('/stacklord/plans/:id/toggle', stacklordAuth, async (req, res) => {
-    try {
-        const plan = await SubscriptionPlan.findById(req.params.id);
-        if (!plan) return res.status(404).json({ message: 'Plan not found' });
-
-        plan.isActive = !plan.isActive;
-        await plan.save();
-
-        res.json({ message: `Plan ${plan.isActive ? 'activated' : 'deactivated'} ✅`, isActive: plan.isActive });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -3296,36 +3461,15 @@ app.post('/stacklord/plans/:id/toggle', stacklordAuth, async (req, res) => {
 
 
 // ─────────────────────────────────────────────────────────
-//  POST /stacklord/properties/:id/approve
-//  Admin approves or revokes a property's public listing.
-//  Only stacklord can flip isApproved.
+//  NOTE: the old server.js had POST /stacklord/properties/:id/approve
+//  defined TWICE — a bare version here and a fuller version (with
+//  email notification) further down. Express only ever runs the FIRST
+//  matching handler, so the second copy was dead code. Kept the fuller
+//  version below; removed this duplicate.
 // ─────────────────────────────────────────────────────────
-
-app.post('/stacklord/properties/:id/approve', stacklordAuth, async (req, res) => {
-    try {
-        const approve  = req.body.approve !== false; // default true
-        const property = await Property.findByIdAndUpdate(
-            req.params.id,
-            { isApproved: approve },
-            { new: true }
-        ).select('name isListed isApproved landlord');
-
-        if (!property) return res.status(404).json({ message: 'Property not found' });
-
-        res.json({
-            message:  approve
-                ? `${property.name} approved for public listing ✅`
-                : `${property.name} approval revoked`,
-            property
-        });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
 
 // ═══════════════════════════════════════════════════════
 //  STACKLORD — Public Listings Management Routes
-//  Add to server.js in the STACKLORD ROUTES section.
 // ═══════════════════════════════════════════════════════
 
 
@@ -3385,7 +3529,6 @@ app.post('/stacklord/properties/:id/approve', stacklordAuth, async (req, res) =>
 
         if (!property) return res.status(404).json({ message: 'Property not found' });
 
-        // Notify landlord
         // Notify landlord
     if (property.landlord?.email) {
         sendListingApprovalEmail({
@@ -3471,29 +3614,19 @@ app.get('/stacklord/inquiries', stacklordAuth, async (req, res) => {
 //    ?minRent=10000
 //    ?maxRent=25000
 // ─────────────────────────────────────────────────────────
-// ═══════════════════════════════════════════════════════
-//  CORRECTED /public/listings route
 //
-//  Replace the existing propertyQuery block in server.js.
+//  isActive  = landlord's internal toggle to enable/disable
+//             a property within their SaaS account context.
+//             Has nothing to do with public visibility.
 //
-//  WHY:
-//    isActive  = landlord's internal toggle to enable/disable
-//               a property within their SaaS account context.
-//               Has nothing to do with public visibility.
+//  isListed  = landlord explicitly opted this property into
+//             the public discovery page.
 //
-//    isListed  = landlord explicitly opted this property into
-//               the public discovery page.
-//
-//    isApproved = admin/stacklord moderation gate — prevents
-//               properties appearing publicly before review.
+//  isApproved = admin/stacklord moderation gate — prevents
+//             properties appearing publicly before review.
 //
 //  A property should appear publicly ONLY when BOTH
 //  isListed === true AND isApproved === true.
-// ═══════════════════════════════════════════════════════
-
-
-// ─────────────────────────────────────────────────────────
-//  GET /public/listings  (replace existing handler)
 // ─────────────────────────────────────────────────────────
 
 app.get('/public/listings', async (req, res) => {
@@ -3516,7 +3649,7 @@ app.get('/public/listings', async (req, res) => {
         }
 
         const properties = await Property.find(propertyQuery)
-            .select('name location phone description photos createdAt landlord')
+            .select('name location phone description photos createdAt landlord geo formattedAddress')
             .sort({ createdAt: -1 })
             .lean();
 
@@ -3540,14 +3673,16 @@ app.get('/public/listings', async (req, res) => {
             const rents = allHouses.map(h => h.rent).filter(Boolean);
 
             return {
-                _id:         prop._id,
-                name:        prop.name,
-                location:    prop.location    || '—',
-                phone:       prop.phone       || null,
-                description: prop.description || '',
-                photos:      prop.photos      || [],
-                createdAt:   prop.createdAt,
-                totalHouses: allHouses.length,
+                _id:              prop._id,
+                name:             prop.name,
+                location:         prop.location    || '—',
+                phone:            prop.phone       || null,
+                description:      prop.description || '',
+                photos:           prop.photos      || [],
+                createdAt:        prop.createdAt,
+                geo:              prop.geo              || null,
+                formattedAddress: prop.formattedAddress || null,
+                totalHouses:      allHouses.length,
                 vacantCount,
                 rentRange: rents.length
                     ? { min: Math.min(...rents), max: Math.max(...rents) }
@@ -3563,9 +3698,40 @@ app.get('/public/listings', async (req, res) => {
     }
 });
 
+app.get('/public/listings/nearby', async (req, res) => {
+    try {
+        const { swLat, swLng, neLat, neLng } = req.query;
+        const bounds = [swLat, swLng, neLat, neLng].map(Number);
+ 
+        if (bounds.some(n => !Number.isFinite(n))) {
+            return res.status(400).json({ message: 'swLat, swLng, neLat, neLng are all required' });
+        }
+        const [sLat, sLng, nLat, nLng] = bounds;
+ 
+        const properties = await Property.find({
+            isListed:   true,
+            isApproved: true,
+            geo: {
+                $geoWithin: {
+                    // GeoJSON order — [lng, lat] — matches how `geo` is stored
+                    $box: [[sLng, sLat], [nLng, nLat]]
+                }
+            }
+        })
+            .select('name location geo formattedAddress phone description photos')
+            .lean();
+ 
+        res.json(properties);
+ 
+    } catch (err) {
+        console.error('GET /public/listings/nearby error:', err.message);
+        res.status(500).json({ message: 'Failed to load nearby listings' });
+    }
+});
+
 
 // ─────────────────────────────────────────────────────────
-//  PUT /properties/:id/listing  (replace existing handler)
+//  PUT /properties/:id/listing
 //
 //  Landlord toggles public visibility + sets description.
 //  isApproved is admin-only — landlord cannot set it here.
@@ -3577,8 +3743,20 @@ app.put('/properties/:id/listing', authMiddleware, landlordOnly, async (req, res
         const property = await Property.findOne({ _id: req.params.id, landlord: req.user.id });
         if (!property) return res.status(404).json({ message: 'Property not found' });
 
-        if (typeof req.body.isListed === 'boolean') {
+                if (typeof req.body.isListed === 'boolean') {
             property.isListed = req.body.isListed;
+
+            // FIX (auto-approve toggle): if the stacklord has enabled
+            // auto-approval, skip the pending-review queue entirely when a
+            // landlord opts a property into public listings. Never auto-
+            // un-approves — toggling isListed off just hides it, existing
+            // approval state is left alone either way.
+            if (property.isListed) {
+                const settings = await getPlatformSettings();
+                if (settings.autoApproveListings) {
+                    property.isApproved = true;
+                }
+            }
         }
         if (typeof req.body.description === 'string') {
             property.description = req.body.description.trim();
@@ -3613,9 +3791,6 @@ app.put('/properties/:id/listing', authMiddleware, landlordOnly, async (req, res
         res.status(500).json({ message: err.message });
     }
 });
-
-
-
 
 
 // ─────────────────────────────────────────────────────────
@@ -3719,7 +3894,7 @@ app.delete('/properties/:id/photos', authMiddleware, landlordOnly, async (req, r
 
 
 // ═══════════════════════════════════════════════════════
-//  INQUIRY ROUTES — add to app.js
+//  INQUIRY ROUTES
 //
 //  These routes allow anyone (no auth) to submit inquiries about a listed property.
 // ═══════════════════════════════════════════════════════
@@ -3859,7 +4034,7 @@ app.post('/public/inquiries', async (req, res) => {
 //  Paginated: ?page=1&limit=20
 // ─────────────────────────────────────────────────────────
 
-app.get('/inquiries', authMiddleware, landlordOnly, checkSubscription, async (req, res) => {
+app.get('/inquiries', authMiddleware, landlordOnly, checkAccountStatus, async (req, res) => {
     try {
         const query  = { landlord: req.user.id };
         const page   = Math.max(1, parseInt(req.query.page)  || 1);
@@ -3979,9 +4154,11 @@ async function checkArrears() {
     console.log(`🕘 Running rent check for ${month}...`);
 
     try {
+        // FIX (plans → commission migration): active landlords are simply
+        // those not suspended — no more trial/active/grace lifecycle to filter on.
         const activeLandlords = await User.find({
-            role:               'landlord',
-            subscriptionStatus: { $in: ['trial', 'active', 'grace'] }
+            role:          'landlord',
+            accountStatus: 'active'
         }).select('_id');
 
         const landlordIds = activeLandlords.map(l => l._id);

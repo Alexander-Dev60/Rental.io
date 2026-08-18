@@ -1,7 +1,19 @@
 // ═══════════════════════════════════════════════════════
 //  models/User.js — SaaS Multi-tenant version
 //  role: 'landlord' | 'tenant'
-//  (renamed from 'admin' → 'landlord')
+//
+//  FIX (commission model migration): removed the entire paid-plan
+//  subscription lifecycle (subscriptionStatus enum, subscriptionPlan,
+//  subscriptionExpiry, trialEndsAt, gracePeriodUntil,
+//  lastSubscriptionPayment) — the platform is free forever now, funded
+//  by a per-property commission on collected rent instead of a paid
+//  plan. `accountStatus` replaces `subscriptionStatus` and only ever
+//  means "can this landlord use the platform" (active/suspended) —
+//  it's a moderation switch, not a billing one.
+//
+//  Added `lastSeenCommissionUpdatedAt` so the dashboard can detect
+//  "the stacklord changed the commission rate since I last looked"
+//  and show a one-time notice.
 // ═══════════════════════════════════════════════════════
 
 const mongoose = require('mongoose');
@@ -107,34 +119,21 @@ const userSchema = new mongoose.Schema({
         default: false
     },
 
-    subscriptionStatus: {
+    // ── FIX: replaces subscriptionStatus. Free platform now — this is
+    // purely a moderation switch (stacklord suspend/unsuspend), not a
+    // billing state. No trial/active/grace/expired lifecycle anymore. ──
+    accountStatus: {
         type:    String,
-        enum:    ['trial', 'active', 'grace', 'expired', 'suspended'],
-        default: 'trial'
+        enum:    ['active', 'suspended'],
+        default: 'active'
     },
 
-    subscriptionPlan: {
-        type:    mongoose.Schema.Types.ObjectId,
-        ref:     'SubscriptionPlan',
-        default: null
-    },
-
-    subscriptionExpiry: {
-        type:    Date,
-        default: null
-    },
-
-    trialEndsAt: {
-        type:    Date,
-        default: () => new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
-    },
-
-    gracePeriodUntil: {
-        type:    Date,
-        default: null
-    },
-
-    lastSubscriptionPayment: {
+    // ── FIX: commission-rate-change notice tracking. Compared against
+    // PlatformSettings.updatedAt on dashboard load — if this is older
+    // (or null), the landlord hasn't seen the current rate yet and the
+    // dashboard shows a one-time banner. Updated via
+    // PUT /landlord/commission-notice/ack. ──
+    lastSeenCommissionUpdatedAt: {
         type:    Date,
         default: null
     },
@@ -169,29 +168,6 @@ const userSchema = new mongoose.Schema({
 userSchema.index({ landlordId: 1 });
 userSchema.index({ role: 1 });
 userSchema.index({ subdomain: 1 }, { unique: true, sparse: true }); // sparse → nulls don't collide
-
-// ── Virtual: subscription days remaining ──
-userSchema.virtual('daysRemaining').get(function () {
-    const now = new Date();
-    let expiry = null;
-    if (this.subscriptionStatus === 'trial')  expiry = this.trialEndsAt;
-    if (this.subscriptionStatus === 'active') expiry = this.subscriptionExpiry;
-    if (this.subscriptionStatus === 'grace')  expiry = this.gracePeriodUntil;
-    if (!expiry) return 0;
-    return Math.max(0, Math.ceil((expiry - now) / (1000 * 60 * 60 * 24)));
-});
-
-// ── Virtual: is subscription active ──
-userSchema.virtual('isSubscriptionActive').get(function () {
-    if (this.role !== 'landlord') return true;
-    const now = new Date();
-    switch (this.subscriptionStatus) {
-        case 'trial':  return this.trialEndsAt && now < this.trialEndsAt;
-        case 'active': return this.subscriptionExpiry && now < this.subscriptionExpiry;
-        case 'grace':  return this.gracePeriodUntil && now < this.gracePeriodUntil;
-        default:       return false;
-    }
-});
 
 userSchema.set('toJSON',   { virtuals: true });
 userSchema.set('toObject', { virtuals: true });

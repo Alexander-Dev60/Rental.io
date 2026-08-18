@@ -10,11 +10,16 @@ function getToken() {
     return localStorage.getItem('token');
 }
 
+// script.js
 function authHeaders() {
-    return {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + getToken()
-    };
+    const token = getToken();
+    if (!token) {
+        // Unreachable in normal flow — the <head> guard already redirects
+        // before this file even loads. Last-resort safety net only.
+        window.location.href = 'auth.html';
+        throw new Error('No auth token — redirecting to login');
+    }
+    return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token };
 }
 
 function logout() {
@@ -247,6 +252,7 @@ function switchProperty(id, name) {
     loadRules();
     loadUnread();
     loadDashboard();
+    loadRecentActivity();
 
     showToast(`Switched to ${name} 🏠`, 'success');
 }
@@ -302,6 +308,19 @@ async function addProperty() {
 
         showToast(`${name} created ✅`, 'success');
         closeModal('modal-add-property');
+
+        // If the landlord dropped a pin while creating this property, save it now
+        if (_newPropCoords && data.property?._id) {
+            try {
+                await fetch(`${API}/properties/${data.property._id}/location`, {
+                    method:  'PUT',
+                    headers: authHeaders(),
+                    body:    JSON.stringify({ lat: _newPropCoords.lat, lng: _newPropCoords.lng })
+                });
+            } catch (err) { console.error('Failed to save initial property location:', err); }
+        }
+        _newPropCoords = null;
+
         ['newPropName', 'newPropLocation', 'newPropPhone'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.value = '';
@@ -319,16 +338,430 @@ async function addProperty() {
 }
 
 function showUpgradePrompt(message) {
-    openDangerModal({
-        icon:      '⬆️',
-        title:     'Upgrade Required',
-        message:   `${message}<br><br>Click below to view plans and upgrade.`,
-        label:     'View Plans',
-        type:      'warn',
-        onConfirm: async () => { openModal('modal-subscribe'); }
+    // Legacy hook — the platform no longer enforces plan limits (commission
+    // model), so this just surfaces whatever message the backend sent.
+    showToast(message, 'error');
+}
+
+
+// ═══════════════════════════════════════════════════════
+//  PROPERTY LOCATION — map picker (Leaflet)
+// ═══════════════════════════════════════════════════════
+
+let _locPickerMap = null;
+let _newPropMap   = null;
+let _newPropCoords   = null;
+let _locPickerCoords = null;
+
+function _defaultMapCenter() {
+    // Nairobi, Kenya — sensible default center for a Kenyan rental platform
+    return [-1.2921, 36.8219];
+}
+
+function _initLeafletPicker(containerId, onPick, initialLatLng) {
+    const container = document.getElementById(containerId);
+    if (!container || typeof L === 'undefined') return null;
+
+    // Leaflet keeps internal state on the DOM node — destroy any previous
+    // instance before re-initializing (modal may be opened multiple times).
+    if (container._leaflet_id) { container._leaflet_id = null; container.innerHTML = ''; }
+
+    const center = initialLatLng || _defaultMapCenter();
+    const map    = L.map(containerId).setView(center, initialLatLng ? 15 : 12);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19
+    }).addTo(map);
+
+    // NOTE: marker lives on the map instance (map._pickerMarker) rather than
+    // a closure variable, so external helpers (search results, "use my
+    // location") can move/reuse the same marker instead of creating a
+    // second one on the map.
+    map._pickerMarker = initialLatLng ? L.marker(initialLatLng, { draggable: true }).addTo(map) : null;
+    if (map._pickerMarker) {
+        map._pickerMarker.on('dragend', () => onPick(map._pickerMarker.getLatLng()));
+    }
+
+    map.on('click', (e) => {
+        if (map._pickerMarker) {
+            map._pickerMarker.setLatLng(e.latlng);
+        } else {
+            map._pickerMarker = L.marker(e.latlng, { draggable: true }).addTo(map);
+            map._pickerMarker.on('dragend', () => onPick(map._pickerMarker.getLatLng()));
+        }
+        onPick(e.latlng);
+    });
+
+    // Force a resize recalculation once the modal is visible — Leaflet
+    // mis-sizes tiles if initialized while its container is display:none.
+    setTimeout(() => map.invalidateSize(), 150);
+
+    return map;
+}
+
+    
+
+
+function initNewPropMap() {
+    const coordsEl     = document.getElementById('newPropCoords');
+    const searchInput  = document.getElementById('newPropSearchInput');
+    if (searchInput) searchInput.value = '';
+    _hideLocSuggestions('newProp');
+
+    _newPropMap = _initLeafletPicker('newPropMap', (latlng) => {
+        _newPropCoords = { lat: latlng.lat, lng: latlng.lng };
+        if (coordsEl) coordsEl.textContent = `📍 ${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}`;
+    });
+    _wireLocSearchInput('newProp');
+}
+
+function openLocationPicker(propertyId) {
+    document.getElementById('locPickerPropertyId').value   = propertyId;
+    document.getElementById('locPickerCoords').textContent = 'No location selected';
+    _locPickerCoords = null;
+
+    const searchInput = document.getElementById('locSearchInput');
+    if (searchInput) searchInput.value = '';
+    _hideLocSuggestions('locPicker');
+
+    const prop    = _propertiesCache.find(p => p._id === propertyId);
+    const initial = (prop?.geo?.coordinates)
+        ? [prop.geo.coordinates[1], prop.geo.coordinates[0]] // GeoJSON is [lng, lat]
+        : null;
+
+    openModal('modal-set-location');
+
+    setTimeout(() => {
+        const coordsEl = document.getElementById('locPickerCoords');
+        _locPickerMap = _initLeafletPicker('locPickerMap', (latlng) => {
+            _locPickerCoords = { lat: latlng.lat, lng: latlng.lng };
+            if (coordsEl) coordsEl.textContent = `📍 ${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}`;
+        }, initial);
+        _wireLocSearchInput('locPicker');
+        if (initial) {
+            _locPickerCoords = { lat: initial[0], lng: initial[1] };
+            if (coordsEl) coordsEl.textContent = `📍 ${initial[0].toFixed(5)}, ${initial[1].toFixed(5)}`;
+        }
+    }, 60);
+}
+
+
+// ═══════════════════════════════════════════════════════
+//  LOCATION SEARCH — Nominatim (OpenStreetMap) geocoding
+//  Powers both the "Add Property" map and "Set Property Location"
+//  map — 'newProp' and 'locPicker' are the two supported keys.
+// ═══════════════════════════════════════════════════════
+
+const _locSearchConfig = {
+    locPicker: {
+        inputId:       'locSearchInput',
+        suggestionsId: 'locSearchSuggestions',
+        mapGetter:     () => _locPickerMap,
+        onPick:        (lat, lng) => _setLocPickerCoords(lat, lng)
+    },
+    newProp: {
+        inputId:       'newPropSearchInput',
+        suggestionsId: 'newPropSearchSuggestions',
+        mapGetter:     () => _newPropMap,
+        onPick:        (lat, lng) => _setNewPropCoords(lat, lng)
+    }
+};
+
+let _locSearchDebounce = null;
+
+function _wireLocSearchInput(key) {
+    const cfg   = _locSearchConfig[key];
+    const input = document.getElementById(cfg.inputId);
+    if (!input || input._wired) return; // avoid double-binding across modal re-opens
+    input._wired = true;
+
+    input.addEventListener('input', () => {
+        clearTimeout(_locSearchDebounce);
+        const q = input.value.trim();
+        if (q.length < 3) { _hideLocSuggestions(key); return; }
+        _locSearchDebounce = setTimeout(() => _fetchLocSuggestions(key, q), 450);
+    });
+
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Enter')  { e.preventDefault(); _runLocSearch(key); }
+        if (e.key === 'Escape') { _hideLocSuggestions(key); }
+    });
+
+    document.addEventListener('click', e => {
+        const wrap = input.closest('.loc-search-row');
+        if (wrap && !wrap.contains(e.target)) _hideLocSuggestions(key);
     });
 }
 
+async function _fetchLocSuggestions(key, query) {
+    const cfg = _locSearchConfig[key];
+    const box = document.getElementById(cfg.suggestionsId);
+    if (!box) return;
+
+    try {
+        // Nominatim (OpenStreetMap) — free geocoding, no API key. Biased to
+        // Kenya since that's the platform's market.
+        const res = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=6&countrycodes=ke&q=${encodeURIComponent(query)}`
+        );
+        const results = await res.json();
+
+        if (!Array.isArray(results) || !results.length) {
+            box.innerHTML = `<div class="loc-suggestion-empty">No matches found</div>`;
+            box.classList.add('show');
+            return;
+        }
+
+        box.innerHTML = results.map(r => `
+            <div class="loc-suggestion-item"
+                 onclick="_pickLocSuggestion('${key}', ${r.lat}, ${r.lon}, '${(r.display_name || '').replace(/'/g, "\\'")}')">
+                📍 ${r.display_name}
+            </div>`).join('');
+        box.classList.add('show');
+
+    } catch (err) {
+        console.error('Location search error:', err);
+        box.innerHTML = `<div class="loc-suggestion-empty">Search failed — check your connection</div>`;
+        box.classList.add('show');
+    }
+}
+
+function _hideLocSuggestions(key) {
+    const box = document.getElementById(_locSearchConfig[key].suggestionsId);
+    if (box) box.classList.remove('show');
+}
+
+function _pickLocSuggestion(key, lat, lng, label) {
+    lat = Number(lat); lng = Number(lng);
+    const cfg   = _locSearchConfig[key];
+    const input = document.getElementById(cfg.inputId);
+    if (input) input.value = label;
+    _hideLocSuggestions(key);
+
+    const map = cfg.mapGetter();
+    if (map) {
+        map.setView([lat, lng], 16);
+        _placeMarker(map, lat, lng, cfg.onPick);
+    }
+    cfg.onPick(lat, lng);
+}
+
+function _runLocSearch(key) {
+    const cfg   = _locSearchConfig[key];
+    const input = document.getElementById(cfg.inputId);
+    const q     = input ? input.value.trim() : '';
+    if (!q) { showToast('Type an address to search', 'warn'); return; }
+    _fetchLocSuggestions(key, q);
+}
+
+function _useMyLocation(key) {
+    if (!navigator.geolocation) { showToast('Geolocation not supported by your browser', 'warn'); return; }
+
+    showToast('Getting your location…', '');
+    navigator.geolocation.getCurrentPosition(
+        pos => {
+            const { latitude, longitude } = pos.coords;
+            const cfg = _locSearchConfig[key];
+            const map = cfg.mapGetter();
+            if (map) {
+                map.setView([latitude, longitude], 16);
+                _placeMarker(map, latitude, longitude, cfg.onPick);
+            }
+            cfg.onPick(latitude, longitude);
+            showToast('Location found 📡', 'success');
+        },
+        err => {
+            console.error('Geolocation error:', err);
+            showToast('Could not get your location — check browser permissions', 'error');
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+    );
+}
+
+// Moves/creates the draggable pin on a given map, reusing map._pickerMarker
+// (set up in _initLeafletPicker) so search/geolocation and manual dragging
+// all stay in sync on the same single marker.
+function _placeMarker(map, lat, lng, onPick) {
+    if (!map || typeof L === 'undefined') return;
+
+    if (map._pickerMarker) {
+        map._pickerMarker.setLatLng([lat, lng]);
+    } else {
+        map._pickerMarker = L.marker([lat, lng], { draggable: true }).addTo(map);
+        map._pickerMarker.on('dragend', () => {
+            const ll = map._pickerMarker.getLatLng();
+            onPick(ll.lat, ll.lng);
+        });
+    }
+}
+
+function _setLocPickerCoords(lat, lng) {
+    _locPickerCoords = { lat, lng };
+    const el = document.getElementById('locPickerCoords');
+    if (el) el.textContent = `📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+}
+
+function _setNewPropCoords(lat, lng) {
+    _newPropCoords = { lat, lng };
+    const el = document.getElementById('newPropCoords');
+    if (el) el.textContent = `📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+}
+
+async function submitPropertyLocation() {
+    const propertyId = document.getElementById('locPickerPropertyId').value;
+    if (!propertyId)       { showToast('No property selected', 'warn'); return; }
+    if (!_locPickerCoords) { showToast('Tap the map to drop a pin first', 'warn'); return; }
+
+    const btn = document.getElementById('locPickerSaveBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving...'; }
+
+    try {
+        const res  = await fetch(`${API}/properties/${propertyId}/location`, {
+            method:  'PUT',
+            headers: authHeaders(),
+            body:    JSON.stringify({ lat: _locPickerCoords.lat, lng: _locPickerCoords.lng })
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.message || 'Failed to save location', 'error'); return; }
+
+        showToast('Location saved ✅', 'success');
+        closeModal('modal-set-location');
+        await loadProperties();
+
+    } catch (err) {
+        showToast('Network error', 'error');
+        console.error('submitPropertyLocation error:', err);
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '💾 Save Location'; }
+    }
+}
+
+
+// ═══════════════════════════════════════════════════════
+//  COMMISSION — modal API calls
+// ═══════════════════════════════════════════════════════
+
+let _commissionPollingTimer = null;
+
+async function openCommissionModal() {
+    document.getElementById('modal-commission').classList.add('open');
+
+    const sel = document.getElementById('commissionPropertyId');
+    if (sel) {
+        sel.innerHTML = _propertiesCache.map(p =>
+            `<option value="${p._id}" ${p._id === getPropertyId() ? 'selected' : ''}>${p.name}</option>`
+        ).join('');
+    }
+
+    const monthEl = document.getElementById('commissionMonth');
+    if (monthEl && !monthEl.value) {
+        monthEl.value = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+    }
+
+    onCommissionPropertyChange();
+}
+
+async function onCommissionPropertyChange() {
+    const propertyId = document.getElementById('commissionPropertyId')?.value;
+    const month       = document.getElementById('commissionMonth')?.value.trim();
+    const box         = document.getElementById('commissionSummaryBox');
+    if (!propertyId || !month) { if (box) box.style.display = 'none'; return; }
+
+    try {
+        const res  = await fetch(
+            `${API}/commission/summary/${propertyId}/${encodeURIComponent(month)}`,
+            { headers: authHeaders() }
+        );
+        const data = await res.json();
+        if (!res.ok) { if (box) box.style.display = 'none'; return; }
+
+        document.getElementById('commSumRate').textContent      = `${data.percentage}%`;
+        document.getElementById('commSumCollected').textContent = `Ksh ${Number(data.totalCollected).toLocaleString()}`;
+        document.getElementById('commSumDue').textContent       = `Ksh ${Number(data.amountDue).toLocaleString()}`;
+
+        const statusEl = document.getElementById('commSumStatus');
+        statusEl.innerHTML = data.alreadyPaid
+            ? '<span class="pill pill-green">Paid ✅</span>'
+            : data.amountDue > 0
+            ? '<span class="pill pill-yellow">Due ⚠️</span>'
+            : '<span class="pill pill-green">Nothing due</span>';
+
+        const payBtn = document.getElementById('commissionPayBtn');
+        if (payBtn) payBtn.disabled = data.alreadyPaid || data.amountDue <= 0;
+
+        if (box) box.style.display = 'block';
+
+    } catch (err) {
+        console.error('onCommissionPropertyChange error:', err);
+        if (box) box.style.display = 'none';
+    }
+}
+
+async function payCommission() {
+    const propertyId = document.getElementById('commissionPropertyId')?.value;
+    const month       = document.getElementById('commissionMonth')?.value.trim();
+    const phone       = document.getElementById('commissionPhone')?.value.trim();
+
+    if (!propertyId || !month) { showToast('Select a property and month', 'warn'); return; }
+    if (!phone)                { showToast('Enter your M-Pesa phone number', 'error'); return; }
+
+    const btn = document.getElementById('commissionPayBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending...'; }
+
+    try {
+        const res  = await fetch(`${API}/commission/pay`, {
+            method:  'POST',
+            headers: authHeaders(),
+            body:    JSON.stringify({ propertyId, month, phone })
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.message || 'Payment initiation failed', 'error'); return; }
+
+        showToast('M-Pesa prompt sent! Enter your PIN 📱', 'success');
+        const statusEl = document.getElementById('commissionPayStatus');
+        if (statusEl) {
+            statusEl.style.display = 'block';
+            statusEl.style.color   = 'var(--text-dim)';
+            statusEl.textContent   = '⏳ Waiting for payment confirmation...';
+        }
+        _pollCommission(propertyId, month);
+
+    } catch (err) {
+        showToast('Network error', 'error');
+        console.error('payCommission error:', err);
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '📱 Pay with M-Pesa'; }
+    }
+}
+
+function _pollCommission(propertyId, month) {
+    let attempts = 0;
+    clearInterval(_commissionPollingTimer);
+    _commissionPollingTimer = setInterval(async () => {
+        attempts++;
+        const statusEl = document.getElementById('commissionPayStatus');
+        if (attempts > 20) {
+            clearInterval(_commissionPollingTimer);
+            if (statusEl) { statusEl.textContent = '⚠️ Timeout. Check your M-Pesa messages.'; statusEl.style.color = 'var(--warn)'; }
+            return;
+        }
+        try {
+            const res  = await fetch(
+                `${API}/commission/summary/${propertyId}/${encodeURIComponent(month)}`,
+                { headers: authHeaders() }
+            );
+            const data = await res.json();
+            if (res.ok && data.alreadyPaid) {
+                clearInterval(_commissionPollingTimer);
+                if (statusEl) { statusEl.textContent = '✅ Commission paid — thank you!'; statusEl.style.color = 'var(--accent)'; }
+                showToast('Commission paid 🎉', 'success');
+                onCommissionPropertyChange();
+                loadCommissionStatus();
+            }
+        } catch (err) { console.error('Commission poll error:', err.message); }
+    }, 3000);
+}
 
 // ═══════════════════════════════════════════════════════
 //  DANGER CONFIRM MODAL

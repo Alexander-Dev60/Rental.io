@@ -57,9 +57,10 @@
     position: fixed; inset: 0; z-index: 1000;
     background: var(--bg);
     display: flex; align-items: center; justify-content: center;
+    padding: 1.5rem;
   }
   .login-box {
-    width: min(420px, 92vw);
+    width: min(420px, 100%);
     background: var(--panel); border: 1px solid var(--border2);
     border-radius: 16px; padding: 2.5rem;
     box-shadow: 0 0 60px rgba(139,92,246,0.15);
@@ -92,7 +93,22 @@
     transition: all 0.2s; box-shadow: 0 4px 20px rgba(139,92,246,0.3);
   }
   .btn-login-submit:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(139,92,246,0.5); }
-  .login-error { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--red); text-align: center; margin-top: 0.75rem; letter-spacing: 0.06em; }
+  .login-error { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--red); text-align: center; margin-top: 0.75rem; letter-spacing: 0.06em; min-height: 1em; }
+
+  /* ══════════════════════════════
+     PLATFORM MAINTENANCE LOCK SCREEN
+  ══════════════════════════════ */
+  #maintenanceLock {
+    display: none; position: fixed; inset: 0; z-index: 2000;
+    background: var(--bg); align-items: center; justify-content: center;
+    padding: 1.5rem; text-align: center;
+  }
+  #maintenanceLock.show { display: flex; }
+  .maint-lock-box { max-width: 460px; }
+  .maint-lock-icon { font-size: 3.5rem; display: block; margin-bottom: 1rem; }
+  .maint-lock-title { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.7rem; color: var(--amber); margin-bottom: 0.75rem; }
+  .maint-lock-desc { font-size: 0.85rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 1.25rem; }
+  .maint-lock-note { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--text-dim); }
 
   /* ══════════════════════════════
      SIDEBAR OVERLAY (mobile)
@@ -139,9 +155,9 @@
     padding: 1px 6px; border-radius: 99px;
     font-family: 'JetBrains Mono', monospace;
   }
-  .nav-badge-red    { background: var(--red);   color: #fff; }
-  .nav-badge-amber  { background: var(--amber);  color: #000; }
-  .nav-badge-cyan   { background: var(--cyan);   color: #000; }
+  .nav-badge-red   { background: var(--red);   color: #fff; }
+  .nav-badge-amber { background: var(--amber); color: #000; }
+  .nav-badge-cyan  { background: var(--cyan);  color: #000; }
   .sidebar-footer { padding: 1rem 1.25rem; border-top: 1px solid var(--border); }
   .stacklord-badge {
     display: flex; align-items: center; gap: 0.5rem;
@@ -181,32 +197,41 @@
     background: rgba(6,8,18,0.9); border-bottom: 1px solid var(--border);
     padding: 0.85rem 2rem;
     display: flex; align-items: center; justify-content: space-between;
-    backdrop-filter: blur(12px); gap: 1rem;
+    backdrop-filter: blur(12px); gap: 1rem; flex-wrap: wrap;
   }
-  .topbar-left  { display: flex; align-items: center; gap: 1rem; }
-  .topbar-right { display: flex; align-items: center; gap: 1rem; }
-  .topbar-title { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.3rem; color: var(--text); }
+  .topbar-left  { display: flex; align-items: center; gap: 1rem; min-width: 0; }
+  .topbar-right { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+  .topbar-title { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.3rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .stacklord-chip {
     font-family: 'JetBrains Mono', monospace; font-size: 0.62rem;
     letter-spacing: 0.12em; text-transform: uppercase;
     background: var(--accent-dim); color: var(--accent);
     border: 1px solid var(--border2); padding: 0.3rem 0.7rem; border-radius: 99px;
+    white-space: nowrap;
   }
 
-  /* ── Pending alert banner in topbar ── */
   .topbar-alert {
     display: none;
     align-items: center; gap: 0.5rem;
     background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.3);
     border-radius: 8px; padding: 0.3rem 0.75rem; cursor: pointer;
-    transition: background 0.2s;
+    transition: background 0.2s; white-space: nowrap;
   }
   .topbar-alert:hover { background: rgba(251,191,36,0.18); }
   .topbar-alert.visible { display: flex; }
-  .topbar-alert-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 6px var(--amber); animation: pulse 1.5s ease infinite; }
+  .topbar-alert-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 6px var(--amber); animation: pulse 1.5s ease infinite; flex-shrink: 0; }
   .topbar-alert-text { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--amber); }
 
-  /* ── Hamburger ── */
+  .topbar-maint-badge {
+    display: none; align-items: center; gap: 0.4rem;
+    background: rgba(248,113,113,0.15); border: 1px solid rgba(248,113,113,0.4);
+    border-radius: 99px; padding: 0.3rem 0.75rem; cursor: pointer;
+    white-space: nowrap;
+  }
+  .topbar-maint-badge.visible { display: flex; }
+  .topbar-maint-badge-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--red); animation: pulse 1s ease infinite; flex-shrink: 0; }
+  .topbar-maint-badge-text { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--red); font-weight: 700; }
+
   .hamburger {
     display: none; background: none; border: none;
     color: var(--text); cursor: pointer;
@@ -228,6 +253,7 @@
     margin-bottom: 1.75rem; flex-wrap: wrap; gap: 0.75rem;
   }
   .section-title { font-family: 'Instrument Serif', serif; font-size: 1.6rem; font-style: italic; color: var(--text); }
+  .section-desc { font-size: 0.8rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 1.5rem; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem 1rem; }
 
   /* ══════════════════════════════
      CARDS
@@ -298,55 +324,32 @@
   .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; filter: none !important; }
 
   /* ══════════════════════════════
+     TOGGLE SWITCH (kill switch / auto-approve)
+  ══════════════════════════════ */
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; padding: 0.9rem 1rem; background: var(--bg3);
+    border: 1px solid var(--border); border-radius: 8px; margin-bottom: 1rem;
+  }
+  .toggle-row-label { font-size: 0.85rem; font-weight: 600; color: var(--text); }
+  .toggle-row-sub { font-size: 0.72rem; color: var(--text-dim); margin-top: 0.15rem; line-height: 1.5; }
+  .toggle-switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+  .toggle-switch input { display: none; }
+  .toggle-switch .slider { position: absolute; inset: 0; background: var(--border2); border-radius: 99px; cursor: pointer; transition: background 0.2s; }
+  .toggle-switch .slider::before { content: ''; position: absolute; width: 18px; height: 18px; top: 3px; left: 3px; background: white; border-radius: 50%; transition: transform 0.2s; }
+  .toggle-switch input:checked + .slider { background: var(--green); }
+  .toggle-switch input:checked + .slider::before { transform: translateX(20px); }
+  .toggle-switch.danger input:checked + .slider { background: var(--red); }
+
+  /* ══════════════════════════════
      STATUS BADGES
   ══════════════════════════════ */
-  .status-badge { display: inline-flex; align-items: center; gap: 0.4rem; font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; font-weight: 600; padding: 4px 10px; border-radius: 99px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .status-badge { display: inline-flex; align-items: center; gap: 0.4rem; font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; font-weight: 600; padding: 4px 10px; border-radius: 99px; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
   .status-badge-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-  .badge-trial    { background: rgba(6,182,212,0.12);   color: var(--cyan);  border: 1px solid rgba(6,182,212,0.3); }
-  .badge-trial    .status-badge-dot { background: var(--cyan);  box-shadow: 0 0 6px var(--cyan); }
-  .badge-active   { background: rgba(52,211,153,0.12);  color: var(--green); border: 1px solid rgba(52,211,153,0.3); }
-  .badge-active   .status-badge-dot { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s ease infinite; }
-  .badge-grace    { background: rgba(251,191,36,0.12);  color: var(--amber); border: 1px solid rgba(251,191,36,0.3); }
-  .badge-grace    .status-badge-dot { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
-  .badge-expired  { background: rgba(248,113,113,0.12); color: var(--red);   border: 1px solid rgba(248,113,113,0.3); }
-  .badge-expired  .status-badge-dot { background: var(--red); }
-  .badge-suspended{ background: rgba(248,113,113,0.2);  color: var(--red);   border: 2px solid var(--red); }
+  .badge-active    { background: rgba(52,211,153,0.12);  color: var(--green); border: 1px solid rgba(52,211,153,0.3); }
+  .badge-active    .status-badge-dot { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s ease infinite; }
+  .badge-suspended { background: rgba(248,113,113,0.2);  color: var(--red);   border: 2px solid var(--red); }
   .badge-suspended .status-badge-dot { background: var(--red); animation: pulse 1s ease infinite; }
-
-  /* ══════════════════════════════
-     SUB CARD
-  ══════════════════════════════ */
-  .sub-card { background: var(--panel2); border: 1px solid var(--border2); border-radius: 12px; padding: 1.5rem; position: relative; overflow: hidden; }
-  .sub-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,var(--accent),var(--cyan)); }
-  .sub-card-row { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--border); font-size: 0.82rem; }
-  .sub-card-row:last-child { border: none; }
-  .sub-card-label { color: var(--text-dim); }
-  .sub-card-value { color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; }
-
-  /* ══════════════════════════════
-     PROGRESS
-  ══════════════════════════════ */
-  .progress-track { background: var(--bg3); border-radius: 99px; height: 6px; overflow: hidden; margin: 0.5rem 0; }
-  .progress-fill  { height: 100%; border-radius: 99px; transition: width 0.6s ease; }
-  .progress-fill.green { background: linear-gradient(90deg, var(--green), var(--cyan)); }
-  .progress-fill.amber { background: linear-gradient(90deg, var(--amber), var(--red)); }
-  .progress-fill.red   { background: var(--red); width: 100% !important; }
-
-  /* ══════════════════════════════
-     PLANS
-  ══════════════════════════════ */
-  .plans-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; margin-top: 1rem; }
-  .plan-card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; transition: all 0.2s; position: relative; }
-  .plan-card:hover { border-color: var(--border2); transform: translateY(-2px); }
-  .plan-card.inactive { opacity: 0.5; }
-  .plan-card-name { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.3rem; color: var(--accent); margin-bottom: 0.25rem; }
-  .plan-card-price { font-family: 'JetBrains Mono', monospace; font-size: 1.5rem; font-weight: 700; color: var(--text); margin-bottom: 0.25rem; }
-  .plan-card-duration { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--text-dim); letter-spacing: 0.1em; margin-bottom: 0.75rem; }
-  .plan-card-desc { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem; line-height: 1.6; }
-  .plan-features { list-style: none; margin-bottom: 1rem; }
-  .plan-features li { font-size: 0.78rem; color: var(--text-muted); padding: 0.2rem 0; display: flex; align-items: center; gap: 0.5rem; }
-  .plan-features li::before { content: '✓'; color: var(--green); font-weight: 700; }
-  .plan-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 
   /* ══════════════════════════════
      LANDLORD ROW CARD
@@ -361,10 +364,7 @@
   }
   .landlord-row-card:hover { border-color: var(--border2); transform: translateY(-1px); }
   .landlord-row-card.suspended { border-left: 3px solid var(--red); }
-  .landlord-row-card.expired   { border-left: 3px solid rgba(248,113,113,0.4); }
-  .landlord-row-card.grace     { border-left: 3px solid var(--amber); }
   .landlord-row-card.active    { border-left: 3px solid var(--green); }
-  .landlord-row-card.trial     { border-left: 3px solid var(--cyan); }
   .landlord-row-left { flex: 1; min-width: 0; }
   .landlord-row-name { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.1rem; color: var(--text); margin-bottom: 0.2rem; }
   .landlord-row-meta { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--text-dim); letter-spacing: 0.03em; }
@@ -375,7 +375,7 @@
      TABLE
   ══════════════════════════════ */
   .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.8rem; min-width: 500px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.8rem; min-width: 560px; }
   th { text-align: left; padding: 0.6rem 0.85rem; font-size: 0.6rem; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-dim); border-bottom: 1px solid var(--border); white-space: nowrap; }
   td { padding: 0.65rem 0.85rem; border-bottom: 1px solid var(--border); color: var(--text-muted); vertical-align: top; }
   tr:last-child td { border: none; }
@@ -387,7 +387,7 @@
   ══════════════════════════════ */
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 500; align-items: center; justify-content: center; padding: 1.5rem; }
   .modal-overlay.open { display: flex; }
-  .modal { background: var(--panel); border: 1px solid var(--border2); border-radius: 12px; padding: 2rem; width: min(480px,100%); max-height: 90vh; overflow-y: auto; animation: modalIn 0.25s cubic-bezier(0.34,1.2,0.64,1) both; box-shadow: 0 24px 80px rgba(0,0,0,0.7), 0 0 40px rgba(139,92,246,0.1); }
+  .modal { background: var(--panel); border: 1px solid var(--border2); border-radius: 12px; padding: 2rem; width: min(520px,100%); max-height: 90vh; overflow-y: auto; animation: modalIn 0.25s cubic-bezier(0.34,1.2,0.64,1) both; box-shadow: 0 24px 80px rgba(0,0,0,0.7), 0 0 40px rgba(139,92,246,0.1); }
   @keyframes modalIn { from{opacity:0;transform:scale(0.93) translateY(10px)} to{opacity:1;transform:scale(1) translateY(0)} }
   .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
   .modal-title { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.3rem; color: var(--text); }
@@ -417,7 +417,7 @@
   ══════════════════════════════ */
   .empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--text-dim); font-size: 0.8rem; }
   .empty-state .icon { font-size: 2rem; margin-bottom: 0.5rem; display: block; }
-  .pill { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; padding: 2px 8px; border-radius: 99px; font-weight: 600; }
+  .pill { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; padding: 2px 8px; border-radius: 99px; font-weight: 600; white-space: nowrap; }
   .pill-green  { background: rgba(52,211,153,0.12);  color: var(--green); border: 1px solid rgba(52,211,153,0.2); }
   .pill-red    { background: rgba(248,113,113,0.12); color: var(--red);   border: 1px solid rgba(248,113,113,0.2); }
   .pill-yellow { background: rgba(251,191,36,0.12);  color: var(--amber); border: 1px solid rgba(251,191,36,0.2); }
@@ -443,22 +443,26 @@
   .status-breakdown-label { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: var(--text-dim); letter-spacing: 0.1em; text-transform: uppercase; }
 
   /* ══════════════════════════════
-     PENDING ALERT (overview)
+     ALERT BANNERS (overview)
   ══════════════════════════════ */
-  .pending-listings-alert {
+  .overview-alert {
     display: none;
     align-items: center; gap: 1rem;
-    background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.3);
     border-radius: 10px; padding: 1rem 1.25rem;
-    margin-bottom: 1.5rem; cursor: pointer; transition: background 0.2s;
+    margin-bottom: 1rem; cursor: pointer; transition: background 0.2s;
     flex-wrap: wrap;
   }
-  .pending-listings-alert:hover { background: rgba(251,191,36,0.14); }
-  .pending-listings-alert.visible { display: flex; }
-  .pla-icon { font-size: 1.75rem; flex-shrink: 0; }
-  .pla-body { flex: 1; }
-  .pla-count { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.5rem; color: var(--amber); line-height: 1; margin-bottom: 0.15rem; }
-  .pla-label { font-size: 0.78rem; color: var(--text-muted); }
+  .overview-alert.visible { display: flex; }
+  .overview-alert.amber { background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.3); }
+  .overview-alert.amber:hover { background: rgba(251,191,36,0.14); }
+  .overview-alert.red   { background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.3); }
+  .overview-alert.red:hover { background: rgba(248,113,113,0.14); }
+  .oa-icon { font-size: 1.75rem; flex-shrink: 0; }
+  .oa-body { flex: 1; min-width: 160px; }
+  .oa-count { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.5rem; line-height: 1; margin-bottom: 0.15rem; }
+  .overview-alert.amber .oa-count { color: var(--amber); }
+  .overview-alert.red   .oa-count { color: var(--red); }
+  .oa-label { font-size: 0.78rem; color: var(--text-muted); }
 
   /* ══════════════════════════════
      TAB SWITCHER
@@ -467,7 +471,7 @@
     display: flex;
     background: var(--bg3); border: 1px solid var(--border);
     border-radius: 8px; padding: 3px; margin-bottom: 1.25rem;
-    width: fit-content;
+    width: fit-content; max-width: 100%; overflow-x: auto;
   }
   .tab-btn {
     display: inline-flex; align-items: center; gap: 0.4rem;
@@ -486,6 +490,20 @@
   }
 
   /* ══════════════════════════════
+     BULK ACTION BAR
+  ══════════════════════════════ */
+  .bulk-bar {
+    display: none;
+    align-items: center; gap: 0.75rem; flex-wrap: wrap;
+    background: var(--accent-dim); border: 1px solid var(--border2);
+    border-radius: 8px; padding: 0.65rem 1rem; margin-bottom: 1rem;
+  }
+  .bulk-bar.visible { display: flex; }
+  .bulk-bar-count { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--accent); font-weight: 700; }
+  .listing-select { width: 18px; height: 18px; margin: 0; flex-shrink: 0; accent-color: var(--accent); cursor: pointer; }
+  .select-all-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; font-size: 0.78rem; color: var(--text-muted); }
+
+  /* ══════════════════════════════
      LISTING CARD
   ══════════════════════════════ */
   .listing-card {
@@ -495,7 +513,7 @@
     transition: border-color 0.2s;
   }
   .listing-card:hover { border-color: var(--border2); }
-  .listing-card.pending { border-left: 3px solid var(--amber); }
+  .listing-card.pending  { border-left: 3px solid var(--amber); }
   .listing-card.approved { border-left: 3px solid var(--green); }
   .listing-thumb {
     width: 64px; height: 64px; border-radius: 8px; overflow: hidden;
@@ -504,11 +522,49 @@
     font-size: 1.5rem; color: var(--text-dim);
   }
   .listing-thumb img { width: 100%; height: 100%; object-fit: cover; }
-  .listing-info { flex: 1; min-width: 200px; }
+  .listing-info { flex: 1; min-width: 180px; }
   .listing-name { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.1rem; color: var(--text); margin-bottom: 0.2rem; }
   .listing-meta { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.15rem; }
   .listing-landlord { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: var(--text-dim); }
   .listing-actions { display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; flex-wrap: wrap; }
+
+  /* ══════════════════════════════
+     PHOTO MODERATION GRID
+  ══════════════════════════════ */
+  .photo-mod-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.6rem; margin-bottom: 0.5rem; }
+  .photo-mod-item { position: relative; aspect-ratio: 4/3; border-radius: 7px; overflow: hidden; border: 1px solid var(--border2); background: var(--bg3); }
+  .photo-mod-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .photo-mod-del {
+    position: absolute; top: 4px; right: 4px;
+    background: rgba(0,0,0,0.65); border: none; border-radius: 50%;
+    width: 22px; height: 22px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.65rem; color: #fff; transition: background 0.15s;
+  }
+  .photo-mod-del:hover { background: rgba(248,113,113,0.85); }
+
+  /* ══════════════════════════════
+     COMMISSION OUTSTANDING LIST
+  ══════════════════════════════ */
+  .outstanding-item { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 0.85rem 1rem; margin-bottom: 0.6rem; }
+  .outstanding-head { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+  .outstanding-landlord { font-size: 0.85rem; font-weight: 600; color: var(--text); }
+  .outstanding-total { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: var(--amber); font-weight: 700; }
+  .outstanding-prop-row { display: flex; justify-content: space-between; align-items: center; padding: 0.35rem 0; border-top: 1px solid var(--border); font-size: 0.76rem; gap: 0.5rem; flex-wrap: wrap; }
+  .outstanding-prop-row span:first-child { color: var(--text-muted); }
+
+  /* ══════════════════════════════
+     RATE HISTORY
+  ══════════════════════════════ */
+  .rate-history-row { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--border); font-size: 0.78rem; }
+  .rate-history-row:last-child { border: none; }
+
+  /* ══════════════════════════════
+     PROPERTY DRILLDOWN (landlord detail)
+  ══════════════════════════════ */
+  .prop-drill-item { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 0.5rem; }
+  .prop-drill-name { font-size: 0.85rem; font-weight: 600; color: var(--text); margin-bottom: 0.35rem; }
+  .prop-drill-pills { display: flex; gap: 0.4rem; flex-wrap: wrap; }
 
   /* ══════════════════════════════
      INQUIRY FILTER ROW
@@ -544,7 +600,6 @@
     .hamburger { display: flex !important; }
     .grid-2, .grid-3 { grid-template-columns: 1fr; }
     .stats-grid { grid-template-columns: repeat(2, 1fr); }
-    .plans-grid { grid-template-columns: 1fr; }
     .section { padding: 1rem; }
     .topbar { padding: 0.75rem 1rem; }
     .section-header { flex-direction: column; align-items: flex-start; }
@@ -555,17 +610,28 @@
     .stacklord-chip { display: none; }
     .listing-card { flex-direction: column; }
     .listing-actions { width: 100%; }
+    .toggle-row { flex-direction: column; align-items: flex-start; gap: 0.6rem; }
   }
 
   @media (max-width: 480px) {
     .stats-grid { grid-template-columns: 1fr; }
     .section { padding: 0.75rem; }
     .topbar-title { font-size: 1.05rem; }
-    .topbar-alert-text { display: none; }
+    .topbar-alert-text, .topbar-maint-badge-text { display: none; }
   }
   </style>
 </head>
 <body>
+
+<!-- ═══ PLATFORM MAINTENANCE LOCK (shown if platform is down and not yet authenticated as stacklord) ═══ -->
+<div id="maintenanceLock">
+  <div class="maint-lock-box">
+    <span class="maint-lock-icon">🔧</span>
+    <div class="maint-lock-title">Platform Under Maintenance</div>
+    <div class="maint-lock-desc" id="maintenanceLockDesc">Affordable Rentals is temporarily down for maintenance.</div>
+    <div class="maint-lock-note">The Stacklord console remains reachable — log in below to manage the platform.</div>
+  </div>
+</div>
 
 <!-- ═══ LOGIN ═══ -->
 <div id="loginScreen">
@@ -614,11 +680,17 @@
     </div>
 
     <div class="nav-section">Billing</div>
-    <div class="nav-item" onclick="showSection('payments')">
-      <span class="icon">💳</span> Sub Payments
+    <div class="nav-item" onclick="showSection('commission')">
+      <span class="icon">💸</span> Commission
     </div>
-    <div class="nav-item" onclick="showSection('plans')">
-      <span class="icon">📦</span> Manage Plans
+    <div class="nav-item" onclick="showSection('commission-payments')">
+      <span class="icon">💳</span> Payment Log
+    </div>
+
+    <div class="nav-section">System</div>
+    <div class="nav-item" onclick="showSection('system')">
+      <span class="icon">🛠️</span> Platform Controls
+      <span class="nav-badge nav-badge-red" id="maintenanceBadge" style="display:none">ON</span>
     </div>
   </nav>
 
@@ -642,7 +714,10 @@
       <span class="topbar-title" id="topbarTitle">Overview</span>
     </div>
     <div class="topbar-right">
-      <!-- Pending listings alert — visible when count > 0 -->
+      <div class="topbar-maint-badge" id="topbarMaintBadge" onclick="showSection('system')">
+        <span class="topbar-maint-badge-dot"></span>
+        <span class="topbar-maint-badge-text">Maintenance ON</span>
+      </div>
       <div class="topbar-alert" id="topbarPendingAlert" onclick="showSection('listings')">
         <span class="topbar-alert-dot"></span>
         <span class="topbar-alert-text"><span id="topbarPendingCount">0</span> pending approval</span>
@@ -659,21 +734,29 @@
       <button class="btn btn-secondary btn-sm" onclick="loadOverview()">↻ Refresh</button>
     </div>
 
-    <!-- Pending listings alert -->
-    <div class="pending-listings-alert" id="pendingListingsAlert" onclick="showSection('listings')">
-      <span class="pla-icon">⚠️</span>
-      <div class="pla-body">
-        <div class="pla-count" id="overviewPendingCount">0</div>
-        <div class="pla-label">Properties pending listing approval — click to review</div>
+    <div class="overview-alert red" id="maintAlert" onclick="showSection('system')">
+      <span class="oa-icon">🔧</span>
+      <div class="oa-body">
+        <div class="oa-count" style="font-size:1.1rem">Platform maintenance is ON</div>
+        <div class="oa-label">Landlords and tenants cannot access the platform right now — click to review</div>
+      </div>
+      <button class="btn btn-danger btn-sm">Manage →</button>
+    </div>
+
+    <div class="overview-alert amber" id="pendingListingsAlert" onclick="showSection('listings')">
+      <span class="oa-icon">⚠️</span>
+      <div class="oa-body">
+        <div class="oa-count" id="overviewPendingCount">0</div>
+        <div class="oa-label">Properties pending listing approval — click to review</div>
       </div>
       <button class="btn btn-warn btn-sm">Review Now →</button>
     </div>
 
     <div class="stats-grid">
       <div class="stat-card">
-        <div class="stat-label">💰 Total Revenue</div>
+        <div class="stat-label">💰 Commission Collected</div>
         <div class="stat-value" id="statRevenue">0</div>
-        <div class="stat-sub">Ksh subscription income</div>
+        <div class="stat-sub">Ksh total, all time</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">🏠 Landlords</div>
@@ -691,22 +774,25 @@
         <div class="stat-sub">Listed units</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">📋 Sub Payments</div>
+        <div class="stat-label">📋 Commission Payments</div>
         <div class="stat-value" id="statSubPayments">0</div>
         <div class="stat-sub">Paid transactions</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">📈 Current Rate</div>
+        <div class="stat-value amber" id="statRate">0%</div>
+        <div class="stat-sub">Platform commission</div>
       </div>
     </div>
 
     <div class="grid-2 mb-3">
-      <!-- Status breakdown -->
       <div class="card">
-        <div class="card-title">Landlords by Subscription Status</div>
+        <div class="card-title">Landlords by Account Status</div>
         <div id="statusBreakdown" class="status-breakdown">
           <div style="color:var(--text-dim);font-size:0.8rem">Loading…</div>
         </div>
       </div>
 
-      <!-- Quick stats -->
       <div class="card">
         <div class="card-title">Listings at a Glance</div>
         <div style="display:flex;flex-direction:column;gap:0.75rem">
@@ -722,11 +808,14 @@
             <span style="color:var(--text-muted)">Total inquiries</span>
             <span class="pill pill-cyan" id="overviewInquiriesBadge">—</span>
           </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.82rem">
+            <span style="color:var(--text-muted)">Auto-approve listings</span>
+            <span class="pill" id="overviewAutoApproveBadge">—</span>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Attention list -->
     <div class="card">
       <div class="card-title">Needs Attention</div>
       <div id="attentionList"><div class="empty-state"><span class="icon">✅</span>All landlords in good standing</div></div>
@@ -741,10 +830,7 @@
         <input type="text" id="landlordSearch" placeholder="Search name or email…" oninput="filterLandlords()" style="width:200px;margin:0">
         <select id="landlordStatusFilter" onchange="filterLandlords()" style="width:130px;margin:0">
           <option value="">All statuses</option>
-          <option value="trial">Trial</option>
           <option value="active">Active</option>
-          <option value="grace">Grace</option>
-          <option value="expired">Expired</option>
           <option value="suspended">Suspended</option>
         </select>
         <button class="btn btn-secondary btn-sm" onclick="loadAllLandlords()">↻ Refresh</button>
@@ -763,41 +849,42 @@
     </div>
 
     <div class="grid-2 mb-3">
-      <div class="sub-card" id="detailSubCard">
+      <div class="sub-card card" id="detailSubCard">
         <div style="color:var(--text-dim);font-size:0.8rem">Loading…</div>
       </div>
       <div class="card">
-        <div class="card-title">Subscription Timeline</div>
-        <canvas id="subChart" height="180"></canvas>
+        <div class="card-title">Commission Collected (recent)</div>
+        <canvas id="commissionChart" height="180"></canvas>
       </div>
     </div>
 
     <div class="grid-2 mb-3">
       <div class="card">
-        <div class="card-title">Extend Subscription</div>
-        <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1rem;line-height:1.6">Manually add days to this landlord's subscription. Works from today or from their current expiry — whichever is later.</p>
-        <input type="hidden" id="detailLandlordId">
-        <input type="number" id="extendDays" placeholder="Number of days to add" min="1">
-        <input type="text"   id="extendNote" placeholder="Reason / note (optional)">
-        <button class="btn btn-success btn-full" onclick="extendSubscription()">✚ Extend Subscription</button>
+        <div class="card-title">🏢 Properties</div>
+        <div id="detailPropertiesList"><div class="empty-state">Loading…</div></div>
       </div>
 
       <div class="danger-zone">
         <div class="danger-zone-title">⚠️ Account Control</div>
         <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1rem;line-height:1.6">Suspending immediately blocks this landlord's dashboard access. Tenants are NOT affected.</p>
+        <input type="hidden" id="detailLandlordId">
         <input type="text" id="suspendReason" placeholder="Suspension reason (required)" style="margin-bottom:0.6rem">
         <button class="btn btn-danger btn-full" onclick="suspendLandlord()" style="margin-bottom:0.6rem">🔒 Suspend Landlord</button>
         <button class="btn btn-success btn-full" onclick="unsuspendLandlord()">🔓 Restore Access</button>
       </div>
     </div>
 
-    <!-- Subscription payment history for this landlord -->
     <div class="card">
-      <div class="card-title">Subscription Payment History</div>
+      <div class="card-title">💸 Commission Owed This Landlord</div>
+      <div id="detailOutstanding"><div class="empty-state">Loading…</div></div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-title">Commission Payment History</div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Date</th><th>Plan</th><th>Amount</th><th>M-Pesa Code</th><th>Expires</th><th>Status</th><th>Type</th></tr></thead>
-          <tbody id="detailPaymentsTable"><tr><td colspan="7"><div class="empty-state">Loading…</div></td></tr></tbody>
+          <thead><tr><th>Date</th><th>Property</th><th>Month</th><th>Amount</th><th>M-Pesa Code</th><th>Status</th></tr></thead>
+          <tbody id="detailPaymentsTable"><tr><td colspan="6"><div class="empty-state">Loading…</div></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -810,7 +897,6 @@
       <button class="btn btn-secondary btn-sm" onclick="loadListings()">↻ Refresh</button>
     </div>
 
-    <!-- Tab switcher -->
     <div class="tab-row">
       <button class="tab-btn active" id="tabPending" onclick="switchListingsTab('pending')">
         ⏳ Pending Approval
@@ -823,12 +909,21 @@
 
     <!-- Pending container -->
     <div id="listingsPendingContainer">
-      <div class="empty-state"><span class="icon">⏳</span>Loading…</div>
+      <div class="select-all-row">
+        <input type="checkbox" class="listing-select" id="selectAllPending" onchange="toggleSelectAll('pending')">
+        <span>Select all</span>
+      </div>
+      <div class="bulk-bar" id="bulkBarPending">
+        <span class="bulk-bar-count"><span id="bulkPendingCount">0</span> selected</span>
+        <button class="btn btn-success btn-sm" onclick="bulkApprove(true)">✅ Approve Selected</button>
+        <button class="btn btn-secondary btn-sm" onclick="bulkApprove(false)">❌ Reject Selected</button>
+      </div>
+      <div id="pendingListingsList"><div class="empty-state"><span class="icon">⏳</span>Loading…</div></div>
     </div>
 
     <!-- Approved container -->
     <div id="listingsApprovedContainer" style="display:none">
-      <div class="empty-state"><span class="icon">⏳</span>Loading…</div>
+      <div id="approvedListingsList"><div class="empty-state"><span class="icon">⏳</span>Loading…</div></div>
     </div>
   </div>
 
@@ -839,7 +934,6 @@
       <button class="btn btn-secondary btn-sm" onclick="loadInquiries(1)">↻ Refresh</button>
     </div>
 
-    <!-- Filters -->
     <div class="filter-row">
       <select id="inquiryStatusFilter" onchange="loadInquiries(1)" style="width:140px;margin:0">
         <option value="">All statuses</option>
@@ -855,12 +949,7 @@
         <table>
           <thead>
             <tr>
-              <th>Date</th>
-              <th>Property</th>
-              <th>Inquirer</th>
-              <th>Message</th>
-              <th>Landlord</th>
-              <th>Status</th>
+              <th>Date</th><th>Property</th><th>Inquirer</th><th>Message</th><th>Landlord</th><th>Status</th>
             </tr>
           </thead>
           <tbody id="inquiriesTable">
@@ -872,34 +961,110 @@
     </div>
   </div>
 
-  <!-- ─── SUBSCRIPTION PAYMENTS ─── -->
-  <div class="section" id="sec-payments">
+  <!-- ─── COMMISSION ─── -->
+  <div class="section" id="sec-commission">
     <div class="section-header">
-      <div class="section-title">All Subscription Payments</div>
-      <button class="btn btn-secondary btn-sm" onclick="loadSubPayments()">↻ Refresh</button>
+      <div class="section-title">Commission</div>
+      <button class="btn btn-secondary btn-sm" onclick="loadCommissionSection()">↻ Refresh</button>
+    </div>
+    <div class="section-desc">The platform is free forever — instead, each property owes this percentage of whatever rent it actually collects each month. Change the rate here; every change is logged below.</div>
+
+    <div class="grid-2 mb-3">
+      <div class="card">
+        <div class="card-title">Set Global Commission Rate</div>
+        <div style="font-family:'Instrument Serif',serif;font-style:italic;font-size:2.4rem;color:var(--accent);margin-bottom:1rem" id="currentRateDisplay">—%</div>
+        <input type="number" id="newCommissionRate" placeholder="New percentage (0–100)" min="0" max="100" step="0.5">
+        <button class="btn btn-primary btn-full" onclick="setCommissionRate()">💾 Update Rate</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Rate Change History</div>
+        <div id="rateHistoryList"><div class="empty-state">Loading…</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem">
+        <span>Outstanding Commission</span>
+        <div class="flex" style="gap:0.5rem">
+          <input type="text" id="outstandingMonth" placeholder="Month (e.g. May 2026)" style="width:170px;margin:0">
+          <button class="btn btn-secondary btn-sm" onclick="loadOutstanding()">Check</button>
+        </div>
+      </div>
+      <div id="outstandingList"><div class="empty-state">Loading…</div></div>
+    </div>
+  </div>
+
+  <!-- ─── COMMISSION PAYMENT LOG ─── -->
+  <div class="section" id="sec-commission-payments">
+    <div class="section-header">
+      <div class="section-title">Commission Payment Log</div>
+      <button class="btn btn-secondary btn-sm" onclick="loadSubPayments(1)">↻ Refresh</button>
+    </div>
+    <div class="filter-row">
+      <select id="paymentsStatusFilter" onchange="loadSubPayments(1)" style="width:140px;margin:0">
+        <option value="">All statuses</option>
+        <option value="paid">Paid</option>
+        <option value="pending">Pending</option>
+        <option value="failed">Failed</option>
+      </select>
     </div>
     <div class="card">
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Date</th><th>Landlord</th><th>Plan</th><th>Amount</th><th>M-Pesa Code</th><th>Expires</th><th>Status</th><th>Type</th></tr>
+            <tr><th>Date</th><th>Landlord</th><th>Property</th><th>Month</th><th>Collected</th><th>Amount Due</th><th>M-Pesa Code</th><th>Status</th></tr>
           </thead>
           <tbody id="paymentsTable">
             <tr><td colspan="8"><div class="empty-state">Click Refresh to load payments</div></td></tr>
           </tbody>
         </table>
       </div>
+      <div class="pagination" id="paymentsPagination"></div>
     </div>
   </div>
 
-  <!-- ─── PLANS ─── -->
-  <div class="section" id="sec-plans">
+  <!-- ─── SYSTEM / PLATFORM CONTROLS ─── -->
+  <div class="section" id="sec-system">
     <div class="section-header">
-      <div class="section-title">Subscription Plans</div>
-      <button class="btn btn-primary btn-sm" onclick="openModal('modal-plan')">＋ New Plan</button>
+      <div class="section-title">Platform Controls</div>
+      <button class="btn btn-secondary btn-sm" onclick="loadSystemSection()">↻ Refresh</button>
     </div>
-    <div class="plans-grid" id="plansGrid">
-      <div class="empty-state" style="grid-column:1/-1"><span class="icon">📦</span>No plans yet — create one</div>
+
+    <div class="danger-zone mb-3">
+      <div class="danger-zone-title">🔧 Platform-Wide Maintenance (Kill Switch)</div>
+      <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1rem;line-height:1.7">
+        Turning this ON immediately blocks every request across the platform — landlord dashboards, tenant portals, and the public listings site — except this console and pending M-Pesa callbacks. Use this only for planned downtime (deploys, migrations).
+      </p>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-row-label">Platform Maintenance Mode</div>
+          <div class="toggle-row-sub" id="maintenanceStatusSub">Loading current status…</div>
+        </div>
+        <label class="toggle-switch danger">
+          <input type="checkbox" id="maintenanceToggle" onchange="togglePlatformMaintenance()">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <textarea id="maintenanceMessage" placeholder="Message shown to landlords/tenants while maintenance is on (optional)"></textarea>
+      <button class="btn btn-secondary btn-full" onclick="saveMaintenanceMessage()">💾 Save Message</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">✅ Auto-Approve New Listings</div>
+      <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1rem;line-height:1.7">
+        When ON, any property a landlord opts into public listings goes live immediately — no manual review needed. When OFF (default), new listings sit in the Pending queue until you approve them.
+      </p>
+      <div class="toggle-row" style="margin-bottom:0">
+        <div>
+          <div class="toggle-row-label">Auto-Approve Listings</div>
+          <div class="toggle-row-sub" id="autoApproveStatusSub">Loading current status…</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="autoApproveToggle" onchange="toggleAutoApprove()">
+          <span class="slider"></span>
+        </label>
+      </div>
     </div>
   </div>
 
@@ -907,24 +1072,16 @@
 
 <!-- ═══ MODALS ═══ -->
 
-<!-- Create / Edit Plan -->
-<div class="modal-overlay" id="modal-plan">
+<!-- Photo Moderation -->
+<div class="modal-overlay" id="modal-photo-mod">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title" id="planModalTitle">Create Plan</div>
-      <button class="modal-close" onclick="closeModal('modal-plan')" aria-label="Close">✕</button>
+      <div class="modal-title">🖼️ Manage Photos</div>
+      <button class="modal-close" onclick="closeModal('modal-photo-mod')" aria-label="Close">✕</button>
     </div>
-    <input type="hidden" id="planModalId">
-    <input type="text"   id="planName"        placeholder="Plan name (e.g. Basic, Pro) *">
-    <input type="number" id="planPrice"       placeholder="Price in Ksh *" min="1">
-    <input type="number" id="planDuration"    placeholder="Duration in days (e.g. 30) *" min="1">
-    <input type="number" id="planMaxProps"    placeholder="Max properties (-1 = unlimited, default 1)" value="1">
-    <input type="number" id="planMaxTenants"  placeholder="Max tenants per property (-1 = unlimited)" value="20">
-    <textarea  id="planDescription" placeholder="Short description (optional)" style="min-height:60px"></textarea>
-    <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--text-dim);margin-bottom:0.4rem;letter-spacing:0.1em">FEATURES (one per line)</div>
-    <textarea id="planFeatures" placeholder="Unlimited tenants&#10;M-Pesa integration&#10;Email receipts" style="min-height:80px"></textarea>
-    <input type="number" id="planSortOrder" placeholder="Sort order (0 = first)" min="0" value="0">
-    <button class="btn btn-primary btn-full" onclick="savePlan()">💾 Save Plan</button>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--accent);margin-bottom:0.85rem" id="photoModPropName"></div>
+    <div class="photo-mod-grid" id="photoModGrid"></div>
+    <input type="hidden" id="photoModPropertyId">
   </div>
 </div>
 

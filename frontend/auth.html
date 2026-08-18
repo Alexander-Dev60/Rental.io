@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" type="image/svg+xml" href="./public/favicon.svg">
+  <link rel="icon" type="image/png" href="./public/affordablerentalsLogo.png">
   <title>Affordable Rentals — Sign In</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -61,9 +61,6 @@
       overflow: hidden;
     }
 
-    /* ── FOCUS-VISIBLE BASELINE ──
-       Inputs already had a focus glow; buttons, tabs, the eye-toggle, and the
-       discovery-panel dots did not, so keyboard users lost their place. */
     a, button, input, select, textarea, [tabindex] { outline: none; }
     a:focus-visible,
     button:focus-visible,
@@ -76,7 +73,6 @@
     }
     .disc-dot:focus-visible { outline-offset: 1px; }
 
-    /* ── BG SLIDESHOW ── */
     .bg { position: fixed; inset: 0; z-index: -2; }
     .bg img {
       position: absolute; width: 100%; height: 100%;
@@ -90,7 +86,6 @@
       background: linear-gradient(130deg, var(--overlay-a), var(--overlay-b));
     }
 
-    /* ── LAYOUT ── */
     .container {
       height: 100vh;
       display: flex;
@@ -101,7 +96,6 @@
       overflow-y: auto;
     }
 
-    /* ── GLASS CARD ── */
     .card {
       width: 420px;
       max-height: 94vh;
@@ -134,7 +128,6 @@
       opacity: .35; border-radius: 1px;
     }
 
-    /* ── LOGO ── */
     .logo {
       display: flex; align-items: center; gap: 9px;
       margin-bottom: 18px; text-decoration: none;
@@ -146,14 +139,13 @@
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
     }
-    .logo-icon svg { width: 18px; height: 18px; }
+    .logo-icon svg { width: 20px; height: 20px; }
     .logo-name {
       font-family: var(--font-m); font-size: .6rem; font-weight: 700;
       letter-spacing: .18em; text-transform: uppercase;
       color: var(--primary); opacity: .85;
     }
 
-    /* ── HERO TEXT + TYPEWRITER ── */
     .hero-text { margin-bottom: 16px; }
     .hero-eyebrow {
       font-family: var(--font-m); font-size: .58rem;
@@ -184,7 +176,6 @@
     }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 
-    /* ── TABS ── */
     .tabs {
       display: flex; gap: 0; margin-bottom: 18px;
       background: rgba(0,0,0,.15);
@@ -214,7 +205,6 @@
     }
     .tab-btn.active .tab-sub { opacity: .8; }
 
-    /* ── TENANT HINT ── */
     .tenant-hint {
       display: flex; align-items: flex-start; gap: 8px;
       background: rgba(96,165,250,.09);
@@ -225,7 +215,6 @@
     }
     .tenant-hint strong { color: var(--primary); }
 
-    /* ── FIELDS ── */
     .field { margin-bottom: 11px; }
     .field-label {
       display: block; font-family: var(--font-m); font-size: .57rem;
@@ -268,7 +257,6 @@
     }
     .forgot-link:hover { color: var(--primary); }
 
-    /* ── SUBMIT ── */
     .submit-btn {
       width: 100%;
       background: linear-gradient(135deg, var(--primary), var(--accent));
@@ -293,7 +281,6 @@
     .submit-btn:active { transform: translateY(1px); }
     .submit-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
 
-    /* ── DIVIDER ── */
     .divider { display: flex; align-items: center; gap: 10px; margin: 16px 0 13px; }
     .divider-line { flex: 1; height: 1px; background: var(--border); }
     .divider-text {
@@ -301,7 +288,6 @@
       letter-spacing: .1em; color: var(--muted2);
     }
 
-    /* ── BADGES ── */
     .badges { display: flex; flex-wrap: wrap; gap: 5px; }
     .badge {
       display: inline-flex; align-items: center; gap: 5px;
@@ -313,7 +299,6 @@
     }
     .badge-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--primary); flex-shrink: 0; }
 
-    /* ── TERMS AGREEMENT CHECKBOX ── */
     .terms-check {
       display: flex; align-items: flex-start; gap: 8px;
       margin: 2px 0 14px; cursor: pointer;
@@ -326,7 +311,6 @@
     .terms-check a { color: var(--primary); text-decoration: none; }
     .terms-check a:hover { text-decoration: underline; }
 
-    /* ── REGISTER NOTE ── */
     .register-note {
       margin-top: 11px; padding: 10px 13px;
       background: rgba(96,165,250,.07);
@@ -337,11 +321,9 @@
     }
     .register-note strong { color: var(--primary); font-weight: 500; }
 
-    /* panels */
     .form-panel { display: none; }
     .form-panel.active { display: block; }
 
-    /* ══ DISCOVERY PANEL ══ */
     .disc-panel {
       width: 330px; flex-shrink: 0;
       background: var(--card);
@@ -520,7 +502,6 @@
     .disc-arrow { transition: transform .2s ease; }
     .disc-browse-btn:hover .disc-arrow { transform: translateX(3px); }
 
-    /* ── TOAST ── */
     #toast {
       position: fixed; bottom: 2rem; left: 50%;
       transform: translateX(-50%) translateY(12px);
@@ -538,7 +519,6 @@
     #toast.error  { border-color: rgba(252,165,165,.4); color: var(--error); }
     #toast.success{ border-color: rgba(134,239,172,.4); color: var(--success); }
 
-    /* ── FOOTER ── */
     .site-footer {
       position: fixed; bottom: 0; left: 0; right: 0; z-index: 0;
       text-align: center; padding: .7rem 1rem;
@@ -556,7 +536,6 @@
     .site-footer a:hover { color: var(--primary); }
     .site-footer-sep { margin: 0 .5rem; opacity: .35; }
 
-    /* ── RESPONSIVE ── */
     @media (max-width: 860px) {
       .container {
         flex-direction: column;
@@ -577,7 +556,6 @@
 </head>
 <body>
 
-  <!-- Background slideshow -->
   <div class="bg" id="bgEl">
     <img class="active" src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=1400&q=80" alt="">
     <img src="https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1400&q=80" alt="">
@@ -590,34 +568,26 @@
 
   <div class="container">
 
-    <!-- ── AUTH CARD ── -->
     <div class="card">
 
       <a href="index.html" class="logo">
         <div class="logo-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
-          <defs>
-            <linearGradient id="lg1" x1="0%" y1="100%" x2="100%" y2="0%">
-              <stop offset="0%" stop-color="#2563eb"/>
-              <stop offset="60%" stop-color="#10b981"/>
-              <stop offset="100%" stop-color="#6ee7b7"/>
-            </linearGradient>
-            <filter id="glow1">
-              <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#10b981" flood-opacity="0.12"/>
-            </filter>
-          </defs>
-          <rect width="100%" height="100%" fill="#0a0c10" rx="24"/>
-          <g filter="url(#glow1)">
-            <path d="M250,90L410,210L375,210L250,116L125,210L90,210Z" fill="url(#lg1)"/>
-            <path d="M242,160L258,160L258,340L285,340L285,365L258,365L258,390L242,390Z" fill="url(#lg1)"/>
-            <path d="M250,140C275,140 295,160 295,185C295,210 275,230 250,230C225,230 205,210 205,185C205,160 225,140 250,140Z" fill="none" stroke="url(#lg1)" stroke-width="7"/>
-            <circle cx="250" cy="185" r="10" fill="#6ee7b7"/>
-            <rect x="145" y="260" width="20" height="20" rx="3" fill="#3b82f6" opacity="0.4"/>
-            <rect x="145" y="300" width="20" height="20" rx="3" fill="#3b82f6" opacity="0.4"/>
-            <rect x="335" y="260" width="20" height="20" rx="3" fill="#6ee7b7" opacity="0.4"/>
-            <rect x="335" y="300" width="20" height="20" rx="3" fill="#6ee7b7" opacity="0.4"/>
-          </g>
-        </svg>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="4 16 96 82" width="100%" height="100%" role="img" aria-label="Affordable Rentals">
+  <g id="logo-mark">
+    <!-- Left wall -->
+    <path d="M 18,62 L 18,92 L 32,92 L 32,62 Z" fill="#ffffff" />
+    <!-- Chimney -->
+    <path d="M 24,42 L 24,28 L 32,28 L 32,36 Z" fill="#ffffff" />
+    <!-- Roof -->
+    <path d="M 10,60 L 52,22 L 82,48 L 74,57 L 52,38 L 22,65 Z" fill="#ffffff" />
+    <!-- Growth arrow through the house -->
+    <path d="M 14,88 C 30,88 62,72 82,38 L 72,36 L 98,22 L 96,50 L 87,42 C 70,72 40,96 14,88 Z" fill="#ffffff" fill-opacity="0.82" />
+    <!-- Right foot -->
+    <path d="M 68,72 L 82,92 L 68,92 L 58,78 Z" fill="#ffffff" fill-opacity="0.82" />
+    <!-- Keyhole (security/access) -->
+    <path d="M 52,54 A 4.5,4.5 0 1,0 52,63 L 50,71 L 54,71 L 52,63 Z" fill="#0b1220" />
+  </g>
+</svg>
         </div>
         <span class="logo-name">Affordable Rentals</span>
       </a>
@@ -642,7 +612,6 @@
         </button>
       </div>
 
-      <!-- LOGIN PANEL -->
       <div class="form-panel active" id="panelLogin">
 
         <div class="tenant-hint" id="tenantHint">
@@ -674,7 +643,6 @@
         <button class="submit-btn" id="loginBtn" onclick="submitLogin()">Sign In</button>
       </div>
 
-      <!-- REGISTER PANEL -->
       <div class="form-panel" id="panelRegister">
         <div class="field-grid">
           <div class="field field-full">
@@ -749,7 +717,6 @@
 
     </div><!-- /card -->
 
-    <!-- ── DISCOVERY PANEL ── -->
     <div class="disc-panel" id="discoveryPanel">
       <div class="disc-header">
         <span class="disc-live">
@@ -812,11 +779,9 @@
     </p>
   </footer>
 
-  <!-- Config (optional) -->
   <script src="config.js" onerror="void 0"></script>
 
   <script>
-    // ── BG SLIDESHOW ──
     const bgImgs = document.querySelectorAll('.bg img');
     let bgIdx = 0;
     setInterval(() => {
@@ -825,7 +790,6 @@
       bgImgs[bgIdx].classList.add('active');
     }, 4500);
 
-    // ── TYPEWRITER ──
     const phrases = [
       'Pay your rent securely online.',
       'Track every payment receipt.',
@@ -858,7 +822,6 @@
     }
     setTimeout(typeStep, 900);
 
-    // ── TAB SWITCHING ──
     function switchTab(tab) {
       document.getElementById('tabLogin').classList.toggle('active',    tab === 'login');
       document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
@@ -868,15 +831,12 @@
       if (hint) hint.style.display = tab === 'login' ? 'flex' : 'none';
     }
 
-    // ── TERMS AGREEMENT GATE ──
-    // Registration button stays disabled until the terms checkbox is checked.
     function toggleRegisterBtn() {
       const btn     = document.getElementById('registerBtn');
       const checked = document.getElementById('regTerms')?.checked;
       if (btn) btn.disabled = !checked;
     }
 
-    // ── EYE TOGGLE ──
     function toggleEye(inputId, iconId) {
       const inp     = document.getElementById(inputId);
       const showing = inp.type === 'text';
@@ -886,20 +846,17 @@
         : '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>';
     }
 
-    // ── ENTER KEY ──
     document.addEventListener('keydown', function(e) {
       if (e.key !== 'Enter') return;
       if (document.getElementById('panelLogin').classList.contains('active')) submitLogin();
       else submitRegister();
     });
 
-    // ── AUTO-SELECT TAB FROM URL ──
     document.addEventListener('DOMContentLoaded', function() {
       const tab = new URLSearchParams(window.location.search).get('tab');
       if (tab === 'register') switchTab('register');
     });
 
-    // ── TOAST ──
     function showToast(msg, type = '') {
       const t = document.getElementById('toast');
       if (!t) return;
@@ -909,7 +866,6 @@
       t._timer = setTimeout(() => { t.className = ''; }, 3500);
     }
 
-    // ── LOADING STATE ──
     function setLoading(btnId, on, defaultText) {
       const btn = document.getElementById(btnId);
       if (!btn) return;
@@ -917,7 +873,6 @@
       btn.textContent = on ? 'Please wait…' : defaultText;
     }
 
-    // ── JWT DECODE ──
     function getUserFromToken(token) {
       try {
         if (!token) return null;
@@ -925,12 +880,10 @@
       } catch { return null; }
     }
 
-    // ── DASHBOARD ROUTE BY ROLE ──
     function dashboardFor(role) {
       return role === 'landlord' ? 'dashboard.html' : 'tenant.html';
     }
 
-    // ── STORE ACTIVE PROPERTY ──
     function storeActiveProperty(properties) {
       if (!Array.isArray(properties) || !properties.length) return;
       const first = properties[0];
@@ -938,7 +891,6 @@
       localStorage.setItem('activePropertyName', first.name || 'Property');
     }
 
-    // ── AUTO-REDIRECT IF ALREADY LOGGED IN ──
     function checkAuthOnLoad() {
       const token = localStorage.getItem('token');
       const user  = getUserFromToken(token);
@@ -947,9 +899,6 @@
       }
     }
 
-    // ════════════════════════════
-    // LOGIN
-    // ════════════════════════════
     async function submitLogin() {
       const email    = (document.getElementById('loginEmail')?.value    || '').trim();
       const password = (document.getElementById('loginPassword')?.value || '');
@@ -987,7 +936,6 @@
           setLoading('loginBtn', false, 'Sign In'); return;
         }
 
-        // Tenant: forced password change on first login
         if (user.mustChangePassword) {
           localStorage.setItem('token', token);
           localStorage.setItem('user', JSON.stringify(user));
@@ -1017,9 +965,6 @@
       }
     }
 
-    // ════════════════════════════
-    // LANDLORD REGISTRATION
-    // ════════════════════════════
     async function submitRegister() {
       const name             = (document.getElementById('regName')?.value         || '').trim();
       const email            = (document.getElementById('regEmail')?.value        || '').trim();
@@ -1088,9 +1033,6 @@
       }
     }
 
-    // ════════════════════════════════════════
-    // DISCOVERY PANEL
-    // ════════════════════════════════════════
     let _discListings = [], _discCurrent = 0, _discTimer = null, _discPaused = false;
     const DISC_INTERVAL = 5500;
 
@@ -1224,7 +1166,6 @@
       const d = document.getElementById('discDesc');  if (d) d.textContent = 'No properties are listed yet. Check back soon.';
     }
 
-    // ── INIT ──
     window.addEventListener('load', () => {
       checkAuthOnLoad();
       initDiscovery();

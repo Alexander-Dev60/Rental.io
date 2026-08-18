@@ -170,6 +170,9 @@ function renderPropertiesGrid(properties) {
               ${p.paymentConfigured
                 ? '<span class="pill pill-green">M-Pesa ✓</span>'
                 : '<span class="pill pill-yellow">No M-Pesa</span>'}
+              ${p.hasLocation
+                ? '<span class="pill pill-green">📍 Pinned</span>'
+                : '<span class="pill pill-yellow">📍 Not Pinned</span>'}
             </div>
           </div>
 
@@ -201,6 +204,11 @@ function renderPropertiesGrid(properties) {
               style="margin-bottom:0.5rem"
               onclick="openListingEditor('${p._id}')">
               ✏️ Edit Description &amp; Details
+            </button>
+            <button class="btn btn-secondary btn-sm btn-full"
+              style="margin-bottom:0.5rem"
+              onclick="openLocationPicker('${p._id}')">
+              📍 ${p.hasLocation ? 'Update Map Location' : 'Set Map Location'}
             </button>
             ${p.isListed && p.isApproved ? `
             <a href="listings.html${p.location ? '?location=' + encodeURIComponent(p.location.split(',')[0].trim()) : ''}"

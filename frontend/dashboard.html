@@ -1,14 +1,88 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
+  <!-- ═══════════════════════════════════════════════════════
+       EARLY AUTH GUARD — must be the very first script in <head>.
+
+       WHY THIS EXISTS:
+       script.js already has a guardLandlord() IIFE that checks the
+       token's exp claim and redirects if expired — but script.js is
+       loaded near the BOTTOM of the page, after config.js, sessionManager.js,
+       a large inline script block, and several stylesheet/font requests.
+       Classic (non-async/defer) <script src> tags block HTML parsing but
+       window.location.href does NOT halt execution of the current script,
+       nor does it cancel subsequent <script> tags from being fetched and
+       run — navigation is scheduled, not immediate. So a landlord returning
+       to a stale tab (token expired while the browser was closed) would:
+         1. guardLandlord() removes the token and queues a redirect
+         2. ...but dashboard.js's DOMContentLoaded handler, the inline
+            window.load handler, and session-manager.js's init all still
+            execute in the brief window before navigation completes
+         3. Every one of those fires authenticated fetches with
+            Authorization: "Bearer null" (token was already removed)
+         4. Each of those 401s independently calls showToast('Invalid
+            token', 'error') — producing the repeated toast + empty
+            dashboard shell instead of a clean bounce to auth.html
+
+       FIX: check token validity here, as the literal first thing the
+       browser parses, before any other script — including config.js —
+       has a chance to load. If invalid/expired, redirect AND call
+       window.stop() to cancel all further parsing/loading of this
+       document, guaranteeing no other script on this page ever runs.
+
+       script.js's guardLandlord() is left in place as a defensive
+       backup (e.g. if this inline block is ever accidentally stripped),
+       but this early guard is what actually prevents the bug in practice.
+  ═══════════════════════════════════════════════════════ -->
+  <script>
+  (function earlyAuthGuard() {
+    try {
+      var token = localStorage.getItem('token');
+      if (!token) {
+        window.location.replace('auth.html');
+        window.stop();
+        return;
+      }
+
+      var base64 = token.split('.')[1];
+      if (!base64) throw new Error('Malformed token');
+      // atob needs standard base64 — JWTs use base64url, so normalize first
+      base64 = base64.replace(/-/g, '+').replace(/_/g, '/');
+      var payload = JSON.parse(atob(base64));
+
+      if (payload.exp && Date.now() >= payload.exp * 1000) {
+        localStorage.removeItem('token');
+        window.location.replace('auth.html');
+        window.stop();
+        return;
+      }
+
+      if (payload.role && payload.role !== 'landlord') {
+        window.location.replace(payload.role === 'tenant' ? 'tenant.html' : 'auth.html');
+        window.stop();
+        return;
+      }
+
+      if (payload.mustChangePassword) {
+        window.location.replace('change-password.html');
+        window.stop();
+        return;
+      }
+    } catch (e) {
+      localStorage.removeItem('token');
+      window.location.replace('auth.html');
+      window.stop();
+    }
+  })();
+  </script>
+
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/svg+xml" href="./public/favicon.svg">
   <title>Dashboard — Affordable Rentals</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+  
   <style>
   :root, [data-theme="dark"] {
     --bg:#0a0c10; --bg2:#0f1218; --bg3:#151922;
@@ -535,6 +609,32 @@
   .plan-option-price { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--accent); }
   .plan-option-dur   { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--text-dim); }
 
+
+/* ── LOCATION PICKER MAP ── */
+    #modal-set-location .modal { max-width: 480px; }
+  .loc-picker-map { width: 100%; height: 280px; border-radius: 8px; border: 1px solid var(--border2); margin-bottom: 0.85rem; }
+  .loc-picker-hint { font-size: 0.72rem; color: var(--text-dim); margin-bottom: 0.75rem; line-height: 1.6; background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem 0.85rem; }
+  .loc-picker-coords { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; color: var(--accent); margin-bottom: 0.85rem; text-align: center; }
+  #newPropMapWrap .loc-picker-map { height: 220px; }
+
+  /* ── LOCATION SEARCH ── */
+  .loc-search-row { display: flex; gap: 0.5rem; margin-bottom: 0.6rem; position: relative; }
+  .loc-search-row input { margin-bottom: 0; flex: 1; }
+  .loc-search-btn, .loc-locate-btn { flex-shrink: 0; padding: 0.55rem 0.7rem; }
+  .loc-search-suggestions {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: var(--panel2); border: 1px solid var(--border2); border-radius: 8px;
+    max-height: 220px; overflow-y: auto; z-index: 20;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4); display: none;
+  }
+  .loc-search-suggestions.show { display: block; }
+  .loc-suggestion-item { padding: 0.55rem 0.85rem; cursor: pointer; font-size: 0.75rem; color: var(--text-muted); border-bottom: 1px solid var(--border); line-height: 1.4; }
+  .loc-suggestion-item:last-child { border-bottom: none; }
+  .loc-suggestion-item:hover { background: var(--accent-dim); color: var(--text); }
+  .loc-suggestion-empty { padding: 0.6rem 0.85rem; font-size: 0.72rem; color: var(--text-dim); }
+
+
+
   /* ── Payment confirm modal ── */
   #modal-pay-confirm .modal { max-width: 400px; text-align: center; }
   .pay-confirm-icon  { font-size: 2.5rem; display: block; margin-bottom: 0.75rem; animation: dangerIconPop 0.35s cubic-bezier(0.34,1.56,0.64,1) both; }
@@ -609,17 +709,14 @@
   </div>
 </div>
 
-<!-- ═══ EXPIRED / SUSPENDED OVERLAY ═══ -->
 <div class="expired-overlay" id="expiredOverlay">
   <div class="expired-box">
     <span class="expired-icon">🔒</span>
-    <div class="expired-title" id="expiredTitle">Subscription Expired</div>
-    <div class="expired-desc"  id="expiredDesc">Your subscription has expired. Please renew to continue accessing your dashboard.</div>
-    <button class="btn btn-primary btn-full" onclick="openModal('modal-subscribe')" style="margin-bottom:0.75rem">🔄 Renew Subscription</button>
+    <div class="expired-title" id="expiredTitle">Account Suspended</div>
+    <div class="expired-desc"  id="expiredDesc">Your account has been suspended.</div>
     <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--text-dim)">Contact support@affordablerentals.site for help</div>
   </div>
 </div>
-
 <!-- ═══ MOBILE SIDEBAR OVERLAY ═══ -->
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
@@ -672,7 +769,7 @@
       <span class="nav-badge" id="msgBadge" style="display:none">0</span>
     </div>
     <div class="nav-item" onclick="showSection('announcements')"><span class="icon">📢</span> Announcements</div>
-    <div class="nav-item" onclick="showSection('rules')">        <span class="icon">📜</span> Rules</div>
+    <div class="nav-item" onclick="showSection('rules')">        <span class="icon">📜</span> Rules   </div>
 
     <div class="nav-section">Listings</div>
     <div class="nav-item" onclick="showSection('inquiries')">
@@ -684,16 +781,12 @@
     <div class="nav-item" onclick="openModal('modal-pay-setup')"><span class="icon">⚙️</span> Payment Setup</div>
   </nav>
 
-  <div class="sidebar-footer">
-    <div class="sub-status-card" id="subStatusCard" onclick="openModal('modal-subscribe')" title="Click to manage subscription">
+  <div class="sub-status-card" id="commissionCard" onclick="openModal('modal-commission')" title="Click to view commission owed">
       <div class="sub-status-card-top">
-        <span class="sub-status-label">Subscription</span>
-        <span class="sub-status-badge" id="subStatusBadge">—</span>
+        <span class="sub-status-label">Commission</span>
+        <span class="sub-status-badge active" id="commissionRateBadge">—%</span>
       </div>
-      <div class="sub-progress-track">
-        <div class="sub-progress-fill" id="subProgressFill" style="width:0%"></div>
-      </div>
-      <div class="sub-days-label" id="subDaysLabel">Loading...</div>
+      <div class="sub-days-label" id="commissionOwedLabel">Loading...</div>
     </div>
 
     <div class="maintenance-row">
@@ -713,7 +806,7 @@
     </div>
 
     <button class="btn-logout" onclick="logout()">⏻ Sign Out</button>
-  </div>
+  
 </aside>
 
 <!-- ═══ MAIN ═══ -->
@@ -806,13 +899,13 @@
       <div class="card"><div class="card-title">Occupancy</div><canvas id="occupancyChart" height="200"></canvas></div>
     </div>
 
-    <div class="card">
+       <div class="card">
       <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.85rem">
-        <span>Recent Activity</span>
+        <span>Recent Payments <span id="recentPaymentsPropLabel" style="color:var(--text-dim);font-weight:400;text-transform:none;letter-spacing:0;font-family:'JetBrains Mono',monospace;font-size:0.62rem"></span></span>
         <button class="btn btn-secondary btn-sm" onclick="loadRecentActivity()">↻ Refresh</button>
       </div>
       <div class="activity-feed" id="recentActivityFeed">
-        <div class="empty-state"><span class="icon">📋</span>No recent activity</div>
+        <div class="empty-state"><span class="icon">📋</span>No recent payments yet</div>
       </div>
     </div>
   </div>
@@ -1227,11 +1320,22 @@
       <button class="modal-close" onclick="closeModal('modal-add-property')">✕</button>
     </div>
     <p style="font-size:0.8rem;color:var(--text-dim);margin-bottom:1rem;line-height:1.6;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:0.65rem 0.85rem">
-      Adding a property is subject to your subscription plan limits.
+      Affordable Rentals is free — add as many properties as you need.
     </p>
     <input type="text" id="newPropName"     placeholder="Property name *">
     <input type="text" id="newPropLocation" placeholder="Location (e.g. Nairobi, Westlands)">
     <input type="text" id="newPropPhone"    placeholder="Contact phone (optional)">
+  <div class="loc-picker-hint" style="margin-top:0.25rem">Optional: search for the address or pin it on the map now, or set it later from My Properties.</div>
+    <div id="newPropMapWrap">
+      <div class="loc-search-row">
+        <input type="text" id="newPropSearchInput" placeholder="Search address, estate, or landmark…" autocomplete="off">
+        <button class="btn btn-secondary btn-sm loc-search-btn" type="button" onclick="_runLocSearch('newProp')" title="Search">🔍</button>
+        <button class="btn btn-secondary btn-sm loc-locate-btn" type="button" onclick="_useMyLocation('newProp')" title="Use my current location">📡</button>
+        <div class="loc-search-suggestions" id="newPropSearchSuggestions"></div>
+      </div>
+      <div id="newPropMap" class="loc-picker-map"></div>
+      <div class="loc-picker-coords" id="newPropCoords">No location selected</div>
+    </div>
     <button class="btn btn-primary btn-full" onclick="addProperty()">Create Property</button>
   </div>
 </div>
@@ -1274,31 +1378,65 @@
 </div>
 
 
-<!-- ─── SUBSCRIPTION RENEWAL ─── -->
-<div class="modal-overlay" id="modal-subscribe">
+<!-- ─── COMMISSION ─── -->
+<div class="modal-overlay" id="modal-commission">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title">🔄 Renew Subscription</div>
-      <button class="modal-close" onclick="closeModal('modal-subscribe')">✕</button>
+      <div class="modal-title">💸 Platform Commission</div>
+      <button class="modal-close" onclick="closeModal('modal-commission')">✕</button>
     </div>
-    <div id="subModalStatus" style="margin-bottom:1.25rem;padding:0.85rem;background:var(--bg3);border-radius:8px;border:1px solid var(--border);font-size:0.82rem;color:var(--text-muted)">
-      Loading subscription status...
+    <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:1rem;line-height:1.6;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:0.75rem 1rem">
+      Affordable Rentals is free — instead, each property owes a small commission on rent actually collected each month.
     </div>
-    <div class="card-title" style="margin-bottom:0.75rem">Select Plan</div>
-    <div id="subModalPlans">
-      <div style="text-align:center;color:var(--text-dim);font-size:0.82rem;padding:1rem">Loading plans...</div>
+    <div class="pay-setup-field" style="margin-bottom:0.85rem">
+      <label class="pay-setup-label">Property</label>
+      <select id="commissionPropertyId" onchange="onCommissionPropertyChange()"></select>
     </div>
-    <div style="margin-top:1rem">
+    <div class="pay-setup-field" style="margin-bottom:1rem">
+      <label class="pay-setup-label">Month</label>
+      <input type="text" id="commissionMonth" placeholder="e.g. May 2026" oninput="onCommissionPropertyChange()">
+    </div>
+    <div id="commissionSummaryBox" style="display:none">
+      <div class="pay-summary">
+        <div class="pay-summary-row"><span class="pay-summary-label">Rate</span><span class="pay-summary-value" id="commSumRate">—</span></div>
+        <div class="pay-summary-row"><span class="pay-summary-label">Collected</span><span class="pay-summary-value" id="commSumCollected">—</span></div>
+        <div class="pay-summary-row"><span class="pay-summary-label">Amount Due</span><span class="pay-summary-value" id="commSumDue" style="color:var(--warn)">—</span></div>
+        <div class="pay-summary-row"><span class="pay-summary-label">Status</span><span id="commSumStatus">—</span></div>
+      </div>
+    </div>
+    <div style="margin-top:0.5rem">
       <div class="card-title" style="margin-bottom:0.5rem">M-Pesa Phone Number</div>
-      <input type="tel" id="subPhone" placeholder="07XXXXXXXX">
+      <input type="tel" id="commissionPhone" placeholder="07XXXXXXXX">
     </div>
-    <button class="btn btn-primary btn-full" onclick="initiateSubscription()" style="margin-top:0.25rem">
+    <button class="btn btn-primary btn-full" id="commissionPayBtn" onclick="payCommission()" style="margin-top:0.25rem">
       📱 Pay with M-Pesa
     </button>
-    <div id="subPayStatus" style="margin-top:1rem;display:none;text-align:center;font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--text-dim)"></div>
+    <div id="commissionPayStatus" style="margin-top:1rem;display:none;text-align:center;font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--text-dim)"></div>
   </div>
 </div>
 
+<!-- ─── SET PROPERTY LOCATION (map picker) ─── -->
+<div class="modal-overlay" id="modal-set-location">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📍 Set Property Location</div>
+      <button class="modal-close" onclick="closeModal('modal-set-location')">✕</button>
+    </div>
+    <div class="loc-picker-hint">Search an address or landmark, use your current location, or drag the pin to fine-tune it.</div>
+
+    <div class="loc-search-row">
+      <input type="text" id="locSearchInput" placeholder="Search address, estate, or landmark…" autocomplete="off">
+      <button class="btn btn-secondary btn-sm loc-search-btn" type="button" onclick="_runLocSearch('locPicker')" title="Search">🔍</button>
+      <button class="btn btn-secondary btn-sm loc-locate-btn" type="button" onclick="_useMyLocation('locPicker')" title="Use my current location">📡</button>
+      <div class="loc-search-suggestions" id="locSearchSuggestions"></div>
+    </div>
+
+    <div id="locPickerMap" class="loc-picker-map"></div>
+    <div class="loc-picker-coords" id="locPickerCoords">No location selected</div>
+    <input type="hidden" id="locPickerPropertyId">
+    <button class="btn btn-primary btn-full" id="locPickerSaveBtn" onclick="submitPropertyLocation()">💾 Save Location</button>
+  </div>
+</div>
 
 <!-- ─── RECORD PAYMENT MODAL ─── -->
 <div class="modal-overlay" id="modal-pay">
@@ -1399,7 +1537,6 @@
      INLINE SCRIPTS
 ════════════════════════════════════════ -->
 <script src="config.js"></script>
-<script src="sessionManager.js"></script>
 <script>
 // ── Theme — runs immediately to avoid flash ──
 (function () {
@@ -1481,115 +1618,74 @@ function typeBannerLoop(element, htmlString, typingSpeed, pauseMs, deleteSpeed) 
 }
 function stopTypingAnimation() { clearTimeout(_typingTimer); clearTimeout(_deletingTimer); }
 
-// ── Subscription status UI ──
-async function loadSubscriptionStatus() {
+// ── Commission status UI (sidebar chip) ──
+async function loadCommissionStatus() {
   try {
     const token = localStorage.getItem('token');
     if (!token) return;
-    const res = await fetch(`${CONFIG.API_URL}/subscription-status`, {
+    const res = await fetch(`${CONFIG.API_URL}/commission-rate`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     if (!res.ok) return;
     const data = await res.json();
-    _updateSubSidebarCard(data);
-    _updateSubBanner(data);
-    _handleExpiredOverlay(data);
-  } catch (err) { console.error('Subscription status error:', err.message); }
+    const badge = document.getElementById('commissionRateBadge');
+    const label = document.getElementById('commissionOwedLabel');
+    if (badge) badge.textContent = `${data.commissionPercentage}%`;
+    if (label) {
+      label.textContent = data.notice ? data.notice.message : 'Tap to view what you owe';
+      label.style.color = data.notice ? 'var(--warn)' : 'var(--text-dim)';
+    }
+  } catch (err) { console.error('Commission status error:', err.message); }
 }
 
-function _updateSubSidebarCard(data) {
-  const badge = document.getElementById('subStatusBadge');
-  const fill  = document.getElementById('subProgressFill');
-  const label = document.getElementById('subDaysLabel');
-  if (!badge || !fill || !label) return;
-  badge.textContent = data.subscriptionStatus;
-  badge.className   = `sub-status-badge ${data.subscriptionStatus}`;
-  fill.className    = `sub-progress-fill ${data.subscriptionStatus}`;
-  const pct = Math.min(100, Math.round((data.daysRemaining / 30) * 100));
-  fill.style.width = `${pct}%`;
-  if (data.subscriptionStatus === 'suspended') {
-    label.textContent = 'Account suspended'; label.style.color = 'var(--danger)';
-  } else if (data.daysRemaining > 0) {
-    label.textContent = `${data.daysRemaining} days remaining`;
-    label.style.color = data.daysRemaining <= 7 ? 'var(--danger)' : data.daysRemaining <= 14 ? 'var(--warn)' : 'var(--text-dim)';
-  } else {
-    label.textContent = 'Expired — renew now'; label.style.color = 'var(--danger)';
-  }
+// ── Suspension overlay only (no more trial/grace/expired states) ──
+async function checkAccountSuspension() {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const res  = await fetch(`${CONFIG.API_URL}/landlord/profile`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (!res.ok) return;
+    const overlay = document.getElementById('expiredOverlay');
+    if (!overlay) return;
+    if (data.accountStatus === 'suspended') {
+      document.getElementById('expiredDesc').innerHTML = `Your account has been suspended.<br><strong>Reason:</strong> ${data.suspendedReason || 'Contact support'}<br><br>Email: support@affordablerentals.site`;
+      overlay.classList.add('show');
+      const banner = document.getElementById('subBanner');
+      if (banner) {
+        banner.innerHTML = `🚫 Account suspended: ${data.suspendedReason || 'Contact support'}. support@affordablerentals.site`;
+        banner.className = 'sub-banner suspended';
+        banner.style.display = 'block';
+        setTimeout(updateBannerHeight, 50);
+      }
+    } else {
+      overlay.classList.remove('show');
+    }
+  } catch (err) { console.error('Account status check error:', err.message); }
 }
 
-function _updateSubBanner(data) {
-  const banner = document.getElementById('subBanner');
-  if (!banner) return;
-  stopTypingAnimation();
-  const urgentMessages = {
-    expired:   `🔒 Subscription expired. <a onclick="openModal('modal-subscribe')">Renew to restore access →</a>`,
-    suspended: `🚫 Account suspended: ${data.suspendedReason || 'Contact support'}. support@affordablerentals.site`
-  };
-  const typingMessages = {
-    trial: `⏳ Trial period — ${data.daysRemaining} days remaining. <a onclick="openModal('modal-subscribe')">Subscribe now →</a>`,
-    grace: `⚠️ Subscription expiring — ${data.daysRemaining} days left in grace period. <a onclick="openModal('modal-subscribe')">Renew now →</a>`
-  };
-  const urgentActive = data.subscriptionStatus === 'expired' || data.subscriptionStatus === 'suspended';
-  const warnActive   = data.subscriptionStatus === 'trial' || data.subscriptionStatus === 'grace'
-                       || (data.subscriptionStatus === 'active' && data.daysRemaining <= 7);
-  if (urgentActive) {
-    banner.innerHTML = urgentMessages[data.subscriptionStatus];
-    banner.className = `sub-banner ${data.subscriptionStatus}`;
-    banner.style.display = 'block';
-  } else if (warnActive) {
-    let msg = typingMessages[data.subscriptionStatus];
-    if (!msg && data.daysRemaining <= 7) msg = `⚠️ Subscription expiring in ${data.daysRemaining} days. <a onclick="openModal('modal-subscribe')">Renew now →</a>`;
-    banner.className = `sub-banner ${data.subscriptionStatus === 'trial' ? 'trial' : 'grace'}`;
-    banner.style.display = 'block';
-    typeBannerLoop(banner, msg);
-  } else {
-    banner.style.display = 'none';
-    banner.innerHTML = '';
-  }
-  setTimeout(updateBannerHeight, 50);
-}
 
-function _handleExpiredOverlay(data) {
-  const overlay  = document.getElementById('expiredOverlay');
-  const renewBtn = document.querySelector('.expired-box .btn-primary');
-  if (!overlay) return;
-  if (data.subscriptionStatus === 'expired') {
-    document.getElementById('expiredTitle').textContent = 'Subscription Expired';
-    document.getElementById('expiredDesc').textContent  = 'Your subscription has expired. Please renew to continue managing your properties.';
-    if (renewBtn) renewBtn.style.display = '';
-    overlay.classList.add('show');
-  } else if (data.subscriptionStatus === 'suspended') {
-    document.getElementById('expiredTitle').textContent = 'Account Suspended';
-    document.getElementById('expiredDesc').innerHTML    = `Your account has been suspended.<br><strong>Reason:</strong> ${data.suspendedReason || 'Contact support'}<br><br>Email: support@affordablerentals.site`;
-    if (renewBtn) renewBtn.style.display = 'none';
-    overlay.classList.add('show');
-  } else {
-    if (renewBtn) renewBtn.style.display = '';
-    overlay.classList.remove('show');
-  }
-}
-
-// ── Modal open / close ──
 function openModal(id) {
-  // Intercept pay-setup → custom panel logic
-  if (id === 'modal-subscribe') { openSubscribeModal(); return; }
+  if (id === 'modal-commission') { openCommissionModal(); return; }
   if (id === 'modal-pay-setup') {
     if (typeof openPaySetupModal === 'function') { openPaySetupModal(); return; }
   }
   const el = document.getElementById(id);
   if (el) el.classList.add('open');
+  if (id === 'modal-add-property' && typeof initNewPropMap === 'function') {
+    setTimeout(initNewPropMap, 60);
+  }
 }
 function closeModal(id) {
   const el = document.getElementById(id);
   if (el) el.classList.remove('open');
-  if (id === 'modal-subscribe') {
-    clearInterval(_subPollingTimer);
-    const statusEl = document.getElementById('subPayStatus');
+  if (id === 'modal-commission') {
+    clearInterval(_commissionPollingTimer);
+    const statusEl = document.getElementById('commissionPayStatus');
     if (statusEl) { statusEl.style.display = 'none'; statusEl.textContent = ''; }
-    _selectedPlanId = null;
-    document.querySelectorAll('.plan-option').forEach(o => o.classList.remove('selected'));
   }
-  // Reset pay-setup OTP state on close
   if (id === 'modal-pay-setup') {
     if (typeof _resetPaySetupState === 'function') _resetPaySetupState();
   }
@@ -1598,111 +1694,6 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
   overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay.id); });
 });
 
-// ── Subscribe modal ──
-let _selectedPlanId = null, _subPollingTimer = null;
-
-async function openSubscribeModal() {
-  document.getElementById('modal-subscribe').classList.add('open');
-  _selectedPlanId = null;
-  const statusEl = document.getElementById('subModalStatus');
-  const plansEl  = document.getElementById('subModalPlans');
-  const payEl    = document.getElementById('subPayStatus');
-  statusEl.innerHTML = '<span style="color:var(--text-dim)">Loading...</span>';
-  plansEl.innerHTML  = '<div style="text-align:center;color:var(--text-dim);font-size:0.82rem;padding:1.5rem">Loading plans...</div>';
-  if (payEl) { payEl.style.display = 'none'; payEl.textContent = ''; }
-  try {
-    const token = localStorage.getItem('token');
-    const res   = await fetch(`${CONFIG.API_URL}/subscription-status`, { headers: { Authorization: `Bearer ${token}` } });
-    const data  = await res.json();
-    if (res.ok) {
-      const expiry = data.subscriptionExpiry || data.trialEndsAt || data.gracePeriodUntil;
-      statusEl.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem">
-          <div>
-            <div style="font-size:0.65rem;font-family:'JetBrains Mono',monospace;letter-spacing:0.15em;text-transform:uppercase;color:var(--text-dim);margin-bottom:0.35rem">Current Status</div>
-            <span class="sub-status-badge ${data.subscriptionStatus}">${data.subscriptionStatus}</span>
-          </div>
-          <div style="text-align:right">
-            <div style="font-size:0.65rem;font-family:'JetBrains Mono',monospace;color:var(--text-dim)">Days remaining</div>
-            <div style="font-size:1.3rem;font-weight:700;color:${data.daysRemaining <= 7 ? 'var(--danger)' : 'var(--accent)'}">${data.daysRemaining}</div>
-            ${expiry ? `<div style="font-size:0.65rem;font-family:'JetBrains Mono',monospace;color:var(--text-dim);margin-top:0.15rem">Until ${new Date(expiry).toDateString()}</div>` : ''}
-          </div>
-        </div>`;
-      if (data.landlordPhone) { const phoneEl = document.getElementById('subPhone'); if (phoneEl && !phoneEl.value) phoneEl.value = data.landlordPhone; }
-    }
-  } catch (err) { statusEl.textContent = 'Could not load status.'; }
-  try {
-    const res   = await fetch(`${CONFIG.API_URL}/subscription-plans`);
-    if (!res.ok) { plansEl.innerHTML = `<div style="color:var(--danger);text-align:center;padding:1rem;font-size:0.82rem">Failed to load plans.</div>`; return; }
-    const plans = await res.json();
-    if (!Array.isArray(plans) || !plans.length) { plansEl.innerHTML = `<div style="text-align:center;color:var(--text-dim);font-size:0.82rem;padding:1.5rem">No plans available.</div>`; return; }
-    plansEl.innerHTML = plans.map(p => `
-      <div class="plan-option" id="plan-opt-${p._id}" onclick="selectPlan('${p._id}')">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:0.5rem;flex-wrap:wrap">
-          <div>
-            <div class="plan-option-name">${p.name}</div>
-            <div class="plan-option-dur">${p.durationDays} days · ${p.maxProperties === -1 ? 'Unlimited' : p.maxProperties} propert${p.maxProperties === 1 ? 'y' : 'ies'} · ${p.maxTenantsPerProperty === -1 ? 'Unlimited' : p.maxTenantsPerProperty} tenants/property</div>
-          </div>
-          <div class="plan-option-price">Ksh ${Number(p.price).toLocaleString()}</div>
-        </div>
-        ${p.description ? `<div style="font-size:0.75rem;color:var(--text-dim);margin-top:0.35rem;line-height:1.5">${p.description}</div>` : ''}
-      </div>`).join('');
-  } catch (err) { plansEl.innerHTML = `<div style="color:var(--danger);text-align:center;padding:1rem;font-size:0.82rem">Network error loading plans.</div>`; }
-}
-
-function selectPlan(planId) {
-  _selectedPlanId = planId;
-  document.querySelectorAll('.plan-option').forEach(el => el.classList.remove('selected'));
-  const el = document.getElementById('plan-opt-' + planId);
-  if (el) el.classList.add('selected');
-}
-
-async function initiateSubscription() {
-  if (!_selectedPlanId) { showToast('Please select a plan first', 'warn'); return; }
-  const phone = document.getElementById('subPhone').value.trim();
-  if (!phone) { showToast('Enter your M-Pesa phone number', 'error'); return; }
-  const payBtn = document.querySelector('#modal-subscribe .btn-primary');
-  if (payBtn) { payBtn.disabled = true; payBtn.textContent = '⏳ Sending...'; }
-  try {
-    const token = localStorage.getItem('token');
-    const res   = await fetch(`${CONFIG.API_URL}/subscribe`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body:   JSON.stringify({ planId: _selectedPlanId, phone })
-    });
-    const data  = await res.json();
-    if (!res.ok) { showToast(data.message || 'Payment initiation failed', 'error'); return; }
-    showToast('M-Pesa prompt sent! Enter your PIN 📱', 'success');
-    const statusEl = document.getElementById('subPayStatus');
-    if (statusEl) { statusEl.style.display = 'block'; statusEl.style.color = 'var(--text-dim)'; statusEl.textContent = '⏳ Waiting for payment confirmation...'; }
-    _pollSubscription(data.checkoutRequestId);
-  } catch (err) { showToast('Network error — check your connection', 'error'); }
-  finally { if (payBtn) { payBtn.disabled = false; payBtn.textContent = '📱 Pay with M-Pesa'; } }
-}
-
-function _pollSubscription(checkoutRequestId) {
-  let attempts = 0;
-  clearInterval(_subPollingTimer);
-  _subPollingTimer = setInterval(async () => {
-    attempts++;
-    if (attempts > 20) { clearInterval(_subPollingTimer); const el = document.getElementById('subPayStatus'); if (el) { el.textContent = '⚠️ Timeout. Check your M-Pesa messages.'; el.style.color = 'var(--warn)'; } return; }
-    try {
-      const token = localStorage.getItem('token');
-      const res   = await fetch(`${CONFIG.API_URL}/subscription-status-poll/${checkoutRequestId}`, { headers: { Authorization: `Bearer ${token}` } });
-      const data  = await res.json();
-      const el    = document.getElementById('subPayStatus');
-      if (data.status === 'paid') {
-        clearInterval(_subPollingTimer);
-        if (el) { el.textContent = `✅ Payment confirmed! Plan: ${data.plan?.name} · Expires: ${new Date(data.expiresAt).toDateString()}`; el.style.color = 'var(--accent)'; }
-        showToast('Subscription renewed! 🎉', 'success');
-        setTimeout(() => { closeModal('modal-subscribe'); loadSubscriptionStatus(); }, 2500);
-      } else if (data.status === 'failed') {
-        clearInterval(_subPollingTimer);
-        if (el) { el.textContent = '❌ Payment failed. Please try again.'; el.style.color = 'var(--danger)'; }
-        showToast('Payment failed or cancelled', 'error');
-      }
-    } catch (err) { console.error('Polling error:', err.message); }
-  }, 3000);
-}
 
 // ── Typing engine ──
 const _adminTypers = {};
@@ -1784,12 +1775,15 @@ function _timeAgo(date) {
 }
 
 async function loadRecentActivity() {
-  const feed = document.getElementById('recentActivityFeed');
+  const feed      = document.getElementById('recentActivityFeed');
+  const propLabel = document.getElementById('recentPaymentsPropLabel');
   if (!feed) return;
   feed.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text-dim);font-family:\'JetBrains Mono\',monospace;font-size:0.72rem">Loading...</div>';
   try {
-    const token      = localStorage.getItem('token');
-    const propertyId = localStorage.getItem('activePropertyId');
+    const token        = localStorage.getItem('token');
+    const propertyId   = localStorage.getItem('activePropertyId');
+    const propertyName = localStorage.getItem('activePropertyName');
+    if (propLabel) propLabel.textContent = propertyId && propertyName ? `— ${propertyName}` : '';
     const url        = propertyId
       ? `${CONFIG.API_URL}/payments?propertyId=${propertyId}`
       : `${CONFIG.API_URL}/payments`;
@@ -1801,7 +1795,7 @@ async function loadRecentActivity() {
     }
     const recent = payments.slice(0, 12);
     if (!recent.length) {
-      feed.innerHTML = '<div class="empty-state"><span class="icon">📋</span>No activity yet — record a payment to see it here</div>';
+      feed.innerHTML = '<div class="empty-state"><span class="icon">📋</span>No recent payments yet — record a payment to see it here</div>';
       return;
     }
     const methodLabel = { cash: 'Cash', mpesa: 'M-Pesa', bank: 'Bank', other: 'Other' };
@@ -1839,8 +1833,10 @@ async function loadRecentActivity() {
 
 // ── Window load init ──
 window.addEventListener('load', () => {
-  setTimeout(loadSubscriptionStatus, 800);
-  setInterval(loadSubscriptionStatus, 5 * 60 * 1000);
+  setTimeout(loadCommissionStatus, 800);
+  setTimeout(checkAccountSuspension, 800);
+  setInterval(loadCommissionStatus, 5 * 60 * 1000);
+  setInterval(checkAccountSuspension, 5 * 60 * 1000);
   _startAdminTypers();
   setTimeout(loadRecentActivity, 1500);
   setInterval(loadRecentActivity, 2 * 60 * 1000);
@@ -1862,5 +1858,8 @@ window.addEventListener('load', () => {
     warningSeconds: 60
   });
 </script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
 </body>
 </html>

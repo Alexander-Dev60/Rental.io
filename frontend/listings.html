@@ -7,6 +7,8 @@
   <title>Browse Properties — Affordable Rentals</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     /* ══════════════════════════════
        THEME TOKENS — system adaptive
@@ -163,6 +165,26 @@
     }
     .btn-primary:hover { opacity: .9; transform: translateY(-1px); }
     @media (max-width: 480px) { .btn-ghost { display: none; } }
+
+    /* ── MAP VIEW ── */
+    .map-toggle-row { position: relative; z-index: 1; max-width: 980px; margin: 0 auto 18px; padding: 0 20px; display: flex; justify-content: flex-end; }
+    .map-toggle-btn {
+      background: var(--card); border: 1px solid var(--border2); border-radius: 8px;
+      color: var(--muted); font-family: var(--font-m); font-size: .62rem; letter-spacing: .08em;
+      padding: 7px 14px; cursor: pointer; transition: all .18s;
+    }
+    .map-toggle-btn:hover, .map-toggle-btn.active { border-color: var(--primary); color: var(--primary); }
+    #listingsMap {
+      position: relative; z-index: 1; max-width: 980px; margin: 0 auto 24px; padding: 0 20px;
+      display: none;
+    }
+    #listingsMap.show { display: block; }
+    #listingsMapInner { width: 100%; height: 420px; border-radius: 18px; border: 1px solid var(--border2); overflow: hidden; }
+    .leaflet-popup-content-wrapper { background: var(--modal-bg); color: var(--text); border-radius: 10px; }
+    .leaflet-popup-tip { background: var(--modal-bg); }
+    .map-popup-name { font-family: var(--font-d); font-style: italic; font-size: 0.95rem; margin-bottom: 4px; }
+    .map-popup-loc  { font-family: var(--font-m); font-size: 0.6rem; color: var(--gold); margin-bottom: 6px; }
+
 
     /* ── LANDLORD STRIP ── */
     .landlord-strip {
@@ -950,8 +972,18 @@
     </div>
   </div>
 
+  
+  <!-- Map toggle -->
+  <div class="map-toggle-row">
+    <button class="map-toggle-btn" id="mapToggleBtn" onclick="toggleListingsMap()">🗺️ Map View</button>
+  </div>
+  <div id="listingsMap">
+    <div id="listingsMapInner"></div>
+  </div>
+
   <!-- Main content -->
   <div id="mainContent"></div>
+
 
   <!-- Pagination -->
   <div class="pagination" id="pagination" style="display:none"></div>
@@ -1258,13 +1290,15 @@
       const initializedIds = new Set();
       page.forEach(p => { initGallery(p); initializedIds.add(p._id); });
 
-      if (_currentPage === 1 && !Object.keys(_activeFilters).length) {
+     if (_currentPage === 1 && !Object.keys(_activeFilters).length) {
         const avail = _all.filter(p => (p.vacantCount||0) > 0);
         if (avail.length) {
           const feat = [...avail].sort((a,b) => (b.vacantCount||0) - (a.vacantCount||0))[0];
           if (!initializedIds.has(feat._id)) initGallery(feat);
         }
       }
+
+      if (_mapVisible) renderMapMarkers();
     }
 
     // ═════════════════
@@ -1651,6 +1685,60 @@
           <p class="empty-sub">Check your connection and try again.</p>
           <button onclick="initPage()" style="margin-top:18px;background:var(--primary);border:none;color:#fff;font-family:var(--font-m);font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;padding:8px 20px;border-radius:8px;cursor:pointer">↻ Retry</button>
         </div>`;
+    }
+
+
+    // ════════════════════
+    // MAP VIEW
+    // ════════════════════
+    let _listingsMap = null, _mapMarkers = [];
+    let _mapVisible = false;
+
+    function toggleListingsMap() {
+      _mapVisible = !_mapVisible;
+      const wrap = document.getElementById('listingsMap');
+      const btn  = document.getElementById('mapToggleBtn');
+      wrap.classList.toggle('show', _mapVisible);
+      btn.classList.toggle('active', _mapVisible);
+      btn.textContent = _mapVisible ? '📋 List View' : '🗺️ Map View';
+      if (_mapVisible) {
+        if (!_listingsMap) initListingsMap();
+        setTimeout(() => _listingsMap && _listingsMap.invalidateSize(), 100);
+        renderMapMarkers();
+      }
+    }
+
+    function initListingsMap() {
+      if (typeof L === 'undefined') return;
+      _listingsMap = L.map('listingsMapInner').setView([-1.2921, 36.8219], 12);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
+      }).addTo(_listingsMap);
+    }
+
+    function renderMapMarkers() {
+      if (!_listingsMap) return;
+      _mapMarkers.forEach(m => _listingsMap.removeLayer(m));
+      _mapMarkers = [];
+
+      // Properties need a `geo.coordinates` field ([lng, lat]) to appear here.
+      // See backend note — /public/listings must select `geo` for this to populate.
+      const withGeo = _all.filter(p => p.geo && Array.isArray(p.geo.coordinates));
+      if (!withGeo.length) return;
+
+      const bounds = [];
+      withGeo.forEach(p => {
+        const [lng, lat] = p.geo.coordinates;
+        const marker = L.marker([lat, lng]).addTo(_listingsMap);
+        marker.bindPopup(`
+          <div class="map-popup-name">${esc(p.name)}</div>
+          <div class="map-popup-loc">📍 ${esc(p.formattedAddress || p.location || '—')}</div>
+          <button onclick="openViewModal('${p._id}')" style="font-family:var(--font-m);font-size:.6rem;letter-spacing:.06em;background:var(--primary);color:#fff;border:none;border-radius:6px;padding:5px 10px;cursor:pointer">View Details</button>
+        `);
+        _mapMarkers.push(marker);
+        bounds.push([lat, lng]);
+      });
+      if (bounds.length) _listingsMap.fitBounds(bounds, { padding: [30, 30], maxZoom: 14 });
     }
 
     // ════════════

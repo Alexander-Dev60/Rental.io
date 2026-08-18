@@ -1,6 +1,28 @@
 // models/Property.js
 const mongoose = require('mongoose');
 
+const geoSchema = new mongoose.Schema({
+    type: {
+        type:    String,
+        enum:    ['Point'],
+        default: 'Point'
+    },
+    coordinates: {
+        type:     [Number], // [longitude, latitude]
+        required: true,
+        validate: {
+            validator: function (coords) {
+                if (!Array.isArray(coords) || coords.length !== 2) return false;
+                const [lng, lat] = coords;
+                return Number.isFinite(lng) && Number.isFinite(lat) &&
+                       lng >= -180 && lng <= 180 &&
+                       lat >= -90  && lat <= 90;
+            },
+            message: 'coordinates must be exactly [longitude, latitude] within valid ranges'
+        }
+    }
+}, { _id: false });
+
 const propertySchema = new mongoose.Schema({
 
     landlord: {
@@ -12,13 +34,29 @@ const propertySchema = new mongoose.Schema({
     name: {
         type:     String,
         required: true,
-        trim:     true   // e.g. "GreenView Apartments"
+        trim:     true
     },
 
     location: {
         type:    String,
         trim:    true,
-        default: null    // e.g. "Nairobi, Westlands"
+        default: null
+    },
+
+    geo: {
+        type:    geoSchema,
+        default: undefined
+    },
+
+    formattedAddress: {
+        type:    String,
+        trim:    true,
+        default: null
+    },
+
+    geocodedAt: {
+        type:    Date,
+        default: null
     },
 
     phone: {
@@ -27,7 +65,6 @@ const propertySchema = new mongoose.Schema({
         default: null
     },
 
-    // ── M-Pesa config per property (each property has its own paybill) ──
     paybillNumber: {
         type:    String,
         trim:    true,
@@ -59,23 +96,17 @@ const propertySchema = new mongoose.Schema({
         default: true
     },
 
-    // ── Public listing fields ──
-    // Landlord opts in explicitly — false by default so no property
-    // is publicly visible until the landlord enables it.
     isListed: {
         type:    Boolean,
         default: false
     },
 
-    // Short pitch shown on the discovery page and auth slideshow.
     description: {
         type:    String,
         trim:    true,
         default: ''
     },
 
-    // Array of Cloudinary (or any CDN) image URLs uploaded by the landlord.
-    // Capped at 5 to keep document size reasonable.
     photos: {
         type:     [String],
         default:  [],
@@ -94,10 +125,19 @@ const propertySchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
-// ── Indexes ──
+propertySchema.virtual('hasLocation').get(function () {
+    return !!(this.geo && Array.isArray(this.geo.coordinates) && this.geo.coordinates.length === 2);
+});
+
 propertySchema.index({ landlord: 1 });
-propertySchema.index({ landlord: 1, name: 1 }, { unique: true }); // no duplicate names per landlord
-propertySchema.index({ isListed: 1 , isApproved: 1 });             // fast public listing queries
-propertySchema.index({ isListed: 1,isApproved: 1, location: 1 });                // fast location-filtered queries
+propertySchema.index({ landlord: 1, name: 1 }, { unique: true });
+propertySchema.index({ isListed: 1, isApproved: 1 });
+propertySchema.index({ isListed: 1, isApproved: 1, location: 1 });
+
+propertySchema.index({ geo: '2dsphere' });
+propertySchema.index({ isListed: 1, isApproved: 1, geo: '2dsphere' });
+
+propertySchema.set('toJSON',   { virtuals: true });
+propertySchema.set('toObject', { virtuals: true });
 
 module.exports = mongoose.model('Property', propertySchema);

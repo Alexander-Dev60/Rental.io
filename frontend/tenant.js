@@ -84,7 +84,15 @@ function stopTyper(id) {
 // ═══════════════════════════════════════════════════════
 
 function getToken()    { return localStorage.getItem('token'); }
-function authHeaders() { return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() }; }
+// tenant.js — identical change
+function authHeaders() {
+    const token = getToken();
+    if (!token) {
+        window.location.href = 'auth.html';
+        throw new Error('No auth token — redirecting to login');
+    }
+    return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token };
+}
 
 function getPayload() {
     const token = getToken();
