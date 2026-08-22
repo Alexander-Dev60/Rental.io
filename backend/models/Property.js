@@ -115,6 +115,10 @@ const propertySchema = new mongoose.Schema({
             message:   'A property can have at most 5 photos'
         }
     },
+    isSuspended:     { type: Boolean, default: false },
+    suspendedReason: { type: String,  default: null },
+    suspendedAt:     { type: Date,    default: null },
+    suspendedBy:     { type: String,  enum: ['system', 'stacklord', null], default: null },
 
     isApproved: {
         type:    Boolean,

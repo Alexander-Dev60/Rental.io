@@ -959,7 +959,68 @@ async function sendListingApprovalEmail({ landlord, property, approved, baseUrl 
     if (error) throw new Error(`Listing approval email failed: ${error.message}`);
     console.log(`📧 Listing ${approved ? 'approval' : 'revocation'} email sent to ${landlord.email}`);
 }
+async function sendCommissionDueEmail({ name, email, property, month, amountDue }) {
+    const { Resend } = require('resend');
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    await resend.emails.send({
+        from:    'Affordable Rentals 🏠 <support@affordablerentals.site>',
+        to:      email,
+        subject: `💸 Commission due for ${property} — ${month}`,
+        html: `
+        <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:520px;margin:40px auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+          <div style="background:#161c2b;padding:26px 30px;text-align:center">
+            <h1 style="color:#e0bb64;margin:0;font-size:19px;font-weight:700">Commission Due</h1>
+            <p style="color:#a9a495;margin:6px 0 0;font-size:13px">${property} · ${month}</p>
+          </div>
+          <div style="padding:26px 30px">
+            <p style="color:#1e293b;font-size:14px;margin:0 0 14px">Hi ${name.split(' ')[0]},</p>
+            <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 20px">
+              ${month} has closed and a commission balance is still outstanding on <strong>${property}</strong>.
+            </p>
+            <div style="background:#f8f5ec;border:1px solid #e4c77a;border-radius:10px;padding:16px 20px;text-align:center;margin-bottom:20px">
+              <div style="color:#8a8474;font-size:12px;margin-bottom:4px">Amount Due</div>
+              <div style="color:#161c2b;font-size:22px;font-weight:700">Ksh ${Number(amountDue).toLocaleString()}</div>
+            </div>
+            <p style="color:#64748b;font-size:13px;line-height:1.6;margin:0">
+              You can settle this any time from your dashboard's Commission panel.
+            </p>
+          </div>
+        </div>`
+    });
+}
 
+async function sendPropertySuspendedEmail({ name, email, property, months, totalOwed }) {
+    const { Resend } = require('resend');
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    await resend.emails.send({
+        from:    'Affordable Rentals 🏠 <support@affordablerentals.site>',
+        to:      email,
+        subject: `🚫 ${property} suspended — unpaid commission`,
+        html: `
+        <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:520px;margin:40px auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+          <div style="background:#2a1a0a;padding:26px 30px;text-align:center">
+            <h1 style="color:#f0a5a5;margin:0;font-size:19px;font-weight:700">Property Suspended</h1>
+            <p style="color:#c2803a;margin:6px 0 0;font-size:13px">${property}</p>
+          </div>
+          <div style="padding:26px 30px">
+            <p style="color:#1e293b;font-size:14px;margin:0 0 14px">Hi ${name.split(' ')[0]},</p>
+            <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 20px">
+              <strong>${property}</strong> has been suspended after a 7-day grace period for unpaid commission covering: <strong>${months.join(', ')}</strong>.
+            </p>
+            <div style="background:#fdf2f2;border:1px solid #f0a5a5;border-radius:10px;padding:16px 20px;text-align:center;margin-bottom:20px">
+              <div style="color:#8a8474;font-size:12px;margin-bottom:4px">Total Owed</div>
+              <div style="color:#161c2b;font-size:22px;font-weight:700">Ksh ${Number(totalOwed).toLocaleString()}</div>
+            </div>
+            <p style="color:#64748b;font-size:13px;line-height:1.6;margin:0 0 8px">
+              While suspended, you can't add new tenants or houses to this property, and it's hidden from public listings.
+            </p>
+            <p style="color:#64748b;font-size:13px;line-height:1.6;margin:0">
+              You can still collect rent from existing tenants — settle the amount above from your dashboard's Commission panel and the property is restored automatically.
+            </p>
+          </div>
+        </div>`
+    });
+}
 
 // ═══════════════════════════════════════════════════════
 // EXPORTS
@@ -976,5 +1037,8 @@ module.exports = {
     sendRentReceiptEmail,
     sendMpesaConfirmationEmail,
     sendSubscriptionRenewalEmail,
+    sendCommissionDueEmail,
+    sendPropertySuspendedEmail,
     sendListingApprovalEmail
+
 };

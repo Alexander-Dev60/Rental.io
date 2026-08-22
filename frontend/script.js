@@ -33,6 +33,7 @@ function logout() {
 // render fully, then every single API call would fail with scattered 401s
 // and no clean redirect — this catches that case immediately at page load.
 (function guardLandlord() {
+    if (window.__AUTH_INVALID__) return;
     const token = getToken();
     if (!token) { window.location.href = 'auth.html'; return; }
     try {
@@ -64,10 +65,49 @@ function logout() {
                 }
             }, msUntilExpiry + 1000); // +1s buffer past actual expiry
         }
-    } catch {
+        } catch {
         window.location.href = 'auth.html';
     }
 })();
+
+
+// ═══════════════════════════════════════
+// PLATFORM-WIDE MAINTENANCE
+// ═══════════════════════════════════════
+//
+// GET /platform-status is allowlisted server-side and always answers, even
+// while every other route is returning 503. Checked FIRST in dashboard.js's
+// init — before loadLandlordProfile/loadProperties/loadTenants/etc. — so a
+// landlord loading the dashboard during a kill-switch window sees one clean
+// screen instead of a scatter of failed-request toasts. Once shown, only
+// dismissed via reload (same pattern as tenant.js's showMaintenanceScreen)
+// rather than auto-hiding mid-session, since resuming a half-initialized
+// dashboard silently would be worse than asking for a clean reload.
+
+async function checkPlatformMaintenance() {
+    try {
+        const res  = await fetch(`${API}/platform-status`);
+        const data = await res.json();
+        if (data.maintenanceMode) {
+            showPlatformMaintenanceOverlay(data.message);
+            return true;
+        }
+        return false;
+    } catch (err) {
+        console.error('checkPlatformMaintenance error:', err.message);
+        return false; // fail open — don't block the dashboard on a network hiccup
+    }
+}
+
+function showPlatformMaintenanceOverlay(message) {
+    const overlay = document.getElementById('platformMaintenanceOverlay');
+    if (!overlay) return;
+    const descEl = document.getElementById('platformMaintenanceDesc');
+    if (descEl) descEl.textContent = message || 'Affordable Rentals is temporarily down for maintenance. Please check back shortly.';
+    overlay.classList.add('show');
+}
+
+
 
 
 // ═══════════════════════════════════════
@@ -245,6 +285,8 @@ function switchProperty(id, name) {
     closePropertyMenu();
     renderPropertySwitcher(_propertiesCache);
 
+    _selectedTenantIds.clear();
+
     loadTenants();
     loadMovedOutTenants();
     loadHouses();
@@ -253,6 +295,7 @@ function switchProperty(id, name) {
     loadUnread();
     loadDashboard();
     loadRecentActivity();
+    if (document.getElementById('sec-activity')?.classList.contains('active')) loadActivity();
 
     showToast(`Switched to ${name} 🏠`, 'success');
 }
@@ -654,11 +697,17 @@ async function openCommissionModal() {
         ).join('');
     }
 
-    const monthEl = document.getElementById('commissionMonth');
+        const monthEl = document.getElementById('commissionMonth');
     if (monthEl && !monthEl.value) {
-        monthEl.value = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+        // Default to the most recently CLOSED month — same rule the
+        // backend uses for "due". Picking the live month here would show
+        // a partial figure framed as something owed, before the month
+        // has actually finished.
+        const d = new Date();
+        d.setDate(1);
+        d.setMonth(d.getMonth() - 1);
+        monthEl.value = d.toLocaleString('default', { month: 'long', year: 'numeric' });
     }
-
     onCommissionPropertyChange();
 }
 
@@ -1362,6 +1411,62 @@ async function reactivateTenant(tenantId, houseId) {
 // ═══════════════════════════════════════
 
 let _allHouses = [];
+// ═══════════════════════════════════════
+// TENANT BULK SELECTION
+// ═══════════════════════════════════════
+
+let _selectedTenantIds = new Set();
+
+function toggleTenantSelect(id, checked) {
+    if (checked) _selectedTenantIds.add(id);
+    else         _selectedTenantIds.delete(id);
+    _updateBulkRemindUI();
+}
+
+function toggleSelectAllTenants() {
+    const checked = document.getElementById('selectAllTenants').checked;
+    _selectedTenantIds.clear();
+    if (checked) (_allTenants || []).forEach(t => _selectedTenantIds.add(t._id));
+    renderTenantList(_allTenants);
+}
+
+function _updateBulkRemindUI() {
+    const btn        = document.getElementById('bulkRemindBtn');
+    const count       = document.getElementById('tenantSelectedCount');
+    const selectAllEl = document.getElementById('selectAllTenants');
+    const n           = _selectedTenantIds.size;
+
+    if (btn)        btn.disabled     = n === 0;
+    if (count)      count.textContent = n > 0 ? `(${n} selected)` : '';
+    if (selectAllEl) selectAllEl.checked = n > 0 && _allTenants && n === _allTenants.length;
+}
+
+async function bulkRemindSelected() {
+    const ids = Array.from(_selectedTenantIds);
+    if (!ids.length) return;
+
+    const btn = document.getElementById('bulkRemindBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending...'; }
+
+    try {
+        const res  = await fetch(`${API}/tenants/bulk-remind`, {
+            method: 'POST', headers: authHeaders(),
+            body:   JSON.stringify({ tenantIds: ids })
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.message || 'Bulk reminder failed', 'error'); return; }
+
+        showToast(data.message, 'success');
+        _selectedTenantIds.clear();
+        renderTenantList(_allTenants);
+
+    } catch (err) {
+        showToast('Network error', 'error');
+        console.error(err);
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '🔔 Send Reminder'; }
+    }
+}
 
 async function loadHouses() {
     try {
@@ -2108,6 +2213,41 @@ async function loadInquiries() {
     }
 }
 
+
+// ═══════════════════════════════════════
+// ACTIVITY LOG — API calls
+// ═══════════════════════════════════════
+
+let _activityPage  = 1;
+const ACT_LIMIT    = 30;
+let _activityPages = 1;
+
+async function loadActivity() {
+    const feed = document.getElementById('activityLogFeed');
+    if (feed) feed.innerHTML = '<div class="empty-state"><span class="icon">🕒</span>Loading…</div>';
+
+    try {
+        const propertyId = getPropertyId();
+        const action      = document.getElementById('activityActionFilter')?.value || '';
+
+        const params = new URLSearchParams({ page: _activityPage, limit: ACT_LIMIT });
+        if (propertyId) params.set('propertyId', propertyId);
+        if (action)     params.set('action', action);
+
+        const res  = await fetch(`${API}/activity?${params.toString()}`, { headers: authHeaders() });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.message || 'Failed to load activity', 'error'); return; }
+
+        _activityPages = data.pages || 1;
+        renderActivityLog(data.logs || []);
+        _renderActivityPagination();
+
+    } catch (err) {
+        console.error('loadActivity error:', err);
+        if (feed) feed.innerHTML = '<div class="empty-state">Could not load activity</div>';
+    }
+}
+
 async function _loadInquiryContactedCount(propertyId) {
     try {
         const params = new URLSearchParams({ status: 'contacted', limit: 1, page: 1 });
@@ -2431,8 +2571,18 @@ async function handlePhotoDelete(propertyId, photoUrl) {
 // ═══════════════════════════════════════
 
 window.addEventListener('DOMContentLoaded', async () => {
+    if (window.__AUTH_INVALID__) return;
+
+    // Checked before any other request — a landlord opening the dashboard
+    // during a platform-wide maintenance window should see exactly one
+    // screen, not a burst of failed-request toasts from every load* call
+    // below hitting 503.
+    const underMaintenance = await checkPlatformMaintenance();
+    if (underMaintenance) return;
+
     const saved = localStorage.getItem('admin-theme') || 'dark';
     setTheme(saved);
+    refreshSessionStatus();
 
     syncMaintenanceToggle();
 
@@ -2457,7 +2607,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     loadInquiryBadge();
 });
 
-
 // ═══════════════════════════════════════
 // POLLING
 // ═══════════════════════════════════════
@@ -2470,6 +2619,46 @@ setInterval(loadMovedOutTenants,  30000);
 setInterval(loadLandlordProfile,  60000);
 setInterval(loadProperties,      120000);
 setInterval(loadInquiryBadge,     30000);
+setInterval(checkPlatformMaintenance, 20000);
+
+// ═══════════════════════════════════════
+// SESSION COUNTDOWN (sidebar chip)
+// ═══════════════════════════════════════
+
+let _sessionSecondsRemaining = null;
+
+async function refreshSessionStatus() {
+    try {
+        const res  = await fetch(`${API}/auth/session-status`, { headers: authHeaders() });
+        const data = await res.json();
+        if (!res.ok) return;
+        _sessionSecondsRemaining = data.secondsRemaining;
+        _renderSessionCountdown();
+    } catch (err) {
+        console.error('refreshSessionStatus error:', err.message);
+    }
+}
+
+function _renderSessionCountdown() {
+    const el = document.getElementById('sessionCountdown');
+    if (!el || _sessionSecondsRemaining === null) return;
+
+    const m = Math.floor(_sessionSecondsRemaining / 60);
+    const s = _sessionSecondsRemaining % 60;
+    el.textContent  = `${m}:${String(s).padStart(2, '0')}`;
+    el.style.color  = _sessionSecondsRemaining < 120 ? 'var(--danger)'
+                     : _sessionSecondsRemaining < 300 ? 'var(--warn)'
+                     : 'var(--text-dim)';
+}
+
+function _tickSessionCountdown() {
+    if (_sessionSecondsRemaining === null) return;
+    _sessionSecondsRemaining = Math.max(0, _sessionSecondsRemaining - 1);
+    _renderSessionCountdown();
+}
+
+setInterval(_tickSessionCountdown, 1000);
+setInterval(refreshSessionStatus, 30000);
 
 // Poll active chat thread every 15 seconds
 setInterval(() => {

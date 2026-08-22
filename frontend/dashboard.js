@@ -21,6 +21,7 @@ const SECTION_TITLES = {
     messages:      'Messages',
     announcements: 'Announcements',
     rules:         'House Rules',
+    activity:      'Activity Log',
     inquiries:     'Rental Inquiries'
 };
 
@@ -53,6 +54,7 @@ function showSection(name) {
     if (name === 'houses')        { loadHouses(); }
     if (name === 'properties')    { loadProperties(); }
     if (name === 'inquiries')     { loadInquiries(); }
+    if (name === 'activity')      { loadActivity(); }
 }
 
 function toggleSidebar() {
@@ -155,7 +157,7 @@ function renderPropertiesGrid(properties) {
 
     grid.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem">` +
     properties.map(p => `
-        <div style="background:var(--panel);border:1px solid ${p._id === activeId ? 'var(--accent)' : 'var(--border)'};border-radius:10px;overflow:hidden;transition:border-color 0.2s">
+                <div style="background:var(--panel);border:1px solid ${p.isSuspended ? 'var(--danger)' : (p._id === activeId ? 'var(--accent)' : 'var(--border)')};border-radius:10px;overflow:hidden;transition:border-color 0.2s">
 
           <div style="padding:1rem 1.25rem;cursor:pointer;border-bottom:1px solid var(--border)"
                onclick="switchProperty('${p._id}', '${p.name.replace(/'/g, "\\'")}')">
@@ -170,9 +172,12 @@ function renderPropertiesGrid(properties) {
               ${p.paymentConfigured
                 ? '<span class="pill pill-green">M-Pesa ✓</span>'
                 : '<span class="pill pill-yellow">No M-Pesa</span>'}
-              ${p.hasLocation
+                         ${p.hasLocation
                 ? '<span class="pill pill-green">📍 Pinned</span>'
                 : '<span class="pill pill-yellow">📍 Not Pinned</span>'}
+            ${p.isSuspended
+                ? '<span class="pill pill-red">🚫 Suspended</span>'
+                : ''}
             </div>
           </div>
 
@@ -246,6 +251,7 @@ function renderTenantList(tenants) {
     list.innerHTML = tenants.map(t => {
         const initials = t.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
         const house    = t.house ? (t.house.name || t.house) : 'No house';
+        const checked  = _selectedTenantIds.has(t._id) ? 'checked' : '';
 
         let badge = '';
         if (t.paymentStatus === 'paid') {
@@ -261,6 +267,10 @@ function renderTenantList(tenants) {
         return `
             <div class="tenant-row" id="row-${t._id}"
                  onclick="handleTenantClick(event, JSON.parse(decodeURIComponent('${tenantData}')))">
+                <input type="checkbox" class="tenant-select-box" ${checked}
+                       onclick="event.stopPropagation()"
+                       onchange="toggleTenantSelect('${t._id}', this.checked)"
+                       style="width:auto;margin:0;flex-shrink:0">
                 <div class="tenant-avatar">${initials}</div>
                 <div class="tenant-info">
                     <div class="tenant-name">${t.name}</div>
@@ -269,6 +279,8 @@ function renderTenantList(tenants) {
                 ${badge}
             </div>`;
     }).join('');
+
+    _updateBulkRemindUI();
 }
 
 function renderMovedOutList(tenants) {
@@ -912,6 +924,75 @@ function renderReceipt(data, containerId) {
         </div>`;
 }
 
+// ═══════════════════════════════════════
+// ACTIVITY LOG — rendering
+// ═══════════════════════════════════════
+
+const ACTIVITY_ICONS = {
+    'tenant.created':        '🆕',
+    'tenant.readded':        '🔁',
+    'tenant.assigned':       '🔑',
+    'tenant.reactivated':    '🔄',
+    'tenant.moved_out':      '🚪',
+    'tenant.deleted':        '🗑️',
+    'tenants.bulk_reminded': '🔔',
+    'payment.recorded':      '💳',
+    'commission.paid':       '💸'
+};
+
+function _activityTimeAgo(date) {
+    const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+    if (isNaN(seconds) || seconds < 0) return '—';
+    if (seconds < 60)     return 'just now';
+    if (seconds < 3600)   return `${Math.floor(seconds / 60)}m ago`;
+    if (seconds < 86400)  return `${Math.floor(seconds / 3600)}h ago`;
+    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+    return new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
+function renderActivityLog(logs) {
+    const feed = document.getElementById('activityLogFeed');
+    if (!feed) return;
+
+    if (!logs.length) {
+        feed.innerHTML = '<div class="empty-state"><span class="icon">🕒</span>No activity recorded yet</div>';
+        return;
+    }
+
+    feed.innerHTML = logs.map(l => `
+        <div class="activity-item">
+            <span class="activity-icon">${ACTIVITY_ICONS[l.action] || '•'}</span>
+            <div class="activity-body">
+                <div class="activity-desc">${l.message}</div>
+                <div class="activity-meta">
+                    <span class="pill" style="background:var(--bg3);color:var(--text-dim);border:1px solid var(--border);font-size:0.55rem">${l.action}</span>
+                </div>
+            </div>
+            <div class="activity-time">${_activityTimeAgo(l.createdAt)}</div>
+        </div>`).join('');
+}
+
+function _renderActivityPagination() {
+    const wrap    = document.getElementById('activityPagination');
+    const infoEl  = document.getElementById('activityPageInfo');
+    const prevBtn = document.getElementById('actPrevBtn');
+    const nextBtn = document.getElementById('actNextBtn');
+    if (!wrap) return;
+
+    if (_activityPages <= 1) { wrap.style.display = 'none'; return; }
+    wrap.style.display = 'flex';
+
+    if (infoEl)  infoEl.textContent = `Page ${_activityPage} of ${_activityPages}`;
+    if (prevBtn) prevBtn.disabled   = _activityPage <= 1;
+    if (nextBtn) nextBtn.disabled   = _activityPage >= _activityPages;
+}
+
+function activityPage(dir) {
+    const next = _activityPage + dir;
+    if (next < 1 || next > _activityPages) return;
+    _activityPage = next;
+    loadActivity();
+}
 
 // ═══════════════════════════════════════
 // RULES

@@ -1,6 +1,7 @@
 const CONFIG = {
-  API_URL: 'https://affordable-rental-systems.onrender.com' || 'http://localhost:3000'
+  API_URL: 'http://localhost:3000'
 };
+//'https://affordable-rental-systems.onrender.com' || 
 
 window.CONFIG = CONFIG;
 window.API = CONFIG.API_URL;

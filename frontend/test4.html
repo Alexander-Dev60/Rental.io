@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Affordable Rentals — Auth</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;700&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy-900:#0B1120;
+    --navy-800:#111827;
+    --navy-700:#1A2438;
+    --gold-400:#D4A94A;
+    --gold-300:#E4C77A;
+    --gold-050:#F7EFDC;
+    --off-white:#F5F2EA;
+    --line: rgba(228,199,122,0.18);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:'DM Sans', sans-serif;
+    background:var(--off-white);
+    display:flex;
+    min-height:100vh;
+    color:var(--navy-900);
+  }
+  .panel-left{
+    flex:1 1 46%;
+    background:
+      radial-gradient(circle at 20% 15%, rgba(228,199,122,0.10), transparent 40%),
+      linear-gradient(180deg, var(--navy-900) 0%, var(--navy-800) 100%);
+    color:var(--off-white);
+    position:relative;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    padding:56px 56px 40px;
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-family:'DM Serif Display', serif;
+    font-size:22px;
+    letter-spacing:0.3px;
+  }
+  .brand .mark{
+    width:34px;height:34px;
+    border:1.5px solid var(--gold-400);
+    border-radius:8px;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--gold-400);
+    font-family:'DM Serif Display', serif;
+    font-size:18px;
+  }
+  .headline{
+    font-family:'DM Serif Display', serif;
+    font-size:40px;
+    line-height:1.25;
+    max-width:420px;
+    margin-top:60px;
+  }
+  .headline .accent{color:var(--gold-300);font-style:italic;}
+  .sub{
+    margin-top:18px;
+    font-size:15px;
+    color:rgba(245,242,234,0.65);
+    max-width:360px;
+    line-height:1.6;
+  }
+  .skyline{
+    position:absolute;
+    bottom:0;left:0;right:0;
+    height:190px;
+    display:flex;
+    align-items:flex-end;
+    gap:6px;
+    padding:0 30px;
+    opacity:0.9;
+  }
+  .bldg{
+    background:linear-gradient(180deg, rgba(212,169,74,0.16), rgba(212,169,74,0.05));
+    border-top:1px solid rgba(228,199,122,0.35);
+    flex:none;
+  }
+  .stat-row{
+    display:flex;gap:36px;
+    position:relative;
+    z-index:2;
+    margin-top:40px;
+  }
+  .stat-num{
+    font-family:'Space Mono', monospace;
+    font-size:22px;
+    color:var(--gold-300);
+  }
+  .stat-label{
+    font-size:12px;
+    color:rgba(245,242,234,0.55);
+    margin-top:4px;
+    letter-spacing:0.4px;
+    text-transform:uppercase;
+  }
+
+  .panel-right{
+    flex:1 1 54%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:40px;
+  }
+  .form-wrap{
+    width:100%;
+    max-width:400px;
+  }
+  .tabs{
+    display:flex;
+    background:#fff;
+    border:1px solid #E7E2D3;
+    border-radius:10px;
+    padding:4px;
+    margin-bottom:32px;
+  }
+  .tab{
+    flex:1;
+    text-align:center;
+    padding:10px 0;
+    font-size:14px;
+    font-weight:500;
+    border-radius:7px;
+    cursor:pointer;
+    color:#8A8672;
+  }
+  .tab.active{
+    background:var(--navy-900);
+    color:var(--gold-300);
+  }
+  .form-title{
+    font-family:'DM Serif Display', serif;
+    font-size:28px;
+    color:var(--navy-900);
+  }
+  .form-sub{
+    font-size:14px;
+    color:#8A8672;
+    margin-top:6px;
+    margin-bottom:30px;
+  }
+  .field{
+    margin-bottom:18px;
+  }
+  .field label{
+    display:block;
+    font-size:12px;
+    font-weight:500;
+    color:#5B5847;
+    margin-bottom:6px;
+    letter-spacing:0.3px;
+    text-transform:uppercase;
+  }
+  .field input{
+    width:100%;
+    padding:13px 14px;
+    border:1px solid #E7E2D3;
+    border-radius:8px;
+    font-size:14px;
+    font-family:'DM Sans', sans-serif;
+    background:#fff;
+    outline:none;
+    transition:border-color .15s;
+  }
+  .field input:focus{
+    border-color:var(--gold-400);
+    box-shadow:0 0 0 3px rgba(212,169,74,0.15);
+  }
+  .strength{
+    display:flex;gap:4px;margin-top:8px;
+  }
+  .strength div{
+    height:3px;flex:1;border-radius:2px;background:#EDE9DB;
+  }
+  .strength div.on{background:var(--gold-400);}
+  .row-between{
+    display:flex;justify-content:space-between;align-items:center;
+    font-size:13px;margin-bottom:24px;
+  }
+  .row-between a{color:var(--navy-800);text-decoration:none;border-bottom:1px solid var(--gold-400);}
+  .cta{
+    width:100%;
+    padding:14px;
+    background:var(--navy-900);
+    color:var(--gold-300);
+    border:none;
+    border-radius:8px;
+    font-size:14px;
+    font-weight:500;
+    letter-spacing:0.3px;
+    cursor:pointer;
+    font-family:'DM Sans', sans-serif;
+  }
+  .cta:hover{background:var(--navy-700);}
+  .divider{
+    display:flex;align-items:center;gap:12px;
+    margin:24px 0;color:#B3AF9C;font-size:12px;
+  }
+  .divider::before,.divider::after{content:'';flex:1;height:1px;background:#EDE9DB;}
+  .foot{
+    text-align:center;font-size:13px;color:#8A8672;
+  }
+  .foot a{color:var(--navy-900);font-weight:500;text-decoration:none;border-bottom:1px solid var(--gold-400);}
+
+  @media (max-width: 860px){
+    body{flex-direction:column;}
+    .panel-left{padding:36px 28px 120px;min-height:280px;}
+    .headline{font-size:28px;margin-top:24px;}
+    .stat-row{display:none;}
+  }
+</style>
+</head>
+<body>
+
+  <div class="panel-left">
+    <div class="brand"><div class="mark">A</div>Affordable Rentals</div>
+
+    <div>
+      <div class="headline">Property management, <span class="accent">without the paperwork.</span></div>
+      <div class="sub">Track rent, tenants, and payments in one place — built for landlords who'd rather manage properties than spreadsheets.</div>
+      <div class="stat-row">
+        <div><div class="stat-num">2,400+</div><div class="stat-label">Units managed</div></div>
+        <div><div class="stat-num">98%</div><div class="stat-label">On-time collection</div></div>
+      </div>
+    </div>
+
+    <div class="skyline" id="skyline"></div>
+  </div>
+
+  <div class="panel-right">
+    <div class="form-wrap">
+      <div class="tabs">
+        <div class="tab">I'm a tenant</div>
+        <div class="tab active">I'm a landlord</div>
+      </div>
+
+      <div class="form-title">Create your account</div>
+      <div class="form-sub">Start managing your properties in minutes.</div>
+
+      <div class="field">
+        <label>Full name</label>
+        <input type="text" placeholder="Alexander Kiptoo">
+      </div>
+      <div class="field">
+        <label>Email address</label>
+        <input type="email" placeholder="you@example.com">
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" placeholder="••••••••">
+        <div class="strength">
+          <div class="on"></div><div class="on"></div><div class="on"></div><div></div>
+        </div>
+      </div>
+
+      <div class="row-between">
+        <span style="color:#8A8672;">Already have an account?</span>
+        <a href="#">Sign in</a>
+      </div>
+
+      <button class="cta">Create account</button>
+
+      <div class="divider">or continue with</div>
+      <button class="cta" style="background:#fff;color:var(--navy-900);border:1px solid #E7E2D3;">Google</button>
+
+      <div class="foot" style="margin-top:28px;">By continuing, you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.</div>
+    </div>
+  </div>
+
+<script>
+  const sky = document.getElementById('skyline');
+  const heights = [40,80,55,110,65,140,90,120,70,160,100,60,130,45];
+  heights.forEach(h=>{
+    const b = document.createElement('div');
+    b.className='bldg';
+    b.style.height = h+'px';
+    b.style.width = (18+Math.random()*14)+'px';
+    sky.appendChild(b);
+  });
+</script>
+</body>
+</html>

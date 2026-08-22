@@ -15,7 +15,8 @@ const crypto      = require('crypto');
 const mongoose    = require('mongoose');
 const multer     = require('multer');
 const cloudinary = require('cloudinary').v2;
-const Inquiry = require('./models/Inquiry');
+const Inquiry   = require('./models/Inquiry');
+const AuditLog  = require('./models/AuditLog');
 
 // ── Encryption utility ──
 const { encrypt, decrypt, safeDecrypt } = require('./encrypt');
@@ -32,7 +33,9 @@ const {
         sendRentReceiptEmail,
         sendMpesaConfirmationEmail,
         sendSubscriptionRenewalEmail,
-        sendListingApprovalEmail
+        sendPropertySuspendedEmail,
+        sendListingApprovalEmail,
+        sendCommissionDueEmail
 } = require('./emails');
 
 // ── Models ──
@@ -83,6 +86,14 @@ function sanitize(value, maxLen = 500) {
     if (typeof value !== 'string') return value;
     return value.trim().slice(0, maxLen);
 }
+// ── Activity/audit log — fire-and-forget, never blocks the calling route ──
+// One shared helper so every mutation logs consistently. `meta` is free-form
+// structured context (tenant id, amounts, etc.) for future filtering/export;
+// `message` is the plain-English line shown directly in the dashboard feed.
+function logActivity({ landlord, property = null, action, message, meta = null, actor = 'landlord' }) {
+    AuditLog.create({ landlord, property, action, message, meta, actor })
+        .catch(err => console.error('logActivity error:', err.message));
+}
 
 // ═══════════════════════════════════════
 // COMMISSION SYSTEM — HELPERS
@@ -112,6 +123,19 @@ async function getPlatformSettings() {
     return settings;
 }
 
+// ── "Due" must only ever mean a CLOSED month — never the one still in
+//    progress. This is the single source of truth every due-amount check
+//    below uses, so a landlord can never see a live, unfinished month
+//    framed as something owed. ──
+function getMonthLabel(offsetMonths = 0) {
+    const d = new Date();
+    d.setDate(1); // pin to day 1 first so month arithmetic never rolls over on 29/30/31
+    d.setMonth(d.getMonth() + offsetMonths);
+    return d.toLocaleString('default', { month: 'long', year: 'numeric' });
+}
+
+
+
 async function computeCommissionForProperty(propertyId, month) {
     const agg = await Payment.aggregate([
         {
@@ -135,6 +159,70 @@ async function computeCommissionForProperty(propertyId, month) {
     return { totalCollected, percentage, amountDue };
 }
 
+// ── Finds every closed month, for a given property, where commission is
+//    still unpaid AND the 7-day grace period after that month's close has
+//    fully elapsed. Reuses computeCommissionForProperty as the single
+//    source of truth so "overdue" can never drift from "due". Driven off
+//    actual rent-collection months (Payment.distinct) rather than a fixed
+//    calendar walk, so it naturally covers any number of missed months. ──
+async function getOverdueCommissionMonths(propertyId, graceDays = 7) {
+    const months = await Payment.distinct('month', {
+        property: propertyId,
+        status:   { $in: ['paid', 'partial'] }
+    });
+
+    const overdue = [];
+    const now = Date.now();
+
+    for (const month of months) {
+        const monthDate = new Date(month); // "May 2026" parses to May 1, 2026
+        if (isNaN(monthDate.getTime())) continue;
+
+        // A month "closes" the instant the next month begins.
+        const monthCloseDate = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 1);
+        const graceEndsAt    = monthCloseDate.getTime() + graceDays * 24 * 60 * 60 * 1000;
+        if (now < graceEndsAt) continue; // month not closed yet, or still in grace
+
+        const { amountDue } = await computeCommissionForProperty(propertyId, month);
+        if (amountDue <= 0) continue;
+
+        const paid = await CommissionPayment.findOne({ property: propertyId, month, status: 'paid' });
+        if (paid) continue;
+
+        overdue.push({ month, amountDue });
+    }
+
+    return overdue;
+}
+
+// ── Restores a system-suspended property the moment nothing is overdue
+//    anymore. Never touches a property a stacklord suspended manually for
+//    a different reason — that stays a human decision. ──
+async function maybeAutoUnsuspendProperty(propertyId) {
+    try {
+        const property = await Property.findById(propertyId);
+        if (!property || !property.isSuspended || property.suspendedBy !== 'system') return;
+
+        const overdue = await getOverdueCommissionMonths(propertyId, 7);
+        if (overdue.length) return; // still owes something
+
+        property.isSuspended     = false;
+        property.suspendedReason = null;
+        property.suspendedAt     = null;
+        property.suspendedBy     = null;
+        await property.save();
+
+        logActivity({
+            landlord: property.landlord,
+            property: property._id,
+            action:   'property.auto_unsuspended',
+            message:  `${property.name} automatically restored — commission settled`,
+            actor:    'system'
+        });
+    } catch (err) {
+        console.error('maybeAutoUnsuspendProperty error:', err.message);
+    }
+}
 
 // ═══════════════════════════════════════
 // M-PESA ENVIRONMENT CONFIG (FIX: sandbox was hardcoded everywhere)
@@ -224,6 +312,30 @@ async function checkAccountStatus(req, res, next) {
         return next();
     } catch (err) {
         console.error('checkAccountStatus error:', err.message);
+        next();
+    }
+}
+
+
+// ── Blocks growth actions (new tenants, new houses) on a property that's
+//    currently suspended for unpaid commission. Does NOT block payment
+//    recording or STK push — a suspended property must still be able to
+//    collect rent so the landlord can pay down what's owed. ──
+async function checkPropertySuspension(req, res, next) {
+    try {
+        const propertyId = req.body.propertyId || req.params.propertyId || req.query.propertyId;
+        if (!propertyId) return next();
+
+        const property = await Property.findById(propertyId).select('isSuspended suspendedReason name');
+        if (property && property.isSuspended) {
+            return res.status(403).json({
+                message: `${property.name} is suspended — ${property.suspendedReason || 'unpaid commission'}. Settle the balance from the Commission panel to restore access.`,
+                code:    'PROPERTY_SUSPENDED'
+            });
+        }
+        next();
+    } catch (err) {
+        console.error('checkPropertySuspension error:', err.message);
         next();
     }
 }
@@ -692,6 +804,19 @@ app.post('/auth/refresh-token', authMiddleware, async (req, res) => {
     }
 });
 
+// ── Lightweight session status check — no DB hit, no token reissue.
+//    Frontend polls this to drive a countdown display; it calls
+//    /auth/refresh-token separately only when the user actually wants
+//    to extend. authMiddleware has already verified the token, so
+//    req.user carries the JWT's own `exp` claim. ──
+app.get('/auth/session-status', authMiddleware, (req, res) => {
+    const expiresAt = req.user.exp ? req.user.exp * 1000 : null;
+    res.json({
+        expiresAt,
+        secondsRemaining: expiresAt ? Math.max(0, Math.floor((expiresAt - Date.now()) / 1000)) : null
+    });
+});
+
 app.post('/change-password', authMiddleware, async (req, res) => {
     try {
         const currentPassword = req.body.currentPassword || '';
@@ -877,8 +1002,8 @@ app.get('/landlord/profile', authMiddleware, landlordOnly, async (req, res) => {
 
         if (!landlord) return res.status(404).json({ message: 'Landlord not found' });
 
-        const properties = await Property.find({ landlord: req.user.id })
-            .select('name location phone paymentConfigured isActive paybillNumber')
+            const properties = await Property.find({ landlord: req.user.id })
+            .select('name location phone paymentConfigured isActive paybillNumber isSuspended suspendedReason')
             .sort({ createdAt: 1 });
 
         res.json({
@@ -1206,7 +1331,7 @@ app.delete('/properties/:id', authMiddleware, landlordOnly, async (req, res) => 
 // TENANTS
 // ═══════════════════════════════════════
 
-app.post('/tenants/create', authMiddleware, landlordOnly, checkAccountStatus, async (req, res) => {
+app.post('/tenants/create', authMiddleware, landlordOnly, checkAccountStatus, checkPropertySuspension, async (req, res) => {
     try {
         // FIX Bug 22: sanitize inputs
         const name       = sanitize(req.body.name  || '');
@@ -1318,17 +1443,23 @@ app.post('/tenants/create', authMiddleware, landlordOnly, checkAccountStatus, as
             status:   'active'
         });
 
-        if (isReturning) {
+                if (isReturning) {
             sendTenantWelcomeEmail({
-                name,
-                email,
-                tempPassword: null,
-                isReturning:  true,
+                name, 
+                email, 
+                tempPassword: null, 
+                isReturning: true,
                 propertyName: property.name,
-                landlordName: landlordUser.name
+                 landlordName: landlordUser.name
             }).catch(err => console.error('Notification email failed:', err.message));
         }
 
+        logActivity({
+            landlord: req.user.id, property: propertyId,
+            action:   isReturning ? 'tenant.readded' : 'tenant.created',
+            message:  `${name} was ${isReturning ? 're-added to' : 'created for'} ${property.name}`,
+            meta:     { tenantId: tenant._id }
+        });
         res.status(201).json({
             message: isReturning
                 ? 'Tenant added to your property. Notification email sent 📧'
@@ -1388,6 +1519,8 @@ app.put('/assign-house/:tenantId/:houseId', authMiddleware, landlordOnly, async 
         if (house.status === 'occupied') {
             return res.status(400).json({ message: 'This house is already occupied ❌' });
         }
+
+        const wasReactivation = tenant.status === 'moved_out';
 
         if (tenant.status === 'active') {
             if (String(tenant.property) !== String(house.property)) {
@@ -1460,6 +1593,13 @@ app.put('/assign-house/:tenantId/:houseId', authMiddleware, landlordOnly, async 
         await tenant.save();
         await house.save();
 
+        logActivity({
+            landlord: req.user.id, property: house.property,
+            action:   wasReactivation ? 'tenant.reactivated' : 'tenant.assigned',
+            message:  `${tenant.name} assigned to ${house.name}`,
+            meta:     { tenantId: tenant._id, houseId: house._id }
+        });
+
         // FIX Bug 12: only update membership for fresh (non-reactivated) active assignments
         // Reactivation path already handled the membership update above
         if (tenant.status === 'active' && !tenant.isNew) {
@@ -1528,6 +1668,13 @@ app.put('/move-out/:tenantId', authMiddleware, landlordOnly, async (req, res) =>
 
         res.json({ message: 'Tenant moved out successfully 🏠➡️🚪', tenant, house });
 
+        logActivity({
+            landlord: req.user.id, property: tenant.property,
+            action:   'tenant.moved_out',
+            message:  `${tenant.name} moved out of ${house.name}`,
+            meta:     { tenantId: tenant._id, houseId: house._id }
+        });
+
     } catch (err) {
         console.error('Move-out error:', err.message);
         res.status(500).json({ message: err.message });
@@ -1562,6 +1709,13 @@ app.delete('/tenant/:id', authMiddleware, landlordOnly, async (req, res) => {
         );
 
         await tenant.deleteOne();
+
+         logActivity({
+            landlord: req.user.id, property: tenant.property,
+            action:   'tenant.deleted',
+            message:  `${tenant.name} was permanently deleted`,
+            meta:     { tenantId: tenant._id }
+        });
 
         res.json({ message: 'Tenant removed ✅' });
 
@@ -1657,7 +1811,7 @@ app.get('/tenant/:id', authMiddleware, async (req, res) => {
 // HOUSES
 // ═══════════════════════════════════════
 
-app.post('/houses', authMiddleware, landlordOnly, checkAccountStatus, async (req, res) => {
+app.post('/houses', authMiddleware, landlordOnly, checkAccountStatus, checkPropertySuspension, async (req, res) => {
     try {
         const propertyId = req.body.propertyId || null;
         const name       = sanitize(req.body.name || '');
@@ -1865,6 +2019,13 @@ app.post('/payments', authMiddleware, landlordOnly, checkAccountStatus, async (r
             paymentId: payment._id,
             pdfBuffer: pdfData
         }).catch(err => console.error('Receipt email failed:', err.message));
+
+        logActivity({
+            landlord: req.user.id, property: tenant.property,
+            action:   'payment.recorded',
+            message:  `${tenant.name} paid Ksh ${Number(amount).toLocaleString()} for ${month}`,
+            meta:     { paymentId: payment._id, amount, method, status: newStatus }
+        });
 
         res.json({
             message:   `Payment recorded — ${newStatus.toUpperCase()} 📄`,
@@ -2094,6 +2255,158 @@ app.get('/arrears/:month', authMiddleware, landlordOnly, async (req, res) => {
         res.json(result);
 
     } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ═══════════════════════════════════════
+// ACTIVITY LOG
+// ═══════════════════════════════════════
+
+app.get('/activity', authMiddleware, landlordOnly, async (req, res) => {
+    try {
+        const query = { landlord: req.user.id };
+
+        if (req.query.propertyId) {
+            const property = await Property.findOne({ _id: req.query.propertyId, landlord: req.user.id });
+            if (!property) return res.status(404).json({ message: 'Property not found' });
+            query.property = req.query.propertyId;
+        }
+        if (req.query.action) query.action = req.query.action;
+
+        const page  = Math.max(1, parseInt(req.query.page)  || 1);
+        const limit = Math.min(100, parseInt(req.query.limit) || 30);
+        const skip  = (page - 1) * limit;
+
+        const [logs, total] = await Promise.all([
+            AuditLog.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+            AuditLog.countDocuments(query)
+        ]);
+
+        res.json({ logs, total, page, pages: Math.ceil(total / limit) });
+
+    } catch (err) {
+        console.error('GET /activity error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+
+// ═══════════════════════════════════════
+// BULK ACTIONS
+// ═══════════════════════════════════════
+
+app.post('/tenants/bulk-remind', authMiddleware, landlordOnly, checkAccountStatus, async (req, res) => {
+    try {
+        const tenantIds = Array.isArray(req.body.tenantIds) ? req.body.tenantIds : [];
+        if (!tenantIds.length) return res.status(400).json({ message: 'tenantIds array is required' });
+
+        const tenants = await Tenant.find({
+            _id:      { $in: tenantIds },
+            landlord: req.user.id,
+            status:   'active'
+        }).populate('house');
+
+        if (!tenants.length) return res.status(404).json({ message: 'No matching active tenants found' });
+
+        const month = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+        let sent = 0, skipped = 0;
+
+        for (const tenant of tenants) {
+            if (!tenant.house) { skipped++; continue; }
+
+            const summary = await getMonthSummary(tenant._id, month, tenant.house.rent);
+            if (summary.balance <= 0) { skipped++; continue; }
+
+            sendRentReminder({
+                name:    tenant.name,
+                email:   tenant.email,
+                house:   tenant.house.name,
+                rent:    tenant.house.rent,
+                month,
+                dueDate: tenant.dueDate,
+                arrears: summary.balance
+            }).catch(err => console.error(`Bulk reminder failed for ${tenant.name}:`, err.message));
+
+            sent++;
+        }
+
+        logActivity({
+            landlord: req.user.id,
+            action:   'tenants.bulk_reminded',
+            message:  `Sent ${sent} rent reminder${sent === 1 ? '' : 's'} manually`,
+            meta:     { sent, skipped, tenantIds }
+        });
+
+        res.json({
+            message: `Reminders sent to ${sent} tenant(s)${skipped ? `, ${skipped} skipped (no balance or no house)` : ''} ✅`,
+            sent, skipped
+        });
+
+    } catch (err) {
+        console.error('bulk-remind error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/arrears/export', authMiddleware, landlordOnly, async (req, res) => {
+    try {
+        const month = sanitize(req.query.month || '') || new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+        const query = { landlord: req.user.id, status: 'active' };
+
+        if (req.query.propertyId) {
+            const property = await Property.findOne({ _id: req.query.propertyId, landlord: req.user.id });
+            if (!property) return res.status(404).json({ message: 'Property not found' });
+            query.property = req.query.propertyId;
+        }
+
+        const tenants   = await Tenant.find(query).populate('house').populate('property', 'name');
+        const tenantIds = tenants.filter(t => t.house).map(t => t._id);
+
+        const payments = await Payment.find({
+            tenant: { $in: tenantIds },
+            month,
+            status: { $in: ['paid', 'partial'] }
+        }).select('tenant amount');
+
+        const paidMap = {};
+        for (const p of payments) {
+            const key = String(p.tenant);
+            paidMap[key] = (paidMap[key] || 0) + p.amount;
+        }
+
+        const rows = [['Tenant', 'Email', 'Phone', 'Property', 'House', 'Rent', 'Paid', 'Balance', 'Status', 'Month']];
+
+        for (const tenant of tenants) {
+            if (!tenant.house) continue;
+            const rent      = tenant.house.rent;
+            const totalPaid = paidMap[String(tenant._id)] || 0;
+            const balance   = Math.max(0, rent - totalPaid);
+            if (balance <= 0) continue;
+
+            rows.push([
+                tenant.name, tenant.email, tenant.phone || '',
+                tenant.property?.name || '', tenant.house.name,
+                rent, totalPaid, balance,
+                totalPaid > 0 ? 'partial' : 'unpaid', month
+            ]);
+        }
+
+        // RFC 4180-safe CSV escaping
+        const csv = rows.map(row =>
+            row.map(cell => {
+                const str = String(cell ?? '');
+                return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+            }).join(',')
+        ).join('\r\n');
+
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="arrears-${month.replace(/\s+/g, '-')}.csv"`);
+        res.send(csv);
+
+    } catch (err) {
+        console.error('arrears export error:', err.message);
         res.status(500).json({ error: err.message });
     }
 });
@@ -2538,19 +2851,35 @@ app.get('/commission-rate', authMiddleware, landlordOnly, async (req, res) => {
         const hasUnseenUpdate = !user.lastSeenCommissionUpdatedAt
             || new Date(user.lastSeenCommissionUpdatedAt) < new Date(settings.updatedAt);
 
+        // ── Only the most recently CLOSED month can ever be "due" —
+        //    the current, still-running month is never included here. ──
+        const dueMonth = getMonthLabel(-1);
+        const properties = await Property.find({ landlord: req.user.id }).select('_id');
+
+        let totalDue = 0;
+        for (const prop of properties) {
+            const { amountDue } = await computeCommissionForProperty(prop._id, dueMonth);
+            if (amountDue <= 0) continue;
+            const paid = await CommissionPayment.findOne({ property: prop._id, month: dueMonth, status: 'paid' });
+            if (!paid) totalDue += amountDue;
+        }
+
         res.json({
             commissionPercentage: settings.commissionPercentage,
             updatedAt:             settings.updatedAt,
+            dueMonth,
+            totalDue,
             notice: hasUnseenUpdate
                 ? { message: `📢 Platform commission rate is now ${settings.commissionPercentage}%, effective ${new Date(settings.updatedAt).toDateString()}.` }
-                : null
+                : (totalDue > 0
+                    ? { message: `⚠️ Ksh ${totalDue.toLocaleString()} commission is due for ${dueMonth}.` }
+                    : null)
         });
 
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
-
 // ── Landlord: dismiss the "rate changed" banner ──
 app.put('/landlord/commission-notice/ack', authMiddleware, landlordOnly, async (req, res) => {
     try {
@@ -2708,6 +3037,7 @@ app.post('/commission-callback/:secret', async (req, res) => {
             commissionPayment.mpesaCode = mpesaCode;
             commissionPayment.paidAt    = new Date();
             await commissionPayment.save();
+            await maybeAutoUnsuspendProperty(commissionPayment.property._id);
 
             console.log(`✅ Commission confirmed: ${mpesaCode} | ${commissionPayment.property?.name} | ${commissionPayment.month}`);
 
@@ -2716,6 +3046,14 @@ app.post('/commission-callback/:secret', async (req, res) => {
             await commissionPayment.save();
             console.log(`❌ Commission payment failed — ResultCode: ${resultCode}`);
         }
+
+        logActivity({
+                landlord: commissionPayment.landlord._id,
+                property: commissionPayment.property._id,
+                action:   'commission.paid',
+                message:  `Commission of Ksh ${Number(commissionPayment.amountDue).toLocaleString()} paid for ${commissionPayment.property.name} (${commissionPayment.month})`,
+                meta:     { commissionPaymentId: commissionPayment._id, mpesaCode }
+            });
 
     } catch (err) {
         console.error('Commission callback error:', err.message);
@@ -3207,7 +3545,9 @@ app.put('/stacklord/platform-maintenance', stacklordAuth, async (req, res) => {
 // ── Stacklord: total commission currently owed, grouped by landlord ──
 app.get('/stacklord/commission/outstanding', stacklordAuth, async (req, res) => {
     try {
-        const month = req.query.month || new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+        // "Outstanding" implies a closed month — default to the previous
+        // one, not whatever's still in progress right now.
+        const month = req.query.month || getMonthLabel(-1);
 
         const properties     = await Property.find({}).select('name landlord').lean();
         const owedByLandlord = {};
@@ -3285,6 +3625,7 @@ app.post('/stacklord/commissions/mark-paid', stacklordAuth, async (req, res) => 
             },
             { upsert: true, new: true }
         );
+        await maybeAutoUnsuspendProperty(propertyId);
 
         res.json({ message: 'Commission marked as paid ✅', record });
 
@@ -3639,9 +3980,10 @@ app.get('/public/listings', async (req, res) => {
         // ── Base query: opted-in AND approved properties only ──
         // isActive is intentionally excluded — it controls the landlord's
         // internal property context switcher, not public visibility.
-        const propertyQuery = {
-            isListed:   true,
-            isApproved: true
+            const propertyQuery = {
+            isListed:    true,
+            isApproved:  true,
+            isSuspended: { $ne: true }
         };
 
         if (location && location.trim()) {
@@ -3742,6 +4084,12 @@ app.put('/properties/:id/listing', authMiddleware, landlordOnly, async (req, res
     try {
         const property = await Property.findOne({ _id: req.params.id, landlord: req.user.id });
         if (!property) return res.status(404).json({ message: 'Property not found' });
+
+        if (property.isSuspended && req.body.isListed === true) {
+            return res.status(403).json({
+                message: `${property.name} is suspended — settle the outstanding commission before making it publicly visible again.`
+            });
+        }
 
                 if (typeof req.body.isListed === 'boolean') {
             property.isListed = req.body.isListed;
@@ -4139,6 +4487,118 @@ app.delete('/inquiries/:id', authMiddleware, landlordOnly, async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+// ═══════════════════════════════════════
+// CRON — COMMISSION DUE REMINDERS (1st of each month, 9 AM)
+// ═══════════════════════════════════════
+//
+// Runs once the previous month has fully closed. Anything still unpaid
+// for that month gets one email + one activity log entry per property.
+// Nothing here suspends or restricts the account — it's a notice only,
+// matching the platform's current "free forever, commission-based" model.
+
+async function checkCommissionDue() {
+    const previousMonth = getMonthLabel(-1);
+    console.log(`🕘 Checking unpaid commission for ${previousMonth}...`);
+
+    try {
+        const properties = await Property.find({})
+            .populate('landlord', 'name email accountStatus');
+
+        for (const prop of properties) {
+            if (!prop.landlord || prop.landlord.accountStatus !== 'active') continue;
+
+            const { amountDue } = await computeCommissionForProperty(prop._id, previousMonth);
+            if (amountDue <= 0) continue;
+
+            const alreadyPaid = await CommissionPayment.findOne({
+                property: prop._id, month: previousMonth, status: 'paid'
+            });
+            if (alreadyPaid) continue;
+
+            sendCommissionDueEmail({
+                name:     prop.landlord.name,
+                email:    prop.landlord.email,
+                property: prop.name,
+                month:    previousMonth,
+                amountDue
+            }).catch(err => console.error(`Commission due email failed for ${prop.landlord.email}:`, err.message));
+
+            logActivity({
+                landlord: prop.landlord._id,
+                property: prop._id,
+                action:   'commission.due_reminder',
+                message:  `Commission of Ksh ${Number(amountDue).toLocaleString()} due for ${prop.name} (${previousMonth})`,
+                meta:     { amountDue, month: previousMonth },
+                actor:    'system'
+            });
+        }
+
+        console.log('✅ Commission due check complete');
+    } catch (err) {
+        console.error('checkCommissionDue error:', err.message);
+    }
+}
+
+cron.schedule('0 9 1 * *', () => { checkCommissionDue(); });
+
+// ═══════════════════════════════════════
+// CRON — AUTO-SUSPEND OVERDUE PROPERTIES (daily, 9:30 AM)
+// ═══════════════════════════════════════
+//
+// Grace period: 7 days after a month closes. Skips properties whose
+// landlord is already suspended at the account level (already fully
+// blocked, nothing more to do) and properties already suspended.
+
+async function checkCommissionAutoSuspend() {
+    console.log('🕤 Checking overdue commission for auto-suspension...');
+
+    try {
+        const properties = await Property.find({ isSuspended: { $ne: true } })
+            .populate('landlord', 'name email accountStatus');
+
+        for (const prop of properties) {
+            if (!prop.landlord || prop.landlord.accountStatus === 'suspended') continue;
+
+            const overdue = await getOverdueCommissionMonths(prop._id, 7);
+            if (!overdue.length) continue;
+
+            const totalOwed  = overdue.reduce((sum, o) => sum + o.amountDue, 0);
+            const monthsList = overdue.map(o => o.month);
+
+            prop.isSuspended     = true;
+            prop.suspendedReason = `Unpaid commission for ${monthsList.join(', ')} (Ksh ${totalOwed.toLocaleString()})`;
+            prop.suspendedAt     = new Date();
+            prop.suspendedBy     = 'system';
+            await prop.save();
+
+            sendPropertySuspendedEmail({
+                name:     prop.landlord.name,
+                email:    prop.landlord.email,
+                property: prop.name,
+                months:   monthsList,
+                totalOwed
+            }).catch(err => console.error(`Suspension email failed for ${prop.landlord.email}:`, err.message));
+
+            logActivity({
+                landlord: prop.landlord._id,
+                property: prop._id,
+                action:   'property.auto_suspended',
+                message:  `${prop.name} auto-suspended — unpaid commission for ${monthsList.join(', ')} (Ksh ${totalOwed.toLocaleString()})`,
+                meta:     { overdue, totalOwed },
+                actor:    'system'
+            });
+
+            console.log(`🚫 Suspended ${prop.name} — Ksh ${totalOwed.toLocaleString()} overdue`);
+        }
+
+        console.log('✅ Auto-suspend check complete');
+    } catch (err) {
+        console.error('checkCommissionAutoSuspend error:', err.message);
+    }
+}
+
+cron.schedule('30 9 * * *', () => { checkCommissionAutoSuspend(); });
 
 // ═══════════════════════════════════════
 // CRON — RENT REMINDERS (daily 9 AM)

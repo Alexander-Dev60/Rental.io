@@ -36,44 +36,37 @@
   ═══════════════════════════════════════════════════════ -->
   <script>
   (function earlyAuthGuard() {
-    try {
-      var token = localStorage.getItem('token');
-      if (!token) {
-        window.location.replace('auth.html');
-        window.stop();
-        return;
-      }
+  try {
+    var token = localStorage.getItem('token');
+    if (!token) { window.__AUTH_INVALID__ = true; window.location.replace('auth.html'); return; }
 
-      var base64 = token.split('.')[1];
-      if (!base64) throw new Error('Malformed token');
-      // atob needs standard base64 — JWTs use base64url, so normalize first
-      base64 = base64.replace(/-/g, '+').replace(/_/g, '/');
-      var payload = JSON.parse(atob(base64));
+    var base64 = token.split('.')[1];
+    if (!base64) throw new Error('Malformed token');
+    base64 = base64.replace(/-/g, '+').replace(/_/g, '/');
+    var payload = JSON.parse(atob(base64));
 
-      if (payload.exp && Date.now() >= payload.exp * 1000) {
-        localStorage.removeItem('token');
-        window.location.replace('auth.html');
-        window.stop();
-        return;
-      }
-
-      if (payload.role && payload.role !== 'landlord') {
-        window.location.replace(payload.role === 'tenant' ? 'tenant.html' : 'auth.html');
-        window.stop();
-        return;
-      }
-
-      if (payload.mustChangePassword) {
-        window.location.replace('change-password.html');
-        window.stop();
-        return;
-      }
-    } catch (e) {
+    if (payload.exp && Date.now() >= payload.exp * 1000) {
       localStorage.removeItem('token');
+      window.__AUTH_INVALID__ = true;
       window.location.replace('auth.html');
-      window.stop();
+      return;
     }
-  })();
+    if (payload.role && payload.role !== 'landlord') {
+      window.__AUTH_INVALID__ = true;
+      window.location.replace(payload.role === 'tenant' ? 'tenant.html' : 'auth.html');
+      return;
+    }
+    if (payload.mustChangePassword) {
+      window.__AUTH_INVALID__ = true;
+      window.location.replace('change-password.html');
+      return;
+    }
+  } catch (e) {
+    localStorage.removeItem('token');
+    window.__AUTH_INVALID__ = true;
+    window.location.replace('auth.html');
+  }
+})();
   </script>
 
   <meta charset="UTF-8">
@@ -84,16 +77,17 @@
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
   
   <style>
-  :root, [data-theme="dark"] {
-    --bg:#0a0c10; --bg2:#0f1218; --bg3:#151922;
-    --panel:#1a1f2b; --panel2:#1f2535;
-    --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.13);
-    --accent:#6ee7b7; --accent2:#3b82f6; --accent-dim:rgba(110,231,183,0.12);
-    --danger:#f87171; --warn:#fbbf24;
-    --text:#e2e8f0; --text-dim:#64748b; --text-muted:#94a3b8;
-    --sidebar-w: 260px;
-    --banner-h: 0px;
-  }
+ :root, [data-theme="dark"] {
+  --bg:#0b0f1a; --bg2:#0f131f; --bg3:#161b2a;
+  --panel:#161c2b; --panel2:#1c2233;
+  --border:rgba(228,199,122,0.08); --border2:rgba(228,199,122,0.16);
+  --accent:#e0bb64; --accent2:#c9962e; --accent-dim:rgba(224,187,100,0.10);
+  --danger:#f0a5a5; --warn:#e8a765;
+  --text:#f7f2e4; --text-dim:#8a8474; --text-muted:#a9a495;
+  --sidebar-w: 260px;
+  --sidebar-w-tablet: 208px;
+  --banner-h: 0px;
+}
   [data-theme="light"] {
     --bg:#f1f5f9; --bg2:#e8edf5; --bg3:#dde4f0;
     --panel:#ffffff; --panel2:#f8fafc;
@@ -176,6 +170,16 @@
   .expired-icon  { font-size: 3.5rem; margin-bottom: 1rem; display: block; }
   .expired-title { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.8rem; color: var(--danger); margin-bottom: 0.75rem; }
   .expired-desc  { font-size: 0.85rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 2rem; }
+
+  /* ── PLATFORM MAINTENANCE OVERLAY — higher z-index than the suspension
+       overlay, since maintenance means NOTHING on the platform works,
+       which takes priority over any per-landlord state ── */
+  .platform-maint-overlay { display: none; position: fixed; inset: 0; z-index: 450; background: rgba(0,0,0,0.92); backdrop-filter: blur(8px); align-items: center; justify-content: center; }
+  .platform-maint-overlay.show { display: flex; }
+  .platform-maint-box   { background: var(--panel); border: 1px solid rgba(224,187,100,0.3); border-radius: 16px; padding: 3rem 2.5rem; text-align: center; max-width: 440px; width: 92vw; box-shadow: 0 0 60px rgba(224,187,100,0.15); }
+  .platform-maint-icon  { font-size: 3.5rem; margin-bottom: 1rem; display: block; }
+  .platform-maint-title { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.8rem; color: var(--warn); margin-bottom: 0.75rem; }
+  .platform-maint-desc  { font-size: 0.85rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 1.75rem; }
 
   /* ── SIDEBAR ── */
   .sidebar { width: var(--sidebar-w); flex-shrink: 0; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; height: 100dvh; position: fixed; left: 0; top: 0; z-index: 300; transition: transform 0.3s ease; overflow: hidden; }
@@ -391,7 +395,7 @@
   .notif-empty { padding: 1.5rem; text-align: center; color: var(--text-dim); font-size: 0.8rem; }
 
   /* ── MAIN ── */
-  .main { margin-left: var(--sidebar-w); flex: 1; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; padding-top: var(--banner-h); transition: padding-top 0.3s ease, margin-left 0.3s ease; }
+    .main { margin-left: var(--sidebar-w); flex: 1; min-width: 0; height: 100vh; overflow-x: hidden; overflow-y: auto; display: flex; flex-direction: column; padding-top: var(--banner-h); transition: padding-top 0.3s ease, margin-left 0.3s ease; }
 
   .section { display: none; padding: 1.5rem; animation: fadeSection 0.2s ease both; }
   .section.active { display: block; }
@@ -435,8 +439,9 @@
   .stat-value { font-family: 'Instrument Serif', serif; font-size: 2rem; color: var(--accent); line-height: 1; }
   .stat-sub   { font-size: 0.7rem; color: var(--text-dim); margin-top: 0.25rem; }
 
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
-  .grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.25rem; }
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem; }
+  .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; }
+
 
   input, textarea, select { width: 100%; background: var(--bg3); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font-family: 'Space Grotesk', sans-serif; font-size: 0.83rem; padding: 0.6rem 0.85rem; margin-bottom: 0.6rem; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
   input:focus, textarea:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
@@ -668,7 +673,19 @@
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 
-  @media (max-width: 900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+  @media (max-width: 480px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+    @media (max-width: 1180px) and (min-width: 769px) {
+    :root { --sidebar-w: var(--sidebar-w-tablet); }
+    .nav-item { padding: 0.55rem 0.9rem; font-size: 0.78rem; }
+    .nav-section { padding: 0.5rem 0.9rem 0.25rem; }
+    .sidebar-header, .sidebar-footer { padding-left: 0.9rem; padding-right: 0.9rem; }
+    .topbar-property-row { padding-left: 1rem; padding-right: 1rem; }
+    .topbar-main-row { padding-left: 1rem; padding-right: 1rem; }
+    .section { padding: 1.15rem; }
+    .msg-layout { grid-template-columns: 240px 1fr; }
+  }
+
+
   @media (max-width: 768px) {
     :root { --sidebar-w: 0px; }
     .sidebar { transform: translateX(-260px); width: 260px; }
@@ -717,6 +734,22 @@
     <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--text-dim)">Contact support@affordablerentals.site for help</div>
   </div>
 </div>
+
+<!-- ═══ PLATFORM-WIDE MAINTENANCE OVERLAY ═══
+     Distinct from #expiredOverlay (per-landlord suspension). This is the
+     stacklord's global kill switch — mirrors the same screen shown to
+     tenants in tenant.js's showMaintenanceScreen(), so the message is
+     consistent no matter which side of the platform someone is on. -->
+<div class="platform-maint-overlay" id="platformMaintenanceOverlay">
+  <div class="platform-maint-box">
+    <span class="platform-maint-icon">🔧</span>
+    <div class="platform-maint-title">Under Maintenance</div>
+    <div class="platform-maint-desc" id="platformMaintenanceDesc">Affordable Rentals is temporarily down for maintenance. Please check back shortly.</div>
+    <button class="btn btn-primary btn-full" onclick="window.location.reload()" style="margin-bottom:0.6rem">↻ Check Again</button>
+    <button class="btn btn-secondary btn-full" onclick="logout()">⏻ Sign Out</button>
+  </div>
+</div>
+
 <!-- ═══ MOBILE SIDEBAR OVERLAY ═══ -->
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
@@ -771,6 +804,9 @@
     <div class="nav-item" onclick="showSection('announcements')"><span class="icon">📢</span> Announcements</div>
     <div class="nav-item" onclick="showSection('rules')">        <span class="icon">📜</span> Rules   </div>
 
+        <div class="nav-section">Activity</div>
+    <div class="nav-item" onclick="showSection('activity')"><span class="icon">🕒</span> Activity Log</div>
+
     <div class="nav-section">Listings</div>
     <div class="nav-item" onclick="showSection('inquiries')">
       <span class="icon">📩</span> Inquiries
@@ -795,7 +831,14 @@
         <input type="checkbox" id="maintenanceToggle" onchange="toggleMaintenance()">
         <span class="slider"></span>
       </label>
+
     </div>
+        <div class="maintenance-row" id="sessionStatusRow" style="cursor:default">
+      <span class="maintenance-label">⏱ Session</span>
+      <span id="sessionCountdown" style="font-family:'JetBrains Mono',monospace;font-size:0.68rem;color:var(--text-dim)">—</span>
+    </div>
+
+    
 
     <div class="theme-switcher">
       <span class="theme-label">Theme</span>
@@ -926,8 +969,16 @@
           <button class="tenant-tab active" id="tab-active"    onclick="switchTenantTab('active')">👥 Active</button>
           <button class="tenant-tab"        id="tab-moved-out" onclick="switchTenantTab('moved_out')">🚪 Moved Out</button>
         </div>
-        <div id="panel-active-tenants">
+                <div id="panel-active-tenants">
           <input type="text" id="tenantSearch" placeholder="Search by name..." oninput="filterTenants()" style="margin-bottom:0.75rem">
+          <div class="flex-between" style="margin-bottom:0.65rem;padding:0.5rem 0.65rem;background:var(--bg3);border:1px solid var(--border);border-radius:7px">
+            <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.75rem;color:var(--text-muted);cursor:pointer;user-select:none">
+              <input type="checkbox" id="selectAllTenants" onchange="toggleSelectAllTenants()" style="width:auto;margin:0">
+              Select all
+              <span id="tenantSelectedCount" style="font-family:'JetBrains Mono',monospace;color:var(--text-dim)"></span>
+            </label>
+            <button class="btn btn-warn btn-sm" id="bulkRemindBtn" onclick="bulkRemindSelected()" disabled>🔔 Send Reminder</button>
+          </div>
           <div class="tenant-list" id="tenantList">
             <div class="empty-state"><span class="icon">👥</span>Click Active to load tenants</div>
           </div>
@@ -955,9 +1006,10 @@
   <div class="section" id="sec-arrears">
     <div class="section-header">
       <div class="section-title">Tenants in Arrears</div>
-      <div class="flex">
+           <div class="flex">
         <input type="text" id="arrearsMonth" placeholder="Month (optional)" style="width:160px;margin:0">
         <button class="btn btn-primary btn-sm" onclick="loadArrears()">Load</button>
+        <button class="btn btn-secondary btn-sm" onclick="exportArrearsCsv()">⬇ Export CSV</button>
       </div>
     </div>
     <div class="card">
@@ -1209,6 +1261,43 @@
         <span id="inquiryPageInfo" style="font-family:'JetBrains Mono',monospace;font-size:0.62rem;color:var(--text-dim);flex:1"></span>
         <button class="btn btn-secondary btn-sm" id="inqPrevBtn" onclick="inquiryPage(-1)">← Prev</button>
         <button class="btn btn-secondary btn-sm" id="inqNextBtn" onclick="inquiryPage(1)">Next →</button>
+      </div>
+    </div>
+  </div>
+
+    <!-- ─── ACTIVITY LOG ─── -->
+  <div class="section" id="sec-activity">
+    <div class="section-header">
+      <div class="section-title">Activity Log</div>
+      <div class="flex">
+        <select id="activityActionFilter" onchange="loadActivity()" style="width:180px;margin:0;font-size:0.72rem;padding:0.38rem 0.75rem">
+          <option value="">All Activity</option>
+          <option value="tenant.created">Tenant Created</option>
+          <option value="tenant.readded">Tenant Re-added</option>
+          <option value="tenant.assigned">House Assigned</option>
+          <option value="tenant.reactivated">Tenant Reactivated</option>
+          <option value="tenant.moved_out">Tenant Moved Out</option>
+          <option value="tenant.deleted">Tenant Deleted</option>
+          <option value="tenants.bulk_reminded">Bulk Reminders</option>
+          <option value="payment.recorded">Payment Recorded</option>
+          <option value="commission.paid">Commission Paid</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" onclick="loadActivity()">↻ Refresh</button>
+      </div>
+    </div>
+
+    <p style="font-size:0.78rem;color:var(--text-dim);margin-bottom:1.25rem;line-height:1.6;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:0.75rem 1rem">
+      A running record of tenant, payment and commission activity — scoped to the property selector in the top bar.
+    </p>
+
+    <div class="card" style="padding:0">
+      <div class="activity-feed" id="activityLogFeed" style="max-height:none;padding:0 1.25rem">
+        <div class="empty-state"><span class="icon">🕒</span>Loading…</div>
+      </div>
+      <div id="activityPagination" style="display:none;padding:0.75rem 1.25rem;border-top:1px solid var(--border);align-items:center;gap:0.5rem;flex-wrap:wrap">
+        <span id="activityPageInfo" style="font-family:'JetBrains Mono',monospace;font-size:0.62rem;color:var(--text-dim);flex:1"></span>
+        <button class="btn btn-secondary btn-sm" id="actPrevBtn" onclick="activityPage(-1)">← Prev</button>
+        <button class="btn btn-secondary btn-sm" id="actNextBtn" onclick="activityPage(1)">Next →</button>
       </div>
     </div>
   </div>
@@ -1833,6 +1922,7 @@ async function loadRecentActivity() {
 
 // ── Window load init ──
 window.addEventListener('load', () => {
+  if (window.__AUTH_INVALID__) return;
   setTimeout(loadCommissionStatus, 800);
   setTimeout(checkAccountSuspension, 800);
   setInterval(loadCommissionStatus, 5 * 60 * 1000);
@@ -1850,13 +1940,15 @@ window.addEventListener('load', () => {
   // Sliding session: idle-warning modal + silent background refresh.
   // Only initializes if a token is already present (guardLandlord in
   // script.js has already run by this point and redirected away if not).
-  SessionManager.init({
-    apiBase:        CONFIG.API_URL,
-    tokenKey:       'token',
-    loginUrl:       'auth.html',
-    idleMinutes:    20,
-    warningSeconds: 60
-  });
+ if (!window.__AUTH_INVALID__) {
+    SessionManager.init({
+      apiBase:        CONFIG.API_URL,
+      tokenKey:       'token',
+      loginUrl:       'auth.html',
+      idleMinutes:    20,
+      warningSeconds: 60
+    });
+  }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
