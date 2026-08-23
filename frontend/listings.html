@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" type="image/svg+xml" href="./public/favicon.svg">
+   <link rel="icon" type="image/png" href="./public/affordablerentalsLogo.png">
   <title>Browse Properties — Affordable Rentals</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -13,29 +13,30 @@
     /* ══════════════════════════════
        THEME TOKENS — system adaptive
     ══════════════════════════════ */
+       
     :root {
-      --bg: #0b1220;
+      --bg: #0b0f1a;
       --card: rgba(255,255,255,.08);
       --card-hover: rgba(255,255,255,.12);
-      --text: #f8fafc;
-      --muted: #94a3b8;
-      --muted2: #4a6382;
-      --primary: #60a5fa;
-      --accent: #818cf8;
+      --text: #f7f2e4;
+      --muted: #a9a495;
+      --muted2: #6e6a5c;
+      --primary: #e0bb64;
+      --accent: #b9862e;
       --success: #4ade80;
       --error: #f87171;
-      --gold: #c8a96e;
-      --gold-lt: #e8c98a;
-      --gold-dim: rgba(200,169,110,.14);
-      --border: rgba(255,255,255,.08);
-      --border2: rgba(255,255,255,.16);
+      --gold: #e0bb64;
+      --gold-lt: #f0d28a;
+      --gold-dim: rgba(224,187,100,.14);
+      --border: rgba(228,199,122,.08);
+      --border2: rgba(228,199,122,.16);
       --input-bg: rgba(0,0,0,.22);
-      --toast-bg: rgba(15,23,42,.97);
-      --overlay-a: rgba(0,0,0,.72);
-      --overlay-b: rgba(0,0,0,.28);
-      --img-filter: blur(4px) brightness(.38);
-      --topbar-bg: rgba(11,18,32,.88);
-      --modal-bg: rgba(11,18,32,.97);
+      --toast-bg: rgba(11,15,26,.97);
+      --overlay-a: rgba(11,15,26,.72);
+      --overlay-b: rgba(11,15,26,.28);
+      --img-filter: blur(4px) brightness(.38) sepia(.1);
+      --topbar-bg: rgba(11,15,26,.88);
+      --modal-bg: rgba(11,15,26,.97);
       --skeleton-a: rgba(255,255,255,.03);
       --skeleton-b: rgba(255,255,255,.07);
       --font-d: 'DM Serif Display', Georgia, serif;
@@ -44,30 +45,31 @@
       --ease: cubic-bezier(.4,0,.2,1);
       --spring: cubic-bezier(.34,1.56,.64,1);
     }
+    
     @media (prefers-color-scheme: light) {
       :root {
-        --bg: #eef2f7;
+        --bg: #f5f1e6;
         --card: rgba(255,255,255,.62);
         --card-hover: rgba(255,255,255,.82);
-        --text: #0f172a;
-        --muted: #64748b;
-        --muted2: #5b6b82;
-        --primary: #2563eb;
-        --accent: #6366f1;
+        --text: #17140c;
+        --muted: #7c745e;
+        --muted2: #8f8770;
+        --primary: #a9781f;
+        --accent: #7a5714;
         --success: #16a34a;
         --error: #dc2626;
-        --gold: #92660a;
-        --gold-lt: #b07e1e;
-        --gold-dim: rgba(146,102,10,.1);
-        --border: rgba(0,0,0,.07);
-        --border2: rgba(0,0,0,.14);
+        --gold: #a9781f;
+        --gold-lt: #c99a35;
+        --gold-dim: rgba(122,87,20,.1);
+        --border: rgba(122,87,20,.07);
+        --border2: rgba(122,87,20,.14);
         --input-bg: rgba(255,255,255,.7);
-        --toast-bg: rgba(255,255,255,.98);
-        --overlay-a: rgba(220,232,248,.6);
-        --overlay-b: rgba(220,232,248,.15);
-        --img-filter: blur(4px) brightness(.72);
-        --topbar-bg: rgba(238,242,247,.9);
-        --modal-bg: rgba(238,242,247,.98);
+        --toast-bg: rgba(255,253,247,.98);
+        --overlay-a: rgba(247,239,220,.6);
+        --overlay-b: rgba(247,239,220,.15);
+        --img-filter: blur(4px) brightness(.72) sepia(.06);
+        --topbar-bg: rgba(245,241,230,.9);
+        --modal-bg: rgba(245,241,230,.98);
         --skeleton-a: rgba(0,0,0,.04);
         --skeleton-b: rgba(0,0,0,.08);
       }
@@ -155,12 +157,13 @@
       transition: all .2s;
     }
     .btn-ghost:hover { color: var(--text); border-color: var(--primary); }
+        
     .btn-primary {
       background: linear-gradient(135deg, var(--primary), var(--accent));
-      border: none; border-radius: 8px; color: #fff;
+      border: none; border-radius: 8px; color: #191307;
       font-family: var(--font-s); font-size: .75rem; font-weight: 500;
       padding: 6px 16px; cursor: pointer; text-decoration: none;
-      box-shadow: 0 2px 16px rgba(96,165,250,.3);
+      box-shadow: 0 2px 16px rgba(224,187,100,.3);
       transition: opacity .2s, transform .15s; white-space: nowrap;
     }
     .btn-primary:hover { opacity: .9; transform: translateY(-1px); }
@@ -288,9 +291,10 @@
       transition: border-color .2s, box-shadow .2s;
     }
     .filter-input::placeholder { color: var(--muted2); font-size: .8rem; }
+       
     .filter-input:focus {
       border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(96,165,250,.12);
+      box-shadow: 0 0 0 3px rgba(224,187,100,.12);
     }
     .filter-available {
       display: flex; align-items: center; gap: 7px;
@@ -305,14 +309,15 @@
       letter-spacing: .1em; text-transform: uppercase;
       color: var(--muted2); white-space: nowrap;
     }
+        
     .filter-btn {
       background: linear-gradient(135deg, var(--primary), var(--accent));
-      border: none; border-radius: 10px; color: #fff;
+      border: none; border-radius: 10px; color: #191307;
       font-family: var(--font-s); font-size: .8rem; font-weight: 500;
       letter-spacing: .06em; padding: 10px 22px;
       cursor: pointer; align-self: end; white-space: nowrap;
       transition: opacity .2s, transform .15s;
-      box-shadow: 0 2px 16px rgba(96,165,250,.3);
+      box-shadow: 0 2px 16px rgba(224,187,100,.3);
     }
     .filter-btn:hover { opacity: .9; transform: translateY(-1px); }
     .filter-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
@@ -469,15 +474,17 @@
     .card-photo { position: relative; height: 200px; overflow: hidden; background: #050e1e; }
     .card-photo img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s var(--ease); display: block; }
     .property-card:hover .card-photo img { transform: scale(1.06); }
+        
     .card-photo-placeholder {
       width: 100%; height: 100%;
-      background: radial-gradient(ellipse at 30% 40%, rgba(20,70,160,.4) 0%, transparent 55%),
-        linear-gradient(160deg, #06102a 0%, #040c1e 100%);
+      background: radial-gradient(ellipse at 30% 40%, rgba(185,134,46,.35) 0%, transparent 55%),
+        linear-gradient(160deg, #14100a 0%, #0c0a06 100%);
       display: flex; align-items: center; justify-content: center;
     }
+        
     .card-photo-initial {
       font-family: var(--font-d); font-style: italic;
-      font-size: 5rem; color: rgba(96,165,250,.1);
+      font-size: 5rem; color: rgba(224,187,100,.1);
     }
     .gallery-dots {
       position: absolute; bottom: 9px; left: 50%; transform: translateX(-50%);
@@ -606,13 +613,15 @@
     }
     .view-modal-photo { position: relative; height: 260px; overflow: hidden; border-radius: 22px 22px 0 0; }
     .view-modal-photo img { width: 100%; height: 100%; object-fit: cover; }
+        
     .view-modal-photo-placeholder {
       width: 100%; height: 100%;
-      background: radial-gradient(ellipse at 30% 40%, rgba(20,70,160,.45) 0%, transparent 55%),
-        linear-gradient(160deg, #06102a 0%, #040c1e 100%);
+      background: radial-gradient(ellipse at 30% 40%, rgba(185,134,46,.4) 0%, transparent 55%),
+        linear-gradient(160deg, #14100a 0%, #0c0a06 100%);
       display: flex; align-items: center; justify-content: center;
     }
-    .view-modal-initial { font-family: var(--font-d); font-style: italic; font-size: 7rem; color: rgba(96,165,250,.09); }
+        
+    .view-modal-initial { font-family: var(--font-d); font-style: italic; font-size: 7rem; color: rgba(224,187,100,.09); }
     .vm-close {
       position: absolute; top: 14px; right: 14px; z-index: 5;
       background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.15);
@@ -725,17 +734,19 @@
       padding: 10px 14px; outline: none; transition: border-color .2s, box-shadow .2s;
     }
     .inq-input::placeholder { color: var(--muted2); font-size: .8rem; }
-    .inq-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(96,165,250,.12); }
+        
+    .inq-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(224,187,100,.12); }
     textarea.inq-input { resize: vertical; min-height: 85px; }
+        
     .inq-submit {
       width: 100%; margin-top: 4px;
       background: linear-gradient(135deg, var(--primary), var(--accent));
-      border: none; border-radius: 10px; color: #fff;
+      border: none; border-radius: 10px; color: #191307;
       font-family: var(--font-s); font-size: .82rem; font-weight: 500;
       letter-spacing: .08em; text-transform: uppercase;
       padding: 12px; cursor: pointer;
       transition: opacity .2s, transform .15s;
-      box-shadow: 0 4px 20px rgba(96,165,250,.35);
+      box-shadow: 0 4px 20px rgba(224,187,100,.35);
     }
     .inq-submit:hover { opacity: .9; transform: translateY(-1px); }
     .inq-submit:disabled { opacity: .4; cursor: not-allowed; transform: none; }
@@ -867,29 +878,16 @@
 
   <!-- Topbar -->
   <header class="topbar">
-    <a href="index.html" class="site-logo">
+       <a href="index.html" class="site-logo">
       <div class="site-logo-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
-          <defs>
-            <linearGradient id="lg1" x1="0%" y1="100%" x2="100%" y2="0%">
-              <stop offset="0%" stop-color="#2563eb"/>
-              <stop offset="60%" stop-color="#10b981"/>
-              <stop offset="100%" stop-color="#6ee7b7"/>
-            </linearGradient>
-            <filter id="glow1">
-              <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#10b981" flood-opacity="0.12"/>
-            </filter>
-          </defs>
-          <rect width="100%" height="100%" fill="#0a0c10" rx="24"/>
-          <g filter="url(#glow1)">
-            <path d="M250,90L410,210L375,210L250,116L125,210L90,210Z" fill="url(#lg1)"/>
-            <path d="M242,160L258,160L258,340L285,340L285,365L258,365L258,390L242,390Z" fill="url(#lg1)"/>
-            <path d="M250,140C275,140 295,160 295,185C295,210 275,230 250,230C225,230 205,210 205,185C205,160 225,140 250,140Z" fill="none" stroke="url(#lg1)" stroke-width="7"/>
-            <circle cx="250" cy="185" r="10" fill="#6ee7b7"/>
-            <rect x="145" y="260" width="20" height="20" rx="3" fill="#3b82f6" opacity="0.4"/>
-            <rect x="145" y="300" width="20" height="20" rx="3" fill="#3b82f6" opacity="0.4"/>
-            <rect x="335" y="260" width="20" height="20" rx="3" fill="#6ee7b7" opacity="0.4"/>
-            <rect x="335" y="300" width="20" height="20" rx="3" fill="#6ee7b7" opacity="0.4"/>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="4 16 96 82" width="100%" height="100%" role="img" aria-label="Affordable Rentals">
+          <g id="logo-mark">
+            <path d="M 18,62 L 18,92 L 32,92 L 32,62 Z" fill="#191307" />
+            <path d="M 24,42 L 24,28 L 32,28 L 32,36 Z" fill="#191307" />
+            <path d="M 10,60 L 52,22 L 82,48 L 74,57 L 52,38 L 22,65 Z" fill="#191307" />
+            <path d="M 14,88 C 30,88 62,72 82,38 L 72,36 L 98,22 L 96,50 L 87,42 C 70,72 40,96 14,88 Z" fill="#191307" fill-opacity="0.82" />
+            <path d="M 68,72 L 82,92 L 68,92 L 58,78 Z" fill="#191307" fill-opacity="0.82" />
+            <path d="M 52,54 A 4.5,4.5 0 1,0 52,63 L 50,71 L 54,71 L 52,63 Z" fill="#e0bb64" />
           </g>
         </svg>
       </div>
@@ -908,7 +906,7 @@
       <p class="strip-text">
         <strong>Are you a landlord?</strong>
         List your properties on Affordable Rentals — tenants browse and contact you directly.
-        <span class="strip-badge">14-day free trial</span>
+        <span class="strip-badge">Free to join</span>
       </p>
       <a href="auth.html?tab=register" class="btn-primary" style="flex-shrink:0">Get Started Free →</a>
     </div>

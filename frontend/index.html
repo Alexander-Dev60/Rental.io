@@ -11,55 +11,55 @@
   /* ══════════════════════════════════════════
      THEME TOKENS — system adaptive
   ══════════════════════════════════════════ */
-  :root {
-    --bg: #0b1220;
+    :root {
+    --bg: #0b0f1a;
     --card: rgba(255,255,255,.08);
-    --card-solid: rgba(11,18,32,.97);
-    --text: #f8fafc;
-    --muted: #94a3b8;
-    --muted2: #4a6382;
-    --primary: #60a5fa;
-    --accent: #818cf8;
+    --card-solid: rgba(11,15,26,.97);
+    --text: #f7f2e4;
+    --muted: #a9a495;
+    --muted2: #6e6a5c;
+    --primary: #e0bb64;
+    --accent: #b9862e;
     --success: #4ade80;
     --error: #f87171;
-    --gold: #c8a96e;
-    --gold-lt: #e8c98a;
-    --gold-dim: rgba(200,169,110,.14);
-    --border: rgba(255,255,255,.08);
-    --border2: rgba(255,255,255,.16);
+    --gold: #e0bb64;
+    --gold-lt: #f0d28a;
+    --gold-dim: rgba(224,187,100,.14);
+    --border: rgba(228,199,122,.08);
+    --border2: rgba(228,199,122,.16);
     --input-bg: rgba(0,0,0,.22);
-    --topbar-bg: rgba(11,18,32,.88);
-    --overlay-a: rgba(0,0,0,.72);
-    --overlay-b: rgba(0,0,0,.28);
-    --img-filter: blur(4px) brightness(.38);
+    --topbar-bg: rgba(11,15,26,.88);
+    --overlay-a: rgba(11,15,26,.72);
+    --overlay-b: rgba(11,15,26,.28);
+    --img-filter: blur(4px) brightness(.38) sepia(.1);
     --font-d: 'DM Serif Display', Georgia, serif;
     --font-s: 'DM Sans', sans-serif;
     --font-m: 'Space Mono', monospace;
     --ease: cubic-bezier(.4,0,.2,1);
     --spring: cubic-bezier(.34,1.56,.64,1);
   }
-  @media (prefers-color-scheme: light) {
+    @media (prefers-color-scheme: light) {
     :root {
-      --bg: #eef2f7;
+      --bg: #f5f1e6;
       --card: rgba(255,255,255,.62);
-      --card-solid: rgba(238,242,247,.98);
-      --text: #0f172a;
-      --muted: #64748b;
-      --muted2: #94a3b8;
-      --primary: #2563eb;
-      --accent: #6366f1;
+      --card-solid: rgba(245,241,230,.98);
+      --text: #17140c;
+      --muted: #7c745e;
+      --muted2: #8f8770;
+      --primary: #a9781f;
+      --accent: #7a5714;
       --success: #16a34a;
       --error: #dc2626;
-      --gold: #92660a;
-      --gold-lt: #b07e1e;
-      --gold-dim: rgba(146,102,10,.1);
-      --border: rgba(0,0,0,.07);
-      --border2: rgba(0,0,0,.14);
+      --gold: #a9781f;
+      --gold-lt: #c99a35;
+      --gold-dim: rgba(122,87,20,.1);
+      --border: rgba(122,87,20,.07);
+      --border2: rgba(122,87,20,.14);
       --input-bg: rgba(255,255,255,.7);
-      --topbar-bg: rgba(238,242,247,.92);
-      --overlay-a: rgba(220,232,248,.62);
-      --overlay-b: rgba(220,232,248,.18);
-      --img-filter: blur(4px) brightness(.72);
+      --topbar-bg: rgba(245,241,230,.92);
+      --overlay-a: rgba(247,239,220,.62);
+      --overlay-b: rgba(247,239,220,.18);
+      --img-filter: blur(4px) brightness(.72) sepia(.06);
     }
   }
 
@@ -108,7 +108,7 @@
   .nav-cta { display: flex; align-items: center; gap: 8px; }
   .btn-ghost { font-family: var(--font-s); font-size: .78rem; font-weight: 500; color: var(--muted); background: transparent; border: 1px solid var(--border2); padding: 7px 16px; border-radius: 8px; cursor: pointer; text-decoration: none; transition: all .2s; }
   .btn-ghost:hover { color: var(--text); border-color: var(--primary); }
-  .btn-nav-primary { font-family: var(--font-s); font-size: .78rem; font-weight: 700; color: #fff; background: linear-gradient(135deg, var(--primary), var(--accent)); border: none; padding: 7px 16px; border-radius: 8px; cursor: pointer; text-decoration: none; white-space: nowrap; box-shadow: 0 4px 16px rgba(96,165,250,.3); transition: opacity .2s, transform .15s; }
+    .btn-nav-primary { font-family: var(--font-s); font-size: .78rem; font-weight: 700; color: #191307; background: linear-gradient(135deg, var(--primary), var(--accent)); border: none; padding: 7px 16px; border-radius: 8px; cursor: pointer; text-decoration: none; white-space: nowrap; box-shadow: 0 4px 16px rgba(224,187,100,.3); transition: opacity .2s, transform .15s; }
   .btn-nav-primary:hover { opacity: .9; transform: translateY(-1px); }
 
   .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; background: none; border: none; padding: 4px; }
@@ -121,10 +121,10 @@
   .mobile-menu a.mm-tenant   { color: var(--gold); font-weight: 600; }
 
   /* SHARED BUTTONS */
-  .btn-primary { display: inline-flex; align-items: center; gap: 7px; background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; font-family: var(--font-s); font-size: .88rem; font-weight: 700; padding: 14px 28px; border-radius: 12px; border: none; cursor: pointer; text-decoration: none; box-shadow: 0 8px 30px rgba(96,165,250,.38); transition: all .2s var(--ease); position: relative; overflow: hidden; }
+    .btn-primary { display: inline-flex; align-items: center; gap: 7px; background: linear-gradient(135deg, var(--primary), var(--accent)); color: #191307; font-family: var(--font-s); font-size: .88rem; font-weight: 700; padding: 14px 28px; border-radius: 12px; border: none; cursor: pointer; text-decoration: none; box-shadow: 0 8px 30px rgba(224,187,100,.38); transition: all .2s var(--ease); position: relative; overflow: hidden; }
   .btn-primary::after { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.15), transparent); transition: left .45s ease; }
   .btn-primary:hover::after { left: 100%; }
-  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(96,165,250,.5); }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(224,187,100,.5); }
   .btn-secondary { display: inline-flex; align-items: center; gap: 7px; background: transparent; color: var(--text); font-family: var(--font-s); font-size: .88rem; font-weight: 600; padding: 14px 28px; border-radius: 12px; border: 1px solid var(--border2); cursor: pointer; text-decoration: none; transition: all .2s var(--ease); }
   .btn-secondary:hover { border-color: var(--primary); color: var(--primary); }
 
@@ -135,7 +135,7 @@
   @keyframes pulseDot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
   .hero-title { font-family: var(--font-d); font-style: italic; font-size: clamp(2.6rem,5.5vw,4.4rem); font-weight: 400; line-height: 1.08; color: var(--text); margin-bottom: 18px; animation: fadeUp .6s .2s var(--ease) both; }
   .hero-title em { color: var(--gold); font-style: italic; }
-  .hero-title .line-blue { background: linear-gradient(135deg, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-style: normal; }
+  .hero-title .line-blue { background: linear-gradient(135deg, var(--gold-lt), var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-style: normal; }
   .hero-typewriter { display: flex; align-items: center; margin-bottom: 20px; min-height: 1.4rem; animation: fadeUp .6s .3s var(--ease) both; }
   .typewriter-text { font-family: var(--font-m); font-size: .68rem; letter-spacing: .06em; color: var(--muted); white-space: nowrap; overflow: hidden; }
   .typewriter-cursor { display: inline-block; width: 2px; height: .85em; background: var(--primary); margin-left: 3px; vertical-align: middle; animation: blink 1s step-end infinite; }
@@ -148,15 +148,94 @@
   .hero-tenant-btn:hover { color: var(--gold-lt); border-color: var(--gold); }
   @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
 
-  /* CITY SKYLINE */
-  .hero-right { position: relative; z-index: 1; display: flex; align-items: flex-end; justify-content: center; height: 460px; animation: fadeUp .8s .4s var(--ease) both; }
-  #skylineCanvas { width: 100%; height: 100%; display: block; }
-  .skyline-label { position: absolute; bottom: -22px; left: 0; right: 0; text-align: center; font-family: var(--font-m); font-size: .52rem; letter-spacing: .18em; text-transform: uppercase; color: var(--muted2); opacity: .65; }
-  #skylineTooltip { position: absolute; background: var(--card); border: 1px solid var(--border2); border-radius: 10px; padding: 9px 14px; font-family: var(--font-s); font-size: .72rem; color: var(--text); line-height: 1.5; pointer-events: none; opacity: 0; transition: opacity .2s; backdrop-filter: blur(14px); white-space: nowrap; z-index: 10; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
-  #skylineTooltip.visible { opacity: 1; }
-  .tt-name { font-weight: 600; color: var(--text); }
-  .tt-loc  { color: var(--gold); font-size: .65rem; }
-  .tt-vac  { color: var(--success); font-size: .65rem; }
+    /* LIVE PROPERTY PANEL — replaces the skyline canvas */
+  .hero-right { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 16px; height: 460px; justify-content: center; animation: fadeUp .8s .4s var(--ease) both; }
+
+  .live-panel {
+    background: var(--card); border: 1px solid var(--border2); border-radius: 20px;
+    overflow: hidden; backdrop-filter: blur(24px) saturate(1.4); -webkit-backdrop-filter: blur(24px) saturate(1.4);
+    box-shadow: 0 20px 60px rgba(0,0,0,.4); position: relative;
+  }
+  .live-panel::before {
+    content: ''; position: absolute; top: 0; left: 10%; right: 10%; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--primary), transparent); opacity: .4; z-index: 2;
+  }
+  .live-panel-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 13px 16px; border-bottom: 1px solid var(--border);
+  }
+  .live-pulse {
+    display: flex; align-items: center; gap: 5px;
+    font-family: var(--font-m); font-size: .56rem; letter-spacing: .14em; text-transform: uppercase;
+    color: #4ade80; font-weight: 700;
+  }
+  .live-dot {
+    width: 6px; height: 6px; border-radius: 50%; background: #4ade80; flex-shrink: 0;
+    animation: livePulse 2.2s ease-in-out infinite;
+  }
+  @keyframes livePulse { 0%,100%{box-shadow:0 0 0 0 rgba(74,222,128,.6)} 55%{box-shadow:0 0 0 5px rgba(74,222,128,0)} }
+  .live-panel-label {
+    flex: 1; font-family: var(--font-m); font-size: .56rem; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted2);
+  }
+  .live-counter {
+    font-family: var(--font-m); font-size: .55rem; font-weight: 700;
+    background: rgba(224,187,100,.12); border: 1px solid rgba(224,187,100,.3); color: var(--primary);
+    padding: 2px 8px; border-radius: 99px;
+  }
+  .live-slide { position: relative; height: 230px; background: #050e1e; overflow: hidden; }
+  .live-photo {
+    position: absolute; inset: 0; background-size: cover; background-position: center;
+    transition: transform .7s ease;
+  }
+  .live-panel:hover .live-photo { transform: scale(1.04); }
+  .live-photo.no-photo {
+    background: radial-gradient(ellipse at 25% 30%, rgba(200,169,110,.35) 0%, transparent 55%),
+      linear-gradient(160deg, #06102a 0%, #040c1e 60%, #081018 100%);
+  }
+  .live-initial {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-54%);
+    font-family: var(--font-d); font-style: italic; font-size: 4.5rem; color: rgba(200,169,110,.09);
+    pointer-events: none; user-select: none;
+  }
+  .live-overlay {
+    position: absolute; left: 0; right: 0; bottom: 0; padding: 2.2rem 16px 14px;
+    background: linear-gradient(to top, rgba(4,16,38,.97) 0%, rgba(4,16,38,.6) 45%, transparent 100%);
+    cursor: pointer;
+  }
+  .live-location {
+    font-family: var(--font-m); font-size: .55rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--gold); opacity: .85; margin-bottom: 4px; display: flex; align-items: center; gap: 4px;
+  }
+  .live-name { font-family: var(--font-d); font-style: italic; font-size: 1.15rem; color: #fff; line-height: 1.2; margin-bottom: 8px; }
+  .live-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .live-chip {
+    font-family: var(--font-m); font-size: .54rem; letter-spacing: .05em; padding: 3px 8px; border-radius: 5px;
+    display: inline-flex; align-items: center; border: 1px solid transparent;
+  }
+  .live-chip--vacant { background: rgba(200,169,110,.18); border-color: rgba(200,169,110,.4); color: var(--gold-lt); }
+  .live-chip--full   { background: rgba(248,113,113,.12); border-color: rgba(248,113,113,.3); color: #fca5a5; }
+  .live-chip--rent   { background: rgba(200,148,102,.16); border-color: rgba(200,148,102,.32); color: #e6c39f; }
+  .live-empty {
+    position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 8px; padding: 1.5rem; text-align: center;
+    font-family: var(--font-s); font-size: .78rem; color: var(--muted2);
+  }
+  .live-dots { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 12px; }
+  .live-dots .dot {
+    width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.18);
+    cursor: pointer; border: none; padding: 0; transition: all .3s ease; flex-shrink: 0;
+  }
+  .live-dots .dot.active { width: 18px; border-radius: 3px; background: var(--primary); }
+  .live-dots .dot:hover:not(.active) { background: rgba(255,255,255,.4); }
+
+  .live-stats-strip {
+    display: flex; justify-content: center; gap: 2.2rem;
+    animation: fadeUp .5s var(--ease) both;
+  }
+  .live-stat { text-align: center; }
+  .live-stat-num { display: block; font-family: var(--font-d); font-style: italic; font-size: 1.5rem; color: var(--gold); line-height: 1; }
+  .live-stat-label { font-family: var(--font-m); font-size: .52rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted2); margin-top: 2px; }
 
   /* HERO STATS */
   .hero-stats { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: clamp(2rem,4vw,3.5rem); flex-wrap: wrap; padding: 28px 2rem 36px; max-width: 860px; margin: 0 auto; border-top: 1px solid var(--border); animation: fadeUp .6s .7s var(--ease) both; }
@@ -274,9 +353,9 @@
   .form-field { margin-bottom: 13px; }
   .form-field label { display: block; font-family: var(--font-m); font-size: .55rem; letter-spacing: .15em; text-transform: uppercase; color: var(--muted2); margin-bottom: 5px; }
   .form-field input, .form-field textarea { width: 100%; background: var(--input-bg); border: 1px solid var(--border2); border-radius: 11px; color: var(--text); font-family: var(--font-s); font-size: .86rem; padding: 11px 14px; outline: none; resize: none; transition: border-color .2s, box-shadow .2s; }
-  .form-field input:focus, .form-field textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(96,165,250,.12); }
+.form-field input:focus, .form-field textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(224,187,100,.12); }
   .form-field input::placeholder, .form-field textarea::placeholder { color: var(--muted2); font-size: .82rem; }
-  .btn-send { width: 100%; margin-top: 4px; background: linear-gradient(135deg, var(--primary), var(--accent)); border: none; border-radius: 11px; color: #fff; font-family: var(--font-s); font-size: .84rem; font-weight: 600; letter-spacing: .06em; padding: 13px; cursor: pointer; transition: opacity .2s, transform .15s; box-shadow: 0 4px 20px rgba(96,165,250,.35); position: relative; overflow: hidden; }
+  .btn-send { width: 100%; margin-top: 4px; background: linear-gradient(135deg, var(--primary), var(--accent)); border: none; border-radius: 11px; color: #191307; font-family: var(--font-s); font-size: .84rem; font-weight: 600; letter-spacing: .06em; padding: 13px; cursor: pointer; transition: opacity .2s, transform .15s; box-shadow: 0 4px 20px rgba(224,187,100,.35); position: relative; overflow: hidden; }
   .btn-send::after { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.15), transparent); transition: left .45s; }
   .btn-send:hover::after { left: 100%; }
   .btn-send:hover { opacity: .9; transform: translateY(-1px); }
@@ -357,34 +436,22 @@
 <!-- NAVBAR -->
 <nav id="navbar">
   <a href="#" class="nav-logo">
-    <div class="nav-logo-icon">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
-          <defs>
-            <linearGradient id="lg1" x1="0%" y1="100%" x2="100%" y2="0%">
-              <stop offset="0%" stop-color="#2563eb"/>
-              <stop offset="60%" stop-color="#10b981"/>
-              <stop offset="100%" stop-color="#6ee7b7"/>
-            </linearGradient>
-            <filter id="glow1">
-              <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#10b981" flood-opacity="0.12"/>
-            </filter>
-          </defs>
-          <rect width="100%" height="100%" fill="#0a0c10" rx="24"/>
-          <g filter="url(#glow1)">
-            <path d="M250,90L410,210L375,210L250,116L125,210L90,210Z" fill="url(#lg1)"/>
-            <path d="M242,160L258,160L258,340L285,340L285,365L258,365L258,390L242,390Z" fill="url(#lg1)"/>
-            <path d="M250,140C275,140 295,160 295,185C295,210 275,230 250,230C225,230 205,210 205,185C205,160 225,140 250,140Z" fill="none" stroke="url(#lg1)" stroke-width="7"/>
-            <circle cx="250" cy="185" r="10" fill="#6ee7b7"/>
-            <rect x="145" y="260" width="20" height="20" rx="3" fill="#3b82f6" opacity="0.4"/>
-            <rect x="145" y="300" width="20" height="20" rx="3" fill="#3b82f6" opacity="0.4"/>
-            <rect x="335" y="260" width="20" height="20" rx="3" fill="#6ee7b7" opacity="0.4"/>
-            <rect x="335" y="300" width="20" height="20" rx="3" fill="#6ee7b7" opacity="0.4"/>
-          </g>
-        </svg>
+       <div class="nav-logo-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="4 16 96 82" width="100%" height="100%" role="img" aria-label="Affordable Rentals">
+        <g id="logo-mark">
+          <path d="M 18,62 L 18,92 L 32,92 L 32,62 Z" fill="#191307" />
+          <path d="M 24,42 L 24,28 L 32,28 L 32,36 Z" fill="#191307" />
+          <path d="M 10,60 L 52,22 L 82,48 L 74,57 L 52,38 L 22,65 Z" fill="#191307" />
+          <path d="M 14,88 C 30,88 62,72 82,38 L 72,36 L 98,22 L 96,50 L 87,42 C 70,72 40,96 14,88 Z" fill="#191307" fill-opacity="0.82" />
+          <path d="M 68,72 L 82,92 L 68,92 L 58,78 Z" fill="#191307" fill-opacity="0.82" />
+          <path d="M 52,54 A 4.5,4.5 0 1,0 52,63 L 50,71 L 54,71 L 52,63 Z" fill="#e0bb64" />
+        </g>
+      </svg>
     </div>
     <span class="nav-logo-name">Affordable Rentals</span>
   </a>
   <ul class="nav-links">
+    
     <li><a href="listings.html" class="nav-hi">Browse Properties</a></li>
     <li><a href="#features">Features</a></li>
     <li><a href="#how">How it Works</a></li>
@@ -414,7 +481,7 @@
 <section id="home" style="position:relative;z-index:1;">
   <div class="hero">
     <div class="hero-left">
-      <div class="hero-eyebrow"><span class="hero-eyebrow-dot"></span>14-Day Free Trial · No Credit Card Required</div>
+            <div class="hero-eyebrow"><span class="hero-eyebrow-dot"></span>Free to Join · Commission Only on Rent Collected</div>
       <h1 class="hero-title">Manage your<br>rentals <em>smarter,</em><br><span class="line-blue">collect faster.</span></h1>
       <div class="hero-typewriter">
         <span class="typewriter-text" id="typewriterEl"></span>
@@ -422,7 +489,7 @@
       </div>
       <p class="hero-sub">The all-in-one rental platform for Kenyan landlords. Collect rent via M-Pesa, manage tenants, automate receipts, and list your properties for free.</p>
       <div class="hero-btns">
-        <a href="auth.html?tab=register" class="btn-primary">🚀 Start Free — 14 Days</a>
+        <a href="auth.html?tab=register" class="btn-primary">🚀 Get Started Free</a>
         <a href="listings.html"           class="btn-secondary">Browse Properties ↓</a>
       </div>
       <div class="hero-tenant-link">
@@ -430,14 +497,41 @@
         <a href="auth.html" class="hero-tenant-btn">Sign in to your dashboard →</a>
       </div>
     </div>
-    <div class="hero-right">
-      <canvas id="skylineCanvas"></canvas>
-      <div class="skyline-label">Live property availability across Kenya</div>
-      <div id="skylineTooltip"></div>
+        <div class="hero-right">
+      <div class="live-panel" id="livePanel">
+        <div class="live-panel-header">
+          <span class="live-pulse"><span class="live-dot"></span>Live</span>
+          <span class="live-panel-label">Available Properties</span>
+          <span class="live-counter" id="liveCounter" style="display:none"></span>
+        </div>
+        <div class="live-slide" id="liveSlide">
+          <div class="live-photo no-photo" id="livePhoto">
+            <span class="live-initial" id="liveInitial"></span>
+          </div>
+          <div class="live-overlay" id="liveOverlay" style="display:none" onclick="goToLiveListing()">
+            <div class="live-location">📍 <span id="liveLocationText"></span></div>
+            <div class="live-name" id="liveName"></div>
+            <div class="live-chips">
+              <span class="live-chip live-chip--vacant" id="liveVacant" style="display:none"></span>
+              <span class="live-chip live-chip--rent"   id="liveRent"   style="display:none"></span>
+            </div>
+          </div>
+          <div class="live-empty" id="liveEmpty" style="display:none">
+            <span style="font-size:1.6rem">🏡</span>
+            <span>No live listings yet — check back soon</span>
+          </div>
+        </div>
+        <div class="live-dots" id="liveDots"></div>
+      </div>
+      <div class="live-stats-strip" id="liveStatsStrip" style="display:none">
+        <div class="live-stat"><span class="live-stat-num" id="liveStatListings">0</span><span class="live-stat-label">Properties</span></div>
+        <div class="live-stat"><span class="live-stat-num" id="liveStatUnits">0</span><span class="live-stat-label">Available</span></div>
+        <div class="live-stat"><span class="live-stat-num" id="liveStatLocations">0</span><span class="live-stat-label">Locations</span></div>
+      </div>
     </div>
   </div>
   <div class="hero-stats">
-    <div class="hero-stat"><div class="hero-stat-value">14</div><div class="hero-stat-label">Day Free Trial</div></div>
+        <div class="hero-stat"><div class="hero-stat-value">KES 0</div><div class="hero-stat-label">To Join</div></div>
     <div class="hero-stat"><div class="hero-stat-value">M-PESA</div><div class="hero-stat-label">Daraja Integrated</div></div>
     <div class="hero-stat"><div class="hero-stat-value">AES-256</div><div class="hero-stat-label">Encrypted Credentials</div></div>
     <div class="hero-stat"><div class="hero-stat-value">KES 0</div><div class="hero-stat-label">To Get Started</div></div>
@@ -485,23 +579,23 @@
   <div class="container">
     <div class="trial-grid">
       <div class="reveal reveal-delay-1">
-        <div class="trial-badge"><span class="trial-badge-dot"></span>Free Trial</div>
-        <h2 class="trial-title">Try it free.<br><em>No risk.</em></h2>
-        <p class="trial-sub">Every landlord account starts with a full 14-day trial. Zero commitment, zero credit card — just complete access from the moment you sign up.</p>
+        <div class="trial-badge"><span class="trial-badge-dot"></span>How Pricing Works</div>
+        <h2 class="trial-title">Free to join.<br><em>Pay only when you get paid.</em></h2>
+        <p class="trial-sub">There's no subscription and no upfront cost. Add properties and tenants for free — a small commission is deducted only from rent you've actually collected each month.</p>
         <div class="trial-checks">
-          <div class="trial-check"><div class="trial-check-icon">✓</div><span>Full access to all features for 14 days</span></div>
-          <div class="trial-check"><div class="trial-check-icon">✓</div><span>Unlimited properties and tenant accounts during trial</span></div>
+          <div class="trial-check"><div class="trial-check-icon">✓</div><span>No signup fee, no monthly fee, ever</span></div>
+          <div class="trial-check"><div class="trial-check-icon">✓</div><span>Unlimited properties and tenant accounts</span></div>
           <div class="trial-check"><div class="trial-check-icon">✓</div><span>M-Pesa rent collection active immediately</span></div>
-          <div class="trial-check"><div class="trial-check-icon">✓</div><span>Automated email receipts and cron reminders</span></div>
-          <div class="trial-check"><div class="trial-check-icon">✓</div><span>No credit card required to start</span></div>
-          <div class="trial-check"><div class="trial-check-icon">✓</div><span>Tenants never pay a subscription fee</span></div>
+          <div class="trial-check"><div class="trial-check-icon">✓</div><span>Automated email receipts and rent reminders</span></div>
+          <div class="trial-check"><div class="trial-check-icon">✓</div><span>Commission is calculated only on rent actually collected</span></div>
+          <div class="trial-check"><div class="trial-check-icon">✓</div><span>Tenants never pay a platform fee — ever</span></div>
         </div>
-        <a href="auth.html?tab=register" class="btn-primary" style="display:inline-flex">🚀 Start Free Trial</a>
+        <a href="auth.html?tab=register" class="btn-primary" style="display:inline-flex">🚀 Get Started Free</a>
       </div>
       <div class="trial-card reveal reveal-delay-2">
-        <div class="trial-card-label">Your trial includes</div>
-        <div class="trial-free-tag">14 Days</div>
-        <div class="trial-days-note">100% FREE · NO CREDIT CARD · FULL ACCESS</div>
+        <div class="trial-card-label">Included from day one</div>
+        <div class="trial-free-tag">KES 0</div>
+        <div class="trial-days-note">NO SIGNUP FEE · NO MONTHLY FEE · FULL ACCESS</div>
         <ul class="trial-card-features">
           <li><span class="feat-dot"></span>Public property listings page</li>
           <li><span class="feat-dot"></span>M-Pesa STK Push rent collection</li>
@@ -513,7 +607,7 @@
           <li><span class="feat-dot"></span>Automated rent reminders (cron)</li>
         </ul>
         <a href="auth.html?tab=register" class="btn-trial">Get Started Free →</a>
-        <p class="trial-after-note">After your trial, a monthly subscription via M-Pesa keeps your account active. Cancel anytime.</p>
+        <p class="trial-after-note">A small commission is deducted automatically from rent collected each month — never a flat fee, never charged on rent you haven't received.</p>
       </div>
     </div>
   </div>
@@ -627,8 +721,7 @@
       <p class="section-sub">Everything landlords and tenants need to know before getting started.</p>
     </div>
     <div class="faq-list">
-      <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">Is there a free trial? How does the subscription work?<span class="faq-icon">+</span></div><div class="faq-a">Yes — every landlord account comes with a full 14-day free trial. No credit card required and all features are unlocked from day one. After the trial, a monthly subscription via M-Pesa keeps your account active. Tenants never pay a subscription fee.</div></div>
-      <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">How do I get started as a landlord?<span class="faq-icon">+</span></div><div class="faq-a">Click "For Landlords" in the nav or "Start Free Trial" on this page. Fill in your name, email, and a secure password. Your account is created instantly and your 14-day free trial begins immediately.</div></div>
+      <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">Is Affordable Rentals really free? How does pricing work?<span class="faq-icon">+</span></div><div class="faq-a">There's no signup fee and no monthly subscription — ever. Instead, a small commission is deducted automatically only from rent your tenants have actually paid that month. If nothing was collected, nothing is owed. Tenants never pay a platform fee.</div></div>
       <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">How do tenants get access to Affordable Rentals?<span class="faq-icon">+</span></div><div class="faq-a">Tenants do not self-register. As the landlord, you create each tenant's account from your dashboard. The tenant automatically receives a welcome email with a temporary password and is prompted to set their own on first login.</div></div>
       <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">How does a tenant pay rent?<span class="faq-icon">+</span></div><div class="faq-a">From the tenant dashboard, click "Pay Rent", enter the amount and month, then confirm. An STK Push notification is sent to the tenant's phone. They enter their M-Pesa PIN and the payment is confirmed. A PDF receipt is emailed automatically within seconds.</div></div>
       <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">What happens if an M-Pesa payment fails?<span class="faq-icon">+</span></div><div class="faq-a">If a payment fails, it appears as "Failed" in the payment history and no funds are deducted. The tenant can attempt the payment again immediately. Common causes include wrong PIN, insufficient balance, or a timeout — all safe to retry.</div></div>
@@ -669,13 +762,13 @@
 <section id="cta" style="position:relative;z-index:1;padding:5rem 2rem;">
   <div class="container">
     <div class="cta-box reveal">
-      <h2 class="cta-title">Start your<br><em>free trial.</em></h2>
-      <p class="cta-sub">14 days completely free. No credit card required. Full access from the moment you register.</p>
+      <h2 class="cta-title">Get started,<br><em>free.</em></h2>
+      <p class="cta-sub">No signup fee. No monthly cost. Register your property and start collecting rent via M-Pesa today.</p>
       <div class="cta-btns">
-        <a href="auth.html?tab=register" class="btn-primary">🚀 Start Free — 14 Days</a>
+        <a href="auth.html?tab=register" class="btn-primary">🚀 Get Started Free</a>
         <a href="listings.html"           class="btn-secondary">Browse Properties →</a>
       </div>
-      <p class="cta-note">Tenants never pay a subscription · M-Pesa payments only · Cancel anytime</p>
+      <p class="cta-note">Tenants never pay a platform fee · M-Pesa payments only · Commission only on rent collected</p>
     </div>
   </div>
 </section>
@@ -685,8 +778,19 @@
   <div class="footer-wrap">
     <div class="footer-top">
       <div class="footer-brand">
-        <a href="#" class="nav-logo" style="display:inline-flex;margin-bottom:6px">
-          <div class="nav-logo-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500"><defs><linearGradient id="lgf" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#2563eb"/><stop offset="60%" stop-color="#10b981"/><stop offset="100%" stop-color="#6ee7b7"/></linearGradient></defs><rect width="100%" height="100%" fill="transparent" rx="24"/><path d="M250,90L410,210L375,210L250,116L125,210L90,210Z" fill="url(#lgf)"/><path d="M242,160L258,160L258,340L285,340L285,365L258,365L258,390L242,390Z" fill="url(#lgf)"/><circle cx="250" cy="185" r="10" fill="#6ee7b7"/></svg></div>
+               <a href="#" class="nav-logo" style="display:inline-flex;margin-bottom:6px">
+          <div class="nav-logo-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="4 16 96 82" width="100%" height="100%" role="img" aria-label="Affordable Rentals">
+              <g id="logo-mark">
+                <path d="M 18,62 L 18,92 L 32,92 L 32,62 Z" fill="#191307" />
+                <path d="M 24,42 L 24,28 L 32,28 L 32,36 Z" fill="#191307" />
+                <path d="M 10,60 L 52,22 L 82,48 L 74,57 L 52,38 L 22,65 Z" fill="#191307" />
+                <path d="M 14,88 C 30,88 62,72 82,38 L 72,36 L 98,22 L 96,50 L 87,42 C 70,72 40,96 14,88 Z" fill="#191307" fill-opacity="0.82" />
+                <path d="M 68,72 L 82,92 L 68,92 L 58,78 Z" fill="#191307" fill-opacity="0.82" />
+                <path d="M 52,54 A 4.5,4.5 0 1,0 52,63 L 50,71 L 54,71 L 52,63 Z" fill="#e0bb64" />
+              </g>
+            </svg>
+          </div>
           <span class="nav-logo-name">Affordable Rentals</span>
         </a>
         <p>A modern rental management platform built for Kenyan landlords and tenants. Collect rent via M-Pesa, manage properties, and communicate — all in one place.</p>
@@ -736,81 +840,128 @@
   setTimeout(step,900);
 })();
 
-// CITY SKYLINE
+
+// LIVE PROPERTY PANEL — replaces the skyline canvas
 (function(){
-  const canvas=document.getElementById('skylineCanvas');
-  const tooltip=document.getElementById('skylineTooltip');
-  const ctx=canvas.getContext('2d');
-  const API_BASE=window.API||'http://localhost:3000';
-  const TEMPLATES=[{wr:.10,floors:8,cols:3,label:'Westlands Court'},{wr:.08,floors:12,cols:2,label:'Kilimani Heights'},{wr:.13,floors:6,cols:4,label:'Thika Road Apts'},{wr:.07,floors:14,cols:2,label:'Upperhill Plaza'},{wr:.11,floors:9,cols:3,label:'Lavington Park'},{wr:.09,floors:11,cols:2,label:'Karen Villas'},{wr:.10,floors:7,cols:3,label:'Kiambu Gardens'}];
-  let buildings=[],listings=[],buildTime=0,frame=0,animDone=false;
+  const API_BASE = window.API || 'http://localhost:3000';
+  let listings = [], current = 0, timer = null, paused = false;
+  const INTERVAL = 5000;
 
-  function resize(){const rect=canvas.parentElement.getBoundingClientRect();canvas.width=rect.width||480;canvas.height=rect.height||460;layoutBuildings();if(animDone)drawFrame(1);}
-
-  function layoutBuildings(){
-    const W=canvas.width,H=canvas.height,groundY=H-32,gap=W*.025;let x=W*.03;
-    buildings=TEMPLATES.map((t,i)=>{
-      const bw=Math.floor(W*t.wr),unitH=Math.max(14,Math.floor((H*.72)/t.floors)),bh=unitH*t.floors,by=groundY-bh;
-      const winW=Math.max(4,Math.floor((bw-10)/t.cols-4)),winH=Math.max(4,unitH-6);
-      const listing=listings[i%Math.max(listings.length,1)];
-      const total=listing?listing.totalHouses||(t.floors*t.cols):t.floors*t.cols;
-      const vacant=listing?listing.vacantCount||0:Math.floor(Math.random()*total*.4);
-      const name=listing?listing.name:t.label,loc=listing?listing.location:'Kenya';
-      const occR=total>0?(total-vacant)/total:.75;
-      const windows=[];for(let f=0;f<t.floors;f++)for(let c=0;c<t.cols;c++)windows.push(Math.random()<occR);
-      const bld={x,y:by,w:bw,h:bh,floors:t.floors,cols:t.cols,unitH,winW,winH,groundY,windows,name,loc,vacant,total,baseY:groundY};
-      x+=bw+gap;return bld;
-    });
-    const overflow=x-W*.05;
-    if(overflow>0&&buildings.length){const scale=(W*.92)/(x-W*.03);let rx=W*.03;buildings=buildings.map(b=>{const nb={...b,x:rx,w:Math.floor(b.w*scale),winW:Math.max(3,Math.floor(b.winW*scale))};rx+=nb.w+gap;return nb;});}
+  function esc(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  function drawBuilding(b,progress){
-    const{x,y,w,h,floors,cols,unitH,winW,winH,windows,baseY}=b;
-    const revealedH=h*progress,clipTop=baseY-revealedH;
-    ctx.save();ctx.beginPath();ctx.rect(x-2,clipTop,w+4,revealedH+2);ctx.clip();
-    const bg=ctx.createLinearGradient(x,y,x+w,y);bg.addColorStop(0,'rgba(4,16,38,.95)');bg.addColorStop(1,'rgba(7,22,48,.9)');
-    ctx.fillStyle=bg;ctx.fillRect(x,y,w,h);
-    ctx.strokeStyle='rgba(255,255,255,.06)';ctx.lineWidth=1;ctx.strokeRect(x,y,w,h);
-    ctx.strokeStyle='rgba(96,165,250,.28)';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x+w/2,y);ctx.lineTo(x+w/2,y-8*progress);ctx.stroke();
-    if(progress>.8){ctx.fillStyle='rgba(200,169,110,.9)';ctx.beginPath();ctx.arc(x+w/2,y-8,2,0,Math.PI*2);ctx.fill();}
-    const padX=Math.max(4,(w-cols*(winW+3)+3)/2),padY=6;let wi=0;
-    for(let f=0;f<floors;f++){for(let c=0;c<cols;c++){
-      const wx=x+padX+c*(winW+3),wy=y+padY+f*unitH+Math.floor((unitH-winH)/2);
-      const occ=windows[wi++],flick=.88+.12*Math.sin(frame*.05+wi*1.7);
-      if(occ){const wg=ctx.createRadialGradient(wx+winW/2,wy+winH/2,0,wx+winW/2,wy+winH/2,winW);wg.addColorStop(0,`rgba(232,201,138,${.95*flick})`);wg.addColorStop(1,`rgba(200,169,110,${.65*flick})`);ctx.fillStyle=wg;ctx.fillRect(wx,wy,winW,winH);ctx.shadowBlur=6;ctx.shadowColor='rgba(200,169,110,.45)';ctx.fillRect(wx,wy,winW,winH);ctx.shadowBlur=0;}
-      else{const wg=ctx.createRadialGradient(wx+winW/2,wy+winH/2,0,wx+winW/2,wy+winH/2,winW);wg.addColorStop(0,`rgba(96,165,250,${.5*flick})`);wg.addColorStop(1,`rgba(37,99,235,${.25*flick})`);ctx.fillStyle=wg;ctx.fillRect(wx,wy,winW,winH);}
-      ctx.strokeStyle=occ?'rgba(232,201,138,.3)':'rgba(96,165,250,.2)';ctx.lineWidth=.5;ctx.strokeRect(wx,wy,winW,winH);
-    }}
-    ctx.restore();
+  function renderSlide(idx) {
+    const l = listings[idx]; if (!l) return;
+    current = idx;
+
+    const photoEl = document.getElementById('livePhoto');
+    const initEl  = document.getElementById('liveInitial');
+    if (l.photos && l.photos.length) {
+      photoEl.style.backgroundImage = `url('${l.photos[0]}')`;
+      photoEl.classList.remove('no-photo');
+      if (initEl) initEl.textContent = '';
+    } else {
+      photoEl.style.backgroundImage = '';
+      photoEl.classList.add('no-photo');
+      if (initEl) initEl.textContent = (l.name || '?')[0].toUpperCase();
+    }
+
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    set('liveLocationText', l.location || '—');
+    set('liveName', l.name || '—');
+
+    const vEl = document.getElementById('liveVacant');
+    if (vEl) {
+      vEl.classList.remove('live-chip--full');
+      if (l.vacantCount > 0) {
+        vEl.textContent = l.vacantCount === 1 ? '1 unit available' : `${l.vacantCount} units available`;
+        vEl.classList.add('live-chip--vacant'); vEl.style.display = 'inline-flex';
+      } else {
+        vEl.textContent = 'Fully occupied';
+        vEl.classList.remove('live-chip--vacant'); vEl.classList.add('live-chip--full'); vEl.style.display = 'inline-flex';
+      }
+    }
+
+    const rEl = document.getElementById('liveRent');
+    if (rEl && l.rentRange) {
+      const mn = Number(l.rentRange.min).toLocaleString();
+      const mx = Number(l.rentRange.max).toLocaleString();
+      rEl.textContent = mn === mx ? `Ksh ${mn}` : `Ksh ${mn} – ${mx}`;
+      rEl.style.display = 'inline-flex';
+    } else if (rEl) rEl.style.display = 'none';
+
+    const cEl = document.getElementById('liveCounter');
+    if (cEl) { cEl.textContent = `${idx + 1} / ${listings.length}`; cEl.style.display = listings.length > 1 ? 'inline-flex' : 'none'; }
+
+    const oEl = document.getElementById('liveOverlay');
+    if (oEl) oEl.style.display = 'block';
+
+    document.querySelectorAll('#liveDots .dot').forEach((d, i) => d.classList.toggle('active', i === idx));
   }
 
-  function drawFrame(progress){
-    const W=canvas.width,H=canvas.height;ctx.clearRect(0,0,W,H);
-    const skyG=ctx.createLinearGradient(0,0,0,H);skyG.addColorStop(0,'#020b18');skyG.addColorStop(.6,'#071428');skyG.addColorStop(1,'#0a1a32');ctx.fillStyle=skyG;ctx.fillRect(0,0,W,H);
-    for(let i=0;i<40;i++){ctx.globalAlpha=.14*(.5+.5*Math.sin(frame*.02+i));ctx.fillStyle='rgba(200,169,110,.6)';ctx.beginPath();ctx.arc((i*71+13)%W,(i*53+7)%(H*.6),.5+(i%3)*.4,0,Math.PI*2);ctx.fill();}
-    ctx.globalAlpha=1;
-    const groundY=H-32;const groundG=ctx.createLinearGradient(0,groundY,0,H);groundG.addColorStop(0,'rgba(96,165,250,.1)');groundG.addColorStop(1,'rgba(96,165,250,.01)');ctx.fillStyle=groundG;ctx.fillRect(0,groundY,W,H-groundY);
-    ctx.strokeStyle='rgba(96,165,250,.15)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,groundY);ctx.lineTo(W,groundY);ctx.stroke();
-    buildings.forEach(b=>drawBuilding(b,progress));
-    const lx=10,ly=H-20,fs=Math.max(8,Math.floor(W*.022));
-    ctx.fillStyle='rgba(200,169,110,.85)';ctx.fillRect(lx,ly-5,8,6);ctx.fillStyle='rgba(200,169,110,.5)';ctx.font=`${fs}px Space Mono,monospace`;ctx.fillText('Occupied',lx+12,ly);
-    ctx.fillStyle='rgba(96,165,250,.85)';ctx.fillRect(lx+75,ly-5,8,6);ctx.fillStyle='rgba(96,165,250,.5)';ctx.fillText('Available',lx+87,ly);
+  function renderDots() {
+    const c = document.getElementById('liveDots');
+    if (!c) return;
+    if (listings.length <= 1) { c.style.display = 'none'; return; }
+    c.style.display = 'flex';
+    c.innerHTML = listings.map((_, i) =>
+      `<button class="dot${i === 0 ? ' active' : ''}" onclick="_liveGoTo(${i})" aria-label="Show property ${i + 1}"></button>`
+    ).join('');
   }
 
-  function animate(){frame++;buildTime=Math.min(buildTime+.018,1);const eased=buildTime<1?1-Math.pow(1-buildTime,3):1;drawFrame(eased);if(buildTime<1){requestAnimationFrame(animate);}else{animDone=true;(function flicker(){frame++;drawFrame(1);requestAnimationFrame(flicker);})();}}
+  function start() {
+    stop();
+    if (listings.length <= 1) return;
+    timer = setInterval(() => { if (!paused) renderSlide((current + 1) % listings.length); }, INTERVAL);
+  }
+  function stop() { if (timer) { clearInterval(timer); timer = null; } }
 
-  canvas.addEventListener('mousemove',e=>{
-    const rect=canvas.getBoundingClientRect();const mx=(e.clientX-rect.left)*(canvas.width/rect.width);const my=(e.clientY-rect.top)*(canvas.height/rect.height);
-    let hit=null;for(const b of buildings){if(mx>=b.x&&mx<=b.x+b.w&&my>=b.y&&my<=b.y+b.h){hit=b;break;}}
-    if(hit){tooltip.innerHTML=`<div class="tt-name">${hit.name}</div><div class="tt-loc">📍 ${hit.loc}</div><div class="tt-vac">${hit.vacant>0?`${hit.vacant} unit${hit.vacant>1?'s':''} available`:'Fully occupied'}</div>`;const cx=e.clientX-canvas.parentElement.getBoundingClientRect().left;const cy=e.clientY-canvas.parentElement.getBoundingClientRect().top;tooltip.style.left=(cx+12)+'px';tooltip.style.top=(cy-10)+'px';tooltip.classList.add('visible');canvas.style.cursor='pointer';}
-    else{tooltip.classList.remove('visible');canvas.style.cursor='default';}
-  });
-  canvas.addEventListener('mouseleave',()=>tooltip.classList.remove('visible'));
-  canvas.addEventListener('click',e=>{const rect=canvas.getBoundingClientRect();const mx=(e.clientX-rect.left)*(canvas.width/rect.width);const my=(e.clientY-rect.top)*(canvas.height/rect.height);for(const b of buildings){if(mx>=b.x&&mx<=b.x+b.w&&my>=b.y&&my<=b.y+b.h){window.location.href='listings.html';break;}}});
+  window._liveGoTo = function(idx) { stop(); renderSlide(idx); start(); };
+  window.goToLiveListing = function() {
+    const l = listings[current];
+    window.location.href = l && l.location
+      ? `listings.html?location=${encodeURIComponent(l.location.split(',')[0].trim())}`
+      : 'listings.html';
+  };
 
-  async function fetchAndRefresh(){try{const res=await fetch(`${API_BASE}/public/listings`);if(!res.ok)return;const data=await res.json();if(Array.isArray(data)&&data.length){listings=data;layoutBuildings();}}catch{}}
-  resize();window.addEventListener('resize',resize);fetchAndRefresh();setInterval(fetchAndRefresh,60000);requestAnimationFrame(animate);
+  function updateStatsStrip() {
+    const strip = document.getElementById('liveStatsStrip');
+    if (!strip || !listings.length) return;
+    const totalUnits = listings.reduce((s, p) => s + (p.vacantCount || 0), 0);
+    const locs = new Set(listings.map(p => (p.location || '').split(',')[0].trim().toLowerCase()).filter(Boolean));
+    document.getElementById('liveStatListings').textContent  = listings.length;
+    document.getElementById('liveStatUnits').textContent     = totalUnits;
+    document.getElementById('liveStatLocations').textContent = locs.size;
+    strip.style.display = 'flex';
+  }
+
+  async function load() {
+    try {
+      const res = await fetch(`${API_BASE}/public/listings`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!Array.isArray(data) || !data.length) {
+        document.getElementById('liveEmpty').style.display = 'flex';
+        return;
+      }
+      listings = data;
+      renderSlide(0);
+      renderDots();
+      start();
+      updateStatsStrip();
+    } catch { /* silent — panel just stays quiet, no error state shown */ }
+  }
+
+  const panel = document.getElementById('livePanel');
+  if (panel) {
+    panel.addEventListener('mouseenter', () => { paused = true; });
+    panel.addEventListener('mouseleave', () => { paused = false; });
+  }
+
+  load();
+  setInterval(load, 60000);
 })();
 
 // NAVBAR
