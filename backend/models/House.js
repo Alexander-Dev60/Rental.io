@@ -38,7 +38,10 @@ const houseSchema = new mongoose.Schema({
         type:    String,
         enum:    ['available', 'occupied'],
         default: 'available'
-    }
+    },
+    group:    { type: mongoose.Schema.Types.ObjectId, ref: 'HouseGroup', default: null },
+    groupSeq: { type: Number, default: null }
+
 
 }, { timestamps: true });
 

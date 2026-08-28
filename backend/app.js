@@ -1,9 +1,26 @@
 const express = require('express');
 const app     = express();
+app.set('trust proxy', 1);
 const cors    = require('cors');
 require('dotenv').config();
 
-app.use(cors());
+const ALLOWED_ORIGINS = [
+    'https://affordablerentals.site',
+    'https://www.affordablerentals.site',
+    // dev only — remove before going live:
+    //'http://localhost:5500',
+    //'http://127.0.0.1:5502',
+];
+
+app.use(cors({
+    origin: (origin, callback) => {
+        // allow no-origin requests (curl, mobile apps, server-to-server)
+        if (!origin || ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+        console.log('🚫 CORS blocked origin:', origin); 
+        callback(new Error('Not allowed by CORS'));
+    }
+}));
+
 app.use(express.json());
 
 const PDFDocument = require('pdfkit');
@@ -52,6 +69,7 @@ const Property            = require('./models/Property');
 const PlatformSettings    = require('./models/PlatformSettings');
 const CommissionPayment      = require('./models/CommissionPayment');
 const CommissionRateHistory  = require('./models/CommissionRateHistory');
+const HouseGroup = require('./models/HouseGroup');
 
 const { geocodeAndSaveProperty } = require('./utils/geocode');
 
@@ -74,6 +92,24 @@ const payOtpStore = new Map();
 // Limit: 3 OTP requests per 24-hour window per landlord
 const payOtpRateLimit = new Map();
 
+
+function sweepRateLimitMap(map, windowMs) {
+    const now = Date.now();
+    for (const [key, entry] of map) {
+        if (now - entry.windowStart > windowMs) map.delete(key);
+    }
+}
+
+setInterval(() => {
+    sweepRateLimitMap(otpRateLimit, 15 * 60 * 1000);
+    sweepRateLimitMap(payOtpRateLimit, 24 * 60 * 60 * 1000);
+    sweepRateLimitMap(loginRateLimit, 15 * 60 * 1000);
+    sweepRateLimitMap(_inquiryRateLimit, 15 * 60 * 1000);
+}, 30 * 60 * 1000); // sweep every 30 min
+
+
+
+
 // ── Rent-reminder dedupe store { "tenantId:month:YYYY-MM-DD": true } ── (FIX Bug 18)
 // The cron checks this before sending so a tenant only gets one reminder per
 // day even though the underlying arrears check re-runs every day until paid.
@@ -83,8 +119,55 @@ const reminderLog = new Map();
 
 // ── Sanitize a string field: trim and cap length ── (FIX Bug 22)
 function sanitize(value, maxLen = 500) {
-    if (typeof value !== 'string') return value;
+    if (typeof value !== 'string') return '';   // reject non-strings, don't pass through
     return value.trim().slice(0, maxLen);
+}
+
+// ── Pure name-generation logic — no DB access, easy to unit test ──
+function generateHouseNames(config) {
+    if (!config || !Array.isArray(config.floors) || !config.floors.length) {
+        throw new Error('At least one naming group is required');
+    }
+ 
+    const names = [];
+    for (const floor of config.floors) {
+        const prefix   = typeof floor.prefix === 'string' ? floor.prefix : '';
+        const start    = Number.isFinite(Number(floor.start))    ? Number(floor.start)    : 1;
+        const count    = Number.isFinite(Number(floor.count))    ? Number(floor.count)    : 0;
+        const padWidth = Number.isFinite(Number(floor.padWidth)) ? Number(floor.padWidth) : 0;
+ 
+        if (count <= 0) continue;
+        if (count > 500) throw new Error('A single group cannot generate more than 500 units');
+ 
+        for (let i = 0; i < count; i++) {
+            const num    = start + i;
+            const numStr = padWidth > 0 ? String(num).padStart(padWidth, '0') : String(num);
+            names.push(`${prefix}${numStr}`);
+        }
+    }
+ 
+    if (!names.length)        throw new Error('Configuration produced no unit names — check counts');
+    if (names.length > 500)   throw new Error('Cannot generate more than 500 units in one request');
+ 
+    return names;
+}
+
+function buildFloorNamePairs(floor) {
+    const prefix   = typeof floor.prefix === 'string' ? floor.prefix : '';
+    const start    = Number.isFinite(Number(floor.start))    ? Number(floor.start)    : 1;
+    const count    = Number.isFinite(Number(floor.count))    ? Number(floor.count)    : 0;
+    const padWidth = Number.isFinite(Number(floor.padWidth)) ? Number(floor.padWidth) : 0;
+ 
+    if (count <= 0) return [];
+    if (count > 500) throw new Error('A single group cannot generate more than 500 units');
+ 
+    const pairs = [];
+    for (let i = 0; i < count; i++) {
+        const num    = start + i;
+        const numStr = padWidth > 0 ? String(num).padStart(padWidth, '0') : String(num);
+        pairs.push({ name: `${prefix}${numStr}`, seq: num });
+    }
+    return pairs;
 }
 // ── Activity/audit log — fire-and-forget, never blocks the calling route ──
 // One shared helper so every mutation logs consistently. `meta` is free-form
@@ -284,6 +367,25 @@ function authMiddleware(req, res, next) {
     }
 }
 
+// ── Login rate limit: 5 attempts per 15 min per email+IP pair ──
+const loginRateLimit = new Map();
+
+function checkLoginRateLimit(key) {
+    const now    = Date.now();
+    const window = 15 * 60 * 1000;
+    const max    = 5;
+
+    const entry = loginRateLimit.get(key);
+    if (!entry || (now - entry.windowStart) > window) {
+        loginRateLimit.set(key, { count: 1, windowStart: now });
+        return true;
+    }
+    if (entry.count >= max) return false;
+    entry.count++;
+    return true;
+}
+
+
 function landlordOnly(req, res, next) {
     if (req.user.role !== 'landlord') {
         return res.status(403).json({ message: 'Landlords only' });
@@ -326,7 +428,12 @@ async function checkPropertySuspension(req, res, next) {
         const propertyId = req.body.propertyId || req.params.propertyId || req.query.propertyId;
         if (!propertyId) return next();
 
-        const property = await Property.findById(propertyId).select('isSuspended suspendedReason name');
+        // Scoped to req.user.id — a property that isn't theirs now just
+        // falls through silently, and the route's own findOne({..., landlord})
+        // check produces the 404. No more cross-landlord existence/suspension leak.
+        const property = await Property.findOne({ _id: propertyId, landlord: req.user.id })
+            .select('isSuspended suspendedReason name');
+
         if (property && property.isSuspended) {
             return res.status(403).json({
                 message: `${property.name} is suspended — ${property.suspendedReason || 'unpaid commission'}. Settle the balance from the Commission panel to restore access.`,
@@ -342,8 +449,10 @@ async function checkPropertySuspension(req, res, next) {
 
 // FIX Bug 20: timing-safe stacklord key comparison
 function stacklordAuth(req, res, next) {
-    const key        = req.headers['x-stacklord-key'] || req.query.key;
-    const serverKey  = process.env.STACKLORD_KEY;
+    const key       = req.headers['x-stacklord-key'];   // ← removed `|| req.query.key`
+    const serverKey = process.env.STACKLORD_KEY;
+    // ... rest unchanged
+
 
     if (!key || !serverKey) {
         return res.status(401).json({ message: 'Unauthorized — Stacklord access only 🔒' });
@@ -650,11 +759,17 @@ app.post('/login', async (req, res) => {
         const email    = sanitize(req.body.email || '').toLowerCase();
         const password = req.body.password || '';
 
+        // ← INSERT: rate-limit check, right after email is parsed
+        const rlKey = `${email}:${req.ip}`;
+        if (!checkLoginRateLimit(rlKey)) {
+            return res.status(429).json({ message: 'Too many login attempts. Please wait 15 minutes and try again.' });
+        }
+
         const user = await User.findOne({ email });
-        if (!user) return res.status(404).json({ message: 'User not found' });
+        if (!user) return res.status(400).json({ message: 'Invalid email or password' });
 
         const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) return res.status(400).json({ message: 'Wrong password' });
+        if (!isMatch) return res.status(400).json({ message: 'Invalid email or password' });
 
         if (user.role === 'landlord' && user.accountStatus === 'suspended') {
             return res.status(403).json({
@@ -663,11 +778,14 @@ app.post('/login', async (req, res) => {
             });
         }
 
-        // FIX Bug 23: guard JWT_SECRET
         const secret = process.env.JWT_SECRET;
         if (!secret) return res.status(500).json({ message: 'Server configuration error' });
 
         if (user.role === 'tenant' && user.mustChangePassword) {
+            // ← INSERT: clear rate limit here too — this branch also means
+            // the password was correct, so it's a legitimate login
+            loginRateLimit.delete(rlKey);
+
             const tempToken = jwt.sign(
                 { id: user._id, role: user.role, tenantId: user.tenantId, mustChangePassword: true, landlordId: user.landlordId },
                 secret,
@@ -680,6 +798,9 @@ app.post('/login', async (req, res) => {
             });
         }
 
+        // ← INSERT: main success path — clear it here, right before signing the real token
+        loginRateLimit.delete(rlKey);
+
         const token = jwt.sign(
             {
                 id:         user._id,
@@ -688,7 +809,7 @@ app.post('/login', async (req, res) => {
                 landlordId: user.landlordId || null
             },
             secret,
-            { expiresIn: '2h' } // FIX: shortened from 7d — sliding session via /auth/refresh-token keeps active users logged in
+            { expiresIn: '2h' }
         );
 
         const response = { token };
@@ -1846,7 +1967,24 @@ app.get('/houses', authMiddleware, async (req, res) => {
                 query.property = req.query.propertyId;
             }
 
-            const houses = await House.find(query).populate('property', 'name');
+           
+            const houses = await House.find(query)
+                .populate('property', 'name')
+                .populate('group', 'label prefix padWidth colorIndex createdAt')
+                .lean();
+ 
+            houses.sort((a, b) => {
+                const aTime = a.group?.createdAt || a.createdAt;
+                const bTime = b.group?.createdAt || b.createdAt;
+                const tDiff = new Date(aTime) - new Date(bTime);
+                if (tDiff !== 0) return tDiff;
+ 
+                const aSeq = a.groupSeq ?? null, bSeq = b.groupSeq ?? null;
+                if (aSeq !== null && bSeq !== null && aSeq !== bSeq) return aSeq - bSeq;
+ 
+                return a.name.localeCompare(b.name, undefined, { numeric: true });
+            });
+ 
             return res.json(houses);
         }
 
@@ -1883,6 +2021,214 @@ app.put('/houses/:id', authMiddleware, landlordOnly, async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+
+// ── Preview only — no DB writes, used for the live preview panel ──
+app.post('/houses/generate-preview', authMiddleware, landlordOnly, async (req, res) => {
+    try {
+        const names = generateHouseNames(req.body.config || {});
+        const seen  = new Set();
+        const dupes = names.filter(n => seen.has(n) || !seen.add(n));
+ 
+        res.json({
+            names,
+            count: names.length,
+            hasDuplicatesInBatch: dupes.length > 0,
+            duplicates: [...new Set(dupes)]
+        });
+    } catch (err) {
+        res.status(400).json({ message: err.message });
+    }
+});
+
+// ── Actual bulk-create ──
+app.post('/houses/generate', authMiddleware, landlordOnly, checkAccountStatus, checkPropertySuspension, async (req, res) => {
+    try {
+        const propertyId = req.body.propertyId || null;
+        const rent       = Number(req.body.rent);
+ 
+        if (!propertyId)        return res.status(400).json({ message: 'propertyId is required' });
+        if (!rent || rent <= 0) return res.status(400).json({ message: 'A valid rent amount is required' });
+ 
+        const property = await Property.findOne({ _id: propertyId, landlord: req.user.id });
+        if (!property) return res.status(404).json({ message: 'Property not found' });
+ 
+        const floors = Array.isArray(req.body.config?.floors) ? req.body.config.floors : [];
+        if (!floors.length) return res.status(400).json({ message: 'At least one naming group is required' });
+ 
+        // Build name/seq pairs per floor first, so we can validate the whole
+        // batch (duplicates, size limits) before creating anything.
+        let allPairs = [];
+        const perFloorPairs = [];
+        try {
+            for (const floor of floors) {
+                const pairs = buildFloorNamePairs(floor);
+                perFloorPairs.push({ floor, pairs });
+                allPairs = allPairs.concat(pairs);
+            }
+        } catch (err) {
+            return res.status(400).json({ message: err.message });
+        }
+ 
+        if (!allPairs.length)      return res.status(400).json({ message: 'Configuration produced no unit names — check counts' });
+        if (allPairs.length > 500) return res.status(400).json({ message: 'Cannot generate more than 500 units in one request' });
+ 
+        const allNames = allPairs.map(p => p.name);
+        if (new Set(allNames).size !== allNames.length) {
+            return res.status(400).json({ message: 'Configuration produces duplicate names within the batch — adjust prefixes or start numbers' });
+        }
+ 
+        const existing = await House.find({ property: propertyId, name: { $in: allNames } }).select('name');
+        if (existing.length) {
+            const sample = existing.slice(0, 5).map(h => h.name).join(', ');
+            return res.status(400).json({
+                message: `${existing.length} name(s) already exist in this property: ${sample}${existing.length > 5 ? '…' : ''}`
+            });
+        }
+ 
+        // Each floor/group in the request becomes its own HouseGroup document,
+        // so it can be extended later and gets its own color.
+        const existingGroupCount = await HouseGroup.countDocuments({ property: propertyId });
+        let colorCursor = existingGroupCount;
+ 
+        const createdHouses = [];
+        for (const { floor, pairs } of perFloorPairs) {
+            if (!pairs.length) continue;
+ 
+            const group = await HouseGroup.create({
+                landlord:   req.user.id,
+                property:   propertyId,
+                label:      sanitize(floor.label || floor.prefix || '', 60),
+                prefix:     typeof floor.prefix === 'string' ? floor.prefix : '',
+                padWidth:   Number.isFinite(Number(floor.padWidth)) ? Number(floor.padWidth) : 0,
+                colorIndex: colorCursor % 8   // 8 = length of the frontend color palette
+            });
+            colorCursor++;
+ 
+            const docs = pairs.map(p => ({
+                name: p.name, rent, landlord: req.user.id, property: propertyId,
+                group: group._id, groupSeq: p.seq
+            }));
+            const created = await House.insertMany(docs);
+            createdHouses.push(...created);
+        }
+ 
+        logActivity({
+            landlord: req.user.id, property: propertyId,
+            action:  'houses.bulk_generated',
+            message: `${createdHouses.length} units generated for ${property.name}`,
+            meta:    { count: createdHouses.length }
+        });
+ 
+        res.status(201).json({ message: `${createdHouses.length} unit(s) created ✅`, count: createdHouses.length, houses: createdHouses });
+ 
+    } catch (err) {
+        console.error('generate houses error:', err.message);
+        res.status(500).json({ message: err.message });
+    }
+});
+ 
+ 
+// ── List existing groups for a property, with the next-available
+//    number for each — powers the "Extend Existing Group" dropdown ──
+app.get('/houses/groups', authMiddleware, landlordOnly, async (req, res) => {
+    try {
+        const propertyId = req.query.propertyId;
+        if (!propertyId) return res.status(400).json({ message: 'propertyId is required' });
+ 
+        const property = await Property.findOne({ _id: propertyId, landlord: req.user.id });
+        if (!property) return res.status(404).json({ message: 'Property not found' });
+ 
+        const groups = await HouseGroup.find({ property: propertyId, landlord: req.user.id }).sort({ createdAt: 1 });
+ 
+        const enriched = await Promise.all(groups.map(async g => {
+            const count     = await House.countDocuments({ group: g._id });
+            const maxSeqDoc = await House.findOne({ group: g._id }).sort({ groupSeq: -1 }).select('groupSeq');
+            const nextSeq   = (maxSeqDoc?.groupSeq ?? 0) + 1;
+            const nextName  = g.padWidth > 0
+                ? `${g.prefix}${String(nextSeq).padStart(g.padWidth, '0')}`
+                : `${g.prefix}${nextSeq}`;
+ 
+            return {
+                _id: g._id, label: g.label, prefix: g.prefix, padWidth: g.padWidth,
+                colorIndex: g.colorIndex, count, nextSeq, nextName
+            };
+        }));
+ 
+        res.json({ groups: enriched });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+ 
+// ── Extend an existing group — continues its numbering automatically,
+//    so the landlord only says "add 2 more", never retypes prefix/padding ──
+app.post('/houses/extend-group', authMiddleware, landlordOnly, checkAccountStatus, checkPropertySuspension, async (req, res) => {
+    try {
+        const propertyId = req.body.propertyId || null;
+        const groupId     = req.body.groupId    || null;
+        const count       = Number(req.body.count);
+        const rentInput   = req.body.rent !== undefined ? Number(req.body.rent) : null;
+ 
+        if (!propertyId || !groupId) return res.status(400).json({ message: 'propertyId and groupId are required' });
+        if (!count || count <= 0)    return res.status(400).json({ message: 'A valid unit count is required' });
+        if (count > 500)             return res.status(400).json({ message: 'Cannot add more than 500 units at once' });
+ 
+        const property = await Property.findOne({ _id: propertyId, landlord: req.user.id });
+        if (!property) return res.status(404).json({ message: 'Property not found' });
+ 
+        const group = await HouseGroup.findOne({ _id: groupId, property: propertyId, landlord: req.user.id });
+        if (!group) return res.status(404).json({ message: 'Group not found' });
+ 
+        // If rent wasn't supplied, reuse the rent already used by this group
+        // so the landlord doesn't have to remember/retype it.
+        let finalRent = rentInput;
+        if (!finalRent || finalRent <= 0) {
+            const sample = await House.findOne({ group: group._id }).select('rent');
+            finalRent = sample ? sample.rent : null;
+        }
+        if (!finalRent || finalRent <= 0) {
+            return res.status(400).json({ message: 'A valid rent amount is required — could not infer one from this group' });
+        }
+ 
+        const maxSeqDoc = await House.findOne({ group: group._id }).sort({ groupSeq: -1 }).select('groupSeq');
+        const startSeq  = (maxSeqDoc?.groupSeq ?? 0) + 1;
+ 
+        const pairs = [];
+        for (let i = 0; i < count; i++) {
+            const num    = startSeq + i;
+            const numStr = group.padWidth > 0 ? String(num).padStart(group.padWidth, '0') : String(num);
+            pairs.push({ name: `${group.prefix}${numStr}`, seq: num });
+        }
+ 
+        const names    = pairs.map(p => p.name);
+        const existing = await House.find({ property: propertyId, name: { $in: names } }).select('name');
+        if (existing.length) {
+            const sample = existing.slice(0, 5).map(h => h.name).join(', ');
+            return res.status(400).json({ message: `${existing.length} name(s) already exist: ${sample}${existing.length > 5 ? '…' : ''}` });
+        }
+ 
+        const docs = pairs.map(p => ({
+            name: p.name, rent: finalRent, landlord: req.user.id, property: propertyId,
+            group: group._id, groupSeq: p.seq
+        }));
+        const created = await House.insertMany(docs);
+ 
+        logActivity({
+            landlord: req.user.id, property: propertyId,
+            action:  'houses.bulk_generated',
+            message: `${created.length} more unit(s) added to ${group.label || group.prefix} in ${property.name}`,
+            meta:    { count: created.length, groupId: group._id }
+        });
+ 
+        res.status(201).json({ message: `${created.length} unit(s) added ✅`, count: created.length, houses: created });
+ 
+    } catch (err) {
+        console.error('extend group error:', err.message);
+        res.status(500).json({ message: err.message });
+    }
+});
+
 
 app.delete('/house/:id', authMiddleware, landlordOnly, async (req, res) => {
     try {
@@ -4147,11 +4493,20 @@ app.put('/properties/:id/listing', authMiddleware, landlordOnly, async (req, res
 //  Max 5 photos per property — enforced here and in the model.
 //  Requires: multer + cloudinary (see setup block at top).
 // ─────────────────────────────────────────────────────────
+const { fileTypeFromBuffer } = require('file-type');
+
 app.post('/properties/:id/photos', authMiddleware, landlordOnly, _photoUpload.single('photo'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
+        // Verify the actual file signature, not just the client-supplied Content-Type
+        const detected = await fileTypeFromBuffer(req.file.buffer);
+        if (!detected || !detected.mime.startsWith('image/')) {
+            return res.status(400).json({ message: 'File is not a valid image' });
+        }
+
         const property = await Property.findOne({ _id: req.params.id, landlord: req.user.id });
+       
         if (!property) return res.status(404).json({ message: 'Property not found' });
 
         if (property.photos.length >= 5) {

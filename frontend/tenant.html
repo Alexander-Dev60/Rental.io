@@ -12,36 +12,38 @@
   /* ══════════════════════════════════════
      THEMES
   ══════════════════════════════════════ */
-  :root, [data-theme="dark"] {
-    --bg:         #111318;
-    --bg2:        #16191f;
-    --bg3:        #1c2029;
-    --panel:      #1e222c;
-    --panel2:     #232837;
-    --border:     rgba(255,255,255,0.07);
-    --border2:    rgba(255,255,255,0.13);
-    --accent:     #a78bfa;
-    --accent2:    #7c3aed;
-    --accent-dim: rgba(167,139,250,0.12);
+    :root, [data-theme="dark"] {
+    --bg:         #0b0f1a;
+    --bg2:        #0f131f;
+    --bg3:        #161b2a;
+    --panel:      #161c2b;
+    --panel2:     #1c2233;
+    --border:     rgba(228,199,122,0.08);
+    --border2:    rgba(228,199,122,0.16);
+    --accent:     #e0bb64;
+    --accent2:    #c9962e;
+    --accent-dim: rgba(224,187,100,0.10);
     --green:      #34d399;
     --red:        #f87171;
     --amber:      #fbbf24;
-    --text:       #e2e8f0;
-    --text-dim:   #64748b;
-    --text-muted: #94a3b8;
+    --text:       #f7f2e4;
+    --text-dim:   #8a8474;
+    --text-muted: #a9a495;
     --nav-h:      58px;
-    --header-bg:  rgba(17,19,24,0.92);
-    --nav-bg:     rgba(17,19,24,0.97);
+    --header-bg:  rgba(11,15,26,0.92);
+    --nav-bg:     rgba(11,15,26,0.97);
   }
-  [data-theme="light"] {
-    --bg:#f1f5f9; --bg2:#e8edf5; --bg3:#dde4f0;
-    --panel:#fff; --panel2:#f8fafc;
-    --border:rgba(0,0,0,0.08); --border2:rgba(0,0,0,0.15);
-    --accent:#7c3aed; --accent2:#6d28d9; --accent-dim:rgba(124,58,237,0.08);
+
+    [data-theme="light"] {
+    --bg:#f5f1e6; --bg2:#eee7d6; --bg3:#e6dcc4;
+    --panel:#fffdf7; --panel2:#f8f4ea;
+    --border:rgba(122,87,20,0.08); --border2:rgba(122,87,20,0.16);
+    --accent:#a9781f; --accent2:#7a5714; --accent-dim:rgba(169,120,31,0.08);
     --green:#059669; --red:#dc2626; --amber:#d97706;
-    --text:#0f172a; --text-dim:#64748b; --text-muted:#475569;
-    --header-bg:rgba(241,245,249,0.94); --nav-bg:rgba(241,245,249,0.98);
+    --text:#17140c; --text-dim:#7c745e; --text-muted:#8f8770;
+    --header-bg:rgba(245,241,230,0.94); --nav-bg:rgba(245,241,230,0.98);
   }
+
   [data-theme="blue"] {
     --bg:#050d1a; --bg2:#071223; --bg3:#0a1a30;
     --panel:#0d2040; --panel2:#112548;
@@ -170,8 +172,8 @@
     min-width: 0; flex: 1;
   }
 
-  .header-name {
-    font-family: 'Fraunces', serif; font-style: italic;
+   .header-name {
+    font-family: 'DM Serif Display', serif; font-style: italic;
     font-size: 0.95rem; color: var(--text);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     line-height: 1.2;
@@ -361,8 +363,8 @@
   .section.active { display: block; }
   @keyframes secIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
 
-  .sec-title {
-    font-family: 'Fraunces', serif; font-style: italic;
+   .sec-title {
+    font-family: 'DM Serif Display', serif; font-style: italic;
     font-size: 1.6rem; font-weight: 300; color: var(--text);
     margin-bottom: 0.35rem;
     line-height: 1.2;
@@ -404,7 +406,7 @@
     letter-spacing: 0.18em; text-transform: uppercase;
     color: var(--text-dim); margin-bottom: 0.35rem;
   }
-  .stat-value { font-family: 'Fraunces', serif; font-size: 1.8rem; font-weight: 300; color: var(--accent); line-height: 1; }
+    .stat-value { font-family: 'DM Serif Display', serif; font-size: 1.8rem; font-weight: 300; color: var(--accent); line-height: 1; }
 
   /* ══════════════════════════════════════
      PAYMENT PROGRESS BAR
@@ -521,7 +523,7 @@
     animation: avatarPop 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
   }
   @keyframes avatarPop { from{opacity:0;transform:scale(0.7)} to{opacity:1;transform:scale(1)} }
-  .profile-name  { font-family:'Fraunces',serif;font-style:italic;font-size:1.4rem;font-weight:300;color:var(--text);text-align:center;margin-bottom:0.2rem; }
+    .profile-name  { font-family:'DM Serif Display',serif;font-style:italic;font-size:1.4rem;font-weight:300;color:var(--text);text-align:center;margin-bottom:0.2rem; }
   .profile-email { font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--text-dim);text-align:center; }
 
   /* ══════════════════════════════════════
@@ -681,6 +683,18 @@
 <!-- ═══ HEADER ═══ -->
 <header>
   <div class="header-identity">
+    <a href="index.html" style="display:flex;align-items:center;flex-shrink:0;margin-right:0.55rem" aria-label="Affordable Rentals">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="4 16 96 82" width="24" height="24" role="img">
+        <g id="logo-mark">
+          <path d="M 18,62 L 18,92 L 32,92 L 32,62 Z" fill="var(--accent)" />
+          <path d="M 24,42 L 24,28 L 32,28 L 32,36 Z" fill="var(--accent)" />
+          <path d="M 10,60 L 52,22 L 82,48 L 74,57 L 52,38 L 22,65 Z" fill="var(--accent)" />
+          <path d="M 14,88 C 30,88 62,72 82,38 L 72,36 L 98,22 L 96,50 L 87,42 C 70,72 40,96 14,88 Z" fill="var(--accent)" fill-opacity="0.82" />
+          <path d="M 68,72 L 82,92 L 68,92 L 58,78 Z" fill="var(--accent)" fill-opacity="0.82" />
+          <path d="M 52,54 A 4.5,4.5 0 1,0 52,63 L 50,71 L 54,71 L 52,63 Z" fill="var(--bg)" />
+        </g>
+      </svg>
+    </a>
     <div class="header-avatar" id="headerAvatar">??</div>
     <div class="header-identity-text">
       <div class="header-name" id="headerName">Loading...</div>
@@ -744,9 +758,9 @@
           Styled as a prominent subtitle in accent colour.
           Hidden until data loads (JS sets display:block).
         -->
-        <div id="homePropertyName" style="
+          <div id="homePropertyName" style="
           display:none;
-          font-family:'Fraunces',serif;
+          font-family:'DM Serif Display',serif;
           font-style:italic;
           font-size:1.05rem;
           font-weight:300;

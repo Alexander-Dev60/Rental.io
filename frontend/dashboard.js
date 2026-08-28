@@ -659,22 +659,56 @@ function quickPay(tenantId) {
 
 function renderHouseGrid(houses) {
     const grid = document.getElementById('houseGrid');
-
+ 
+    _renderHouseGroupLegend(houses);
+ 
     if (!houses.length) {
         grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><span class="icon">🏡</span>No houses added yet</div>';
         return;
     }
-
-    grid.innerHTML = houses.map(h => `
+ 
+    grid.innerHTML = houses.map(h => {
+        const groupPill = h.group
+            ? `<span style="display:inline-block;font-family:'JetBrains Mono',monospace;font-size:0.55rem;font-weight:700;
+                       padding:1px 7px;border-radius:99px;margin-bottom:0.4rem;
+                       background:${_groupColor(h.group.colorIndex)}22;color:${_groupColor(h.group.colorIndex)};
+                       border:1px solid ${_groupColor(h.group.colorIndex)}55">
+                 ${h.group.label || h.group.prefix || 'Group'}
+               </span>`
+            : '';
+ 
+        return `
         <div class="house-card ${h.status}"
              onclick="houseOptions(event, ${JSON.stringify(h).replace(/"/g, '&quot;')})">
+            ${groupPill}
             <div class="house-name">${h.name}</div>
             <div class="house-rent">Ksh ${Number(h.rent).toLocaleString()} / mo</div>
             <div style="margin-top:0.5rem;font-size:0.68rem">
                 <span class="status-dot ${h.status}"></span>${h.status}
                 ${h.tenantName ? `<span style="color:var(--text-muted);margin-left:0.4rem">· ${h.tenantName}</span>` : ''}
             </div>
-        </div>`).join('');
+        </div>`;
+    }).join('');
+}
+ 
+function _renderHouseGroupLegend(houses) {
+    const legendEl = document.getElementById('houseGroupLegend');
+    if (!legendEl) return;
+ 
+    const seen   = new Map();
+    houses.forEach(h => {
+        if (h.group && !seen.has(h.group._id || h.group)) {
+            seen.set(h.group._id || h.group, h.group);
+        }
+    });
+ 
+    if (!seen.size) { legendEl.innerHTML = ''; return; }
+ 
+    legendEl.innerHTML = [...seen.values()].map(g => `
+        <span style="display:inline-flex;align-items:center;gap:0.35rem;font-family:'JetBrains Mono',monospace;font-size:0.62rem;color:var(--text-dim)">
+            <span style="width:8px;height:8px;border-radius:50%;background:${_groupColor(g.colorIndex)};display:inline-block"></span>
+            ${g.label || g.prefix || 'Group'}
+        </span>`).join('');
 }
 
 // ── FIXED: Menu is appended to document.body with position:fixed so it always
@@ -937,6 +971,7 @@ const ACTIVITY_ICONS = {
     'tenant.deleted':        '🗑️',
     'tenants.bulk_reminded': '🔔',
     'payment.recorded':      '💳',
+    'houses.bulk_generated': '⚡',
     'commission.paid':       '💸'
 };
 
@@ -1043,6 +1078,320 @@ function renderAnnouncements(data) {
         </div>`).join('');
 }
 
+
+ 
+const GROUP_COLOR_PALETTE = [
+    '#60a5fa', // blue
+    '#c084fc', // purple
+    '#fb923c', // orange
+    '#22d3ee', // cyan
+    '#f472b6', // pink
+    '#facc15', // yellow
+    '#818cf8', // indigo
+    '#94a3b8'  // slate
+];
+ 
+function _groupColor(colorIndex) {
+    return GROUP_COLOR_PALETTE[(colorIndex || 0) % GROUP_COLOR_PALETTE.length];
+}
+
+// ═══════════════════════════════════════
+// BULK HOUSE GENERATOR
+// ═══════════════════════════════════════
+
+let _genMode   = 'simple';
+let _genGroups = [];
+
+function _newGenGroup() {
+    return { label: '', prefix: '', start: 1, count: 1, padWidth: 0 };
+}
+
+ 
+let _genExtendGroups = [];   // cached list from GET /houses/groups
+ 
+function setGenMode(mode) {
+    _genMode = mode;
+ 
+    document.getElementById('genModeSimpleBtn').className =
+        `btn btn-sm ${mode === 'simple' ? 'btn-primary' : 'btn-secondary'}`;
+    document.getElementById('genModeAdvBtn').className =
+        `btn btn-sm ${mode === 'advanced' ? 'btn-primary' : 'btn-secondary'}`;
+    document.getElementById('genModeExtendBtn').className =
+        `btn btn-sm ${mode === 'extend' ? 'btn-primary' : 'btn-secondary'}`;
+ 
+    document.getElementById('genAddGroupBtn').style.display = mode === 'advanced' ? 'block' : 'none';
+    document.getElementById('genGroupsWrap').style.display  = mode === 'extend' ? 'none' : 'block';
+    document.getElementById('genExtendWrap').style.display  = mode === 'extend' ? 'block' : 'none';
+ 
+    const rentField = document.getElementById('genHouseRent');
+    if (rentField) {
+        rentField.placeholder = mode === 'extend'
+            ? 'Leave blank to match this group\'s existing rent'
+            : 'e.g. 8000';
+    }
+ 
+    if (mode === 'extend') {
+        loadGenExtendGroups();
+    } else {
+        _genGroups = [_newGenGroup()];
+        renderGenGroups();
+    }
+}
+ 
+function addGenGroup() {
+    _genGroups.push(_newGenGroup());
+    renderGenGroups();
+}
+
+function removeGenGroup(idx) {
+    _genGroups.splice(idx, 1);
+    if (!_genGroups.length) _genGroups.push(_newGenGroup());
+    renderGenGroups();
+}
+
+function updateGenGroup(idx, field, value) {
+    _genGroups[idx][field] = field === 'prefix' || field === 'label' ? value : Number(value);
+    _renderGenPreview();
+}
+
+function renderGenGroups() {
+    const wrap = document.getElementById('genGroupsWrap');
+    if (!wrap) return;
+
+    wrap.innerHTML = _genGroups.map((g, i) => `
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:0.85rem;margin-bottom:0.65rem">
+            ${_genMode === 'advanced' ? `
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+                    <input type="text" placeholder="Group label (e.g. Ground Floor)" value="${g.label}"
+                           oninput="updateGenGroup(${i}, 'label', this.value)" style="margin:0;flex:1">
+                    ${_genGroups.length > 1 ? `<button class="btn btn-danger btn-sm" style="margin-left:0.5rem" onclick="removeGenGroup(${i})">✕</button>` : ''}
+                </div>` : ''}
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
+                <div>
+                    <label class="pay-setup-label">Prefix</label>
+                    <input type="text" placeholder="e.g. A or 1" value="${g.prefix}"
+                           oninput="updateGenGroup(${i}, 'prefix', this.value)" style="margin-bottom:0.5rem">
+                </div>
+                <div>
+                    <label class="pay-setup-label">Start Number</label>
+                    <input type="number" value="${g.start}" min="0"
+                           oninput="updateGenGroup(${i}, 'start', this.value)" style="margin-bottom:0.5rem">
+                </div>
+                <div>
+                    <label class="pay-setup-label">Number of Units</label>
+                    <input type="number" value="${g.count}" min="1" max="500"
+                           oninput="updateGenGroup(${i}, 'count', this.value)" style="margin-bottom:0">
+                </div>
+                <div>
+                    <label class="pay-setup-label">Zero-Pad Width (0 = none)</label>
+                    <input type="number" value="${g.padWidth}" min="0" max="4"
+                           oninput="updateGenGroup(${i}, 'padWidth', this.value)" style="margin-bottom:0">
+                </div>
+            </div>
+        </div>`).join('');
+
+    _renderGenPreview();
+}
+
+ 
+async function loadGenExtendGroups() {
+    const sel = document.getElementById('genExtendGroupSelect');
+    if (sel) sel.innerHTML = `<option value="">Loading groups…</option>`;
+ 
+    try {
+        const propertyId = getPropertyId();
+        const res  = await fetch(`${API}/houses/groups?propertyId=${propertyId}`, { headers: authHeaders() });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.message || 'Failed to load groups', 'error'); return; }
+ 
+        _genExtendGroups = data.groups || [];
+ 
+        if (!_genExtendGroups.length) {
+            if (sel) sel.innerHTML = `<option value="">No existing groups — use Simple or Per-Floor instead</option>`;
+            _renderGenPreview();
+            return;
+        }
+ 
+        if (sel) {
+            sel.innerHTML = _genExtendGroups.map(g =>
+                `<option value="${g._id}">${g.label || g.prefix || 'Group'} — ${g.count} unit(s), next: ${g.nextName}</option>`
+            ).join('');
+        }
+        onGenExtendGroupChange();
+ 
+    } catch (err) {
+        if (sel) sel.innerHTML = `<option value="">Failed to load — try again</option>`;
+        console.error('loadGenExtendGroups error:', err);
+    }
+}
+ 
+function onGenExtendGroupChange() {
+    _renderGenPreview();
+}
+ 
+function _selectedExtendGroup() {
+    const sel = document.getElementById('genExtendGroupSelect');
+    const id  = sel ? sel.value : '';
+    return _genExtendGroups.find(g => g._id === id) || null;
+}
+ 
+// Mirrors server.js's generateHouseNames() exactly — preview must never
+// show something the backend would reject or generate differently.
+function _computeGenNames() {
+    const names = [];
+    for (const g of _genGroups) {
+        const count = Number(g.count) || 0;
+        if (count <= 0) continue;
+        for (let i = 0; i < count; i++) {
+            const num    = (Number(g.start) || 0) + i;
+            const numStr = g.padWidth > 0 ? String(num).padStart(g.padWidth, '0') : String(num);
+            names.push(`${g.prefix || ''}${numStr}`);
+        }
+    }
+    return names;
+}
+
+ 
+function _renderGenPreview() {
+    const box     = document.getElementById('genPreviewBox');
+    const countEl = document.getElementById('genPreviewCount');
+    if (!box) return;
+ 
+    if (_genMode === 'extend') {
+        const group = _selectedExtendGroup();
+        const hintEl = document.getElementById('genExtendHint');
+ 
+        if (!group) {
+            box.textContent = 'Select a group above to see a preview';
+            if (countEl) countEl.textContent = '';
+            if (hintEl) hintEl.textContent = '';
+            return;
+        }
+ 
+        const count = Number(document.getElementById('genExtendCount')?.value) || 0;
+        if (count <= 0) {
+            box.textContent = 'Enter how many units to add';
+            if (countEl) countEl.textContent = '';
+            if (hintEl) hintEl.textContent = `This group currently has ${group.count} unit(s), next available: ${group.nextName}`;
+            return;
+        }
+ 
+        const names = [];
+        for (let i = 0; i < count; i++) {
+            const num    = group.nextSeq + i;
+            const numStr = group.padWidth > 0 ? String(num).padStart(group.padWidth, '0') : String(num);
+            names.push(`${group.prefix}${numStr}`);
+        }
+ 
+        if (countEl) countEl.textContent = `${names.length} new unit${names.length !== 1 ? 's' : ''}`;
+        if (hintEl)  hintEl.textContent   = `Continuing from ${group.nextName} — this group will have ${group.count + names.length} unit(s) total`;
+        box.textContent = names.join('   ');
+        return;
+    }
+ 
+    // ── simple / advanced (unchanged from the first patch) ──
+    const names  = _computeGenNames();
+    const unique = new Set(names);
+ 
+    if (!names.length) {
+        box.textContent = 'Fill in the fields above to see a preview';
+        if (countEl) countEl.textContent = '';
+        return;
+    }
+ 
+    if (countEl) countEl.textContent = `${names.length} unit${names.length !== 1 ? 's' : ''}`;
+ 
+    if (unique.size !== names.length) {
+        box.innerHTML = `<span style="color:var(--danger)">⚠️ Duplicate names in this configuration — adjust prefixes or start numbers</span>`;
+        return;
+    }
+ 
+    const shown = names.slice(0, 60);
+    box.textContent = shown.join('   ') + (names.length > 60 ? `   … +${names.length - 60} more` : '');
+}
+
+
+async function submitGenerateHouses() {
+    const propertyId = getPropertyId();
+    if (!propertyId) { showToast('No active property selected', 'warn'); return; }
+ 
+    if (_genMode === 'extend') {
+        const group = _selectedExtendGroup();
+        const count = Number(document.getElementById('genExtendCount')?.value);
+        const rent  = Number(document.getElementById('genHouseRent')?.value) || undefined;
+ 
+        if (!group)             { showToast('Select a group first', 'warn'); return; }
+        if (!count || count <= 0) { showToast('Enter how many units to add', 'warn'); return; }
+ 
+        openDangerModal({
+            icon:    '⚡',
+            title:   'Confirm Extend Group',
+            message: `Add <strong>${count} unit(s)</strong> to <strong>${group.label || group.prefix}</strong>, continuing from <strong>${group.nextName}</strong>?`,
+            label:   `Add ${count} Unit(s)`,
+            type:    'warn',
+            onConfirm: async () => {
+                try {
+                    const res  = await fetch(`${API}/houses/extend-group`, {
+                        method: 'POST', headers: authHeaders(),
+                        body:   JSON.stringify({ propertyId, groupId: group._id, count, rent })
+                    });
+                    const data = await res.json();
+                    if (!res.ok) { showToast(data.message || 'Failed to extend group', 'error'); return; }
+ 
+                    showToast(data.message, 'success');
+                    closeModal('modal-generate-houses');
+                    await loadHouses();
+                } catch (err) {
+                    showToast('Network error', 'error');
+                    console.error(err);
+                }
+            }
+        });
+        return;
+    }
+ 
+    // ── simple / advanced (unchanged from the first patch) ──
+    const rent = Number(document.getElementById('genHouseRent')?.value);
+    if (!rent || rent <= 0) { showToast('Enter a valid rent amount', 'warn'); return; }
+ 
+    const names = _computeGenNames();
+    if (!names.length) { showToast('No units to generate — check your configuration', 'warn'); return; }
+    if (new Set(names).size !== names.length) { showToast('Fix duplicate names before generating', 'warn'); return; }
+ 
+    const config = {
+        floors: _genGroups
+            .filter(g => Number(g.count) > 0)
+            .map(g => ({ label: g.label, prefix: g.prefix, start: g.start, count: g.count, padWidth: g.padWidth }))
+    };
+ 
+    openDangerModal({
+        icon:    '⚡',
+        title:   'Confirm Bulk Generation',
+        message: `Create <strong>${names.length} units</strong> at Ksh ${rent.toLocaleString()}/mo each?<br><br>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--text-muted)">
+                    ${names.slice(0, 10).join(', ')}${names.length > 10 ? '…' : ''}
+                  </span>`,
+        label:   `Generate ${names.length} Units`,
+        type:    'warn',
+        onConfirm: async () => {
+            try {
+                const res  = await fetch(`${API}/houses/generate`, {
+                    method: 'POST', headers: authHeaders(),
+                    body:   JSON.stringify({ propertyId, rent, config })
+                });
+                const data = await res.json();
+                if (!res.ok) { showToast(data.message || 'Generation failed', 'error'); return; }
+ 
+                showToast(data.message, 'success');
+                closeModal('modal-generate-houses');
+                await loadHouses();
+            } catch (err) {
+                showToast('Network error', 'error');
+                console.error(err);
+            }
+        }
+    });
+}
 
 // ═══════════════════════════════════════
 // MESSAGING — Two-panel persistent system

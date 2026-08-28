@@ -71,7 +71,7 @@
 
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" type="image/svg+xml" href="./public/favicon.svg">
+  <link rel="icon" type="image/png" href="./public/affordablerentalsLogo.png">
   <title>Dashboard — Affordable Rentals</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
@@ -755,21 +755,17 @@
 
 <!-- ═══ SIDEBAR ═══ -->
 <aside class="sidebar" id="sidebar">
-  <div class="sidebar-header">
+    <div class="sidebar-header">
     <div class="sidebar-logo">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="28" height="28">
-        <defs>
-          <linearGradient id="rG" x1="0%" y1="100%" x2="100%" y2="0%">
-            <stop offset="0%" stop-color="#2563eb"/>
-            <stop offset="60%" stop-color="#10b981"/>
-            <stop offset="100%" stop-color="#6ee7b7"/>
-          </linearGradient>
-        </defs>
-        <rect width="100%" height="100%" fill="#0a0c10" rx="8"/>
-        <path d="M250,90L410,210L375,210L250,116L125,210L90,210Z" fill="url(#rG)"/>
-        <path d="M242,160L258,160L258,340L285,340L285,365L258,365L258,390L242,390Z" fill="url(#rG)"/>
-        <path d="M250,140C275,140 295,160 295,185C295,210 275,230 250,230C225,230 205,210 205,185C205,160 225,140 250,140Z" fill="none" stroke="url(#rG)" stroke-width="7"/>
-        <circle cx="250" cy="185" r="10" fill="#6ee7b7"/>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="4 16 96 82" width="26" height="26" role="img" aria-label="Affordable Rentals">
+        <g id="logo-mark">
+          <path d="M 18,62 L 18,92 L 32,92 L 32,62 Z" fill="currentColor" />
+          <path d="M 24,42 L 24,28 L 32,28 L 32,36 Z" fill="currentColor" />
+          <path d="M 10,60 L 52,22 L 82,48 L 74,57 L 52,38 L 22,65 Z" fill="currentColor" />
+          <path d="M 14,88 C 30,88 62,72 82,38 L 72,36 L 98,22 L 96,50 L 87,42 C 70,72 40,96 14,88 Z" fill="currentColor" fill-opacity="0.82" />
+          <path d="M 68,72 L 82,92 L 68,92 L 58,78 Z" fill="currentColor" fill-opacity="0.82" />
+          <path d="M 52,54 A 4.5,4.5 0 1,0 52,63 L 50,71 L 54,71 L 52,63 Z" fill="var(--bg2)" />
+        </g>
       </svg>
       Affordable Rentals
     </div>
@@ -1066,6 +1062,9 @@
     <div class="grid-2 mb-3">
       <div class="card">
         <div class="card-title">Add New House</div>
+        <button class="btn btn-secondary btn-full" onclick="openModal('modal-generate-houses')" style="margin-top:0.5rem">
+              ⚡ Generate Multiple Units
+        </button>
         <input type="text"   id="houseName" placeholder="House name (e.g. A-12)">
         <input type="number" id="houseRent" placeholder="Monthly rent (Ksh)">
         <button class="btn btn-primary btn-full" onclick="addHouse()">Add House</button>
@@ -1076,6 +1075,7 @@
         <button class="btn btn-warn btn-full" onclick="moveOutTenant()" style="margin-top:0.25rem">Move Out</button>
       </div>
     </div>
+    <div id="houseGroupLegend" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.85rem"></div>
     <div class="house-grid" id="houseGrid"><div class="empty-state" style="grid-column:1/-1">Click Refresh to load houses</div></div>
   </div>
 
@@ -1280,7 +1280,8 @@
           <option value="tenant.deleted">Tenant Deleted</option>
           <option value="tenants.bulk_reminded">Bulk Reminders</option>
           <option value="payment.recorded">Payment Recorded</option>
-          <option value="commission.paid">Commission Paid</option>
+          <option value="commission.paid">Commission Paid</option>           
+          <option value="houses.bulk_generated">Units Bulk Generated</option>
         </select>
         <button class="btn btn-secondary btn-sm" onclick="loadActivity()">↻ Refresh</button>
       </div>
@@ -1426,6 +1427,56 @@
       <div class="loc-picker-coords" id="newPropCoords">No location selected</div>
     </div>
     <button class="btn btn-primary btn-full" onclick="addProperty()">Create Property</button>
+  </div>
+</div>
+
+<!-- ─── GENERATE HOUSES (bulk naming) ─── -->
+<div class="modal-overlay" id="modal-generate-houses">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header">
+      <div class="modal-title">⚡ Generate Multiple Units</div>
+      <button class="modal-close" onclick="closeModal('modal-generate-houses')">✕</button>
+    </div>
+
+    <div class="pay-setup-field" style="margin-bottom:1rem">
+      <label class="pay-setup-label">Monthly Rent (applies to all generated units)</label>
+      <input type="number" id="genHouseRent" placeholder="e.g. 8000" style="margin-bottom:0">
+    </div>
+
+     
+<div style="display:flex;gap:0.5rem;margin-bottom:1rem" id="genModeToggle">
+  <button class="btn btn-secondary btn-sm" id="genModeSimpleBtn" onclick="setGenMode('simple')" style="flex:1">Simple</button>
+  <button class="btn btn-secondary btn-sm" id="genModeAdvBtn" onclick="setGenMode('advanced')" style="flex:1">Per-Floor</button>
+  <button class="btn btn-secondary btn-sm" id="genModeExtendBtn" onclick="setGenMode('extend')" style="flex:1">Extend Group</button>
+</div>
+
+    <div id="genGroupsWrap"></div>
+     
+<div id="genExtendWrap" style="display:none;margin-bottom:1rem">
+  <label class="pay-setup-label">Which group?</label>
+  <select id="genExtendGroupSelect" onchange="onGenExtendGroupChange()" style="margin-bottom:0.75rem"></select>
+ 
+  <label class="pay-setup-label">How many more units?</label>
+  <input type="number" id="genExtendCount" min="1" max="500" placeholder="e.g. 2" oninput="_renderGenPreview()" style="margin-bottom:0.75rem">
+ 
+  <div style="font-family:'JetBrains Mono',monospace;font-size:0.68rem;color:var(--text-dim)" id="genExtendHint"></div>
+</div>
+
+    <button class="btn btn-secondary btn-sm" id="genAddGroupBtn" onclick="addGenGroup()" style="display:none;margin-bottom:1rem">
+      ＋ Add Another Group
+    </button>
+
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:0.85rem 1rem;margin-bottom:1rem">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:0.6rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-dim);margin-bottom:0.5rem;display:flex;justify-content:space-between">
+        <span>Live Preview</span>
+        <span id="genPreviewCount" style="color:var(--accent)"></span>
+      </div>
+      <div id="genPreviewBox" style="font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--text-muted);max-height:160px;overflow-y:auto;line-height:1.8">
+        Fill in the fields above to see a preview
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-full" id="genSubmitBtn" onclick="submitGenerateHouses()">Generate Units</button>
   </div>
 </div>
 
@@ -1761,6 +1812,7 @@ function openModal(id) {
   if (id === 'modal-pay-setup') {
     if (typeof openPaySetupModal === 'function') { openPaySetupModal(); return; }
   }
+  if (id === 'modal-generate-houses') { setGenMode('simple'); }   // ← add this line
   const el = document.getElementById(id);
   if (el) el.classList.add('open');
   if (id === 'modal-add-property' && typeof initNewPropMap === 'function') {

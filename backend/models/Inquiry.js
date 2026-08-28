@@ -55,6 +55,7 @@ const inquirySchema = new mongoose.Schema({
         default: 'new'
     },
 
+    
     // Optional landlord notes
     notes: {
         type:    String,

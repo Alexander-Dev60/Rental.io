@@ -192,9 +192,9 @@ function showMaintenanceScreen(message) {
     screen.innerHTML = `
         <div style="max-width:400px;background:var(--panel);border:1px solid var(--border2);border-radius:16px;padding:2.5rem 2rem;box-shadow:0 24px 80px rgba(0,0,0,0.5)">
             <div style="font-size:3rem;margin-bottom:1rem">🔧</div>
-            <div style="font-family:'Fraunces',serif;font-style:italic;font-size:1.6rem;color:var(--text);margin-bottom:0.75rem">Under Maintenance</div>
+            <div style="font-family:'DM Serif Display',serif;font-style:italic;font-size:1.6rem;color:var(--text);margin-bottom:0.75rem">Under Maintenance</div>
             <p style="font-size:0.85rem;color:var(--text-muted);line-height:1.7;margin-bottom:1.5rem">${message || 'The system is currently under maintenance. Please check back later.'}</p>
-            <button onclick="window.location.reload()" style="background:var(--accent);border:none;border-radius:8px;color:#fff;font-size:0.82rem;font-weight:600;padding:0.65rem 1.5rem;cursor:pointer;width:100%;margin-bottom:0.5rem">↻ Check Again</button>
+            <button onclick="window.location.reload()" style="background:var(--accent);border:none;border-radius:8px;color:#191307;font-size:0.82rem;font-weight:600;padding:0.65rem 1.5rem;cursor:pointer;width:100%;margin-bottom:0.5rem">↻ Check Again</button>
             <button onclick="logout()" style="background:transparent;border:1px solid var(--border2);border-radius:8px;color:var(--text-muted);font-size:0.75rem;padding:0.55rem 1.5rem;cursor:pointer;width:100%">Sign Out</button>
         </div>`;
     document.body.appendChild(screen);
@@ -280,13 +280,13 @@ function showPropertyBadge(propName) {
 
     const badge = document.createElement('span');
     badge.id = 'headerPropertyBadge';
-    Object.assign(badge.style, {
+        Object.assign(badge.style, {
         fontFamily:    "'DM Mono', monospace",
         fontSize:      '0.58rem',
         letterSpacing: '0.06em',
         background:    'var(--accent-dim)',
         color:         'var(--accent)',
-        border:        '1px solid rgba(167,139,250,0.2)',
+        border:        '1px solid rgba(224,187,100,0.2)',
         padding:       '2px 8px',
         borderRadius:  '99px',
         whiteSpace:    'nowrap',
