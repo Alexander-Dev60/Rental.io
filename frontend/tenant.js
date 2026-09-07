@@ -191,7 +191,7 @@ function showMaintenanceScreen(message) {
     `;
     screen.innerHTML = `
         <div style="max-width:400px;background:var(--panel);border:1px solid var(--border2);border-radius:16px;padding:2.5rem 2rem;box-shadow:0 24px 80px rgba(0,0,0,0.5)">
-            <div style="font-size:3rem;margin-bottom:1rem">🔧</div>
+            <div style="display:flex;justify-content:center;margin-bottom:1rem;color:var(--accent)">${ICON('maintenance',44)}</div>
             <div style="font-family:'DM Serif Display',serif;font-style:italic;font-size:1.6rem;color:var(--text);margin-bottom:0.75rem">Under Maintenance</div>
             <p style="font-size:0.85rem;color:var(--text-muted);line-height:1.7;margin-bottom:1.5rem">${message || 'The system is currently under maintenance. Please check back later.'}</p>
             <button onclick="window.location.reload()" style="background:var(--accent);border:none;border-radius:8px;color:#191307;font-size:0.82rem;font-weight:600;padding:0.65rem 1.5rem;cursor:pointer;width:100%;margin-bottom:0.5rem">↻ Check Again</button>
@@ -280,23 +280,26 @@ function showPropertyBadge(propName) {
 
     const badge = document.createElement('span');
     badge.id = 'headerPropertyBadge';
-        Object.assign(badge.style, {
-        fontFamily:    "'DM Mono', monospace",
-        fontSize:      '0.58rem',
-        letterSpacing: '0.06em',
-        background:    'var(--accent-dim)',
-        color:         'var(--accent)',
-        border:        '1px solid rgba(224,187,100,0.2)',
-        padding:       '2px 8px',
-        borderRadius:  '99px',
-        whiteSpace:    'nowrap',
-        maxWidth:      '140px',
-        overflow:      'hidden',
-        textOverflow:  'ellipsis',
-        flexShrink:    '0'
-    });
-    badge.title       = propName;
-    badge.textContent = `🏢 ${propName}`;
+Object.assign(badge.style, {
+    fontFamily:    "'DM Mono', monospace",
+    fontSize:      '0.58rem',
+    letterSpacing: '0.06em',
+    background:    'var(--accent-dim)',
+    color:         'var(--accent)',
+    border:        '1px solid rgba(224,187,100,0.2)',
+    padding:       '2px 8px',
+    borderRadius:  '99px',
+    whiteSpace:    'nowrap',
+    maxWidth:      '140px',
+    overflow:      'hidden',
+    textOverflow:  'ellipsis',
+    flexShrink:    '0',
+    display:       'inline-flex',
+    alignItems:    'center',
+    gap:           '4px'
+});
+badge.title     = propName;
+badge.innerHTML = `${ICON('properties',11)} ${propName}`;
 
     const headerRight = document.querySelector('.header-right');
     const statusPill  = document.getElementById('headerStatus');
@@ -410,8 +413,70 @@ const SECTION_LOADERS = {
     receipts: loadReceipts,
     messages: loadMessages,
     notices:  loadNotices,
+    maintenance: loadMyMaintenanceRequests,
     rules:    loadRules,
 };
+
+
+
+
+async function submitMaintenanceRequest() {
+    const category    = document.getElementById('maintCategory').value;
+    const priority    = document.getElementById('maintPriority').value;
+    const description = document.getElementById('maintDescription').value.trim();
+
+    if (!description) { showToast('Describe the issue first', 'warn'); return; }
+
+    try {
+        const res  = await fetch(`${API}/maintenance-requests`, {
+            method: 'POST', headers: authHeaders(),
+            body:   JSON.stringify({ category, priority, description })
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.message || 'Failed to submit', 'error'); return; }
+
+        showToast('Request submitted ', 'success');
+        document.getElementById('maintDescription').value = '';
+        await loadMyMaintenanceRequests();
+
+    } catch (err) {
+        showToast('Network error', 'error');
+        console.error(err);
+    }
+}
+
+async function loadMyMaintenanceRequests() {
+    try {
+        const res      = await fetch(`${API}/maintenance-requests`, { headers: authHeaders() });
+        const requests = await res.json();
+        const el       = document.getElementById('maintRequestsList');
+        if (!el) return;
+
+        if (!res.ok || !Array.isArray(requests) || !requests.length) {
+            el.innerHTML = `<div class="empty-state"><span class="empty-icon">${ICON('maintenance',26)}</span>No requests yet</div>`;
+            return;
+        }
+
+        const statusPill = {
+            reported:    '<span class="pill pill-red">Reported</span>',
+            in_progress: '<span class="pill pill-amber">In Progress</span>',
+            completed:   '<span class="pill pill-green">Completed</span>'
+        };
+
+        el.innerHTML = requests.map(r => `
+            <div class="info-item">
+                <div class="info-title" style="display:flex;justify-content:space-between;align-items:center">
+                    <span>${r.category}</span>
+                    ${statusPill[r.status] || r.status}
+                </div>
+                <div class="info-body">${r.description}</div>
+                ${r.resolutionNote ? `<div class="info-body" style="color:var(--text-dim);margin-top:0.3rem">Note: ${r.resolutionNote}</div>` : ''}
+                <div class="info-date">${_fmtDate(r.createdAt)}</div>
+            </div>`).join('');
+
+    } catch (err) { console.error('loadMyMaintenanceRequests error:', err); }
+}
+
 
 function showSection(name) {
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -448,11 +513,11 @@ function _getMonthStatus(month, rent) {
 
 function _statusPill(status) {
     switch (status) {
-        case 'paid':    return '<span class="pill pill-green">Paid ✅</span>';
-        case 'partial': return '<span class="pill pill-amber">Partial ⚠️</span>';
-        case 'failed':  return '<span class="pill pill-red">Failed ❌</span>';
-        case 'pending': return '<span class="pill pill-amber">Pending ⏳</span>';
-        default:        return '<span class="pill pill-red">Unpaid ❌</span>';
+        case 'paid':    return `<span class="pill pill-green" style="display:inline-flex;align-items:center;gap:3px">${ICON('checkCircle',10)} Paid</span>`;
+        case 'partial': return `<span class="pill pill-amber" style="display:inline-flex;align-items:center;gap:3px">${ICON('warning',10)} Partial</span>`;
+        case 'failed':  return `<span class="pill pill-red" style="display:inline-flex;align-items:center;gap:3px">${ICON('errorCircle',10)} Failed</span>`;
+        case 'pending': return `<span class="pill pill-amber" style="display:inline-flex;align-items:center;gap:3px">${ICON('hourglass',10)} Pending</span>`;
+        default:        return `<span class="pill pill-red" style="display:inline-flex;align-items:center;gap:3px">${ICON('errorCircle',10)} Unpaid</span>`;
     }
 }
 
@@ -518,17 +583,16 @@ function renderHeader(data) {
     const rent         = t.house ? t.house.rent : 0;
     const ms           = _getMonthStatus(currentMonth, rent);
     const pill         = document.getElementById('headerStatus');
-
-    if (ms.status === 'paid') {
-        pill.textContent = '✅ Paid';
-        pill.className   = 'status-pill paid';
-    } else if (ms.status === 'partial') {
-        pill.textContent = '⚠️ Partial';
-        pill.className   = 'status-pill partial';
-    } else {
-        pill.textContent = '❌ Unpaid';
-        pill.className   = 'status-pill unpaid';
-    }
+if (ms.status === 'paid') {
+    pill.innerHTML  = `${ICON('checkCircle',11)} Paid`;
+    pill.className  = 'status-pill paid';
+} else if (ms.status === 'partial') {
+    pill.innerHTML  = `${ICON('warning',11)} Partial`;
+    pill.className  = 'status-pill partial';
+} else {
+    pill.innerHTML  = `${ICON('errorCircle',11)} Unpaid`;
+    pill.className  = 'status-pill unpaid';
+}
 }
 
 
@@ -587,34 +651,34 @@ function renderHome(data) {
     bar.style.width = `${pct}%`;
     bar.className   = `pay-progress-fill ${ms.status === 'paid' ? 'status-paid' : ms.status === 'partial' ? 'status-partial' : 'status-unpaid'}`;
 
-    if (ms.status === 'paid') {
-        statusEl.innerHTML = `
-            <div style="display:flex;align-items:center;gap:0.75rem">
-                <span style="font-size:1.5rem">✅</span>
-                <div>
-                    <div style="font-weight:600;color:var(--green)">${currentMonth} — Fully Paid</div>
-                    <div style="font-size:0.72rem;color:var(--text-dim);font-family:'DM Mono',monospace">${_fmtKsh(ms.totalPaid)} received · balance Ksh 0</div>
-                </div>
-            </div>`;
-    } else if (ms.status === 'partial') {
-        statusEl.innerHTML = `
-            <div style="display:flex;align-items:center;gap:0.75rem">
-                <span style="font-size:1.5rem">⚠️</span>
-                <div>
-                    <div style="font-weight:600;color:var(--amber)">${currentMonth} — Partially Paid</div>
-                    <div style="font-size:0.72rem;color:var(--text-dim);font-family:'DM Mono',monospace">${_fmtKsh(ms.totalPaid)} paid · ${_fmtKsh(ms.balance)} remaining</div>
-                </div>
-            </div>`;
-    } else {
-        statusEl.innerHTML = `
-            <div style="display:flex;align-items:center;gap:0.75rem">
-                <span style="font-size:1.5rem">❌</span>
-                <div>
-                    <div style="font-weight:600;color:var(--red)">${currentMonth} — Not Paid</div>
-                    <div style="font-size:0.72rem;color:var(--text-dim);font-family:'DM Mono',monospace">${_fmtKsh(rent)} due</div>
-                </div>
-            </div>`;
-    }
+  if (ms.status === 'paid') {
+    statusEl.innerHTML = `
+        <div style="display:flex;align-items:center;gap:0.75rem">
+            <span style="display:flex;color:var(--green)">${ICON('checkCircle',28)}</span>
+            <div>
+                <div style="font-weight:600;color:var(--green)">${currentMonth} — Fully Paid</div>
+                <div style="font-size:0.72rem;color:var(--text-dim);font-family:'DM Mono',monospace">${_fmtKsh(ms.totalPaid)} received · balance Ksh 0</div>
+            </div>
+        </div>`;
+} else if (ms.status === 'partial') {
+    statusEl.innerHTML = `
+        <div style="display:flex;align-items:center;gap:0.75rem">
+            <span style="display:flex;color:var(--amber)">${ICON('warning',28)}</span>
+            <div>
+                <div style="font-weight:600;color:var(--amber)">${currentMonth} — Partially Paid</div>
+                <div style="font-size:0.72rem;color:var(--text-dim);font-family:'DM Mono',monospace">${_fmtKsh(ms.totalPaid)} paid · ${_fmtKsh(ms.balance)} remaining</div>
+            </div>
+        </div>`;
+} else {
+    statusEl.innerHTML = `
+        <div style="display:flex;align-items:center;gap:0.75rem">
+            <span style="display:flex;color:var(--red)">${ICON('errorCircle',28)}</span>
+            <div>
+                <div style="font-weight:600;color:var(--red)">${currentMonth} — Not Paid</div>
+                <div style="font-size:0.72rem;color:var(--text-dim);font-family:'DM Mono',monospace">${_fmtKsh(rent)} due</div>
+            </div>
+        </div>`;
+}
 }
 
 
@@ -647,10 +711,10 @@ function renderProfile(data) {
         if (houseRow) houseRow.insertAdjacentElement('afterend', propRow);
     }
     propRow.innerHTML = `
-        <span class="info-row-label">Property</span>
-        <span class="info-row-value" style="color:var(--accent);font-family:'DM Mono',monospace;font-size:0.72rem">
-            🏢 ${propName || '—'}${propLoc ? ` <span style="color:var(--text-dim)">· ${propLoc}</span>` : ''}
-        </span>`;
+    <span class="info-row-label">Property</span>
+    <span class="info-row-value" style="color:var(--accent);font-family:'DM Mono',monospace;font-size:0.72rem;display:inline-flex;align-items:center;gap:4px">
+        ${ICON('properties',11)} ${propName || '—'}${propLoc ? ` <span style="color:var(--text-dim)">· ${propLoc}</span>` : ''}
+    </span>`;
 
     // ── Payment history table ──
     const tbody = document.getElementById('payHistoryTable');
@@ -700,17 +764,15 @@ function renderPaySection(data) {
     document.getElementById('payMonth').value  = currentMonth;
     document.getElementById('payAmount').value = ms.balance > 0 ? ms.balance : '';
 
-    let statusBadge;
-    if (ms.status === 'paid')         statusBadge = `<span class="pill pill-green">Paid ✅</span>`;
-    else if (ms.status === 'partial') statusBadge = `<span class="pill pill-amber">Partial ⚠️</span>`;
-    else                              statusBadge = `<span class="pill pill-red">Unpaid ❌</span>`;
+    
+const statusBadge = _statusPill(ms.status);
 
     summaryEl.innerHTML = `
         <div style="display:flex;flex-direction:column;gap:0.5rem">
             <div style="display:flex;justify-content:space-between;font-size:0.8rem">
                 <span style="color:var(--text-dim)">Property</span>
-                <span style="font-family:'DM Mono',monospace;color:var(--accent)">
-                    🏢 ${t.property?.name || '—'}
+                <span style="font-family:'DM Mono',monospace;color:var(--accent);display:inline-flex;align-items:center;gap:4px">
+                    ${ICON('properties',11)} ${t.property?.name || '—'}
                 </span>
             </div>
             <div style="display:flex;justify-content:space-between;font-size:0.8rem">
@@ -778,11 +840,12 @@ function renderSettings(data) {
         const phoneRow = document.getElementById('settingsPhone')?.closest('.info-row');
         if (phoneRow) phoneRow.insertAdjacentElement('afterend', settingsPropRow);
     }
-    settingsPropRow.innerHTML = `
-        <span class="info-row-label">Property</span>
-        <span class="info-row-value" style="color:var(--accent);font-family:'DM Mono',monospace;font-size:0.72rem">
-            🏢 ${propName || '—'}${propLoc ? ` · ${propLoc}` : ''}
-        </span>`;
+    
+        settingsPropRow.innerHTML = `
+            <span class="info-row-label">Property</span>
+            <span class="info-row-value" style="color:var(--accent);font-family:'DM Mono',monospace;font-size:0.72rem;display:inline-flex;align-items:center;gap:4px">
+                ${ICON('properties',11)} ${propName || '—'}${propLoc ? ` <span style="color:var(--text-dim)">· ${propLoc}</span>` : ''}
+            </span>`;
 }
 
 
@@ -825,10 +888,8 @@ async function checkMonthBalance() {
 
         const summaryEl = document.getElementById('rentSummary');
         if (summaryEl) {
-            let badge;
-            if (data.status === 'paid')         badge = `<span class="pill pill-green">Paid ✅</span>`;
-            else if (data.status === 'partial') badge = `<span class="pill pill-amber">Partial ⚠️</span>`;
-            else                                badge = `<span class="pill pill-red">Unpaid ❌</span>`;
+            
+            const badge = _statusPill(data.status);
 
             summaryEl.innerHTML = `
                 <div style="display:flex;flex-direction:column;gap:0.45rem">
@@ -876,13 +937,13 @@ async function payWithMpesa() {
 
     const ms = _getMonthStatus(month, _tenant?.house?.rent || 0);
     if (ms.status === 'paid') {
-        showToast(`${month} is already fully paid ✅`, 'warn');
+        showToast(`${month} is already fully paid `, 'warn');
         return;
     }
 
     const btn = document.querySelector('.mpesa-btn');
-    btn.disabled    = true;
-    btn.textContent = '⏳ Sending prompt...';
+    btn.disabled  = true;
+    btn.innerHTML = `${ICON('hourglass',14)} Sending prompt...`;
 
     try {
         const res  = await fetch(`${API}/stkpush`, {
@@ -892,8 +953,8 @@ async function payWithMpesa() {
         });
         const data = await res.json();
 
-        btn.disabled    = false;
-        btn.textContent = '📱 Pay with M-Pesa';
+        btn.disabled  = false;
+        btn.innerHTML = `${ICON('phone',14)} Pay with M-Pesa`;
 
         if (!res.ok) {
             showToast(data.message || data.error || 'M-Pesa request failed', 'error');
@@ -905,11 +966,11 @@ async function payWithMpesa() {
         pollPaymentStatus(data.checkoutRequestId, month);
 
     } catch (err) {
-        btn.disabled    = false;
-        btn.textContent = '📱 Pay with M-Pesa';
-        showToast('Network error — check your connection', 'error');
-        console.error(err);
-    }
+    btn.disabled  = false;
+    btn.innerHTML = `${ICON('phone',14)} Pay with M-Pesa`;
+    showToast('Network error — check your connection', 'error');
+    console.error(err);
+}
 }
 
 async function pollPaymentStatus(checkoutRequestId, month) {
@@ -932,7 +993,7 @@ async function pollPaymentStatus(checkoutRequestId, month) {
                     mpesaCode: data.mpesaCode,
                     month
                 });
-                showToast('Payment confirmed ✅', 'success');
+                showToast('Payment confirmed ', 'success');
                 await loadProfile();
                 return;
             }
@@ -947,7 +1008,7 @@ async function pollPaymentStatus(checkoutRequestId, month) {
             if (data.status === 'duplicate') {
                 clearInterval(interval);
                 renderPayStatus('confirmed', { mpesaCode: 'Already recorded', month });
-                showToast(`${month} is already paid ✅`, 'warn');
+                showToast(`${month} is already paid `, 'warn');
                 return;
             }
 
@@ -979,7 +1040,7 @@ function renderPayStatus(status, data) {
     const states = {
         waiting: `
             <div class="card" style="border-color:rgba(251,191,36,0.35);margin-top:1rem;text-align:center;padding:1.5rem 1rem">
-                <div style="font-size:2rem;margin-bottom:0.5rem;display:inline-block;animation:spin 1.5s linear infinite">⏳</div>
+                <div style="display:flex;justify-content:center;margin-bottom:0.5rem;animation:spin 1.5s linear infinite;color:var(--amber)">${ICON('hourglass',32)}</div>
                 <div style="font-weight:600;color:var(--amber);margin-bottom:0.3rem">Waiting for payment...</div>
                 <div style="font-size:0.75rem;color:var(--text-dim);font-family:'DM Mono',monospace">
                     Check <strong style="color:var(--text)">${data.phone || ''}</strong> for the M-Pesa prompt
@@ -989,26 +1050,26 @@ function renderPayStatus(status, data) {
 
         confirmed: `
             <div class="card" style="border-color:rgba(52,211,153,0.35);margin-top:1rem;text-align:center;padding:1.5rem 1rem">
-                <div style="font-size:2.5rem;margin-bottom:0.5rem">✅</div>
+                <div style="display:flex;justify-content:center;margin-bottom:0.5rem;color:var(--green)">${ICON('checkCircle',40)}</div>
                 <div style="font-weight:600;color:var(--green);margin-bottom:0.5rem">Payment Confirmed!</div>
                 ${data.mpesaCode ? `<div style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--text-dim)">M-Pesa Code: <strong style="color:var(--text)">${data.mpesaCode}</strong></div>` : ''}
                 ${data.month     ? `<div style="font-size:0.75rem;color:var(--text-dim);margin-top:0.2rem">${data.month} — Payment recorded</div>` : ''}
                 <div style="margin-top:1rem;display:flex;gap:0.5rem;justify-content:center">
-                    ${data.paymentId ? `<button class="btn btn-secondary btn-sm" onclick="downloadPDF('${data.paymentId}')">📄 Download Receipt</button>` : ''}
+                    ${data.paymentId ? `<button class="btn btn-secondary btn-sm" onclick="downloadPDF('${data.paymentId}')">${ICON('file',14)} Download Receipt</button>` : ''}
                     <button class="btn btn-primary btn-sm" onclick="showSection('receipts')">View All Receipts</button>
                 </div>
             </div>`,
 
         failed: `
             <div class="card" style="border-color:rgba(248,113,113,0.35);margin-top:1rem;text-align:center;padding:1.5rem 1rem">
-                <div style="font-size:2rem;margin-bottom:0.5rem">❌</div>
+                <div style="display:flex;justify-content:center;margin-bottom:0.5rem;color:var(--red)">${ICON('errorCircle',32)}</div>
                 <div style="font-weight:600;color:var(--red);margin-bottom:0.3rem">Payment Failed</div>
                 <div style="font-size:0.75rem;color:var(--text-dim)">${data.reason || 'The payment was not completed. Please try again.'}</div>
             </div>`,
 
         timeout: `
             <div class="card" style="border-color:rgba(251,191,36,0.25);margin-top:1rem;text-align:center;padding:1.5rem 1rem">
-                <div style="font-size:2rem;margin-bottom:0.5rem">⏱️</div>
+                <div style="display:flex;justify-content:center;margin-bottom:0.5rem;color:var(--amber)">${ICON('clock',32)}</div>
                 <div style="font-weight:600;color:var(--amber);margin-bottom:0.3rem">Request Timed Out</div>
                 <div style="font-size:0.75rem;color:var(--text-dim)">If you entered your PIN, check your receipts in a few minutes. Otherwise try again.</div>
                 <button class="btn btn-secondary btn-sm" onclick="showSection('receipts')" style="margin-top:0.75rem;width:auto">Check Receipts</button>
@@ -1032,7 +1093,7 @@ async function loadReceipts() {
         const el   = document.getElementById('receiptsList');
 
         if (!Array.isArray(data) || !data.length) {
-            el.innerHTML = `<div class="empty-state"><span class="empty-icon">🧾</span>No receipts yet</div>`;
+            el.innerHTML = `<div class="empty-state"><span class="empty-icon">${ICON('receipts',28)}</span>No receipts yet</div>`;
             return;
         }
 
@@ -1041,7 +1102,7 @@ async function loadReceipts() {
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
         if (!visible.length) {
-            el.innerHTML = `<div class="empty-state"><span class="empty-icon">🧾</span>No receipts yet</div>`;
+            el.innerHTML = `<div class="empty-state"><span class="empty-icon">${ICON('receipts',28)}</span>No receipts yet</div>`;
             return;
         }
 
@@ -1061,8 +1122,8 @@ async function loadReceipts() {
                 </div>
                 <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.35rem;flex-shrink:0">
                     ${_statusPill(p.status)}
-                    <button class="btn btn-secondary btn-sm" onclick="downloadPDF('${p._id}')">📄 PDF</button>
-                </div>
+                    <button class="btn btn-secondary btn-sm" onclick="downloadPDF('${p._id}')">${ICON('file',14)} PDF</button>
+                    </div>
             </div>`).join('');
 
     } catch (err) {
@@ -1126,7 +1187,7 @@ function renderChat(messages) {
     const box = document.getElementById('chatBox');
 
     if (!messages || !messages.length) {
-        box.innerHTML = `<div class="empty-state"><span class="empty-icon">💬</span>No messages yet. Send a message to your landlord!</div>`;
+        box.innerHTML = `<div class="empty-state"><span class="empty-icon">${ICON('messages',26)}</span>No messages yet. Send a message to your landlord!</div>`;
         return;
     }
 
@@ -1141,7 +1202,7 @@ function renderChat(messages) {
                 <div class="msg-bubble ${isMine ? 'msg-mine' : 'msg-admin'}">
                     ${m.text}
                     <div class="msg-meta">
-                        ${isMine ? 'You' : '🏠 Landlord'} · ${date} ${time}
+                        ${isMine ? 'You' : `${ICON('home',10)} Landlord`} · ${date} ${time}
                     </div>
                 </div>`;
         }).join('');
@@ -1215,7 +1276,7 @@ async function loadNotices() {
         const el   = document.getElementById('noticesList');
 
         if (!res.ok || !Array.isArray(data) || !data.length) {
-            el.innerHTML = `<div class="empty-state"><span class="empty-icon">📢</span>No announcements yet</div>`;
+            el.innerHTML = `<div class="empty-state"><span class="empty-icon">${ICON('announcements',26)}</span>No announcements yet</div>`;
             return;
         }
 
@@ -1239,7 +1300,7 @@ async function loadRules() {
         const el    = document.getElementById('rulesList');
 
         if (!res.ok || !Array.isArray(rules) || !rules.length) {
-            el.innerHTML = `<div class="empty-state"><span class="empty-icon">📜</span>No rules posted yet</div>`;
+            el.innerHTML = `<div class="empty-state"><span class="empty-icon">${ICON('rules',26)}</span>No rules posted yet</div>`;
             return;
         }
 
@@ -1284,7 +1345,7 @@ async function changePassword() {
         const data = await res.json();
         if (!res.ok) { showToast(data.message || 'Failed to change password', 'error'); return; }
 
-        showToast('Password updated successfully ✅', 'success');
+        showToast('Password updated successfully ', 'success');
 
         ['currentPassword', 'newPassword', 'confirmPassword'].forEach(id => {
             document.getElementById(id).value = '';
@@ -1331,3 +1392,4 @@ setInterval(loadNotices,      300000);
 setInterval(loadRules,        600000);
 setInterval(loadMessages,     20000);
 setInterval(loadReceipts,     120000);
+setInterval(loadMyMaintenanceRequests, 300000);

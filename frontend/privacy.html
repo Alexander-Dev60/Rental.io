@@ -238,7 +238,9 @@
     border-radius: 0 10px 10px 0;
     padding: 13px 18px; margin: 14px 0;
     font-size: .84rem; color: var(--muted); line-height: 1.6;
+    display: flex; align-items: flex-start; gap: 9px;
   }
+  .highlight-box [data-icon] { color: var(--primary); flex-shrink: 0; margin-top: 2px; }
 
   /* FOOTER */
   .doc-footer {
@@ -263,11 +265,14 @@
 </head>
 <body>
 
-<!-- BG slideshow -->
+<!--
+  BACKGROUND SLIDESHOW
+  Only 2 photos, crossfading on a slow, even 5-minute interval
+  (see script below: BG_INTERVAL = 5 * 60 * 1000).
+-->
 <div class="bg" id="bgEl">
   <img class="active" src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=1400&q=80" alt="">
   <img src="https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1400&q=80" alt="">
-  <img src="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1400&q=80" alt="">
 </div>
 <div class="overlay"></div>
 
@@ -330,7 +335,7 @@
     <h2>Introduction</h2>
     <p>Affordable Rentals ("we", "us", "our") is committed to protecting your personal information. This Privacy Policy explains what data we collect, how we use it, and your rights as a user of our platform.</p>
     <p>This policy is compliant with the <strong>Kenya Data Protection Act 2019</strong>. By using Affordable Rentals, you consent to the data practices described in this policy.</p>
-    <div class="highlight-box">🔒 We never sell your personal data. Your information is only used to provide and improve our service.</div>
+    <div class="highlight-box"><span data-icon="lock" data-icon-size="15"></span><span>We never sell your personal data. Your information is only used to provide and improve our service.</span></div>
   </div>
 
   <div class="doc-section" id="p2">
@@ -382,7 +387,7 @@
       <li><strong>Access control</strong> — tenant data is only accessible to their assigned landlord and platform admins</li>
       <li><strong>Environment variables</strong> — all secrets are stored securely and never exposed in source code</li>
     </ul>
-    <div class="highlight-box">🛡️ Despite our best efforts, no system is 100% secure. Please use a strong unique password and keep your credentials private.</div>
+    <div class="highlight-box"><span data-icon="shield" data-icon-size="15"></span><span>Despite our best efforts, no system is 100% secure. Please use a strong unique password and keep your credentials private.</span></div>
   </div>
 
   <div class="doc-section" id="p5">
@@ -457,7 +462,7 @@
 
 <!-- FOOTER -->
 <div class="doc-footer">
-  <p>© 2026 Affordable Rentals · All rights reserved · Built with ❤️ in Kenya</p>
+  <p>© 2026 Affordable Rentals · All rights reserved · Built with <span data-icon="heart" data-icon-size="9"></span> in Kenya</p>
   <p>
     <a href="terms.html">Terms &amp; Conditions</a>
     <span class="footer-sep">·</span>
@@ -471,10 +476,26 @@
   </p>
 </div>
 
+<!-- icons.js must load before wireIcons() runs -->
+<script src="icons.js"></script>
 <script>
+(function wireIcons() {
+  try {
+    document.querySelectorAll('[data-icon]').forEach(el => {
+      const name = el.dataset.icon;
+      const size = parseInt(el.dataset.iconSize, 10) || 16;
+      el.innerHTML = ICON(name, size);
+    });
+  } catch (err) {
+    console.error('wireIcons error:', err);
+  }
+})();
+
+// BG slideshow — 2 photos, even 5-minute rotation
 (function(){
+  const BG_INTERVAL = 5 * 60 * 1000; // 5 minutes
   const imgs = document.querySelectorAll('.bg img'); let i = 0;
-  setInterval(() => { imgs[i].classList.remove('active'); i = (i+1)%imgs.length; imgs[i].classList.add('active'); }, 5000);
+  setInterval(() => { imgs[i].classList.remove('active'); i = (i+1)%imgs.length; imgs[i].classList.add('active'); }, BG_INTERVAL);
 })();
 </script>
 </body>

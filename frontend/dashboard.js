@@ -22,7 +22,8 @@ const SECTION_TITLES = {
     announcements: 'Announcements',
     rules:         'House Rules',
     activity:      'Activity Log',
-    inquiries:     'Rental Inquiries'
+    inquiries:     'Rental Inquiries',
+    maintenance: 'Repair Requests',
 };
 
 function showSection(name) {
@@ -55,6 +56,8 @@ function showSection(name) {
     if (name === 'properties')    { loadProperties(); }
     if (name === 'inquiries')     { loadInquiries(); }
     if (name === 'activity')      { loadActivity(); }
+    if (name === 'expenses')      { loadExpenses(); }
+    if (name === 'maintenance')   { loadMaintenanceRequests(); }
 }
 
 function toggleSidebar() {
@@ -72,6 +75,41 @@ function setTheme(theme) {
     document.querySelectorAll('.theme-dot').forEach(d => {
         d.classList.toggle('active', d.dataset.theme === theme);
     });
+}
+
+// ═══════════════════════════════════════
+// MONTH SELECT HELPERS
+// ═══════════════════════════════════════
+//
+// Both expense recording and the dashboard filter pull from this same
+// generator, so the `month` string saved on an expense always exactly
+// matches what the dashboard can query for — no more silent misses from
+// free-typed strings that don't quite match ("May 2026" vs "may 2026").
+
+function _generateRecentMonths(count = 12, aheadCount = 0) {
+    const months = [];
+    const now = new Date();
+    for (let i = aheadCount; i > 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+        months.push(d.toLocaleString('default', { month: 'long', year: 'numeric' }));
+    }
+    for (let i = 0; i < count; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        months.push(d.toLocaleString('default', { month: 'long', year: 'numeric' }));
+    }
+    return months;
+}
+
+function _populateMonthSelect(selectId, { count = 12, ahead = 0, selected } = {}) {
+    const el = document.getElementById(selectId);
+    if (!el) return;
+    const months  = _generateRecentMonths(count, ahead);
+    const current = months[ahead]; // ahead months are listed first, so this index is "this month"
+    const value   = selected && months.includes(selected) ? selected : current;
+
+    el.innerHTML = months.map(m =>
+        `<option value="${m}" ${m === value ? 'selected' : ''}>${m}</option>`
+    ).join('');
 }
 
 
@@ -97,20 +135,17 @@ function showToast(msg, type = '') {
 function renderPropertySwitcher(properties) {
     const menu     = document.getElementById('propertyMenu');
     const nameEl   = document.getElementById('activePropertyName');
+    const locEl    = document.getElementById('activePropertyLoc');
     const arrowEl  = document.getElementById('switcherArrow');
     const activeId = localStorage.getItem('activePropertyId');
 
     const active = properties.find(p => p._id === activeId) || properties[0];
     if (nameEl && active) nameEl.textContent = active.name;
+    if (locEl) locEl.innerHTML = active && active.location ? `${ICON('pin',12)} ${active.location}` : '';
 
     if (arrowEl) arrowEl.style.display = properties.length > 1 ? 'inline' : 'none';
 
     if (!menu) return;
-
-    if (properties.length <= 1) {
-        menu.innerHTML = '';
-        return;
-    }
 
     menu.innerHTML = properties.map(p => `
         <div class="property-menu-item ${p._id === activeId ? 'active' : ''}"
@@ -118,17 +153,17 @@ function renderPropertySwitcher(properties) {
             <span class="property-menu-dot ${p._id === activeId ? 'active' : ''}"></span>
             <div style="flex:1;min-width:0">
                 <div class="property-menu-name">${p.name}</div>
-                ${p.location ? `<div class="property-menu-loc">📍 ${p.location}</div>` : ''}
+                ${p.location ? `<div class="property-menu-loc">${ICON('pin',11)} ${p.location}</div>` : ''}
             </div>
             ${p.paymentConfigured
-                ? '<span style="font-size:0.6rem;color:var(--accent);flex-shrink:0">M-Pesa ✓</span>'
+                ? `<span style="font-size:0.6rem;color:var(--accent);flex-shrink:0;display:flex;align-items:center;gap:2px">M-Pesa ${ICON('check',10)}</span>`
                 : '<span style="font-size:0.6rem;color:var(--text-dim);flex-shrink:0">No M-Pesa</span>'}
-            ${p._id === activeId ? '<span style="color:var(--accent);margin-left:0.5rem;flex-shrink:0">✓</span>' : ''}
+            ${p._id === activeId ? `<span style="color:var(--accent);margin-left:0.5rem;flex-shrink:0;display:flex">${ICON('check',12)}</span>` : ''}
         </div>`
     ).join('') + `
         <div class="property-menu-item" style="border-top:1px solid var(--border);margin-top:3px;padding-top:0.6rem"
              onclick="closePropertyMenu(); openModal('modal-add-property')">
-            <span style="color:var(--accent);font-size:0.85rem">＋</span>
+            <span style="color:var(--accent);display:flex">${ICON('plus',14)}</span>
             <div class="property-menu-name" style="color:var(--accent)">Add Property</div>
         </div>`;
 }
@@ -151,7 +186,7 @@ function renderPropertiesGrid(properties) {
     const activeId = localStorage.getItem('activePropertyId');
 
     if (!properties.length) {
-        grid.innerHTML = '<div class="empty-state"><span class="icon">🏢</span>No properties yet. Add your first property.</div>';
+        grid.innerHTML = `<div class="empty-state"><span class="icon">${ICON('properties',26)}</span>No properties yet. Add your first property.</div>`;
         return;
     }
 
@@ -162,21 +197,21 @@ function renderPropertiesGrid(properties) {
           <div style="padding:1rem 1.25rem;cursor:pointer;border-bottom:1px solid var(--border)"
                onclick="switchProperty('${p._id}', '${p.name.replace(/'/g, "\\'")}')">
             <div style="font-family:'Instrument Serif',serif;font-style:italic;font-size:1.2rem;color:var(--text);margin-bottom:0.25rem">${p.name}</div>
-            <div style="font-family:'JetBrains Mono',monospace;font-size:0.62rem;color:var(--text-dim)">
-              ${p.location ? `📍 ${p.location}` : '—'}
+            <div style="font-family:'JetBrains Mono',monospace;font-size:0.62rem;color:var(--text-dim);display:flex;align-items:center;gap:4px">
+              ${p.location ? `${ICON('pin',12)} ${p.location}` : '—'}
             </div>
             <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.5rem">
               ${p._id === activeId
                 ? '<span class="pill pill-green">● Active</span>'
                 : '<span class="pill" style="background:var(--bg3);color:var(--text-dim);border:1px solid var(--border)">Switch →</span>'}
               ${p.paymentConfigured
-                ? '<span class="pill pill-green">M-Pesa ✓</span>'
+                ? `<span class="pill pill-green" style="display:inline-flex;align-items:center;gap:3px">M-Pesa ${ICON('check',10)}</span>`
                 : '<span class="pill pill-yellow">No M-Pesa</span>'}
-                         ${p.hasLocation
-                ? '<span class="pill pill-green">📍 Pinned</span>'
-                : '<span class="pill pill-yellow">📍 Not Pinned</span>'}
-            ${p.isSuspended
-                ? '<span class="pill pill-red">🚫 Suspended</span>'
+              ${p.hasLocation
+                ? `<span class="pill pill-green" style="display:inline-flex;align-items:center;gap:3px">${ICON('pin',10)} Pinned</span>`
+                : `<span class="pill pill-yellow" style="display:inline-flex;align-items:center;gap:3px">${ICON('pin',10)} Not Pinned</span>`}
+              ${p.isSuspended
+                ? `<span class="pill pill-red" style="display:inline-flex;align-items:center;gap:3px">${ICON('ban',10)} Suspended</span>`
                 : ''}
             </div>
           </div>
@@ -196,31 +231,31 @@ function renderPropertiesGrid(properties) {
             </div>
 
             ${p.isListed && !p.isApproved ? `
-            <div style="font-family:'JetBrains Mono',monospace;font-size:0.6rem;color:var(--warn);background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);border-radius:6px;padding:0.4rem 0.65rem;margin-bottom:0.65rem">
-              ⏳ Pending admin approval before going live
+            <div style="font-family:'JetBrains Mono',monospace;font-size:0.6rem;color:var(--warn);background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);border-radius:6px;padding:0.4rem 0.65rem;margin-bottom:0.65rem;display:flex;align-items:center;gap:5px">
+              ${ICON('hourglass',12)} Pending admin approval before going live
             </div>` : ''}
 
             ${p.isListed && p.isApproved ? `
-            <div style="font-family:'JetBrains Mono',monospace;font-size:0.6rem;color:var(--accent);background:var(--accent-dim);border:1px solid rgba(110,231,183,0.2);border-radius:6px;padding:0.4rem 0.65rem;margin-bottom:0.65rem">
-              ✅ Live on public listings page
+            <div style="font-family:'JetBrains Mono',monospace;font-size:0.6rem;color:var(--accent);background:var(--accent-dim);border:1px solid rgba(110,231,183,0.2);border-radius:6px;padding:0.4rem 0.65rem;margin-bottom:0.65rem;display:flex;align-items:center;gap:5px">
+              ${ICON('check',12)} Live on public listings page
             </div>` : ''}
 
             <button class="btn btn-secondary btn-sm btn-full"
               style="margin-bottom:0.5rem"
               onclick="openListingEditor('${p._id}')">
-              ✏️ Edit Description &amp; Details
+              ${ICON('edit',14)} Edit Description &amp; Details
             </button>
             <button class="btn btn-secondary btn-sm btn-full"
               style="margin-bottom:0.5rem"
               onclick="openLocationPicker('${p._id}')">
-              📍 ${p.hasLocation ? 'Update Map Location' : 'Set Map Location'}
+              ${ICON('pin',14)} ${p.hasLocation ? 'Update Map Location' : 'Set Map Location'}
             </button>
             ${p.isListed && p.isApproved ? `
             <a href="listings.html${p.location ? '?location=' + encodeURIComponent(p.location.split(',')[0].trim()) : ''}"
                target="_blank"
                class="btn btn-secondary btn-sm btn-full"
-               style="text-decoration:none;display:flex;align-items:center;justify-content:center">
-              👁 Preview on Listings Page
+               style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:5px">
+              ${ICON('eye',14)} Preview on Listings Page
             </a>` : ''}
           </div>
         </div>`
@@ -228,7 +263,7 @@ function renderPropertiesGrid(properties) {
     `<div style="background:var(--panel);border:1px dashed var(--border2);border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;min-height:160px"
           onclick="openModal('modal-add-property')">
         <div style="text-align:center;color:var(--text-dim)">
-          <div style="font-size:1.5rem;margin-bottom:0.3rem">＋</div>
+          <div style="display:flex;justify-content:center;margin-bottom:0.3rem">${ICON('plus',22)}</div>
           <div style="font-size:0.75rem">Add Property</div>
         </div>
      </div>
@@ -243,8 +278,8 @@ function renderPropertiesGrid(properties) {
 function renderTenantList(tenants) {
     const list = document.getElementById('tenantList');
 
-    if (!tenants.length) {
-        list.innerHTML = '<div class="empty-state"><span class="icon">👥</span>No tenants found</div>';
+        if (!tenants.length) {
+        list.innerHTML = `<div class="empty-state"><span class="icon">${ICON('tenants',26)}</span>No tenants found</div>`;
         return;
     }
 
@@ -287,8 +322,8 @@ function renderMovedOutList(tenants) {
     const list = document.getElementById('movedOutList');
     if (!list) return;
 
-    if (!tenants.length) {
-        list.innerHTML = '<div class="empty-state"><span class="icon">🚪</span>No moved-out tenants</div>';
+       if (!tenants.length) {
+        list.innerHTML = `<div class="empty-state"><span class="icon">${ICON('door',26)}</span>No moved-out tenants</div>`;
         return;
     }
 
@@ -334,14 +369,13 @@ function handleTenantClick(event, tenant) {
     menu.className = 'ctx-menu';
     menu.dataset.tenantId = tenant._id;
 
-    menu.innerHTML = `
-        <div class="ctx-item" onclick="_ctxViewProfile('${tenant._id}')">👁️ View Profile</div>
-        <div class="ctx-item" onclick="_ctxPayRent('${tenant._id}')">💳 Pay Rent</div>
+        menu.innerHTML = `
+        <div class="ctx-item" onclick="_ctxViewProfile('${tenant._id}')">${ICON('eye',14)} View Profile</div>
+        <div class="ctx-item" onclick="_ctxPayRent('${tenant._id}')">${ICON('payments',14)} Pay Rent</div>
         <div class="ctx-divider"></div>
-        <div class="ctx-item" onclick="_ctxResetPassword('${tenant._id}')">🔑 Reset Password</div>
+        <div class="ctx-item" onclick="_ctxResetPassword('${tenant._id}')">${ICON('key',14)} Reset Password</div>
         <div class="ctx-divider"></div>
-        <div class="ctx-item danger" onclick="_ctxDelete('${tenant._id}')">🗑️ Delete Permanently</div>`;
-
+        <div class="ctx-item danger" onclick="_ctxDelete('${tenant._id}')">${ICON('trash',14)} Delete Permanently</div>`;
     if (row) {
         row.style.position = 'relative';
         row.appendChild(menu);
@@ -370,13 +404,12 @@ function handleMovedOutTenantClick(event, tenant) {
     menu.className = 'ctx-menu';
     menu.dataset.tenantId = tenant._id;
 
-    menu.innerHTML = `
-        <div class="ctx-item" onclick="_ctxViewProfile('${tenant._id}')">👁️ View Profile &amp; History</div>
+        menu.innerHTML = `
+        <div class="ctx-item" onclick="_ctxViewProfile('${tenant._id}')">${ICON('eye',14)} View Profile &amp; History</div>
         <div class="ctx-divider"></div>
-        <div class="ctx-item" style="color:var(--accent)" onclick="_ctxReactivate('${tenant._id}')">🔄 Reactivate Tenant</div>
+        <div class="ctx-item" style="color:var(--accent)" onclick="_ctxReactivate('${tenant._id}')">${ICON('loop',14)} Reactivate Tenant</div>
         <div class="ctx-divider"></div>
-        <div class="ctx-item danger" onclick="_ctxDelete('${tenant._id}')">🗑️ Delete Permanently</div>`;
-
+        <div class="ctx-item danger" onclick="_ctxDelete('${tenant._id}')">${ICON('trash',14)} Delete Permanently</div>`;
     if (row) {
         row.style.position = 'relative';
         row.appendChild(menu);
@@ -436,8 +469,8 @@ function openReactivateModal(tenant) {
         modal.innerHTML = `
             <div class="modal" style="max-width:420px">
                 <div class="modal-header">
-                    <div class="modal-title">🔄 Reactivate Tenant</div>
-                    <button class="modal-close" onclick="closeModal('modal-reactivate')">✕</button>
+                    <div class="modal-title">${ICON('loop',18)} Reactivate Tenant</div>
+                    <button class="modal-close" onclick="closeModal('modal-reactivate')">${ICON('close',16)}</button>
                 </div>
                 <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:0.85rem 1rem;margin-bottom:1.25rem">
                     <div style="font-family:'Instrument Serif',serif;font-style:italic;font-size:1.1rem;color:var(--text);margin-bottom:0.3rem" id="reactivateModalName"></div>
@@ -448,7 +481,7 @@ function openReactivateModal(tenant) {
                 <input type="hidden" id="reactivateTenantId">
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
                     <button class="btn btn-secondary btn-full" onclick="closeModal('modal-reactivate')">Cancel</button>
-                    <button class="btn btn-primary btn-full"   onclick="submitReactivate()">🔄 Reactivate</button>
+                    <button class="btn btn-primary btn-full"   onclick="submitReactivate()">${ICON('loop',14)} Reactivate</button>
                 </div>
             </div>`;
         modal.addEventListener('click', e => { if (e.target === modal) closeModal('modal-reactivate'); });
@@ -495,7 +528,9 @@ async function submitReactivate() {
     if (!houseId) { showToast('Select a house to assign', 'warn'); return; }
 
     const btn = document.querySelector('#modal-reactivate .btn-primary');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Reactivating...'; }
+        if (btn) { btn.disabled = true; btn.innerHTML = `${ICON('hourglass',14)} Reactivating...`; }
+    
+    
 
     const success = await reactivateTenant(tenantId, houseId);
     if (success) {
@@ -503,7 +538,7 @@ async function submitReactivate() {
         switchTenantTab('active');
     }
 
-    if (btn) { btn.disabled = false; btn.textContent = '🔄 Reactivate'; }
+   if (btn) { btn.disabled = false; btn.innerHTML = `${ICON('loop',14)} Reactivate`; }
 }
 
 
@@ -553,7 +588,7 @@ function renderProfile(data) {
         movedOutBanner = `
             <div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.25);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.25rem">
                 <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem">
-                    <span style="font-size:1.1rem">🚪</span>
+                    <span style="font-size:1.1rem">${ICON('door',18)}</span>
                     <span style="font-weight:700;color:var(--warn);font-size:0.85rem">This tenant has moved out</span>
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-family:'JetBrains Mono',monospace;font-size:0.68rem">
@@ -569,16 +604,18 @@ function renderProfile(data) {
                 </div>
                 <div style="margin-top:0.85rem;padding-top:0.75rem;border-top:1px solid rgba(251,191,36,0.15);display:flex;gap:0.5rem;flex-wrap:wrap">
                     <button class="btn btn-sm" style="background:rgba(110,231,183,0.12);color:var(--accent);border:1px solid rgba(110,231,183,0.25);font-size:0.72rem"
-                            onclick="_ctxReactivate('${t._id}')">🔄 Reactivate this tenant</button>
-                    <button class="btn btn-sm btn-danger" style="font-size:0.72rem"
-                            onclick="_ctxDelete('${t._id}')">🗑️ Delete Permanently</button>
+                            onclick="_ctxReactivate('${t._id}')">${ICON('loop',14)} Reactivate this tenant</button>
+                                        <button class="btn btn-sm btn-danger" style="font-size:0.72rem"
+                            onclick="_ctxDelete('${t._id}')">${ICON('trash',14)} Delete Permanently</button>
                 </div>
             </div>`;
     }
+  
+            
 
     const house = t.house ? (t.house.name || t.house) : null;
-    const housePill = house && t.status !== 'moved_out'
-        ? `<span class="pill pill-green">🏠 ${house}</span>`
+        const housePill = house && t.status !== 'moved_out'
+        ? `<span class="pill pill-green">${ICON('houses',12)} ${house}</span>`
         : '';
 
     const payRows = payments.length
@@ -603,9 +640,9 @@ function renderProfile(data) {
             <div style="font-size:0.75rem;color:var(--text-dim);font-family:'JetBrains Mono',monospace">${t.email} · ${t.phone || '—'}</div>
             <div style="margin-top:0.5rem;display:flex;gap:0.5rem;flex-wrap:wrap">
                 ${housePill}
-                ${t.status !== 'moved_out' ? `
+            ${t.status !== 'moved_out' ? `
                 <span class="pill ${data.arrears > 0 ? 'pill-red' : 'pill-green'}">
-                    ${data.arrears > 0 ? `⚠️ Arrears: Ksh ${Number(data.arrears).toLocaleString()}` : '✅ All paid'}
+                    ${data.arrears > 0 ? `${ICON('warning',12)} Arrears: Ksh ${Number(data.arrears).toLocaleString()}` : `${ICON('check',12)} All paid`}
                 </span>` : ''}
             </div>
         </div>
@@ -622,17 +659,21 @@ function renderProfile(data) {
 }
 
 
+
 // ═══════════════════════════════════════
 // ARREARS TABLE
 // ═══════════════════════════════════════
 
-function renderArrearsTable(data) {
+
+
+    function renderArrearsTable(data) {
     const tbody = document.getElementById('arrearsTable');
 
     if (!data.length) {
-        tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state">🎉 No arrears found</div></td></tr>';
+        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">${ICON('celebrate',20)} No arrears found</div></td></tr>`;
         return;
     }
+    
 
     tbody.innerHTML = data.map(r => `
         <tr>
@@ -650,6 +691,31 @@ function quickPay(tenantId) {
     const tenant = _allTenants.find(t => t._id === tenantId);
     if (tenant) openPayModal(tenant);
     else showToast('Tenant not found — click Refresh', 'warn');
+}
+
+
+const EXPENSE_CATEGORY_ICONS = {
+    water: ICON('water',14), electricity: ICON('bolt',14), repairs: ICON('maintenance',14),
+    security: ICON('shield',14), cleaning: ICON('broom',14), staff: ICON('hardhat',14), other: ICON('box',14)
+};
+
+function renderExpensesTable(expenses) {
+    const tbody = document.getElementById('expensesTable');
+    if (!tbody) return;
+
+    if (!expenses.length) {
+        tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state">No expenses recorded yet</div></td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = expenses.map(e => `
+        <tr>
+            <td style="display:flex;align-items:center;gap:6px">${EXPENSE_CATEGORY_ICONS[e.category] || ICON('box',14)} ${e.category}</td>
+            <td class="td-mono">Ksh ${Number(e.amount).toLocaleString()}</td>
+            <td class="td-mono">${e.month}</td>
+            <td style="font-size:0.75rem;color:var(--text-muted)">${e.property?.name || '—'}</td>
+            <td><button class="btn btn-danger btn-sm" onclick="deleteExpense('${e._id}')">${ICON('trash',14)}</button></td>
+        </tr>`).join('');
 }
 
 
@@ -730,8 +796,8 @@ function houseOptions(event, house) {
         menu.innerHTML = `
             <div class="ctx-item" style="font-size:0.7rem;color:var(--text-dim);font-family:'JetBrains Mono',monospace;cursor:default">${house.name}</div>
             <div class="ctx-divider"></div>
-            <div class="ctx-item" onclick="openAssignModal('${house._id}', '${house.name.replace(/'/g, "\\'")}')">🔑 Assign Tenant</div>
-            <div class="ctx-item danger" onclick="deleteHouse('${house._id}')">🗑️ Delete House</div>`;
+            <div class="ctx-item" onclick="openAssignModal('${house._id}', '${house.name.replace(/'/g, "\\'")}')">${ICON('key',14)} Assign Tenant</div>
+            <div class="ctx-item danger" onclick="deleteHouse('${house._id}')">${ICON('trash',14)} Delete House</div>`;
     } else {
         const tenantLabel = house.tenantName ? `Move Out ${house.tenantName}` : 'Move Out Tenant';
         menu.innerHTML = `
@@ -739,9 +805,9 @@ function houseOptions(event, house) {
             <div class="ctx-divider"></div>
             <div class="ctx-item" style="color:var(--warn)"
                  onclick="confirmMoveOutByHouse('${house._id}', '${house.name.replace(/'/g, "\\'")}', '${(house.tenantId || '').replace(/'/g, "\\'")}', '${(house.tenantName || 'Tenant').replace(/'/g, "\\'")}')">
-                🚪 ${tenantLabel}
+                ${ICON('door',14)} ${tenantLabel}
             </div>
-            <div class="ctx-item danger" onclick="deleteHouse('${house._id}')">🗑️ Delete House</div>`;
+            <div class="ctx-item danger" onclick="deleteHouse('${house._id}')">${ICON('trash',14)} Delete House</div>`;
     }
 
     // ── Compute fixed position below card, with overflow guards ──
@@ -802,8 +868,8 @@ function openAssignModal(houseId, houseName) {
         modal.innerHTML = `
             <div class="modal" style="max-width:380px">
                 <div class="modal-header">
-                    <div class="modal-title">🔑 Assign Tenant</div>
-                    <button class="modal-close" onclick="closeModal('modal-assign-house')">✕</button>
+                    <div class="modal-title">${ICON('key',18)} Assign Tenant</div>
+                    <button class="modal-close" onclick="closeModal('modal-assign-house')">${ICON('close',16)}</button>
                 </div>
                 <div style="margin-bottom:1rem;padding:0.65rem 0.85rem;background:var(--bg3);border:1px solid var(--border);border-radius:7px;font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--accent)" id="assignModalHouseLabel"></div>
                 <input type="hidden" id="assignModalHouseId">
@@ -815,7 +881,7 @@ function openAssignModal(houseId, houseName) {
         document.body.appendChild(modal);
     }
 
-    document.getElementById('assignModalHouseLabel').textContent = `🏡 House: ${houseName}`;
+        document.getElementById('assignModalHouseLabel').innerHTML = `${ICON('houses',14)} House: ${houseName}`;
     document.getElementById('assignModalHouseId').value          = houseId;
 
     const sel        = document.getElementById('assignModalTenantSelect');
@@ -837,7 +903,8 @@ async function submitAssignFromModal() {
     if (!tenantId) { showToast('Select a tenant first', 'warn'); return; }
 
     const btn = document.querySelector('#modal-assign-house .btn-primary');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Assigning...'; }
+    if (btn) { btn.disabled = true; btn.innerHTML = `${ICON('hourglass',14)} Assigning...`; }
+    
 
     try {
         const res  = await fetch(`${API}/assign-house/${tenantId}/${houseId}`, {
@@ -845,7 +912,7 @@ async function submitAssignFromModal() {
         });
         const data = await res.json();
         if (!res.ok) { showToast(data.message || data.error || 'Assign failed', 'error'); return; }
-        showToast(data.message || 'House assigned ✅', 'success');
+        showToast(data.message || 'House assigned ', 'success');
         closeModal('modal-assign-house');
         await loadHouses();
         await loadTenants();
@@ -854,6 +921,7 @@ async function submitAssignFromModal() {
         console.error(err);
     } finally {
         if (btn) { btn.disabled = false; btn.textContent = 'Assign to House'; }
+
     }
 }
 
@@ -865,18 +933,19 @@ function confirmMoveOutByHouse(houseId, houseName, tenantId, tenantName) {
         return;
     }
 
-    openDangerModal({
-        icon:    '🚪',
+       openDangerModal({
+        icon:    ICON('door', 44),
         title:   'Move Out Tenant',
         message: `Move out <strong>${tenantName}</strong> from <strong>${houseName}</strong>?<br><br>
                   The house will be marked as <strong>available</strong>. The tenant's login and payment history are preserved — they can be reactivated later.`,
         label:   `Move Out ${tenantName}`,
         type:    'warn',
+        
         onConfirm: async () => {
             const res  = await fetch(`${API}/move-out/${tenantId}`, { method: 'PUT', headers: authHeaders() });
             const data = await res.json();
             if (!res.ok) { showToast(data.message || data.error || 'Move out failed', 'error'); return; }
-            showToast(data.message || `${tenantName} moved out ✅`, 'success');
+            showToast(data.message || `${tenantName} moved out `, 'success');
             await loadHouses();
             await loadTenants();
             await loadMovedOutTenants();
@@ -940,7 +1009,7 @@ function renderReceipt(data, containerId) {
 
     el.innerHTML = `
         <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:1.25rem;margin-top:0.5rem">
-            <div style="font-family:'Instrument Serif',serif;font-style:italic;font-size:1.2rem;color:var(--accent);margin-bottom:0.75rem">🏠 Rent Receipt</div>
+            <div style="font-family:'Instrument Serif',serif;font-style:italic;font-size:1.2rem;color:var(--accent);margin-bottom:0.75rem;display:flex;align-items:center;gap:8px">${ICON('houses',18)} Rent Receipt</div>
             <div style="display:flex;flex-direction:column;gap:0.4rem;font-size:0.78rem;font-family:'JetBrains Mono',monospace">
                 <div style="display:flex;justify-content:space-between"><span style="color:var(--text-dim)">Tenant</span>    <span>${data.tenant?.name || '—'}</span></div>
                 <div style="display:flex;justify-content:space-between"><span style="color:var(--text-dim)">House</span>     <span>${data.house?.name || '—'}</span></div>
@@ -952,8 +1021,8 @@ function renderReceipt(data, containerId) {
                 <div style="display:flex;justify-content:space-between"><span style="color:var(--text-dim)">Date</span>      <span>${data.datePaid ? new Date(data.datePaid).toLocaleDateString() : '—'}</span></div>
             </div>
             <div style="margin-top:1rem;display:flex;gap:0.5rem">
-                <button class="btn btn-secondary btn-sm" onclick="window.print()">🖨️ Print</button>
-                <button class="btn btn-primary btn-sm"   onclick="downloadPDF('${data._id}')">📄 PDF</button>
+                <button class="btn btn-secondary btn-sm" onclick="window.print()">${ICON('printer',14)} Print</button>
+                <button class="btn btn-primary btn-sm"   onclick="downloadPDF('${data._id}')">${ICON('file',14)} PDF</button>
             </div>
         </div>`;
 }
@@ -962,17 +1031,22 @@ function renderReceipt(data, containerId) {
 // ACTIVITY LOG — rendering
 // ═══════════════════════════════════════
 
+
 const ACTIVITY_ICONS = {
-    'tenant.created':        '🆕',
-    'tenant.readded':        '🔁',
-    'tenant.assigned':       '🔑',
-    'tenant.reactivated':    '🔄',
-    'tenant.moved_out':      '🚪',
-    'tenant.deleted':        '🗑️',
-    'tenants.bulk_reminded': '🔔',
-    'payment.recorded':      '💳',
-    'houses.bulk_generated': '⚡',
-    'commission.paid':       '💸'
+    'tenant.created':        ICON('addTenant',14),
+    'tenant.readded':        ICON('loop',14),
+    'tenant.assigned':       ICON('key',14),
+    'tenant.reactivated':    ICON('loop',14),
+    'tenant.moved_out':      ICON('door',14),
+    'tenant.deleted':        ICON('trash',14),
+    'tenants.bulk_reminded': ICON('bell',14),
+    'payment.recorded':      ICON('payments',14),
+    'houses.bulk_generated': ICON('flash',14),
+    'commission.paid':       ICON('cash',14),
+    'expense.recorded':      ICON('expenses',14),
+    'expense.deleted':       ICON('trash',14),
+    'maintenance.reported':       ICON('maintenance',14),
+    'maintenance.status_changed': ICON('check',14)
 };
 
 function _activityTimeAgo(date) {
@@ -990,7 +1064,7 @@ function renderActivityLog(logs) {
     if (!feed) return;
 
     if (!logs.length) {
-        feed.innerHTML = '<div class="empty-state"><span class="icon">🕒</span>No activity recorded yet</div>';
+        feed.innerHTML = `<div class="empty-state"><span class="icon">${ICON('clock',26)}</span>No activity recorded yet</div>`;
         return;
     }
 
@@ -1029,6 +1103,104 @@ function activityPage(dir) {
     loadActivity();
 }
 
+
+const MAINT_CATEGORY_ICONS = {
+    plumbing: ICON('water',14), electrical: ICON('bolt',14), structural: ICON('wall',14),
+    appliance: ICON('plug',14), pest: ICON('bug',14), other: ICON('maintenance',14)
+};
+
+function renderMaintenanceTable(requests) {
+    const tbody = document.getElementById('maintenanceTable');
+    if (!tbody) return;
+
+    if (!requests.length) {
+        tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><span class="icon">${ICON('maintenance',26)}</span>No maintenance requests</div></td></tr>`;
+        return;
+    }
+
+    const statusPill = {
+        reported:    `<span class="pill pill-red" style="display:inline-flex;align-items:center;gap:3px">${ICON('sparkle',10)} Reported</span>`,
+        in_progress: `<span class="pill pill-yellow" style="display:inline-flex;align-items:center;gap:3px">${ICON('hourglass',10)} In Progress</span>`,
+        completed:   `<span class="pill pill-green" style="display:inline-flex;align-items:center;gap:3px">${ICON('check',10)} Completed</span>`
+    };
+    const priorityPill = {
+        low:    '<span class="pill" style="background:var(--bg3);color:var(--text-dim);border:1px solid var(--border)">Low</span>',
+        medium: '<span class="pill pill-yellow">Medium</span>',
+        high:   '<span class="pill pill-red">High</span>'
+    };
+
+    tbody.innerHTML = requests.map(r => `
+        <tr>
+            <td><strong style="color:var(--text)">${r.tenant?.name || '—'}</strong></td>
+            <td class="td-mono">${r.house?.name || '—'}</td>
+            <td style="display:flex;align-items:center;gap:6px">${MAINT_CATEGORY_ICONS[r.category] || ICON('maintenance',14)} ${r.category}</td>
+            <td>${priorityPill[r.priority] || r.priority}</td>
+            <td style="font-size:0.75rem;color:var(--text-dim);max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r.description.replace(/"/g,'&quot;')}">${r.description}</td>
+            <td>${statusPill[r.status] || r.status}</td>
+            <td class="td-mono" style="font-size:0.65rem;color:var(--text-dim)">${_timeAgo(r.createdAt)}</td>
+            <td><button class="btn btn-secondary btn-sm" onclick="openMaintenanceUpdateModal('${r._id}', '${(r.tenant?.name || 'Tenant').replace(/'/g,"\\'")}', '${r.status}', ${r.cost ?? 'null'}, '${(r.resolutionNote || '').replace(/'/g,"\\'")}')">Update</button></td>
+        </tr>`).join('');
+}
+
+
+
+function openMaintenanceUpdateModal(id, tenantName, status, cost, note) {
+    document.getElementById('maintUpdateId').value = id;
+    document.getElementById('maintUpdateTenantName').textContent = `Request from: ${tenantName}`;
+    document.getElementById('maintUpdateStatus').value = status;
+    document.getElementById('maintUpdateCost').value = cost ?? '';
+    document.getElementById('maintUpdateNote').value = note || '';
+    openModal('modal-maintenance-update');
+}
+
+// ═══════════════════════════════════════
+// DASHBOARD — OPEN REPAIR REQUESTS ALERT
+// ═══════════════════════════════════════
+
+function _daysAgo(date) {
+    const ms = Date.now() - new Date(date).getTime();
+    return Math.floor(ms / (1000 * 60 * 60 * 24));
+}
+
+function _renderMaintenanceAlertCard() {
+    const card  = document.getElementById('maintenanceAlertCard');
+    const list  = document.getElementById('maintAlertList');
+    const count = document.getElementById('maintAlertCount');
+    if (!card || !list || !count) return;
+
+    const open = (typeof _allMaintenanceRequests !== 'undefined' ? _allMaintenanceRequests : [])
+        .filter(r => r.status !== 'completed')
+        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+    if (!open.length) {
+        card.style.display = 'none';
+        return;
+    }
+
+    const isUrgent = _daysAgo(open[0].createdAt) >= 3;
+
+    card.style.borderLeftColor = isUrgent ? 'var(--danger)' : 'var(--warn)';
+    count.className   = `pill ${isUrgent ? 'pill-red' : 'pill-yellow'}`;
+    count.textContent = open.length;
+
+    list.innerHTML = open.slice(0, 3).map(r => {
+        const age      = _daysAgo(r.createdAt);
+        const ageColor = age >= 3 ? 'var(--danger)' : 'var(--text-dim)';
+        return `
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;padding:0.5rem 0.65rem;background:var(--bg3);border:1px solid var(--border);border-radius:7px;cursor:pointer"
+                 onclick="showSection('maintenance')">
+                <div style="min-width:0">
+                    <div style="font-size:0.8rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px">
+                        ${MAINT_CATEGORY_ICONS[r.category] || ICON('maintenance',14)} ${r.tenant?.name || 'Tenant'} — ${r.category}
+                    </div>
+                    <div style="font-size:0.68rem;color:var(--text-dim)">${r.house?.name || '—'} · ${r.status === 'in_progress' ? 'In progress' : 'Reported'}</div>
+                </div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:${ageColor};flex-shrink:0">${age === 0 ? 'today' : age + 'd ago'}</div>
+            </div>`;
+    }).join('') + (open.length > 3 ? `<div style="text-align:center;font-size:0.68rem;color:var(--text-dim);padding-top:0.25rem">+${open.length - 3} more</div>` : '');
+    card.style.display = 'block';
+}
+
 // ═══════════════════════════════════════
 // RULES
 // ═══════════════════════════════════════
@@ -1037,7 +1209,7 @@ function renderRules(rules) {
     const el = document.getElementById('rulesList');
 
     if (!rules.length) {
-        el.innerHTML = '<div class="empty-state"><span class="icon">📜</span>No rules yet</div>';
+        el.innerHTML = `<div class="empty-state"><span class="icon">${ICON('rules',26)}</span>No rules yet</div>`;
         return;
     }
 
@@ -1049,10 +1221,9 @@ function renderRules(rules) {
                 <div style="font-size:0.78rem;color:var(--text-dim);line-height:1.5">${r.content}</div>
                 <div style="font-size:0.6rem;color:var(--text-dim);font-family:'JetBrains Mono',monospace;margin-top:0.3rem">${new Date(r.createdAt).toLocaleDateString()}</div>
             </div>
-            <button class="btn btn-danger btn-sm" onclick="deleteRule('${r._id}')" style="flex-shrink:0">🗑️</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteRule('${r._id}')" style="flex-shrink:0">${ICON('trash',14)}</button>
         </div>`).join('');
 }
-
 
 // ═══════════════════════════════════════
 // ANNOUNCEMENTS
@@ -1062,7 +1233,7 @@ function renderAnnouncements(data) {
     const el = document.getElementById('announcementList');
 
     if (!data.length) {
-        el.innerHTML = '<div class="empty-state"><span class="icon">📢</span>No announcements yet</div>';
+        el.innerHTML = `<div class="empty-state"><span class="icon">${ICON('announcements',26)}</span>No announcements yet</div>`;
         return;
     }
 
@@ -1074,10 +1245,9 @@ function renderAnnouncements(data) {
                     ${new Date(a.createdAt).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })}
                 </div>
             </div>
-            <button class="btn btn-danger btn-sm" onclick="deleteAnnouncement('${a._id}')" style="flex-shrink:0">🗑️</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteAnnouncement('${a._id}')" style="flex-shrink:0">${ICON('trash',14)}</button>
         </div>`).join('');
 }
-
 
  
 const GROUP_COLOR_PALETTE = [
@@ -1164,7 +1334,7 @@ function renderGenGroups() {
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
                     <input type="text" placeholder="Group label (e.g. Ground Floor)" value="${g.label}"
                            oninput="updateGenGroup(${i}, 'label', this.value)" style="margin:0;flex:1">
-                    ${_genGroups.length > 1 ? `<button class="btn btn-danger btn-sm" style="margin-left:0.5rem" onclick="removeGenGroup(${i})">✕</button>` : ''}
+                     ${_genGroups.length > 1 ? `<button class="btn btn-danger btn-sm" style="margin-left:0.5rem" onclick="removeGenGroup(${i})">${ICON('close',12)}</button>` : ''}
                 </div>` : ''}
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
                 <div>
@@ -1302,7 +1472,7 @@ function _renderGenPreview() {
     if (countEl) countEl.textContent = `${names.length} unit${names.length !== 1 ? 's' : ''}`;
  
     if (unique.size !== names.length) {
-        box.innerHTML = `<span style="color:var(--danger)">⚠️ Duplicate names in this configuration — adjust prefixes or start numbers</span>`;
+        box.innerHTML = `<span style="color:var(--danger);display:inline-flex;align-items:center;gap:5px">${ICON('warning',14)} Duplicate names in this configuration — adjust prefixes or start numbers</span>`;
         return;
     }
  
@@ -1364,15 +1534,13 @@ async function submitGenerateHouses() {
             .map(g => ({ label: g.label, prefix: g.prefix, start: g.start, count: g.count, padWidth: g.padWidth }))
     };
  
-    openDangerModal({
-        icon:    '⚡',
-        title:   'Confirm Bulk Generation',
-        message: `Create <strong>${names.length} units</strong> at Ksh ${rent.toLocaleString()}/mo each?<br><br>
-                  <span style="font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--text-muted)">
-                    ${names.slice(0, 10).join(', ')}${names.length > 10 ? '…' : ''}
-                  </span>`,
-        label:   `Generate ${names.length} Units`,
-        type:    'warn',
+           openDangerModal({
+            icon:    ICON('flash', 44),
+            title:   'Confirm Extend Group',
+            message: `Add <strong>${count} unit(s)</strong> to <strong>${group.label || group.prefix}</strong>, continuing from <strong>${group.nextName}</strong>?`,
+            label:   `Add ${count} Unit(s)`,
+            type:    'warn',
+            
         onConfirm: async () => {
             try {
                 const res  = await fetch(`${API}/houses/generate`, {
@@ -1436,7 +1604,7 @@ function renderMsgTenantList(tenants) {
     list.innerHTML = sorted.map(t => {
         const initials  = t.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
         const unread    = _msgUnreadMap[t._id] || 0;
-        const preview   = _msgPreviewMap[t._id] || (t.house?.name ? `🏠 ${t.house.name}` : '');
+        const preview   = _msgPreviewMap[t._id] || (t.house?.name ? `${ICON('houses',11)} ${t.house.name}` : '');
         const isActive  = t._id === _activeChatTenantId;
 
         return `
@@ -1504,7 +1672,7 @@ function renderChatMessages(messages) {
             <div class="msg-bubble ${isLandlord ? 'msg-landlord' : 'msg-tenant'}">
                 ${m.text}
                 <div class="msg-meta">
-                    ${isLandlord ? '🔑 You' : '👤 Tenant'} ·
+                    ${isLandlord ? `${ICON('key',10)} You` : `${ICON('user',10)} Tenant`} ·
                     ${new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     ${(!isLandlord && !m.isRead) ? '<span style="color:var(--danger);margin-left:4px">●</span>' : ''}
                 </div>
@@ -1627,7 +1795,9 @@ async function submitConfirmedPayment() {
     if (!_pendingPayment) return;
 
     const btn = document.getElementById('payConfirmBtn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Recording...'; }
+        if (btn) { btn.disabled = true; btn.innerHTML = `${ICON('hourglass',14)} Recording...`; }
+
+    
 
     const { tenantId, amount, month, method, note, source } = _pendingPayment;
 
@@ -1643,7 +1813,7 @@ async function submitConfirmedPayment() {
             return;
         }
 
-        showToast('Payment recorded & receipt emailed ✅', 'success');
+        showToast('Payment recorded & receipt emailed ', 'success');
 
         closeModal('modal-pay-confirm');
         if (source === 'modal') closeModal('modal-pay');
@@ -1665,7 +1835,7 @@ async function submitConfirmedPayment() {
         console.error(err);
     } finally {
         _pendingPayment = null;
-        if (btn) { btn.disabled = false; btn.textContent = '✅ Confirm & Record'; }
+        if (btn) { btn.disabled = false; btn.innerHTML = `${ICON('check',14)} Confirm &amp; Record`; }
     }
 }
 
@@ -1690,11 +1860,11 @@ function renderCharts(data) {
     _financeChart = new Chart(fc.getContext('2d'), {
         type: 'bar',
         data: {
-            labels: ['Income', 'Arrears'],
+            labels: ['Income', 'Arrears', 'Expenses'],
             datasets: [{
-                data:            [data.totalIncome, data.totalArrears],
-                backgroundColor: [accent + '33', danger + '33'],
-                borderColor:     [accent, danger],
+                data:            [data.totalIncome, data.totalArrears, data.totalExpenses || 0],
+                backgroundColor: [accent + '33', danger + '33', warn + '33'],
+                borderColor:     [accent, danger, warn],
                 borderWidth:     1.5,
                 borderRadius:    5
             }]
@@ -1709,6 +1879,7 @@ function renderCharts(data) {
         }
     });
 
+    // occupancy chart unchanged below...
     const oc = document.getElementById('occupancyChart');
     if (_occupancyChart) _occupancyChart.destroy();
     _occupancyChart = new Chart(oc.getContext('2d'), {
@@ -1743,14 +1914,13 @@ window.setTheme = function(theme) {
 
 function _inqStatusPill(status) {
     const map = {
-        new:       `<span class="pill" style="background:rgba(59,130,246,0.12);color:#60a5fa;border:1px solid rgba(59,130,246,0.25)">🆕 New</span>`,
-        read:      `<span class="pill" style="background:var(--bg3);color:var(--text-muted);border:1px solid var(--border2)">👁 Read</span>`,
-        contacted: `<span class="pill pill-green">📞 Contacted</span>`,
-        archived:  `<span class="pill" style="background:rgba(100,116,139,0.12);color:var(--text-dim);border:1px solid var(--border)">🗃 Archived</span>`
+        new:       `<span class="pill" style="background:rgba(59,130,246,0.12);color:#60a5fa;border:1px solid rgba(59,130,246,0.25);display:inline-flex;align-items:center;gap:3px">${ICON('sparkle',10)} New</span>`,
+        read:      `<span class="pill" style="background:var(--bg3);color:var(--text-muted);border:1px solid var(--border2);display:inline-flex;align-items:center;gap:3px">${ICON('eye',10)} Read</span>`,
+        contacted: `<span class="pill pill-green" style="display:inline-flex;align-items:center;gap:3px">${ICON('phone',10)} Contacted</span>`,
+        archived:  `<span class="pill" style="background:rgba(100,116,139,0.12);color:var(--text-dim);border:1px solid var(--border);display:inline-flex;align-items:center;gap:3px">${ICON('box',10)} Archived</span>`
     };
     return map[status] || `<span class="pill">${status}</span>`;
 }
-
 function _inqTimeAgo(date) {
     const s = Math.floor((new Date() - new Date(date)) / 1000);
     if (isNaN(s) || s < 0) return '—';
@@ -1782,9 +1952,9 @@ function renderInquiriesTable(inquiries) {
     const tbody = document.getElementById('inquiriesTable');
     if (!tbody) return;
 
-    if (!inquiries.length) {
+       if (!inquiries.length) {
         const filterVal = document.getElementById('inquiryStatusFilter')?.value;
-        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><span class="icon">📩</span>${filterVal ? 'No inquiries match this filter' : 'No inquiries yet — they will appear here when prospective tenants contact you'}</div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><span class="icon">${ICON('inquiries',26)}</span>${filterVal ? 'No inquiries match this filter' : 'No inquiries yet — they will appear here when prospective tenants contact you'}</div></td></tr>`;
         return;
     }
 
@@ -1820,19 +1990,19 @@ function openInquiryDetail(inq) {
 
     const metaEl = document.getElementById('inqDetailMeta');
     const metaLines = [
-        `📞 ${_escHtmlInq(inq.phone)}`,
-        inq.email  ? `✉️ ${_escHtmlInq(inq.email)}` : null,
-        `🏢 ${_escHtmlInq(inq.property?.name || '—')}${inq.property?.location ? ' · ' + inq.property.location : ''}`,
-        `🕐 ${new Date(inq.createdAt).toLocaleString('en-GB', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}`
+        `${ICON('phone',12)} ${_escHtmlInq(inq.phone)}`,
+        inq.email  ? `${ICON('mail',12)} ${_escHtmlInq(inq.email)}` : null,
+        `${ICON('properties',12)} ${_escHtmlInq(inq.property?.name || '—')}${inq.property?.location ? ' · ' + inq.property.location : ''}`,
+        `${ICON('clock',12)} ${new Date(inq.createdAt).toLocaleString('en-GB', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}`
     ].filter(Boolean);
-    metaEl.innerHTML = metaLines.map(s => `<span>${s}</span>`).join('');
+    metaEl.innerHTML = metaLines.map(s => `<span style="display:inline-flex;align-items:center;gap:4px">${s}</span>`).join('');
 
     const actionsEl = document.getElementById('inqDetailActions');
     const transitions = [
-        { val: 'read',      label: '👁 Mark as Read',  cls: 'btn-secondary' },
-        { val: 'contacted', label: '📞 Mark Contacted', cls: 'btn-primary'   },
-        { val: 'archived',  label: '🗃 Archive',         cls: 'btn-secondary' },
-        { val: 'new',       label: '🔄 Reset to New',    cls: 'btn-secondary' }
+        { val: 'read',      label: `${ICON('eye',14)} Mark as Read`,   cls: 'btn-secondary' },
+        { val: 'contacted', label: `${ICON('phone',14)} Mark Contacted`, cls: 'btn-primary'   },
+        { val: 'archived',  label: `${ICON('box',14)} Archive`,          cls: 'btn-secondary' },
+        { val: 'new',       label: `${ICON('loop',14)} Reset to New`,    cls: 'btn-secondary' }
     ];
     actionsEl.innerHTML = transitions
         .filter(s => s.val !== inq.status)
@@ -1843,15 +2013,12 @@ function openInquiryDetail(inq) {
     const waText = encodeURIComponent(`Hi ${inq.name}, thanks for your inquiry about ${inq.property?.name || 'our property'}!`);
     const waHref = `https://wa.me/${_formatPhoneInq(inq.phone)}?text=${waText}`;
     document.getElementById('inqDetailContact').innerHTML = `
-        <a href="tel:${_escHtmlInq(inq.phone)}" class="btn btn-secondary btn-sm">📞 Call</a>
-        <a href="${waHref}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">💬 WhatsApp</a>
-        ${inq.email ? `<a href="mailto:${_escHtmlInq(inq.email)}" class="btn btn-secondary btn-sm">✉️ Email</a>` : ''}
-        <button class="btn btn-danger btn-sm" onclick="deleteInquiry('${inq._id}')">🗑️ Delete</button>`;
+        <a href="tel:${_escHtmlInq(inq.phone)}" class="btn btn-secondary btn-sm">${ICON('phone',14)} Call</a>
+        <a href="${waHref}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">${ICON('messages',14)} WhatsApp</a>
+        ${inq.email ? `<a href="mailto:${_escHtmlInq(inq.email)}" class="btn btn-secondary btn-sm">${ICON('mail',14)} Email</a>` : ''}
+        <button class="btn btn-danger btn-sm" onclick="deleteInquiry('${inq._id}')">${ICON('trash',14)} Delete</button>`;
 
-    // Close dropdown before opening detail modal, then open detail
     closeNotifDropdown();
-    // ── Open the detail modal — #modal-danger.open { z-index: 9998 } ensures
-    //    the danger confirm always floats above this modal if Delete is clicked ──
     const detailModal = document.getElementById('modal-inquiry-detail');
     if (detailModal) detailModal.classList.add('open');
 
@@ -1877,13 +2044,13 @@ function openListingEditor(propertyId, pendingIsListed) {
         modal.innerHTML = `
           <div class="modal" style="max-width:520px">
             <div class="modal-header">
-              <div class="modal-title">✏️ Edit Public Listing</div>
-              <button class="modal-close" onclick="closeModal('modal-listing-editor')">✕</button>
+              <div class="modal-title">${ICON('edit',18)} Edit Public Listing</div>
+              <button class="modal-close" onclick="closeModal('modal-listing-editor')">${ICON('close',16)}</button>
             </div>
-            <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--accent);background:var(--accent-dim);border:1px solid rgba(110,231,183,0.2);border-radius:7px;padding:0.5rem 0.85rem;margin-bottom:0.75rem"
+            <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--accent);background:var(--accent-dim);border:1px solid rgba(110,231,183,0.2);border-radius:7px;padding:0.5rem 0.85rem;margin-bottom:0.75rem;display:flex;align-items:center;gap:6px"
                  id="listingEditorPropName"></div>
             <div id="listingEditorGuide" style="display:none;font-size:0.78rem;color:var(--text-muted);background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.2);border-radius:7px;padding:0.65rem 0.85rem;margin-bottom:0.85rem;line-height:1.6">
-              📝 Before your property goes live, add a description and up to 5 photos so prospective tenants know what to expect.
+              ${ICON('edit',14)} Before your property goes live, add a description and up to 5 photos so prospective tenants know what to expect.
             </div>
             <label style="font-family:'JetBrains Mono',monospace;font-size:0.58rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-dim);display:block;margin-bottom:0.4rem">
               Public Description <span style="color:var(--danger)">*</span>
@@ -1910,28 +2077,27 @@ function openListingEditor(propertyId, pendingIsListed) {
                             transition:border-color 0.15s,color 0.15s;user-select:none"
                      onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
                      onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text-muted)'">
-                <span style="font-size:1.1rem">📷</span>
+                <span style="display:flex">${ICON('camera',18)}</span>
                 <span id="listingEditorUploadText">Add Photo</span>
-                
+
                 <input type="file" id="listingEditorFileInput" accept="image/*" multiple
                        style="display:none" onchange="handlePhotoUpload(event)">
               </label>
               <div id="listingEditorUploadProgress"
                    style="display:none;font-family:'JetBrains Mono',monospace;font-size:0.65rem;
-                          color:var(--text-dim);text-align:center;margin-top:0.4rem">
-                ⏳ Uploading…
+                          color:var(--text-dim);text-align:center;margin-top:0.4rem;align-items:center;justify-content:center;gap:5px">
               </div>
             </div>
             <input type="hidden" id="listingEditorPropertyId">
             <input type="hidden" id="listingEditorPendingListed">
             <button class="btn btn-primary btn-full" id="listingEditorSaveBtn"
-                    onclick="saveListingDescription()">💾 Save Description</button>
+                    onclick="saveListingDescription()">${ICON('lock',14)} Save Description</button>
           </div>`;
         modal.addEventListener('click', e => { if (e.target === modal) closeModal('modal-listing-editor'); });
         document.body.appendChild(modal);
     }
 
-    document.getElementById('listingEditorPropName').textContent   = `🏢 ${prop.name}${prop.location ? '  ·  📍 ' + prop.location : ''}`;
+    document.getElementById('listingEditorPropName').innerHTML   = `${ICON('properties',14)} ${prop.name}${prop.location ? `  ·  ${ICON('pin',12)} ${prop.location}` : ''}`;
     document.getElementById('listingEditorDesc').value             = prop.description || '';
     document.getElementById('listingEditorPropertyId').value       = propertyId;
     document.getElementById('listingEditorPendingListed').value    = pendingIsListed === true ? 'true' : '';
@@ -1940,10 +2106,10 @@ function openListingEditor(propertyId, pendingIsListed) {
     const saveBtn = document.getElementById('listingEditorSaveBtn');
     if (pendingIsListed === true) {
         guide.style.display = 'block';
-        saveBtn.textContent = '💾 Save & Make Visible';
+        saveBtn.innerHTML = `${ICON('lock',14)} Save &amp; Make Visible`;
     } else {
         guide.style.display = 'none';
-        saveBtn.textContent = '💾 Save Description';
+        saveBtn.innerHTML = `${ICON('lock',14)} Save Description`;
     }
 
     _renderListingEditorPhotos(prop.photos || [], propertyId);
@@ -1986,10 +2152,10 @@ function _renderListingEditorPhotos(photos, propertyId) {
                            background:rgba(0,0,0,0.65);border:none;border-radius:50%;
                            width:22px;height:22px;cursor:pointer;
                            display:flex;align-items:center;justify-content:center;
-                           font-size:0.65rem;color:#fff;line-height:1;
+                           color:#fff;line-height:1;
                            transition:background 0.15s"
                     onmouseover="this.style.background='rgba(248,113,113,0.85)'"
-                    onmouseout="this.style.background='rgba(0,0,0,0.65)'">✕</button>
+                    onmouseout="this.style.background='rgba(0,0,0,0.65)'">${ICON('close',12)}</button>
             <span style="position:absolute;bottom:4px;left:4px;
                          font-family:'JetBrains Mono',monospace;font-size:0.5rem;
                          background:rgba(0,0,0,0.55);color:#fff;

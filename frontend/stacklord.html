@@ -71,7 +71,7 @@
     background: linear-gradient(90deg, var(--accent), var(--cyan));
   }
   .login-logo { text-align: center; margin-bottom: 2rem; }
-  .login-logo-icon { font-size: 3rem; display: block; margin-bottom: 0.75rem; filter: drop-shadow(0 0 20px rgba(139,92,246,0.5)); }
+  .login-logo-icon { display: flex; justify-content: center; margin-bottom: 0.75rem; color: var(--accent); filter: drop-shadow(0 0 20px rgba(139,92,246,0.5)); }
   .login-title { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.8rem; color: var(--accent); letter-spacing: 0.02em; }
   .login-sub { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); margin-top: 0.25rem; }
   .login-field input {
@@ -105,7 +105,7 @@
   }
   #maintenanceLock.show { display: flex; }
   .maint-lock-box { max-width: 460px; }
-  .maint-lock-icon { font-size: 3.5rem; display: block; margin-bottom: 1rem; }
+  .maint-lock-icon { display: flex; justify-content: center; margin-bottom: 1rem; color: var(--amber); }
   .maint-lock-title { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.7rem; color: var(--amber); margin-bottom: 0.75rem; }
   .maint-lock-desc { font-size: 0.85rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 1.25rem; }
   .maint-lock-note { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--text-dim); }
@@ -176,6 +176,7 @@
     color: var(--text-muted); font-family: 'Space Grotesk', sans-serif;
     font-size: 0.75rem; font-weight: 500; letter-spacing: 0.08em;
     padding: 0.5rem; border-radius: 6px; cursor: pointer; transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 0.4rem;
   }
   .btn-logout:hover { border-color: var(--red); color: var(--red); }
 
@@ -203,6 +204,7 @@
   .topbar-right { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
   .topbar-title { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.3rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .stacklord-chip {
+    display: inline-flex; align-items: center; gap: 0.35rem;
     font-family: 'JetBrains Mono', monospace; font-size: 0.62rem;
     letter-spacing: 0.12em; text-transform: uppercase;
     background: var(--accent-dim); color: var(--accent);
@@ -260,7 +262,7 @@
   ══════════════════════════════ */
   .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem; transition: border-color 0.2s; }
   .card:hover { border-color: var(--border2); }
-  .card-title { font-size: 0.65rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 1.1rem; }
+  .card-title { font-size: 0.65rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 1.1rem; display: flex; align-items: center; gap: 0.4rem; }
 
   /* ══════════════════════════════
      STATS
@@ -274,7 +276,7 @@
   .stat-card:hover { border-color: var(--border2); transform: translateY(-2px); }
   .stat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,var(--accent),var(--cyan)); opacity:0; transition:opacity 0.2s; }
   .stat-card:hover::before { opacity:1; }
-  .stat-label { font-size: 0.62rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 0.5rem; }
+  .stat-label { font-size: 0.62rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.35rem; }
   .stat-value { font-family: 'Instrument Serif', serif; font-size: 2.2rem; color: var(--accent); line-height: 1; }
   .stat-value.amber { color: var(--amber); }
   .stat-sub { font-size: 0.7rem; color: var(--text-dim); margin-top: 0.25rem; }
@@ -390,7 +392,7 @@
   .modal { background: var(--panel); border: 1px solid var(--border2); border-radius: 12px; padding: 2rem; width: min(520px,100%); max-height: 90vh; overflow-y: auto; animation: modalIn 0.25s cubic-bezier(0.34,1.2,0.64,1) both; box-shadow: 0 24px 80px rgba(0,0,0,0.7), 0 0 40px rgba(139,92,246,0.1); }
   @keyframes modalIn { from{opacity:0;transform:scale(0.93) translateY(10px)} to{opacity:1;transform:scale(1) translateY(0)} }
   .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
-  .modal-title { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.3rem; color: var(--text); }
+  .modal-title { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.3rem; color: var(--text); display: flex; align-items: center; gap: 0.5rem; }
   .modal-close { background: transparent; border: none; color: var(--text-dim); font-size: 1.1rem; cursor: pointer; width: auto; padding: 0; margin: 0; line-height: 1; transition: color 0.15s; }
   .modal-close:hover { color: var(--red); }
 
@@ -416,7 +418,7 @@
      MISC UTILITIES
   ══════════════════════════════ */
   .empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--text-dim); font-size: 0.8rem; }
-  .empty-state .icon { font-size: 2rem; margin-bottom: 0.5rem; display: block; }
+  .empty-state .icon { display: flex; justify-content: center; margin-bottom: 0.5rem; }
   .pill { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; padding: 2px 8px; border-radius: 99px; font-weight: 600; white-space: nowrap; }
   .pill-green  { background: rgba(52,211,153,0.12);  color: var(--green); border: 1px solid rgba(52,211,153,0.2); }
   .pill-red    { background: rgba(248,113,113,0.12); color: var(--red);   border: 1px solid rgba(248,113,113,0.2); }
@@ -432,7 +434,7 @@
      DANGER ZONE
   ══════════════════════════════ */
   .danger-zone { background: rgba(248,113,113,0.05); border: 1px solid rgba(248,113,113,0.2); border-radius: 10px; padding: 1.5rem; }
-  .danger-zone-title { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--red); margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(248,113,113,0.2); }
+  .danger-zone-title { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--red); margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(248,113,113,0.2); display: flex; align-items: center; gap: 0.4rem; }
 
   /* ══════════════════════════════
      STATUS BREAKDOWN (overview)
@@ -457,7 +459,9 @@
   .overview-alert.amber:hover { background: rgba(251,191,36,0.14); }
   .overview-alert.red   { background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.3); }
   .overview-alert.red:hover { background: rgba(248,113,113,0.14); }
-  .oa-icon { font-size: 1.75rem; flex-shrink: 0; }
+  .oa-icon { flex-shrink: 0; display: flex; }
+  .overview-alert.amber .oa-icon { color: var(--amber); }
+  .overview-alert.red   .oa-icon { color: var(--red); }
   .oa-body { flex: 1; min-width: 160px; }
   .oa-count { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.5rem; line-height: 1; margin-bottom: 0.15rem; }
   .overview-alert.amber .oa-count { color: var(--amber); }
@@ -519,7 +523,7 @@
     width: 64px; height: 64px; border-radius: 8px; overflow: hidden;
     background: var(--bg3); flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
-    font-size: 1.5rem; color: var(--text-dim);
+    color: var(--text-dim);
   }
   .listing-thumb img { width: 100%; height: 100%; object-fit: cover; }
   .listing-info { flex: 1; min-width: 180px; }
@@ -586,6 +590,13 @@
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 
   /* ══════════════════════════════
+     ICON HELPER
+     Anything filled by ICON() via data-icon centers cleanly
+     next to its label text, whatever the surrounding layout.
+  ══════════════════════════════ */
+  [data-icon] { display: inline-flex; align-items: center; flex-shrink: 0; }
+
+  /* ══════════════════════════════
      RESPONSIVE
   ══════════════════════════════ */
   @media (min-width: 769px) {
@@ -626,7 +637,7 @@
 <!-- ═══ PLATFORM MAINTENANCE LOCK (shown if platform is down and not yet authenticated as stacklord) ═══ -->
 <div id="maintenanceLock">
   <div class="maint-lock-box">
-    <span class="maint-lock-icon">🔧</span>
+    <span class="maint-lock-icon" data-icon="wrench" data-icon-size="48"></span>
     <div class="maint-lock-title">Platform Under Maintenance</div>
     <div class="maint-lock-desc" id="maintenanceLockDesc">Affordable Rentals is temporarily down for maintenance.</div>
     <div class="maint-lock-note">The Stacklord console remains reachable — log in below to manage the platform.</div>
@@ -637,7 +648,7 @@
 <div id="loginScreen">
   <div class="login-box">
     <div class="login-logo">
-      <span class="login-logo-icon">⚡</span>
+      <span class="login-logo-icon" data-icon="flash" data-icon-size="40"></span>
       <div class="login-title">Stacklord</div>
       <div class="login-sub">// super admin console</div>
     </div>
@@ -655,41 +666,41 @@
 <!-- ═══ SIDEBAR ═══ -->
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-header">
-    <div class="sidebar-logo">⚡ Stacklord</div>
+    <div class="sidebar-logo"><span data-icon="flash" data-icon-size="18"></span> Stacklord</div>
     <div class="sidebar-role">// super admin console</div>
   </div>
 
   <nav class="sidebar-nav">
     <div class="nav-section">Platform</div>
     <div class="nav-item active" onclick="showSection('overview')">
-      <span class="icon">📊</span> Overview
+      <span class="icon" data-icon="dashboard" data-icon-size="15"></span> Overview
     </div>
     <div class="nav-item" onclick="showSection('landlords')">
-      <span class="icon">🏠</span> All Landlords
+      <span class="icon" data-icon="properties" data-icon-size="15"></span> All Landlords
       <span class="nav-badge nav-badge-red" id="landlordsBadge" style="display:none">0</span>
     </div>
 
     <div class="nav-section">Listings</div>
     <div class="nav-item" onclick="showSection('listings')">
-      <span class="icon">🏡</span> Property Listings
+      <span class="icon" data-icon="houses" data-icon-size="15"></span> Property Listings
       <span class="nav-badge nav-badge-amber" id="listingsBadge" style="display:none">0</span>
     </div>
     <div class="nav-item" onclick="showSection('inquiries')">
-      <span class="icon">📩</span> Inquiries
+      <span class="icon" data-icon="inquiries" data-icon-size="15"></span> Inquiries
       <span class="nav-badge nav-badge-cyan" id="inquiriesBadge" style="display:none">0</span>
     </div>
 
     <div class="nav-section">Billing</div>
     <div class="nav-item" onclick="showSection('commission')">
-      <span class="icon">💸</span> Commission
+      <span class="icon" data-icon="cash" data-icon-size="15"></span> Commission
     </div>
     <div class="nav-item" onclick="showSection('commission-payments')">
-      <span class="icon">💳</span> Payment Log
+      <span class="icon" data-icon="payments" data-icon-size="15"></span> Payment Log
     </div>
 
     <div class="nav-section">System</div>
     <div class="nav-item" onclick="showSection('system')">
-      <span class="icon">🛠️</span> Platform Controls
+      <span class="icon" data-icon="settings" data-icon-size="15"></span> Platform Controls
       <span class="nav-badge nav-badge-red" id="maintenanceBadge" style="display:none">ON</span>
     </div>
   </nav>
@@ -699,7 +710,7 @@
       <div class="stacklord-badge-dot"></div>
       <span class="stacklord-badge-text">Stacklord Active</span>
     </div>
-    <button class="btn-logout" onclick="logout()">⏻ Exit Console</button>
+    <button class="btn-logout" onclick="logout()"><span data-icon="logout" data-icon-size="13"></span> Exit Console</button>
   </div>
 </aside>
 
@@ -723,7 +734,7 @@
         <span class="topbar-alert-text"><span id="topbarPendingCount">0</span> pending approval</span>
         <span style="font-family:'JetBrains Mono',monospace;font-size:0.6rem;color:var(--amber)">→</span>
       </div>
-      <span class="stacklord-chip">⚡ Stacklord</span>
+      <span class="stacklord-chip"><span data-icon="flash" data-icon-size="11"></span> Stacklord</span>
     </div>
   </div>
 
@@ -735,7 +746,7 @@
     </div>
 
     <div class="overview-alert red" id="maintAlert" onclick="showSection('system')">
-      <span class="oa-icon">🔧</span>
+      <span class="oa-icon" data-icon="wrench" data-icon-size="28"></span>
       <div class="oa-body">
         <div class="oa-count" style="font-size:1.1rem">Platform maintenance is ON</div>
         <div class="oa-label">Landlords and tenants cannot access the platform right now — click to review</div>
@@ -744,7 +755,7 @@
     </div>
 
     <div class="overview-alert amber" id="pendingListingsAlert" onclick="showSection('listings')">
-      <span class="oa-icon">⚠️</span>
+      <span class="oa-icon" data-icon="warning" data-icon-size="28"></span>
       <div class="oa-body">
         <div class="oa-count" id="overviewPendingCount">0</div>
         <div class="oa-label">Properties pending listing approval — click to review</div>
@@ -754,32 +765,32 @@
 
     <div class="stats-grid">
       <div class="stat-card">
-        <div class="stat-label">💰 Commission Collected</div>
+        <div class="stat-label"><span data-icon="cash" data-icon-size="12"></span> Commission Collected</div>
         <div class="stat-value" id="statRevenue">0</div>
         <div class="stat-sub">Ksh total, all time</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">🏠 Landlords</div>
+        <div class="stat-label"><span data-icon="properties" data-icon-size="12"></span> Landlords</div>
         <div class="stat-value" id="statLandlords">0</div>
         <div class="stat-sub">Registered accounts</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">👥 Total Tenants</div>
+        <div class="stat-label"><span data-icon="tenants" data-icon-size="12"></span> Total Tenants</div>
         <div class="stat-value" id="statTenants">0</div>
         <div class="stat-sub">Across all landlords</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">🏡 Total Houses</div>
+        <div class="stat-label"><span data-icon="houses" data-icon-size="12"></span> Total Houses</div>
         <div class="stat-value" id="statHouses">0</div>
         <div class="stat-sub">Listed units</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">📋 Commission Payments</div>
+        <div class="stat-label"><span data-icon="receipts" data-icon-size="12"></span> Commission Payments</div>
         <div class="stat-value" id="statSubPayments">0</div>
         <div class="stat-sub">Paid transactions</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">📈 Current Rate</div>
+        <div class="stat-label"><span data-icon="activity" data-icon-size="12"></span> Current Rate</div>
         <div class="stat-value amber" id="statRate">0%</div>
         <div class="stat-sub">Platform commission</div>
       </div>
@@ -818,7 +829,7 @@
 
     <div class="card">
       <div class="card-title">Needs Attention</div>
-      <div id="attentionList"><div class="empty-state"><span class="icon">✅</span>All landlords in good standing</div></div>
+      <div id="attentionList"><div class="empty-state"><span class="icon" data-icon="checkCircle" data-icon-size="24"></span>All landlords in good standing</div></div>
     </div>
   </div>
 
@@ -837,7 +848,7 @@
       </div>
     </div>
     <div id="landlordsGrid">
-      <div class="empty-state"><span class="icon">🏠</span>Click Refresh to load landlords</div>
+      <div class="empty-state"><span class="icon" data-icon="properties" data-icon-size="24"></span>Click Refresh to load landlords</div>
     </div>
   </div>
 
@@ -860,22 +871,22 @@
 
     <div class="grid-2 mb-3">
       <div class="card">
-        <div class="card-title">🏢 Properties</div>
+        <div class="card-title"><span data-icon="properties" data-icon-size="13"></span> Properties</div>
         <div id="detailPropertiesList"><div class="empty-state">Loading…</div></div>
       </div>
 
       <div class="danger-zone">
-        <div class="danger-zone-title">⚠️ Account Control</div>
+        <div class="danger-zone-title"><span data-icon="warning" data-icon-size="13"></span> Account Control</div>
         <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1rem;line-height:1.6">Suspending immediately blocks this landlord's dashboard access. Tenants are NOT affected.</p>
         <input type="hidden" id="detailLandlordId">
         <input type="text" id="suspendReason" placeholder="Suspension reason (required)" style="margin-bottom:0.6rem">
-        <button class="btn btn-danger btn-full" onclick="suspendLandlord()" style="margin-bottom:0.6rem">🔒 Suspend Landlord</button>
-        <button class="btn btn-success btn-full" onclick="unsuspendLandlord()">🔓 Restore Access</button>
+        <button class="btn btn-danger btn-full" onclick="suspendLandlord()" style="margin-bottom:0.6rem"><span data-icon="lock" data-icon-size="13"></span> Suspend Landlord</button>
+        <button class="btn btn-success btn-full" onclick="unsuspendLandlord()"><span data-icon="unlock" data-icon-size="13"></span> Restore Access</button>
       </div>
     </div>
 
     <div class="card">
-      <div class="card-title">💸 Commission Owed This Landlord</div>
+      <div class="card-title"><span data-icon="cash" data-icon-size="13"></span> Commission Owed This Landlord</div>
       <div id="detailOutstanding"><div class="empty-state">Loading…</div></div>
     </div>
 
@@ -899,11 +910,11 @@
 
     <div class="tab-row">
       <button class="tab-btn active" id="tabPending" onclick="switchListingsTab('pending')">
-        ⏳ Pending Approval
+        <span data-icon="hourglass" data-icon-size="13"></span> Pending Approval
         <span class="tab-badge" id="pendingTabBadge" style="display:none">0</span>
       </button>
       <button class="tab-btn" id="tabApproved" onclick="switchListingsTab('approved')">
-        ✅ Live &amp; Approved
+        <span data-icon="checkCircle" data-icon-size="13"></span> Live &amp; Approved
       </button>
     </div>
 
@@ -915,15 +926,15 @@
       </div>
       <div class="bulk-bar" id="bulkBarPending">
         <span class="bulk-bar-count"><span id="bulkPendingCount">0</span> selected</span>
-        <button class="btn btn-success btn-sm" onclick="bulkApprove(true)">✅ Approve Selected</button>
-        <button class="btn btn-secondary btn-sm" onclick="bulkApprove(false)">❌ Reject Selected</button>
+        <button class="btn btn-success btn-sm" onclick="bulkApprove(true)"><span data-icon="checkCircle" data-icon-size="12"></span> Approve Selected</button>
+        <button class="btn btn-secondary btn-sm" onclick="bulkApprove(false)"><span data-icon="close" data-icon-size="12"></span> Reject Selected</button>
       </div>
-      <div id="pendingListingsList"><div class="empty-state"><span class="icon">⏳</span>Loading…</div></div>
+      <div id="pendingListingsList"><div class="empty-state"><span class="icon" data-icon="hourglass" data-icon-size="24"></span>Loading…</div></div>
     </div>
 
     <!-- Approved container -->
     <div id="listingsApprovedContainer" style="display:none">
-      <div id="approvedListingsList"><div class="empty-state"><span class="icon">⏳</span>Loading…</div></div>
+      <div id="approvedListingsList"><div class="empty-state"><span class="icon" data-icon="hourglass" data-icon-size="24"></span>Loading…</div></div>
     </div>
   </div>
 
@@ -974,7 +985,7 @@
         <div class="card-title">Set Global Commission Rate</div>
         <div style="font-family:'Instrument Serif',serif;font-style:italic;font-size:2.4rem;color:var(--accent);margin-bottom:1rem" id="currentRateDisplay">—%</div>
         <input type="number" id="newCommissionRate" placeholder="New percentage (0–100)" min="0" max="100" step="0.5">
-        <button class="btn btn-primary btn-full" onclick="setCommissionRate()">💾 Update Rate</button>
+        <button class="btn btn-primary btn-full" onclick="setCommissionRate()"><span data-icon="save" data-icon-size="13"></span> Update Rate</button>
       </div>
 
       <div class="card">
@@ -1032,7 +1043,7 @@
     </div>
 
     <div class="danger-zone mb-3">
-      <div class="danger-zone-title">🔧 Platform-Wide Maintenance (Kill Switch)</div>
+      <div class="danger-zone-title"><span data-icon="wrench" data-icon-size="13"></span> Platform-Wide Maintenance (Kill Switch)</div>
       <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1rem;line-height:1.7">
         Turning this ON immediately blocks every request across the platform — landlord dashboards, tenant portals, and the public listings site — except this console and pending M-Pesa callbacks. Use this only for planned downtime (deploys, migrations).
       </p>
@@ -1047,11 +1058,11 @@
         </label>
       </div>
       <textarea id="maintenanceMessage" placeholder="Message shown to landlords/tenants while maintenance is on (optional)"></textarea>
-      <button class="btn btn-secondary btn-full" onclick="saveMaintenanceMessage()">💾 Save Message</button>
+      <button class="btn btn-secondary btn-full" onclick="saveMaintenanceMessage()"><span data-icon="save" data-icon-size="13"></span> Save Message</button>
     </div>
 
     <div class="card">
-      <div class="card-title">✅ Auto-Approve New Listings</div>
+      <div class="card-title"><span data-icon="checkCircle" data-icon-size="13"></span> Auto-Approve New Listings</div>
       <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1rem;line-height:1.7">
         When ON, any property a landlord opts into public listings goes live immediately — no manual review needed. When OFF (default), new listings sit in the Pending queue until you approve them.
       </p>
@@ -1076,7 +1087,7 @@
 <div class="modal-overlay" id="modal-photo-mod">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title">🖼️ Manage Photos</div>
+      <div class="modal-title"><span data-icon="image" data-icon-size="17"></span> Manage Photos</div>
       <button class="modal-close" onclick="closeModal('modal-photo-mod')" aria-label="Close">✕</button>
     </div>
     <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--accent);margin-bottom:0.85rem" id="photoModPropName"></div>
@@ -1087,6 +1098,21 @@
 
 <div id="toast"></div>
 
+<!-- icons.js must load before wireIcons() and stacklord.js run -->
+<script src="icons.js"></script>
+<script>
+(function wireIcons() {
+  try {
+    document.querySelectorAll('[data-icon]').forEach(el => {
+      const name = el.dataset.icon;
+      const size = parseInt(el.dataset.iconSize, 10) || 16;
+      el.innerHTML = ICON(name, size);
+    });
+  } catch (err) {
+    console.error('wireIcons error:', err);
+  }
+})();
+</script>
 <script src="config.js" onerror="void 0"></script>
 <script src="stacklord.js"></script>
 </body>

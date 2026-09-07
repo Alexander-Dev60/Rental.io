@@ -221,7 +221,9 @@
     border-radius: 0 10px 10px 0;
     padding: 13px 18px; margin: 14px 0;
     font-size: .84rem; color: var(--muted); line-height: 1.6;
+    display: flex; align-items: flex-start; gap: 9px;
   }
+  .highlight-box [data-icon] { color: var(--primary); flex-shrink: 0; margin-top: 2px; }
 
   /* FOOTER */
   .doc-footer {
@@ -235,15 +237,19 @@
   .doc-footer a { color: var(--muted); text-decoration: none; transition: color .2s; }
   .doc-footer a:hover { color: var(--primary); }
   .footer-sep { margin: 0 8px; opacity: .3; }
+  .doc-footer p .ico { color: var(--gold); vertical-align: -1px; }
   </style>
 </head>
 <body>
 
-<!-- BG slideshow -->
+<!--
+  BACKGROUND SLIDESHOW
+  Only 2 photos, crossfading on a slow, even 5-minute interval
+  (see script below: BG_INTERVAL = 5 * 60 * 1000).
+-->
 <div class="bg" id="bgEl">
   <img class="active" src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=1400&q=80" alt="">
   <img src="https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1400&q=80" alt="">
-  <img src="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1400&q=80" alt="">
 </div>
 <div class="overlay"></div>
 
@@ -306,7 +312,7 @@
     <h2>Acceptance of Terms</h2>
     <p>By accessing or using Affordable Rentals ("the Platform", "we", "us"), you agree to be bound by these Terms and Conditions. If you do not agree to these terms, please do not use the platform.</p>
     <p>These terms apply to all users of the platform including tenants, landlords and administrators. Use of the platform constitutes full acceptance of these terms.</p>
-    <div class="highlight-box">⚠️ Please read these terms carefully before registering or making any payments through Affordable Rentals.</div>
+    <div class="highlight-box"><span data-icon="warning" data-icon-size="15"></span><span>Please read these terms carefully before registering or making any payments through Affordable Rentals.</span></div>
   </div>
 
   <div class="doc-section" id="s2">
@@ -349,7 +355,7 @@
       <li>Affordable Rentals is not responsible for failed transactions caused by insufficient M-Pesa balance, network issues or Safaricom service outages</li>
       <li>Your M-Pesa PIN is never stored or seen by Affordable Rentals — all PIN entry happens directly on Safaricom's secure STK Push interface</li>
     </ul>
-    <div class="highlight-box">💡 Always verify the payment amount before entering your M-Pesa PIN. Contact your landlord immediately if you suspect an incorrect charge.</div>
+    <div class="highlight-box"><span data-icon="sparkle" data-icon-size="15"></span><span>Always verify the payment amount before entering your M-Pesa PIN. Contact your landlord immediately if you suspect an incorrect charge.</span></div>
   </div>
 
   <div class="doc-section" id="s5">
@@ -444,7 +450,7 @@
 
 <!-- FOOTER -->
 <div class="doc-footer">
-  <p>© 2026 Affordable Rentals · All rights reserved · Built with ❤️ in Kenya</p>
+  <p>© 2026 Affordable Rentals · All rights reserved · Built with <span data-icon="heart" data-icon-size="9"></span> in Kenya</p>
   <p>
     <a href="privacy.html">Privacy Policy</a>
     <span class="footer-sep">·</span>
@@ -456,11 +462,26 @@
   </p>
 </div>
 
+<!-- icons.js must load before wireIcons() runs -->
+<script src="icons.js"></script>
 <script>
-// BG slideshow
+(function wireIcons() {
+  try {
+    document.querySelectorAll('[data-icon]').forEach(el => {
+      const name = el.dataset.icon;
+      const size = parseInt(el.dataset.iconSize, 10) || 16;
+      el.innerHTML = ICON(name, size);
+    });
+  } catch (err) {
+    console.error('wireIcons error:', err);
+  }
+})();
+
+// BG slideshow — 2 photos, even 5-minute rotation
 (function(){
+  const BG_INTERVAL = 5 * 60 * 1000; // 5 minutes
   const imgs = document.querySelectorAll('.bg img'); let i = 0;
-  setInterval(() => { imgs[i].classList.remove('active'); i = (i+1)%imgs.length; imgs[i].classList.add('active'); }, 5000);
+  setInterval(() => { imgs[i].classList.remove('active'); i = (i+1)%imgs.length; imgs[i].classList.add('active'); }, BG_INTERVAL);
 })();
 </script>
 </body>

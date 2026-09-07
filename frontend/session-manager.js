@@ -27,6 +27,7 @@
         _warningTimer: null,
         _countdownInterval: null,
         _silentRefreshInterval: null,
+        _silentRetryTimer: null,
         _modalEl: null,
         _remainingSeconds: 0,
         _lastActivityAt: 0,
@@ -100,37 +101,59 @@
             );
         },
 
-        _startSilentRefreshLoop() {
+                _startSilentRefreshLoop() {
             clearInterval(this._silentRefreshInterval);
+            clearTimeout(this._silentRetryTimer);
             const intervalMs = this._config.silentRefreshMinutes * 60 * 1000;
 
-            this._silentRefreshInterval = setInterval(async () => {
-                const token = this._getToken();
-                if (!token) { clearInterval(this._silentRefreshInterval); return; }
-
-                // Don't silently refresh someone who has actually gone idle —
-                // that case is already owned by the warning-modal/logout flow.
-                // This loop exists purely for users who never go idle.
-                const idleMs = this._config.idleMinutes * 60 * 1000;
-                const sinceActivity = Date.now() - this._lastActivityAt;
-                if (sinceActivity >= idleMs) return;
-
-                // Don't fight the warning modal if it's already up.
-                if (this._modalEl && this._modalEl.classList.contains('sm-visible')) return;
-
-                try {
-                    const res = await fetch(`${this._config.apiBase}/auth/refresh-token`, {
-                        method: 'POST',
-                        headers: { Authorization: `Bearer ${token}` }
-                    });
-                    if (!res.ok) return; // let the normal expiry/idle flow handle it if this fails
-                    const data = await res.json();
-                    this._setToken(data.token);
-                } catch (err) {
-                    console.error('Silent session refresh failed:', err);
-                    // Non-fatal — next scheduled attempt or the idle-modal flow will catch it.
-                }
+            this._silentRefreshInterval = setInterval(() => {
+                this._attemptSilentRefresh();
             }, intervalMs);
+        },
+
+        // Returns true on a successful refresh, false otherwise (including
+        // skipped attempts — idle user, modal already up, no token). Split
+        // out from the interval so a failed attempt can schedule a single
+        // short retry without disturbing the regular 45-min cadence.
+        async _attemptSilentRefresh() {
+            const token = this._getToken();
+            if (!token) { clearInterval(this._silentRefreshInterval); return false; }
+
+            // Don't silently refresh someone who has actually gone idle —
+            // that case is already owned by the warning-modal/logout flow.
+            // This loop exists purely for users who never go idle.
+            const idleMs = this._config.idleMinutes * 60 * 1000;
+            const sinceActivity = Date.now() - this._lastActivityAt;
+            if (sinceActivity >= idleMs) return false;
+
+            // Don't fight the warning modal if it's already up.
+            if (this._modalEl && this._modalEl.classList.contains('sm-visible')) return false;
+
+            try {
+                const res = await fetch(`${this._config.apiBase}/auth/refresh-token`, {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (!res.ok) { this._scheduleSilentRetry(); return false; }
+                const data = await res.json();
+                this._setToken(data.token);
+                return true;
+            } catch (err) {
+                console.error('Silent session refresh failed:', err);
+                this._scheduleSilentRetry();
+                return false;
+            }
+        },
+
+        // One-off retry, 2 minutes after a failed attempt — narrows the
+        // window where two unlucky failures in a row could leave an active
+        // user unrefreshed all the way to hard token expiry, without
+        // resetting the main 45-min interval's timing.
+        _scheduleSilentRetry() {
+            clearTimeout(this._silentRetryTimer);
+            this._silentRetryTimer = setTimeout(() => {
+                if (this._getToken()) this._attemptSilentRefresh();
+            }, 2 * 60 * 1000);
         },
 
         _resetIdleTimer() {
@@ -200,9 +223,10 @@
             }
         },
 
-        _logout() {
+       _logout() {
             this._hideModal();
             clearInterval(this._silentRefreshInterval);
+            clearTimeout(this._silentRetryTimer);
             this._clearToken();
             this._goToLogin();
         },

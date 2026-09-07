@@ -9,6 +9,8 @@ const ALLOWED_ORIGINS = [
     'https://www.affordablerentals.site',
     // dev only — remove before going live:
     //'http://localhost:5500',
+    
+    //'http://127.0.0.1:5503',
     //'http://127.0.0.1:5502',
 ];
 
@@ -34,6 +36,8 @@ const multer     = require('multer');
 const cloudinary = require('cloudinary').v2;
 const Inquiry   = require('./models/Inquiry');
 const AuditLog  = require('./models/AuditLog');
+const Expense = require('./models/Expense');
+const MaintenanceRequest = require('./models/MaintenanceRequest');
 
 // ── Encryption utility ──
 const { encrypt, decrypt, safeDecrypt } = require('./encrypt');
@@ -1436,7 +1440,8 @@ app.delete('/properties/:id', authMiddleware, landlordOnly, async (req, res) => 
             Announcement.deleteMany({ property: req.params.id }),
             Message.deleteMany({ property: req.params.id }),
             TenantMembership.deleteMany({ property: req.params.id }),
-            CommissionPayment.deleteMany({ property: req.params.id })
+            CommissionPayment.deleteMany({ property: req.params.id }),
+            MaintenanceRequest.deleteMany({ property: req.params.id })
         ]);
 
         await Property.findByIdAndDelete(req.params.id);
@@ -2605,6 +2610,233 @@ app.get('/arrears/:month', authMiddleware, landlordOnly, async (req, res) => {
     }
 });
 
+
+
+// ═══════════════════════════════════════
+// EXPENSES
+// ═══════════════════════════════════════
+
+app.post('/expenses', authMiddleware, landlordOnly, checkAccountStatus, async (req, res) => {
+    try {
+        const propertyId = req.body.propertyId || null;
+        const category    = req.body.category || 'other';
+        const amount      = Number(req.body.amount);
+        const month       = sanitize(req.body.month || '');
+        const note        = sanitize(req.body.note || '', 300);
+
+        if (!propertyId) return res.status(400).json({ message: 'propertyId is required' });
+        if (!amount || amount <= 0) return res.status(400).json({ message: 'A valid amount is required' });
+        if (!month) return res.status(400).json({ message: 'month is required' });
+
+        const validCategories = ['water', 'electricity', 'repairs', 'security', 'cleaning', 'staff', 'other'];
+        if (!validCategories.includes(category)) {
+            return res.status(400).json({ message: `category must be one of: ${validCategories.join(', ')}` });
+        }
+
+        const property = await Property.findOne({ _id: propertyId, landlord: req.user.id });
+        if (!property) return res.status(404).json({ message: 'Property not found' });
+
+        const expense = await Expense.create({
+            landlord: req.user.id,
+            property: propertyId,
+            category,
+            amount,
+            month,
+            note,
+            datePaid: new Date()
+        });
+
+        logActivity({
+            landlord: req.user.id, property: propertyId,
+            action:   'expense.recorded',
+            message:  `Ksh ${Number(amount).toLocaleString()} expense (${category}) recorded for ${property.name} — ${month}`,
+            meta:     { expenseId: expense._id, amount, category, month }
+        });
+
+        res.status(201).json({ message: 'Expense recorded ✅', expense });
+
+    } catch (err) {
+        console.error('Create expense error:', err.message);
+        res.status(500).json({ message: err.message });
+    }
+});
+
+app.get('/expenses', authMiddleware, landlordOnly, async (req, res) => {
+    try {
+        const query = { landlord: req.user.id };
+
+        if (req.query.propertyId) {
+            const property = await Property.findOne({ _id: req.query.propertyId, landlord: req.user.id });
+            if (!property) return res.status(404).json({ message: 'Property not found' });
+            query.property = req.query.propertyId;
+        }
+        if (req.query.month) query.month = req.query.month;
+
+        const expenses = await Expense.find(query)
+            .populate('property', 'name')
+            .sort({ createdAt: -1 })
+            .limit(200);
+
+        res.json(expenses);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/expenses/:id', authMiddleware, landlordOnly, async (req, res) => {
+    try {
+        const expense = await Expense.findOne({ _id: req.params.id, landlord: req.user.id });
+        if (!expense) return res.status(404).json({ message: 'Expense not found' });
+
+        await expense.deleteOne();
+
+        logActivity({
+            landlord: req.user.id, property: expense.property,
+            action:   'expense.deleted',
+            message:  `Ksh ${Number(expense.amount).toLocaleString()} expense (${expense.category}) for ${expense.month} was deleted`,
+            meta:     { expenseId: expense._id }
+        });
+
+        res.json({ message: 'Expense deleted ✅' });
+    } catch (err) {
+        res.status(500).json({ message: 'Error deleting expense ❌' });
+    }
+});
+
+
+// ═══════════════════════════════════════
+// MAINTENANCE REQUESTS
+// ═══════════════════════════════════════
+
+app.post('/maintenance-requests', authMiddleware, async (req, res) => {
+    try {
+        if (req.user.role !== 'tenant') {
+            return res.status(403).json({ message: 'Tenants only. Landlords manage requests via PUT /maintenance-requests/:id/status.' });
+        }
+        if (!req.user.tenantId) {
+            return res.status(400).json({ message: 'No tenant linked to this account' });
+        }
+
+        const category    = req.body.category || 'other';
+        const description = sanitize(req.body.description || '', 1000);
+        const priority     = req.body.priority || 'medium';
+
+        if (!description) return res.status(400).json({ message: 'Description is required' });
+
+        const validCategories = ['plumbing', 'electrical', 'structural', 'appliance', 'pest', 'other'];
+        if (!validCategories.includes(category)) {
+            return res.status(400).json({ message: `category must be one of: ${validCategories.join(', ')}` });
+        }
+        const validPriorities = ['low', 'medium', 'high'];
+        if (!validPriorities.includes(priority)) {
+            return res.status(400).json({ message: `priority must be one of: ${validPriorities.join(', ')}` });
+        }
+
+        const tenant = await Tenant.findById(req.user.tenantId).select('property landlord house name');
+        if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
+
+        const request = await MaintenanceRequest.create({
+            landlord:    tenant.landlord,
+            property:    tenant.property,
+            tenant:      tenant._id,
+            house:       tenant.house || null,
+            category,
+            description,
+            priority
+        });
+
+        logActivity({
+            landlord: tenant.landlord, property: tenant.property,
+            action:   'maintenance.reported',
+            message:  `${tenant.name} reported a ${category} issue`,
+            meta:     { requestId: request._id, category, priority }
+        });
+
+        res.status(201).json({ message: 'Maintenance request submitted ✅', request });
+
+    } catch (err) {
+        console.error('Create maintenance request error:', err.message);
+        res.status(500).json({ message: err.message });
+    }
+});
+
+app.get('/maintenance-requests', authMiddleware, async (req, res) => {
+    try {
+        let query;
+
+        if (req.user.role === 'landlord') {
+            query = { landlord: req.user.id };
+
+            if (req.query.propertyId) {
+                const property = await Property.findOne({ _id: req.query.propertyId, landlord: req.user.id });
+                if (!property) return res.status(404).json({ message: 'Property not found' });
+                query.property = req.query.propertyId;
+            }
+            if (req.query.status) query.status = req.query.status;
+
+        } else {
+            if (!req.user.tenantId) return res.json([]);
+            query = { tenant: req.user.tenantId };
+        }
+
+        const requests = await MaintenanceRequest.find(query)
+            .populate('tenant', 'name phone')
+            .populate('house', 'name')
+            .populate('property', 'name')
+            .sort({ createdAt: -1 })
+            .limit(200);
+
+        res.json(requests);
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.put('/maintenance-requests/:id/status', authMiddleware, landlordOnly, async (req, res) => {
+    try {
+        const { status, cost, resolutionNote } = req.body;
+        const allowed = ['reported', 'in_progress', 'completed'];
+        if (!allowed.includes(status)) {
+            return res.status(400).json({ message: `Status must be one of: ${allowed.join(', ')}` });
+        }
+
+        const request = await MaintenanceRequest.findOne({ _id: req.params.id, landlord: req.user.id })
+            .populate('tenant', 'name');
+        if (!request) return res.status(404).json({ message: 'Maintenance request not found' });
+
+        request.status = status;
+        if (cost !== undefined && cost !== null && cost !== '') request.cost = Number(cost);
+        if (typeof resolutionNote === 'string') request.resolutionNote = sanitize(resolutionNote, 500);
+        if (status === 'completed' && !request.completedAt) request.completedAt = new Date();
+        if (status !== 'completed') request.completedAt = null;
+
+        await request.save();
+
+        logActivity({
+            landlord: req.user.id, property: request.property,
+            action:   'maintenance.status_changed',
+            message:  `${request.tenant?.name || 'Tenant'}'s ${request.category} request marked ${status}`,
+            meta:     { requestId: request._id, status }
+        });
+
+        res.json({ message: 'Request updated ✅', request });
+
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+app.delete('/maintenance-requests/:id', authMiddleware, landlordOnly, async (req, res) => {
+    try {
+        const request = await MaintenanceRequest.findOneAndDelete({ _id: req.params.id, landlord: req.user.id });
+        if (!request) return res.status(404).json({ message: 'Maintenance request not found' });
+        res.json({ message: 'Maintenance request deleted ✅' });
+    } catch (err) {
+        res.status(500).json({ message: 'Error deleting request ❌' });
+    }
+});
+
 // ═══════════════════════════════════════
 // ACTIVITY LOG
 // ═══════════════════════════════════════
@@ -3104,16 +3336,20 @@ app.get('/receipt/pdf/:paymentId', authMiddleware, async (req, res) => {
 // FIX Bug 15: batch payment aggregation instead of N+1 getMonthSummary calls
 app.get('/dashboard/:month', authMiddleware, landlordOnly, checkAccountStatus, async (req, res) => {
     try {
-        const month       = req.params.month;
-        const tenantQuery = { landlord: req.user.id, status: 'active' };
-        const houseQuery  = { landlord: req.user.id };
-        let   propertyInfo = null;
+        const month         = req.params.month;
+        const tenantQuery   = { landlord: req.user.id, status: 'active' };
+        const houseQuery    = { landlord: req.user.id };
+        const expenseQuery  = { landlord: new mongoose.Types.ObjectId(req.user.id), month };
+        const maintQuery    = { landlord: req.user.id, status: { $in: ['reported', 'in_progress'] } };
+        let   propertyInfo  = null;
 
         if (req.query.propertyId) {
             const property = await Property.findOne({ _id: req.query.propertyId, landlord: req.user.id });
             if (!property) return res.status(404).json({ message: 'Property not found' });
-            tenantQuery.property = req.query.propertyId;
-            houseQuery.property  = req.query.propertyId;
+            tenantQuery.property  = req.query.propertyId;
+            houseQuery.property   = req.query.propertyId;
+            expenseQuery.property = new mongoose.Types.ObjectId(req.query.propertyId);
+            maintQuery.property   = req.query.propertyId;
             propertyInfo = { id: property._id, name: property.name, location: property.location };
         }
 
@@ -3152,6 +3388,17 @@ app.get('/dashboard/:month', authMiddleware, landlordOnly, checkAccountStatus, a
             totalArrears += Math.max(0, rent - totalPaid);
         }
 
+        // ── Expenses for this property/month → Net Income = Collected − Expenses ──
+        const expensesAgg = await Expense.aggregate([
+            { $match: expenseQuery },
+            { $group: { _id: null, total: { $sum: '$amount' } } }
+        ]);
+        const totalExpenses = expensesAgg[0]?.total || 0;
+
+        // ── Open maintenance requests (not scoped to month — a request stays
+        //    "open" across month boundaries until resolved) ──
+        const openMaintenanceCount = await MaintenanceRequest.countDocuments(maintQuery);
+
         const landlord = await User.findById(req.user.id)
             .select('name propertyName propertyLocation paymentConfigured accountStatus');
 
@@ -3159,12 +3406,15 @@ app.get('/dashboard/:month', authMiddleware, landlordOnly, checkAccountStatus, a
             month,
             totalIncome,
             totalArrears,
-            totalTenants:      tenants.length,
-            totalHouses:       houses.length,
-            occupiedHouses:    occupied,
-            vacantHouses:      houses.length - occupied,
-            paymentConfigured: landlord.paymentConfigured,
-            property:          propertyInfo,
+            totalExpenses,
+            netIncome:            totalIncome - totalExpenses,
+            openMaintenanceCount,
+            totalTenants:         tenants.length,
+            totalHouses:          houses.length,
+            occupiedHouses:       occupied,
+            vacantHouses:         houses.length - occupied,
+            paymentConfigured:    landlord.paymentConfigured,
+            property:             propertyInfo,
             landlordProfile: {
                 name:             landlord.name,
                 propertyName:     landlord.propertyName,
@@ -3969,7 +4219,7 @@ app.post('/stacklord/commissions/mark-paid', stacklordAuth, async (req, res) => 
                 paidAt:    new Date(),
                 note
             },
-            { upsert: true, new: true }
+            { upsert: true, returnDocument: 'after' }
         );
         await maybeAutoUnsuspendProperty(propertyId);
 
@@ -4211,7 +4461,7 @@ app.post('/stacklord/properties/:id/approve', stacklordAuth, async (req, res) =>
         const property = await Property.findByIdAndUpdate(
             req.params.id,
             { isApproved: approve },
-            { new: true }
+            { returnDocument: 'after' }
         ).populate('landlord', 'name email').select('name isListed isApproved landlord location');
 
         if (!property) return res.status(404).json({ message: 'Property not found' });

@@ -58,7 +58,8 @@
     body {
       font-family: var(--font-s);
       color: var(--text);
-      overflow: hidden;
+      min-height: 100%;
+      overflow-y: auto;
     }
 
     a, button, input, select, textarea, [tabindex] { outline: none; }
@@ -71,7 +72,6 @@
       outline-offset: 2px;
       border-radius: 4px;
     }
-    .disc-dot:focus-visible { outline-offset: 1px; }
 
     .bg { position: fixed; inset: 0; z-index: -2; }
     .bg img {
@@ -86,20 +86,144 @@
       background: linear-gradient(130deg, var(--overlay-a), var(--overlay-b));
     }
 
+    /* ═══════════ EXPLORE STRIP (top, full width) ═══════════ */
+    .explore-strip {
+      width: 100%;
+      padding: 26px 20px 22px;
+      position: relative;
+    }
+    .explore-strip-inner { max-width: 980px; margin: 0 auto; }
+    .explore-head {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px; margin-bottom: 15px;
+    }
+    .explore-label {
+      font-family: var(--font-d); font-style: italic;
+      font-size: clamp(1.05rem, 3vw, 1.3rem); color: var(--text);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .explore-live-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: #6fce7d; flex-shrink: 0; display: inline-block;
+      animation: livePulse 2.2s ease-in-out infinite;
+    }
+    @keyframes livePulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(111,206,125,.6); }
+      55%      { box-shadow: 0 0 0 5px rgba(111,206,125,0); }
+    }
+
+    .location-search-wrap { position: relative; width: 260px; max-width: 100%; }
+    .location-search-input-row { position: relative; }
+    #locationSearch {
+      width: 100%;
+      background: var(--card);
+      border: 1px solid var(--border2);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 11px; color: var(--text);
+      font-family: var(--font-s); font-size: .8rem;
+      padding: 10px 34px 10px 13px;
+    }
+    #locationSearch::placeholder { color: var(--muted2); }
+    #locationSearch:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(224,187,100,.16);
+    }
+    .location-search-icon {
+      position: absolute; right: 11px; top: 50%; transform: translateY(-50%);
+      color: var(--muted2); pointer-events: none; display: flex;
+    }
+    .location-dropdown {
+      position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+      background: var(--toast-bg); border: 1px solid var(--toast-border);
+      border-radius: 12px; max-height: 240px; overflow-y: auto;
+      box-shadow: 0 16px 50px rgba(0,0,0,.45);
+      backdrop-filter: blur(16px);
+      z-index: 30; display: none;
+    }
+    .location-dropdown.show { display: block; }
+    .location-dropdown-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 13px; font-size: .76rem; color: var(--text);
+      cursor: pointer; transition: background .15s;
+    }
+    .location-dropdown-item:hover,
+    .location-dropdown-item:focus { background: rgba(224,187,100,.1); }
+    .location-dropdown-count {
+      font-family: var(--font-m); font-size: .58rem; color: var(--muted2);
+      flex-shrink: 0; margin-left: 10px;
+    }
+    .location-dropdown-empty {
+      padding: 13px; font-size: .72rem; color: var(--muted2); text-align: center;
+    }
+
+    .explore-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 11px; margin-bottom: 16px;
+    }
+    .explore-card {
+      position: relative; height: 118px; border-radius: 14px; overflow: hidden;
+      background: #0a0d16; border: 1px solid var(--border);
+      text-decoration: none; display: block;
+      transition: transform .2s ease, border-color .2s ease;
+    }
+    .explore-card:hover { transform: translateY(-2px); border-color: var(--border2); }
+    .explore-card-photo {
+      position: absolute; inset: 0; background-size: cover; background-position: center;
+      filter: brightness(.82); transition: transform .5s ease;
+    }
+    .explore-card:hover .explore-card-photo { transform: scale(1.05); }
+    .explore-card-photo.no-photo {
+      background:
+        radial-gradient(ellipse at 28% 25%, rgba(185,134,46,.38) 0%, transparent 55%),
+        linear-gradient(160deg, #14100a 0%, #0c0a06 60%, #100c08 100%);
+    }
+    .explore-card-overlay {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      justify-content: flex-end; padding: 9px 11px;
+      background: linear-gradient(to top, rgba(11,15,26,.94) 0%, rgba(11,15,26,.3) 58%, transparent 100%);
+    }
+    .explore-card-name {
+      font-family: var(--font-d); font-style: italic; font-size: .84rem;
+      color: #fff; line-height: 1.2;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .explore-card-loc {
+      font-family: var(--font-m); font-size: .5rem; letter-spacing: .07em;
+      text-transform: uppercase; color: var(--primary); margin-top: 3px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      display: flex; align-items: center; gap: 3px;
+    }
+    .explore-card-loc .ico { flex-shrink: 0; }
+    .explore-empty, .explore-loading {
+      grid-column: 1 / -1; text-align: center; padding: 22px 12px;
+      font-size: .75rem; color: var(--muted2); font-family: var(--font-s);
+      border: 1px dashed var(--border); border-radius: 14px;
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+    }
+    .explore-footer { display: flex; justify-content: center; }
+    .explore-cta {
+      display: inline-flex; align-items: center; gap: 7px;
+      font-family: var(--font-m); font-size: .64rem; letter-spacing: .1em;
+      text-transform: uppercase; color: #191307;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      padding: 10px 20px; border-radius: 10px; text-decoration: none;
+      box-shadow: 0 4px 20px rgba(185,134,46,.3);
+      transition: opacity .2s, transform .15s;
+    }
+    .explore-cta:hover { opacity: .92; transform: translateY(-1px); }
+    .explore-arrow { transition: transform .2s ease; }
+    .explore-cta:hover .explore-arrow { transform: translateX(3px); }
+
+    /* ═══════════ SIGN-IN CARD ═══════════ */
     .container {
-      height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      gap: 22px;
-      overflow-y: auto;
+      display: flex; align-items: flex-start; justify-content: center;
+      padding: 6px 20px 40px;
     }
 
     .card {
       width: 420px;
-      max-height: 94vh;
-      overflow-y: auto;
       background: var(--card);
       border: 1px solid var(--border2);
       backdrop-filter: blur(24px) saturate(1.3);
@@ -108,10 +232,7 @@
       padding: 26px 26px 22px;
       box-shadow: 0 30px 80px rgba(0,0,0,.5);
       position: relative;
-      flex-shrink: 0;
-      scrollbar-width: none;
     }
-    .card::-webkit-scrollbar { display: none; }
     .card::before {
       content: '';
       position: absolute;
@@ -176,34 +297,32 @@
     }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 
-    .tabs {
-      display: flex; gap: 0; margin-bottom: 18px;
+    .role-picker {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 9px;
+      margin-bottom: 16px;
+    }
+    .role-btn {
+      display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
       background: rgba(0,0,0,.2);
       border: 1px solid var(--border);
-      border-radius: 12px; padding: 3px;
+      border-radius: 12px; padding: 11px 12px;
+      cursor: pointer; text-align: left;
+      transition: all .2s ease;
     }
-    @media (prefers-color-scheme: light) { .tabs { background: rgba(0,0,0,.05); } }
-    .tab-btn {
-      flex: 1; background: none; border: none;
-      color: var(--muted); cursor: pointer;
-      font-family: var(--font-m); font-size: .57rem;
-      letter-spacing: .1em; text-transform: uppercase;
-      padding: 9px 6px; border-radius: 9px;
-      transition: all .2s ease; line-height: 1.4;
+    @media (prefers-color-scheme: light) { .role-btn { background: rgba(0,0,0,.04); } }
+    .role-btn.active {
+      background: linear-gradient(135deg, rgba(224,187,100,.16), rgba(185,134,46,.1));
+      border-color: var(--primary);
     }
-    .tab-btn.active {
-      background: linear-gradient(135deg, var(--primary), var(--accent));
-      color: #191307;
-      box-shadow: 0 2px 14px rgba(224,187,100,.3);
+    .role-btn:not(.active):hover { border-color: var(--border2); }
+    .role-btn-title {
+      font-family: var(--font-s); font-size: .78rem; font-weight: 500; color: var(--text);
+      display: flex; align-items: center; gap: 6px;
     }
-    .tab-btn:not(.active):hover { color: var(--text); }
-    .tab-sub {
-      display: block; font-size: .5rem;
-      letter-spacing: .06em; opacity: .7;
-      margin-top: 1px; text-transform: none;
-      font-family: var(--font-s);
+    .role-btn-title .ico { color: var(--primary); flex-shrink: 0; }
+    .role-btn-sub {
+      font-family: var(--font-s); font-size: .64rem; color: var(--muted); line-height: 1.4;
     }
-    .tab-btn.active .tab-sub { opacity: .82; }
 
     .tenant-hint {
       display: flex; align-items: flex-start; gap: 8px;
@@ -214,12 +333,27 @@
       color: var(--muted); line-height: 1.5;
     }
     .tenant-hint strong { color: var(--primary); }
+    .tenant-hint .ico, .trial-note-top .ico { color: var(--primary); flex-shrink: 0; margin-top: 1px; }
+
+    .trial-note-top {
+      display: flex; align-items: flex-start; gap: 8px;
+      background: rgba(224,187,100,.09);
+      border: 1px solid rgba(224,187,100,.22);
+      border-radius: 10px; padding: 10px 12px;
+      margin-bottom: 14px; font-size: .72rem;
+      color: var(--muted); line-height: 1.5;
+    }
+    .trial-note-top strong { color: var(--primary); }
 
     .field { margin-bottom: 11px; }
     .field-label {
-      display: block; font-family: var(--font-m); font-size: .57rem;
+      display: block; font-family: var(--font-m); font-size: .6rem;
       letter-spacing: .14em; text-transform: uppercase;
       color: var(--muted2); margin-bottom: 5px;
+    }
+    .field-hint {
+      display: block; font-size: .66rem; color: var(--muted2);
+      margin-top: 4px; line-height: 1.4;
     }
     .input-wrap { position: relative; }
     .field input {
@@ -238,16 +372,25 @@
       box-shadow: 0 0 0 3px rgba(224,187,100,.16);
     }
     .eye-btn {
-      position: absolute; right: 10px; top: 50%;
+      position: absolute; right: 4px; top: 50%;
       transform: translateY(-50%);
-      background: none; border: none; cursor: pointer; padding: 4px;
-      color: var(--muted2); display: flex; align-items: center;
-      transition: color .2s;
+      background: none; border: none; cursor: pointer;
+      width: 32px; height: 32px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--muted2); transition: color .2s;
     }
     .eye-btn:hover { color: var(--primary); }
 
     .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
     .field-grid .field-full { grid-column: 1 / -1; }
+
+    .form-section-label {
+      font-family: var(--font-m); font-size: .58rem;
+      letter-spacing: .16em; text-transform: uppercase;
+      color: var(--primary); opacity: .8;
+      margin: 4px 0 8px;
+    }
+    .form-section-label:first-child { margin-top: 0; }
 
     .forgot-row { display: flex; justify-content: flex-end; margin: -3px 0 11px; }
     .forgot-link {
@@ -311,196 +454,30 @@
     .terms-check a { color: var(--primary); text-decoration: none; }
     .terms-check a:hover { text-decoration: underline; }
 
-    .register-note {
-      margin-top: 11px; padding: 10px 13px;
-      background: rgba(224,187,100,.07);
-      border: 1px solid rgba(224,187,100,.18);
-      border-radius: 9px;
-      font-family: var(--font-s); font-size: .73rem;
-      color: var(--muted); line-height: 1.6;
-    }
-    .register-note strong { color: var(--primary); font-weight: 500; }
-
     .form-panel { display: none; }
     .form-panel.active { display: block; }
 
-    .disc-panel {
-      width: 330px; flex-shrink: 0;
-      background: var(--card);
-      border: 1px solid var(--border2);
-      backdrop-filter: blur(24px) saturate(1.3);
-      -webkit-backdrop-filter: blur(24px) saturate(1.3);
-      border-radius: 20px; overflow: hidden;
-      box-shadow: 0 30px 80px rgba(0,0,0,.5);
-      display: flex; flex-direction: column;
-      position: relative; max-height: 94vh;
+    .tabs {
+      display: flex; gap: 0; margin-bottom: 18px;
+      background: rgba(0,0,0,.2);
+      border: 1px solid var(--border);
+      border-radius: 12px; padding: 3px;
     }
-    .disc-panel::before {
-      content: '';
-      position: absolute; width: 180px; height: 180px;
-      background: var(--accent); filter: blur(90px); opacity: .13;
-      bottom: -40px; left: -40px; pointer-events: none; border-radius: 50%;
-    }
-    .disc-panel::after {
-      content: '';
-      position: absolute; top: 0; left: 10%; right: 10%; height: 1px;
-      background: linear-gradient(90deg, transparent, var(--accent), transparent);
-      opacity: .45; z-index: 2; pointer-events: none;
-    }
-    .disc-header {
-      display: flex; align-items: center; gap: 8px;
-      padding: 12px 15px;
-      border-bottom: 1px solid var(--border);
-      position: relative; z-index: 1;
-    }
-    .disc-live {
-      display: flex; align-items: center; gap: 5px;
-      font-family: var(--font-m); font-size: .56rem;
-      letter-spacing: .15em; text-transform: uppercase;
-      color: #6fce7d; font-weight: 700;
-    }
-    .disc-live-dot {
-      width: 6px; height: 6px; border-radius: 50%;
-      background: #6fce7d; flex-shrink: 0;
-      animation: livePulse 2.2s ease-in-out infinite;
-    }
-    @keyframes livePulse {
-      0%,100% { box-shadow: 0 0 0 0 rgba(111,206,125,.6); }
-      55%      { box-shadow: 0 0 0 5px rgba(111,206,125,0); }
-    }
-    .disc-header-label {
-      flex: 1; font-family: var(--font-m); font-size: .56rem;
-      letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
-    }
-    .disc-count {
-      font-family: var(--font-m); font-size: .56rem; font-weight: 700;
-      background: rgba(224,187,100,.12);
-      border: 1px solid rgba(224,187,100,.3);
-      color: var(--primary);
-      padding: 2px 8px; border-radius: 99px;
-    }
-    .disc-slide {
-      position: relative; height: 195px; overflow: hidden;
-      background: #0a0d16; flex-shrink: 0;
-    }
-    .disc-photo {
-      position: absolute; inset: 0;
-      background-size: cover; background-position: center;
-      transition: transform .7s ease; will-change: transform;
-    }
-    .disc-panel:hover .disc-photo { transform: scale(1.04); }
-    .disc-photo.no-photo {
-      background:
-        radial-gradient(ellipse at 25% 30%, rgba(185,134,46,.4) 0%, transparent 55%),
-        linear-gradient(160deg, #14100a 0%, #0c0a06 60%, #100c08 100%);
-    }
-    .disc-initial {
-      position: absolute; top: 50%; left: 50%;
-      transform: translate(-50%,-54%);
-      font-family: var(--font-d); font-style: italic;
-      font-size: 5.5rem; color: rgba(224,187,100,.09);
-      pointer-events: none; user-select: none;
-    }
-    .disc-counter {
-      position: absolute; top: 9px; right: 9px;
-      font-family: var(--font-m); font-size: .53rem;
-      letter-spacing: .08em; color: rgba(247,242,228,.75);
-      background: rgba(0,0,0,.5); backdrop-filter: blur(6px);
-      padding: 2px 7px; border-radius: 4px;
-      border: 1px solid rgba(228,199,122,.1); z-index: 3;
-    }
-    .disc-overlay {
-      position: absolute; left: 0; right: 0; bottom: 0;
-      padding: 2.5rem 13px 11px;
-      background: linear-gradient(to top, rgba(11,15,26,.97) 0%, rgba(11,15,26,.6) 45%, transparent 100%);
-      z-index: 2;
-    }
-    .disc-location {
-      font-family: var(--font-m); font-size: .53rem;
-      letter-spacing: .12em; text-transform: uppercase;
-      color: var(--primary); opacity: .9; margin-bottom: 4px;
-      display: flex; align-items: center; gap: 4px;
-    }
-    .disc-name {
-      font-family: var(--font-d); font-style: italic;
-      font-size: 1.05rem; color: #fff; line-height: 1.2; margin-bottom: 7px;
-    }
-    .disc-chips { display: flex; gap: 5px; flex-wrap: wrap; }
-    .disc-chip {
-      font-family: var(--font-m); font-size: .51rem; letter-spacing: .06em;
-      padding: 2px 7px; border-radius: 4px;
-      display: inline-flex; align-items: center;
-      border: 1px solid transparent;
-    }
-    .disc-chip--vacant { background: rgba(224,187,100,.18);  border-color: rgba(224,187,100,.4);  color: #f2ddab; }
-    .disc-chip--full   { background: rgba(240,165,165,.12); border-color: rgba(240,165,165,.3);  color: #f0a5a5; }
-    .disc-chip--rent   { background: rgba(200,148,102,.16); border-color: rgba(200,148,102,.32); color: #e6c39f; }
-    .disc-loader {
-      position: absolute; inset: 0;
-      display: flex; align-items: center; justify-content: center;
-      background: rgba(11,15,26,.45); z-index: 4;
-    }
-    .disc-spinner {
-      width: 20px; height: 20px;
-      border: 2px solid rgba(224,187,100,.15);
-      border-top-color: var(--primary);
-      border-radius: 50%; animation: spin .75s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .disc-empty {
-      position: absolute; inset: 0;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 6px; padding: 1.5rem;
-    }
-    .disc-empty-icon { font-size: 1.8rem; opacity: .35; }
-    .disc-empty-title {
-      font-family: var(--font-d); font-style: italic;
-      font-size: .9rem; color: var(--text); opacity: .55;
-    }
-    .disc-empty-sub { font-size: .68rem; color: var(--muted2); text-align: center; line-height: 1.6; }
-    .disc-slide-in { animation: slideIn .36s ease both; }
-    @keyframes slideIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
-    .disc-progress { height: 3px; background: rgba(224,187,100,.08); flex-shrink: 0; }
-    .disc-progress-fill {
-      height: 100%;
-      background: linear-gradient(90deg, var(--primary), var(--accent));
-      width: 0%;
-    }
-    .disc-body {
-      flex: 1; min-height: 0; padding: 13px 15px 9px;
-      display: flex; flex-direction: column; justify-content: center;
-    }
-    .disc-desc {
-      font-size: .74rem; color: var(--muted); line-height: 1.65;
-      display: -webkit-box;
-      -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
-    }
-    .disc-footer {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 9px 15px; border-top: 1px solid var(--border); flex-shrink: 0;
-    }
-    .disc-dots { display: flex; align-items: center; gap: 5px; }
-    .disc-dot {
-      width: 5px; height: 5px; border-radius: 50%;
-      background: rgba(247,242,228,.15);
-      cursor: pointer; border: none; padding: 0;
-      transition: all .3s ease; flex-shrink: 0;
-    }
-    .disc-dot.active { width: 18px; border-radius: 3px; background: var(--primary); }
-    .disc-dot:hover:not(.active) { background: rgba(247,242,228,.35); }
-    .disc-browse-btn {
-      font-family: var(--font-m); font-size: .58rem;
+    @media (prefers-color-scheme: light) { .tabs { background: rgba(0,0,0,.05); } }
+    .tab-btn {
+      flex: 1; background: none; border: none;
+      color: var(--muted); cursor: pointer;
+      font-family: var(--font-m); font-size: .57rem;
       letter-spacing: .1em; text-transform: uppercase;
-      color: var(--primary); text-decoration: none;
-      display: inline-flex; align-items: center; gap: 5px;
-      padding: 5px 10px;
-      border: 1px solid rgba(224,187,100,.24);
-      border-radius: 6px; transition: all .2s ease;
+      padding: 9px 6px; border-radius: 9px;
+      transition: all .2s ease; line-height: 1.4;
     }
-    .disc-browse-btn:hover { background: rgba(224,187,100,.1); }
-    .disc-arrow { transition: transform .2s ease; }
-    .disc-browse-btn:hover .disc-arrow { transform: translateX(3px); }
+    .tab-btn.active {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: #191307;
+      box-shadow: 0 2px 14px rgba(224,187,100,.3);
+    }
+    .tab-btn:not(.active):hover { color: var(--text); }
 
     #toast {
       position: fixed; bottom: 2rem; left: 50%;
@@ -520,14 +497,11 @@
     #toast.success{ border-color: rgba(159,217,168,.4); color: var(--success); }
 
     .site-footer {
-      position: fixed; bottom: 0; left: 0; right: 0; z-index: 0;
-      text-align: center; padding: .7rem 1rem;
-      pointer-events: none;
+      text-align: center; padding: .7rem 1rem 1.6rem;
     }
     .site-footer p {
       font-family: var(--font-m); font-size: .54rem;
       letter-spacing: .1em; color: rgba(247,242,228,.28); line-height: 2;
-      pointer-events: all;
     }
     @media (prefers-color-scheme: light) {
       .site-footer p { color: rgba(23,20,12,.32); }
@@ -537,34 +511,59 @@
     .site-footer-sep { margin: 0 .5rem; opacity: .35; }
 
     @media (max-width: 860px) {
-      .container {
-        flex-direction: column;
-        height: auto; min-height: 100vh;
-        align-items: center; overflow-y: auto;
-        padding-bottom: 3rem;
-      }
-      body { overflow-y: auto; }
-      .card { width: 100%; max-width: 440px; max-height: none; }
-      .disc-panel { width: 100%; max-width: 440px; max-height: none; }
+      .card { width: 100%; max-width: 440px; }
     }
     @media (max-width: 480px) {
       .field-grid { grid-template-columns: 1fr; }
       .field-grid .field-full { grid-column: 1; }
       .hero-title { font-size: 1.5rem; }
+      .role-picker { grid-template-columns: 1fr; }
+      .explore-grid { grid-template-columns: repeat(2, 1fr); }
     }
   </style>
 </head>
 <body>
 
+  <!--
+    BACKGROUND SLIDESHOW
+    Only 2 photos, crossfading on a slow, even 5-minute interval
+    (see script below: BG_INTERVAL = 5 * 60 * 1000).
+  -->
   <div class="bg" id="bgEl">
     <img class="active" src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=1400&q=80" alt="">
     <img src="https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1400&q=80" alt="">
-    <img src="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1400&q=80" alt="">
-    <img src="https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=1400&q=80" alt="">
   </div>
   <div class="overlay"></div>
 
   <div id="toast"></div>
+
+  <!-- ═══════════ EXPLORE STRIP ═══════════ -->
+  <section class="explore-strip">
+    <div class="explore-strip-inner">
+      <div class="explore-head">
+        <span class="explore-label"><span class="explore-live-dot"></span>Explore Properties</span>
+        <div class="location-search-wrap">
+          <div class="location-search-input-row">
+            <input type="text" id="locationSearch" placeholder="Search by location…" autocomplete="off" aria-label="Search properties by location">
+            <span class="location-search-icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </span>
+          </div>
+          <div class="location-dropdown" id="locationDropdown"></div>
+        </div>
+      </div>
+
+      <div class="explore-grid" id="exploreGrid">
+        <div class="explore-loading">Loading properties…</div>
+      </div>
+
+      <div class="explore-footer">
+        <a href="listings.html" class="explore-cta">Explore All Properties <span class="explore-arrow">→</span></a>
+      </div>
+    </div>
+  </section>
 
   <div class="container">
 
@@ -595,6 +594,18 @@
         </div>
       </div>
 
+      <!-- Role picker — decides which tab is shown -->
+      <div class="role-picker">
+        <button type="button" class="role-btn active" id="roleTenant" onclick="pickRole('tenant')">
+          <span class="role-btn-title"><span id="iconRoleTenant"></span> I'm a Tenant</span>
+          <span class="role-btn-sub">Pay rent, view receipts, message your landlord</span>
+        </button>
+        <button type="button" class="role-btn" id="roleLandlord" onclick="pickRole('landlord')">
+          <span class="role-btn-title"><span id="iconRoleLandlord"></span> I'm a Landlord</span>
+          <span class="role-btn-sub">Manage properties, tenants &amp; payments</span>
+        </button>
+      </div>
+
       <div class="tabs">
         <button class="tab-btn active" id="tabLogin" onclick="switchTab('login')">
           Sign In
@@ -609,7 +620,7 @@
       <div class="form-panel active" id="panelLogin">
 
         <div class="tenant-hint" id="tenantHint">
-          <span style="font-size:.85rem;flex-shrink:0">ℹ️</span>
+          <span id="iconTenantHint" style="flex-shrink:0"></span>
           <span style="font-family:var(--font-s);font-size:.72rem;color:var(--muted);line-height:1.5">
             <strong>Tenant?</strong> Your landlord created your account — check your email for login credentials.
           </span>
@@ -638,6 +649,15 @@
       </div>
 
       <div class="form-panel" id="panelRegister">
+
+        <div class="trial-note-top">
+          <span id="iconTrialNote" style="flex-shrink:0"></span>
+          <span style="font-family:var(--font-s);font-size:.72rem;color:var(--muted);line-height:1.5">
+            <strong>14-day free trial</strong> — no payment required to get started. Configure M-Pesa after your first login.
+          </span>
+        </div>
+
+        <div class="form-section-label">Your details</div>
         <div class="field-grid">
           <div class="field field-full">
             <label class="field-label" for="regName">Full name</label>
@@ -647,16 +667,20 @@
             <label class="field-label" for="regEmail">Email address</label>
             <input type="email" id="regEmail" placeholder="you@example.com" autocomplete="email">
           </div>
-          <div class="field">
+          <div class="field field-full">
             <label class="field-label" for="regPhone">Phone number</label>
             <input type="tel" id="regPhone" placeholder="0712 345 678" autocomplete="tel">
           </div>
+        </div>
+
+        <div class="form-section-label">Your first property</div>
+        <div class="field-grid">
           <div class="field">
             <label class="field-label" for="regPropertyName">Property name</label>
             <input type="text" id="regPropertyName" placeholder="GreenView Apts">
           </div>
-          <div class="field field-full">
-            <label class="field-label" for="regLocation">Property location</label>
+          <div class="field">
+            <label class="field-label" for="regLocation">Location</label>
             <input type="text" id="regLocation" placeholder="Nairobi, Westlands">
           </div>
           <div class="field">
@@ -670,6 +694,7 @@
                 </svg>
               </button>
             </div>
+            <span class="field-hint" id="passwordHint">Min. 6 characters</span>
           </div>
           <div class="field">
             <label class="field-label" for="regConfirm">Confirm password</label>
@@ -684,15 +709,12 @@
             </div>
           </div>
         </div>
+
         <label class="terms-check">
           <input type="checkbox" id="regTerms" onchange="toggleRegisterBtn()">
           <span>I've read and agree to the <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</span>
         </label>
         <button class="submit-btn" id="registerBtn" onclick="submitRegister()" disabled>Create Landlord Account</button>
-        <div class="register-note">
-          <strong>14-day free trial</strong> — No payment required to get started.
-          Configure your M-Pesa credentials after your first login.
-        </div>
       </div>
 
       <div class="divider">
@@ -711,54 +733,6 @@
 
     </div><!-- /card -->
 
-    <div class="disc-panel" id="discoveryPanel">
-      <div class="disc-header">
-        <span class="disc-live">
-          <span class="disc-live-dot"></span>Live
-        </span>
-        <span class="disc-header-label">Available Properties</span>
-        <span class="disc-count" id="discCount" style="display:none">0</span>
-      </div>
-
-      <div class="disc-slide" id="discSlide">
-        <div class="disc-photo no-photo" id="discPhoto">
-          <span class="disc-initial" id="discInitial"></span>
-        </div>
-        <div class="disc-counter" id="discCounter" style="display:none"></div>
-        <div class="disc-overlay" id="discOverlay" style="display:none">
-          <div class="disc-location">📍 <span id="discLocationText"></span></div>
-          <div class="disc-name" id="discName"></div>
-          <div class="disc-chips">
-            <span class="disc-chip disc-chip--vacant" id="discVacant" style="display:none"></span>
-            <span class="disc-chip disc-chip--rent"   id="discRent"   style="display:none"></span>
-          </div>
-        </div>
-        <div class="disc-loader" id="discLoader">
-          <div class="disc-spinner"></div>
-        </div>
-        <div class="disc-empty" id="discEmpty" style="display:none">
-          <div class="disc-empty-icon">🏡</div>
-          <div class="disc-empty-title">No listings yet</div>
-          <div class="disc-empty-sub">No properties are publicly listed. Check back soon.</div>
-        </div>
-      </div>
-
-      <div class="disc-progress">
-        <div class="disc-progress-fill" id="discProgressFill"></div>
-      </div>
-
-      <div class="disc-body">
-        <p class="disc-desc" id="discDesc">Loading available properties…</p>
-      </div>
-
-      <div class="disc-footer">
-        <div class="disc-dots" id="discDots"></div>
-        <a href="listings.html" class="disc-browse-btn">
-          Browse all <span class="disc-arrow">→</span>
-        </a>
-      </div>
-    </div><!-- /disc-panel -->
-
   </div><!-- /container -->
 
   <footer class="site-footer">
@@ -773,16 +747,35 @@
     </p>
   </footer>
 
+  <!-- icons.js must load before any inline script calls ICON() -->
+  <script src="icons.js"></script>
   <script src="config.js" onerror="void 0"></script>
 
+  <!-- Wire the static emoji spots to the shared ICON() set -->
   <script>
+  (function wireStaticIcons() {
+    const set = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+    try {
+      set('iconRoleTenant',   ICON('key', 13));
+      set('iconRoleLandlord', ICON('properties', 13));
+      set('iconTenantHint',   ICON('info', 14));
+      set('iconTrialNote',    ICON('celebrate', 14));
+    } catch (err) {
+      console.error('wireStaticIcons error:', err);
+    }
+  })();
+  </script>
+
+  <script>
+    // ── Background slideshow: 2 photos, even 5-minute rotation ──
+    const BG_INTERVAL = 5 * 60 * 1000; // 5 minutes
     const bgImgs = document.querySelectorAll('.bg img');
     let bgIdx = 0;
     setInterval(() => {
       bgImgs[bgIdx].classList.remove('active');
       bgIdx = (bgIdx + 1) % bgImgs.length;
       bgImgs[bgIdx].classList.add('active');
-    }, 4500);
+    }, BG_INTERVAL);
 
     const phrases = [
       'Pay your rent securely online.',
@@ -816,6 +809,15 @@
     }
     setTimeout(typeStep, 900);
 
+    // ── Role picker drives which tab is active ──
+    function pickRole(role) {
+      document.getElementById('roleTenant').classList.toggle('active', role === 'tenant');
+      document.getElementById('roleLandlord').classList.toggle('active', role === 'landlord');
+      // Tenants always sign in (no self-registration); landlords can do either,
+      // default them to Create Account since that's the only new-user path.
+      switchTab(role === 'landlord' ? 'register' : 'login');
+    }
+
     function switchTab(tab) {
       document.getElementById('tabLogin').classList.toggle('active',    tab === 'login');
       document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
@@ -823,6 +825,11 @@
       document.getElementById('panelRegister').classList.toggle('active', tab === 'register');
       const hint = document.getElementById('tenantHint');
       if (hint) hint.style.display = tab === 'login' ? 'flex' : 'none';
+      // Keep role picker in sync if user clicked the tabs directly instead
+      if (tab === 'register') {
+        document.getElementById('roleTenant').classList.remove('active');
+        document.getElementById('roleLandlord').classList.add('active');
+      }
     }
 
     function toggleRegisterBtn() {
@@ -842,13 +849,15 @@
 
     document.addEventListener('keydown', function(e) {
       if (e.key !== 'Enter') return;
+      // Don't hijack Enter when the user is inside the location search box
+      if (e.target && e.target.id === 'locationSearch') return;
       if (document.getElementById('panelLogin').classList.contains('active')) submitLogin();
       else submitRegister();
     });
 
     document.addEventListener('DOMContentLoaded', function() {
       const tab = new URLSearchParams(window.location.search).get('tab');
-      if (tab === 'register') switchTab('register');
+      if (tab === 'register') pickRole('landlord');
     });
 
     function showToast(msg, type = '') {
@@ -1027,142 +1036,147 @@
       }
     }
 
-    let _discListings = [], _discCurrent = 0, _discTimer = null, _discPaused = false;
-    const DISC_INTERVAL = 5500;
+    // ═══════════════════════════════════════════════════════
+    // EXPLORE STRIP — rotating property grid + location search
+    // ═══════════════════════════════════════════════════════
 
-    async function initDiscovery() {
-      const panel = document.getElementById('discoveryPanel');
-      if (!panel || !window.API) { showDiscLoader(false); showDiscEmpty(); return; }
+    let _properties     = [];
+    let _locationIndex  = [];
+    let _exploreOffset  = 0;
+    let _exploreTimer   = null;
+    const EXPLORE_SLOTS = 4;
+    const EXPLORE_INTERVAL = 6000;
+
+    function escapeHtml(str) {
+      const d = document.createElement('div');
+      d.textContent = str == null ? '' : String(str);
+      return d.innerHTML;
+    }
+
+    async function initExplore() {
+      const grid = document.getElementById('exploreGrid');
+      if (!grid || !window.API) { renderExploreEmpty(); return; }
       try {
         const res = await fetch(`${window.API}/public/listings`);
         if (!res.ok) throw new Error(res.status);
-        _discListings = await res.json();
+        _properties = await res.json();
       } catch (err) {
-        console.warn('Discovery fetch failed:', err.message);
-        _discListings = [];
+        console.warn('Explore fetch failed:', err.message);
+        _properties = [];
       }
-      if (!_discListings.length) { showDiscEmpty(); return; }
+      if (!_properties.length) { renderExploreEmpty(); return; }
 
-      const countEl = document.getElementById('discCount');
-      if (countEl) { countEl.textContent = _discListings.length; countEl.style.display = 'inline-flex'; }
+      renderExploreGrid();
+      buildLocationIndex();
 
-      discRenderSlide(0);
-      discRenderDots();
-      discStart();
+      if (_properties.length > EXPLORE_SLOTS) {
+        _exploreTimer = setInterval(() => {
+          _exploreOffset = (_exploreOffset + EXPLORE_SLOTS) % _properties.length;
+          renderExploreGrid();
+        }, EXPLORE_INTERVAL);
+      }
 
-      panel.addEventListener('mouseenter', () => { _discPaused = true; });
-      panel.addEventListener('mouseleave', () => { _discPaused = false; });
-
+      // Refresh data quietly every 30s (vacancy counts / new listings)
       setInterval(async () => {
         try {
           const res = await fetch(`${window.API}/public/listings`);
           if (!res.ok) return;
-          _discListings = await res.json();
-          discRenderSlide(_discCurrent, true);
+          _properties = await res.json();
+          buildLocationIndex();
         } catch {}
       }, 30000);
     }
 
-    function discRenderSlide(idx, silent) {
-      const l = _discListings[idx]; if (!l) return;
-      _discCurrent = idx;
+    function renderExploreEmpty() {
+      const grid = document.getElementById('exploreGrid');
+      if (grid) grid.innerHTML = `<div class="explore-empty">${ICON('properties', 22)}No properties listed yet. Check back soon.</div>`;
+    }
 
-      const photoEl = document.getElementById('discPhoto');
-      const initEl  = document.getElementById('discInitial');
-      if (l.photos?.length) {
-        photoEl.style.backgroundImage = `url('${l.photos[0]}')`;
-        photoEl.classList.remove('no-photo');
-        if (initEl) initEl.textContent = '';
-      } else {
-        photoEl.style.backgroundImage = '';
-        photoEl.classList.add('no-photo');
-        if (initEl) initEl.textContent = (l.name || '?')[0].toUpperCase();
+    function renderExploreGrid() {
+      const grid = document.getElementById('exploreGrid');
+      if (!grid) return;
+      const count = Math.min(EXPLORE_SLOTS, _properties.length);
+      const slice = [];
+      for (let i = 0; i < count; i++) {
+        slice.push(_properties[(_exploreOffset + i) % _properties.length]);
       }
+      grid.innerHTML = slice.map(p => {
+        const hasPhoto = Array.isArray(p.photos) && p.photos.length > 0;
+        const style = hasPhoto ? ` style="background-image:url('${p.photos[0]}')"` : '';
+        const cls   = hasPhoto ? '' : ' no-photo';
+        return `
+          <a class="explore-card" href="listings.html">
+            <div class="explore-card-photo${cls}"${style}></div>
+            <div class="explore-card-overlay">
+              <div class="explore-card-name">${escapeHtml(p.name || '—')}</div>
+              <div class="explore-card-loc">${ICON('pin', 9)} ${escapeHtml(p.location || '—')}</div>
+            </div>
+          </a>`;
+      }).join('');
+    }
 
-      const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-      set('discLocationText', l.location || '—');
-      set('discName',         l.name     || '—');
+    // ── Location search ──
+    function buildLocationIndex() {
+      const counts = {};
+      _properties.forEach(p => {
+        const loc = (p.location || '').trim();
+        if (!loc) return;
+        counts[loc] = (counts[loc] || 0) + 1;
+      });
+      _locationIndex = Object.entries(counts)
+        .map(([location, count]) => ({ location, count }))
+        .sort((a, b) => b.count - a.count);
+    }
 
-      const vEl = document.getElementById('discVacant');
-      if (vEl) {
-        vEl.classList.remove('disc-chip--full');
-        if (l.vacantCount > 0) {
-          vEl.textContent = l.vacantCount === 1 ? '1 unit available' : `${l.vacantCount} units available`;
-          vEl.classList.add('disc-chip--vacant'); vEl.style.display = 'inline-flex';
-        } else {
-          vEl.textContent = 'Fully occupied';
-          vEl.classList.remove('disc-chip--vacant'); vEl.classList.add('disc-chip--full'); vEl.style.display = 'inline-flex';
-        }
+    function renderLocationDropdown(items) {
+      const dd = document.getElementById('locationDropdown');
+      if (!dd) return;
+      if (!items.length) {
+        dd.innerHTML = '<div class="location-dropdown-empty">No matching locations.</div>';
+        return;
       }
-
-      const rEl = document.getElementById('discRent');
-      if (rEl && l.rentRange) {
-        const mn = Number(l.rentRange.min).toLocaleString();
-        const mx = Number(l.rentRange.max).toLocaleString();
-        rEl.textContent = mn === mx ? `Ksh ${mn}` : `Ksh ${mn} – ${mx}`;
-        rEl.style.display = 'inline-flex';
-      } else if (rEl) rEl.style.display = 'none';
-
-      const dEl = document.getElementById('discDesc');
-      if (dEl) dEl.textContent = l.description?.trim() || 'Contact the landlord for more details about this property.';
-
-      const cEl = document.getElementById('discCounter');
-      if (cEl) {
-        cEl.textContent   = `${idx + 1} / ${_discListings.length}`;
-        cEl.style.display = _discListings.length > 1 ? 'block' : 'none';
-      }
-
-      const oEl = document.getElementById('discOverlay');
-      if (oEl) oEl.style.display = 'block';
-
-      if (!silent) {
-        const s = document.getElementById('discSlide');
-        if (s) { s.classList.remove('disc-slide-in'); void s.offsetWidth; s.classList.add('disc-slide-in'); }
-      }
-
-      document.querySelectorAll('.disc-dot').forEach((d, i) => d.classList.toggle('active', i === idx));
-      if (!silent) discProgress();
+      dd.innerHTML = items.slice(0, 8).map(it => `
+        <div class="location-dropdown-item" role="button" tabindex="0"
+             onclick="goToLocation('${encodeURIComponent(it.location)}')"
+             onkeydown="if(event.key==='Enter')goToLocation('${encodeURIComponent(it.location)}')">
+          <span>${escapeHtml(it.location)}</span>
+          <span class="location-dropdown-count">${it.count} ${it.count === 1 ? 'property' : 'properties'}</span>
+        </div>`).join('');
     }
 
-    function discRenderDots() {
-      const c = document.getElementById('discDots');
-      if (!c || _discListings.length <= 1) { if (c) c.style.display = 'none'; return; }
-      c.innerHTML = _discListings.map((_, i) =>
-        `<button class="disc-dot${i === 0 ? ' active' : ''}" onclick="discGoTo(${i})" aria-label="Show property ${i + 1} of ${_discListings.length}"></button>`
-      ).join('');
+    function goToLocation(encodedLoc) {
+      window.location.href = `listings.html?location=${encodedLoc}`;
     }
 
-    function discGoTo(idx) { discStop(); discRenderSlide(idx); discStart(); }
+    function setupLocationSearch() {
+      const input = document.getElementById('locationSearch');
+      const dd    = document.getElementById('locationDropdown');
+      if (!input || !dd) return;
 
-    function discStart() {
-      discStop();
-      if (_discListings.length <= 1) return;
-      _discTimer = setInterval(() => {
-        if (!_discPaused) discRenderSlide((_discCurrent + 1) % _discListings.length);
-      }, DISC_INTERVAL);
-    }
-    function discStop() { if (_discTimer) { clearInterval(_discTimer); _discTimer = null; } }
-
-    function discProgress() {
-      const f = document.getElementById('discProgressFill'); if (!f) return;
-      f.style.transition = 'none'; f.style.width = '0%';
-      f.getBoundingClientRect();
-      f.style.transition = `width ${DISC_INTERVAL}ms linear`; f.style.width = '100%';
-    }
-
-    function showDiscLoader(v) {
-      const el = document.getElementById('discLoader');
-      if (el) el.style.display = v ? 'flex' : 'none';
-    }
-    function showDiscEmpty() {
-      showDiscLoader(false);
-      const e = document.getElementById('discEmpty'); if (e) e.style.display = 'flex';
-      const d = document.getElementById('discDesc');  if (d) d.textContent = 'No properties are listed yet. Check back soon.';
+      input.addEventListener('focus', () => {
+        renderLocationDropdown(_locationIndex);
+        dd.classList.add('show');
+      });
+      input.addEventListener('input', () => {
+        const q = input.value.trim().toLowerCase();
+        const filtered = q
+          ? _locationIndex.filter(it => it.location.toLowerCase().includes(q))
+          : _locationIndex;
+        renderLocationDropdown(filtered);
+        dd.classList.add('show');
+      });
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') { dd.classList.remove('show'); input.blur(); }
+      });
+      document.addEventListener('click', (e) => {
+        if (!dd.contains(e.target) && e.target !== input) dd.classList.remove('show');
+      });
     }
 
     window.addEventListener('load', () => {
       checkAuthOnLoad();
-      initDiscovery();
+      initExplore();
+      setupLocationSearch();
     });
   </script>
 

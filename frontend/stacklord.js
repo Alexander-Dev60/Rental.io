@@ -152,7 +152,7 @@ async function verifyKey(key) {
         if (res.status === 401) {
             STACKLORD_KEY = '';
             sessionStorage.removeItem('stacklord_key');
-            showLoginError('Invalid master key ❌');
+            showLoginError('Invalid master key');
             return;
         }
 
@@ -334,7 +334,7 @@ async function _renderAttentionList() {
     } catch { /* ignore */ }
 
     if (!suspended.length && !outstanding.length) {
-        el.innerHTML = '<div class="empty-state"><span class="icon">✅</span>All landlords in good standing</div>';
+        el.innerHTML = `<div class="empty-state"><span class="icon">${ICON('checkCircle',24)}</span>All landlords in good standing</div>`;
         return;
     }
 
@@ -362,7 +362,7 @@ async function _renderAttentionList() {
                     <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--text-dim)">${escHtml(o.landlordEmail)}</div>
                 </div>
                 <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">
-                    <span class="pill pill-yellow">💸 Owes ${formatKsh(o.totalOwed)}</span>
+                    <span class="pill pill-yellow" style="display:inline-flex;align-items:center;gap:3px">${ICON('cash',10)} Owes ${formatKsh(o.totalOwed)}</span>
                     <button class="btn btn-secondary btn-sm" onclick="openLandlordDetail('${o.landlordId}')">View →</button>
                 </div>
             </div>`;
@@ -467,7 +467,7 @@ function _renderLandlordsGrid(landlords) {
     const grid = document.getElementById('landlordsGrid');
 
     if (!landlords.length) {
-        grid.innerHTML = '<div class="empty-state"><span class="icon">🏠</span>No landlords found</div>';
+        grid.innerHTML = `<div class="empty-state"><span class="icon">${ICON('home',24)}</span>No landlords found</div>`;
         return;
     }
 
@@ -476,15 +476,16 @@ function _renderLandlordsGrid(landlords) {
             <div class="landlord-row-left">
                 <div class="landlord-row-name">${escHtml(l.name)}</div>
                 <div class="landlord-row-meta">${escHtml(l.email)} · ${escHtml(l.phone || '—')}</div>
-                <div class="landlord-row-property">
-                    🏢 ${escHtml(l.propertyName || '—')} · 📍 ${escHtml(l.propertyLocation || '—')}
+                <div class="landlord-row-property" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+                    <span style="display:inline-flex;align-items:center;gap:3px">${ICON('properties',11)} ${escHtml(l.propertyName || '—')}</span>
+                    <span style="display:inline-flex;align-items:center;gap:3px">${ICON('pin',11)} ${escHtml(l.propertyLocation || '—')}</span>
                 </div>
                 <div style="display:flex;gap:0.5rem;margin-top:0.35rem;flex-wrap:wrap">
-                    <span class="pill pill-cyan">👥 ${l.tenantCount   || 0} tenants</span>
-                    <span class="pill pill-cyan">🏡 ${l.houseCount    || 0} houses</span>
-                    <span class="pill pill-cyan">🏢 ${l.propertyCount || 0} properties</span>
-                    <span class="pill ${l.paymentConfigured ? 'pill-green' : 'pill-yellow'}">
-                        ${l.paymentConfigured ? '💳 Payments Active' : '⚠️ Payments Not Set'}
+                    <span class="pill pill-cyan" style="display:inline-flex;align-items:center;gap:3px">${ICON('tenants',10)} ${l.tenantCount   || 0} tenants</span>
+                    <span class="pill pill-cyan" style="display:inline-flex;align-items:center;gap:3px">${ICON('houses',10)} ${l.houseCount    || 0} houses</span>
+                    <span class="pill pill-cyan" style="display:inline-flex;align-items:center;gap:3px">${ICON('properties',10)} ${l.propertyCount || 0} properties</span>
+                    <span class="pill ${l.paymentConfigured ? 'pill-green' : 'pill-yellow'}" style="display:inline-flex;align-items:center;gap:3px">
+                        ${l.paymentConfigured ? `${ICON('payments',10)} Payments Active` : `${ICON('warning',10)} Payments Not Set`}
                     </span>
                 </div>
             </div>
@@ -530,13 +531,16 @@ async function loadLandlordDetail(landlordId) {
             <div style="margin-bottom:1.25rem">
                 <div style="font-family:'Instrument Serif',serif;font-style:italic;font-size:1.4rem;color:var(--text);margin-bottom:0.2rem">${escHtml(landlord.name)}</div>
                 <div style="font-family:'JetBrains Mono',monospace;font-size:0.68rem;color:var(--text-dim)">${escHtml(landlord.email)}</div>
-                <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.25rem">🏢 ${escHtml(landlord.propertyName || '—')} · 📍 ${escHtml(landlord.propertyLocation || '—')}</div>
+                <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.25rem;display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+                    <span style="display:inline-flex;align-items:center;gap:3px">${ICON('properties',11)} ${escHtml(landlord.propertyName || '—')}</span>
+                    <span style="display:inline-flex;align-items:center;gap:3px">${ICON('pin',11)} ${escHtml(landlord.propertyLocation || '—')}</span>
+                </div>
             </div>
             <div class="sub-card-row" style="display:flex;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid var(--border);font-size:0.82rem"><span style="color:var(--text-dim)">Status</span><span>${statusBadge(landlord.accountStatus)}</span></div>
             <div class="sub-card-row" style="display:flex;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid var(--border);font-size:0.82rem"><span style="color:var(--text-dim)">Tenants</span><span class="td-mono">${landlord.tenantCount   || 0}</span></div>
             <div class="sub-card-row" style="display:flex;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid var(--border);font-size:0.82rem"><span style="color:var(--text-dim)">Houses</span><span class="td-mono">${landlord.houseCount    || 0}</span></div>
             <div class="sub-card-row" style="display:flex;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid var(--border);font-size:0.82rem"><span style="color:var(--text-dim)">Properties</span><span class="td-mono">${landlord.propertyCount || 0}</span></div>
-            <div class="sub-card-row" style="display:flex;justify-content:space-between;padding:0.5rem 0;font-size:0.82rem"><span style="color:var(--text-dim)">M-Pesa Config</span><span>${landlord.paymentConfigured ? '✅ Configured' : '⚠️ Not configured'}</span></div>
+            <div class="sub-card-row" style="display:flex;justify-content:space-between;padding:0.5rem 0;font-size:0.82rem"><span style="color:var(--text-dim)">M-Pesa Config</span><span style="display:inline-flex;align-items:center;gap:3px">${landlord.paymentConfigured ? `${ICON('checkCircle',11)} Configured` : `${ICON('warning',11)} Not configured`}</span></div>
             ${landlord.suspendedReason ? `<div class="sub-card-row" style="display:flex;justify-content:space-between;padding:0.5rem 0;border-top:1px solid var(--border);font-size:0.82rem"><span style="color:var(--text-dim)">Suspension Reason</span><span style="color:var(--red)">${escHtml(landlord.suspendedReason)}</span></div>` : ''}
         `;
 
@@ -556,18 +560,18 @@ function _renderPropertyDrilldown(properties) {
     if (!el) return;
 
     if (!properties.length) {
-        el.innerHTML = '<div class="empty-state"><span class="icon">🏢</span>No properties yet</div>';
+        el.innerHTML = `<div class="empty-state"><span class="icon">${ICON('properties',24)}</span>No properties yet</div>`;
         return;
     }
 
     el.innerHTML = properties.map(p => `
         <div class="prop-drill-item">
-            <div class="prop-drill-name">${escHtml(p.name)}${p.location ? ` — 📍 ${escHtml(p.location)}` : ''}</div>
+            <div class="prop-drill-name">${escHtml(p.name)}${p.location ? ` — <span style="display:inline-flex;align-items:center;gap:3px">${ICON('pin',11)} ${escHtml(p.location)}</span>` : ''}</div>
             <div class="prop-drill-pills">
-                <span class="pill ${p.paymentConfigured ? 'pill-green' : 'pill-yellow'}">${p.paymentConfigured ? '💳 M-Pesa set' : '⚠️ No M-Pesa'}</span>
-                <span class="pill ${p.isListed ? 'pill-cyan' : ''}" ${!p.isListed ? 'style="background:rgba(74,85,104,0.15);color:var(--text-dim);border:1px solid var(--border)"' : ''}>${p.isListed ? '🏡 Listed' : 'Not listed'}</span>
-                ${p.isListed ? `<span class="pill ${p.isApproved ? 'pill-green' : 'pill-yellow'}">${p.isApproved ? '✅ Approved' : '⏳ Pending'}</span>` : ''}
-                <span class="pill ${p.hasLocation ? 'pill-green' : 'pill-yellow'}">${p.hasLocation ? '📍 Pinned' : '📍 Not pinned'}</span>
+                <span class="pill ${p.paymentConfigured ? 'pill-green' : 'pill-yellow'}" style="display:inline-flex;align-items:center;gap:3px">${p.paymentConfigured ? `${ICON('payments',10)} M-Pesa set` : `${ICON('warning',10)} No M-Pesa`}</span>
+                <span class="pill ${p.isListed ? 'pill-cyan' : ''}" ${!p.isListed ? 'style="background:rgba(74,85,104,0.15);color:var(--text-dim);border:1px solid var(--border);display:inline-flex;align-items:center;gap:3px"' : 'style="display:inline-flex;align-items:center;gap:3px"'}>${p.isListed ? `${ICON('houses',10)} Listed` : 'Not listed'}</span>
+                ${p.isListed ? `<span class="pill ${p.isApproved ? 'pill-green' : 'pill-yellow'}" style="display:inline-flex;align-items:center;gap:3px">${p.isApproved ? `${ICON('checkCircle',10)} Approved` : `${ICON('hourglass',10)} Pending`}</span>` : ''}
+                <span class="pill ${p.hasLocation ? 'pill-green' : 'pill-yellow'}" style="display:inline-flex;align-items:center;gap:3px">${ICON('pin',10)} ${p.hasLocation ? 'Pinned' : 'Not pinned'}</span>
             </div>
         </div>`).join('');
 }
@@ -585,7 +589,7 @@ async function loadDetailOutstanding(landlordId) {
         const entry = (data.outstanding || []).find(o => o.landlordId === landlordId);
 
         if (!entry) {
-            el.innerHTML = '<div class="empty-state"><span class="icon">✅</span>Nothing owed this month</div>';
+            el.innerHTML = `<div class="empty-state"><span class="icon">${ICON('checkCircle',24)}</span>Nothing owed this month</div>`;
             return;
         }
 
@@ -625,7 +629,7 @@ async function loadDetailPayments(landlordId) {
         if (!tbody) return;
 
         if (!filtered.length) {
-            tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><span class="icon">💳</span>No payments yet</div></td></tr>';
+            tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><span class="icon">${ICON('payments',24)}</span>No payments yet</div></td></tr>`;
             return;
         }
 
@@ -710,7 +714,7 @@ async function suspendLandlord() {
         const data = await res.json();
         if (!res.ok) { showToast(data.message || 'Failed to suspend', 'error'); return; }
 
-        showToast('🔒 Landlord suspended successfully', 'success');
+        showToast('Landlord suspended successfully', 'success');
         document.getElementById('suspendReason').value = '';
 
         await loadAllLandlords();
@@ -733,7 +737,7 @@ async function unsuspendLandlord() {
         const data = await res.json();
         if (!res.ok) { showToast(data.message || 'Failed to unsuspend', 'error'); return; }
 
-        showToast('🔓 ' + data.message, 'success');
+        showToast(data.message, 'success');
 
         await loadAllLandlords();
         await loadLandlordDetail(landlordId);
@@ -841,7 +845,7 @@ async function loadOutstanding() {
 
         const outstanding = data.outstanding || [];
         if (!outstanding.length) {
-            el.innerHTML = `<div class="empty-state"><span class="icon">✅</span>Nothing outstanding for ${escHtml(month)}</div>`;
+            el.innerHTML = `<div class="empty-state"><span class="icon">${ICON('checkCircle',24)}</span>Nothing outstanding for ${escHtml(month)}</div>`;
             return;
         }
 
@@ -879,7 +883,7 @@ async function markCommissionPaid(propertyId, month) {
         const data = await res.json();
         if (!res.ok) { showToast(data.message || 'Failed to mark paid', 'error'); return; }
 
-        showToast('✅ Commission marked as paid', 'success');
+        showToast('Commission marked as paid', 'success');
         loadOutstanding();
         loadOverview();
         if (_activeLandlordId) loadDetailOutstanding(_activeLandlordId);
@@ -914,7 +918,7 @@ async function loadSubPayments(page = 1) {
         const { payments, total, pages } = data;
 
         if (!payments?.length) {
-            if (tbody) tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><span class="icon">💳</span>No commission payments yet</div></td></tr>';
+            if (tbody) tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><span class="icon">${ICON('payments',24)}</span>No commission payments yet</div></td></tr>`;
             if (pagination) pagination.innerHTML = '';
             return;
         }
@@ -967,8 +971,8 @@ async function loadListings() {
     const pendingEl  = document.getElementById('pendingListingsList');
     const approvedEl = document.getElementById('approvedListingsList');
 
-    if (pendingEl)  pendingEl.innerHTML  = '<div class="empty-state"><span class="icon">⏳</span>Loading…</div>';
-    if (approvedEl) approvedEl.innerHTML = '<div class="empty-state"><span class="icon">⏳</span>Loading…</div>';
+    if (pendingEl)  pendingEl.innerHTML  = `<div class="empty-state"><span class="icon">${ICON('hourglass',24)}</span>Loading…</div>`;
+    if (approvedEl) approvedEl.innerHTML = `<div class="empty-state"><span class="icon">${ICON('hourglass',24)}</span>Loading…</div>`;
 
     _selectedPendingIds.clear();
     _updateBulkBar();
@@ -995,8 +999,8 @@ async function loadListings() {
     } catch (err) {
         showToast('Failed to load listings', 'error');
         console.error('loadListings error:', err.message);
-        if (pendingEl)  pendingEl.innerHTML  = '<div class="empty-state"><span class="icon">⚠️</span>Failed to load</div>';
-        if (approvedEl) approvedEl.innerHTML = '<div class="empty-state"><span class="icon">⚠️</span>Failed to load</div>';
+        if (pendingEl)  pendingEl.innerHTML  = `<div class="empty-state"><span class="icon">${ICON('warning',24)}</span>Failed to load</div>`;
+        if (approvedEl) approvedEl.innerHTML = `<div class="empty-state"><span class="icon">${ICON('warning',24)}</span>Failed to load</div>`;
     }
 }
 
@@ -1035,7 +1039,7 @@ function _renderPendingListings() {
     if (!container) return;
 
     if (!_pendingListingsCache.length) {
-        container.innerHTML = '<div class="empty-state"><span class="icon">✅</span>No listings pending approval — all clear!</div>';
+        container.innerHTML = `<div class="empty-state"><span class="icon">${ICON('checkCircle',24)}</span>No listings pending approval — all clear!</div>`;
         document.getElementById('selectAllPending').checked = false;
         return;
     }
@@ -1046,22 +1050,22 @@ function _renderPendingListings() {
             <div class="listing-thumb">
                 ${p.photos?.length
                     ? `<img src="${escHtml(p.photos[0])}" alt="${escHtml(p.name)}" loading="lazy">`
-                    : '🏡'}
+                    : ICON('houses',24)}
             </div>
             <div class="listing-info">
                 <div class="listing-name">${escHtml(p.name)}</div>
-                <div class="listing-meta">📍 ${escHtml(p.location || '—')}</div>
+                <div class="listing-meta" style="display:inline-flex;align-items:center;gap:3px">${ICON('pin',11)} ${escHtml(p.location || '—')}</div>
                 <div class="listing-landlord">Landlord: ${escHtml(p.landlord?.name || '—')} · ${escHtml(p.landlord?.email || '—')}</div>
                 <div style="margin-top:0.35rem;display:flex;gap:0.4rem;flex-wrap:wrap">
-                    <span class="pill pill-yellow">⏳ Awaiting Approval</span>
+                    <span class="pill pill-yellow" style="display:inline-flex;align-items:center;gap:3px">${ICON('hourglass',10)} Awaiting Approval</span>
                     ${p.photos?.length ? `<span class="pill pill-cyan">${p.photos.length} photo${p.photos.length > 1 ? 's' : ''}</span>` : '<span class="pill" style="background:rgba(74,85,104,0.15);color:var(--text-dim);border:1px solid var(--border)">No photos</span>'}
-                    <span class="pill ${p.geo ? 'pill-green' : 'pill-yellow'}">${p.geo ? '📍 Pinned' : '📍 Not pinned'}</span>
+                    <span class="pill ${p.geo ? 'pill-green' : 'pill-yellow'}" style="display:inline-flex;align-items:center;gap:3px">${ICON('pin',10)} ${p.geo ? 'Pinned' : 'Not pinned'}</span>
                 </div>
             </div>
             <div class="listing-actions">
-                <button class="btn btn-success" onclick="approveListing('${p._id}', true, '${escHtml(p.name)}')">✅ Approve</button>
-                <button class="btn btn-secondary btn-sm" onclick="approveListing('${p._id}', false, '${escHtml(p.name)}')">❌ Reject</button>
-                ${p.photos?.length ? `<button class="btn btn-secondary btn-sm" onclick="openPhotoModeration('${p._id}', '${escHtml(p.name)}')">🖼️ Photos</button>` : ''}
+                <button class="btn btn-success" onclick="approveListing('${p._id}', true, '${escHtml(p.name)}')"><span data-icon-inline>${ICON('checkCircle',13)}</span> Approve</button>
+                <button class="btn btn-secondary btn-sm" onclick="approveListing('${p._id}', false, '${escHtml(p.name)}')"><span data-icon-inline>${ICON('close',13)}</span> Reject</button>
+                ${p.photos?.length ? `<button class="btn btn-secondary btn-sm" onclick="openPhotoModeration('${p._id}', '${escHtml(p.name)}')"><span data-icon-inline>${ICON('image',13)}</span> Photos</button>` : ''}
             </div>
         </div>`).join('');
 }
@@ -1071,7 +1075,7 @@ function _renderApprovedListings() {
     if (!container) return;
 
     if (!_approvedListingsCache.length) {
-        container.innerHTML = '<div class="empty-state"><span class="icon">🏡</span>No approved listings yet</div>';
+        container.innerHTML = `<div class="empty-state"><span class="icon">${ICON('houses',24)}</span>No approved listings yet</div>`;
         return;
     }
 
@@ -1080,21 +1084,21 @@ function _renderApprovedListings() {
             <div class="listing-thumb">
                 ${p.photos?.length
                     ? `<img src="${escHtml(p.photos[0])}" alt="${escHtml(p.name)}" loading="lazy">`
-                    : '🏡'}
+                    : ICON('houses',24)}
             </div>
             <div class="listing-info">
                 <div class="listing-name">${escHtml(p.name)}</div>
-                <div class="listing-meta">📍 ${escHtml(p.location || '—')}</div>
+                <div class="listing-meta" style="display:inline-flex;align-items:center;gap:3px">${ICON('pin',11)} ${escHtml(p.location || '—')}</div>
                 <div class="listing-landlord">Landlord: ${escHtml(p.landlord?.name || '—')} · ${escHtml(p.landlord?.email || '—')}</div>
                 <div style="margin-top:0.35rem;display:flex;gap:0.4rem;flex-wrap:wrap">
-                    <span class="pill pill-green">✅ Live &amp; Public</span>
+                    <span class="pill pill-green" style="display:inline-flex;align-items:center;gap:3px">${ICON('checkCircle',10)} Live &amp; Public</span>
                     ${p.photos?.length ? `<span class="pill pill-cyan">${p.photos.length} photo${p.photos.length > 1 ? 's' : ''}</span>` : ''}
-                    <span class="pill ${p.geo ? 'pill-green' : 'pill-yellow'}">${p.geo ? '📍 Pinned' : '📍 Not pinned'}</span>
+                    <span class="pill ${p.geo ? 'pill-green' : 'pill-yellow'}" style="display:inline-flex;align-items:center;gap:3px">${ICON('pin',10)} ${p.geo ? 'Pinned' : 'Not pinned'}</span>
                 </div>
             </div>
             <div class="listing-actions">
-                <button class="btn btn-warn btn-sm" onclick="approveListing('${p._id}', false, '${escHtml(p.name)}')">⏸ Revoke</button>
-                ${p.photos?.length ? `<button class="btn btn-secondary btn-sm" onclick="openPhotoModeration('${p._id}', '${escHtml(p.name)}')">🖼️ Photos</button>` : ''}
+                <button class="btn btn-warn btn-sm" onclick="approveListing('${p._id}', false, '${escHtml(p.name)}')"><span data-icon-inline>${ICON('ban',13)}</span> Revoke</button>
+                ${p.photos?.length ? `<button class="btn btn-secondary btn-sm" onclick="openPhotoModeration('${p._id}', '${escHtml(p.name)}')"><span data-icon-inline>${ICON('image',13)}</span> Photos</button>` : ''}
             </div>
         </div>`).join('');
 }
@@ -1110,7 +1114,7 @@ async function approveListing(id, approve, name) {
         });
         const data = await res.json();
         if (!res.ok) { showToast(data.message || 'Failed', 'error'); return; }
-        showToast(data.message || (approve ? '✅ Listing approved and live' : '⏸ Listing revoked'), 'success');
+        showToast(data.message || (approve ? 'Listing approved and live' : 'Listing revoked'), 'success');
         await loadListings();
     } catch (err) {
         showToast('Network error', 'error');
@@ -1151,7 +1155,7 @@ function openPhotoModeration(propertyId, name) {
     if (!source) { showToast('Listing not found — refresh and try again', 'warn'); return; }
 
     document.getElementById('photoModPropertyId').value = propertyId;
-    document.getElementById('photoModPropName').textContent = `🏢 ${name}`;
+    document.getElementById('photoModPropName').innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px">${ICON('properties',11)} ${escHtml(name)}</span>`;
     _renderPhotoModGrid(source.photos || [], propertyId);
     openModal('modal-photo-mod');
 }
@@ -1168,7 +1172,7 @@ function _renderPhotoModGrid(photos, propertyId) {
     grid.innerHTML = photos.map(url => `
         <div class="photo-mod-item">
             <img src="${escHtml(url)}" alt="Property photo" loading="lazy">
-            <button class="photo-mod-del" onclick="deleteModeratedPhoto('${propertyId}', '${escHtml(url)}')" title="Remove photo">✕</button>
+            <button class="photo-mod-del" onclick="deleteModeratedPhoto('${propertyId}', '${escHtml(url)}')" title="Remove photo">${ICON('close',12)}</button>
         </div>`).join('');
 }
 
@@ -1183,7 +1187,7 @@ async function deleteModeratedPhoto(propertyId, photoUrl) {
         const data = await res.json();
         if (!res.ok) { showToast(data.message || 'Delete failed', 'error'); return; }
 
-        showToast('Photo removed ✅', 'success');
+        showToast('Photo removed', 'success');
         _renderPhotoModGrid(data.photos || [], propertyId);
 
         [_pendingListingsCache, _approvedListingsCache].forEach(cache => {
@@ -1211,7 +1215,7 @@ async function loadInquiries(page = 1) {
     const pagination    = document.getElementById('inquiriesPagination');
     const statusFilter  = document.getElementById('inquiryStatusFilter')?.value || '';
 
-    if (tbody) tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><span class="icon">⏳</span>Loading…</div></td></tr>';
+    if (tbody) tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><span class="icon">${ICON('hourglass',24)}</span>Loading…</div></td></tr>`;
     if (pagination) pagination.innerHTML = '';
 
     try {
@@ -1234,7 +1238,7 @@ async function loadInquiries(page = 1) {
         if (overviewBadge) overviewBadge.textContent = total || 0;
 
         if (!inquiries?.length) {
-            if (tbody) tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><span class="icon">📩</span>No inquiries yet</div></td></tr>';
+            if (tbody) tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><span class="icon">${ICON('inquiries',24)}</span>No inquiries yet</div></td></tr>`;
             return;
         }
 
@@ -1281,7 +1285,7 @@ async function loadInquiries(page = 1) {
     } catch (err) {
         showToast('Network error', 'error');
         console.error('loadInquiries error:', err.message);
-        if (tbody) tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><span class="icon">⚠️</span>Failed to load inquiries</div></td></tr>';
+        if (tbody) tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><span class="icon">${ICON('warning',24)}</span>Failed to load inquiries</div></td></tr>`;
     }
 }
 
@@ -1305,9 +1309,9 @@ async function loadSystemStatus() {
             const sub    = document.getElementById('maintenanceStatusSub');
             const msgEl  = document.getElementById('maintenanceMessage');
             if (toggle) toggle.checked = !!status.maintenanceMode;
-            if (sub)    sub.textContent = status.maintenanceMode
-                ? '🔴 ON — the entire platform is currently locked out'
-                : '🟢 OFF — platform is live and reachable';
+            if (sub)    sub.innerHTML = status.maintenanceMode
+                ? `<span style="display:inline-flex;align-items:center;gap:4px;color:var(--red)">${ICON('errorCircle',11)} ON — the entire platform is currently locked out</span>`
+                : `<span style="display:inline-flex;align-items:center;gap:4px;color:var(--green)">${ICON('checkCircle',11)} OFF — platform is live and reachable</span>`;
             if (msgEl && status.message) msgEl.value = status.message;
             _updateMaintenanceChrome(!!status.maintenanceMode);
         }
@@ -1317,9 +1321,9 @@ async function loadSystemStatus() {
             const toggle = document.getElementById('autoApproveToggle');
             const sub    = document.getElementById('autoApproveStatusSub');
             if (toggle) toggle.checked = !!settings.autoApproveListings;
-            if (sub)    sub.textContent = settings.autoApproveListings
-                ? '✅ ON — new listings publish instantly, no review needed'
-                : '⏳ OFF — new listings wait in the Pending queue';
+            if (sub)    sub.innerHTML = settings.autoApproveListings
+                ? `<span style="display:inline-flex;align-items:center;gap:4px">${ICON('checkCircle',11)} ON — new listings publish instantly, no review needed</span>`
+                : `<span style="display:inline-flex;align-items:center;gap:4px">${ICON('hourglass',11)} OFF — new listings wait in the Pending queue</span>`;
         }
 
     } catch (err) {
@@ -1370,7 +1374,7 @@ async function saveMaintenanceMessage() {
         });
         const data = await res.json();
         if (!res.ok) { showToast(data.message || 'Failed to save', 'error'); return; }
-        showToast('Maintenance message saved ✅', 'success');
+        showToast('Maintenance message saved', 'success');
         loadSystemStatus();
     } catch (err) {
         showToast('Network error', 'error');

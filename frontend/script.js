@@ -108,17 +108,105 @@ function showPlatformMaintenanceOverlay(message) {
 }
 
 
+async function loadMaintenanceRequests() {
+    try {
+        const propertyId = getPropertyId();
+        const status      = document.getElementById('maintenanceStatusFilter')?.value || '';
+        const params = new URLSearchParams();
+        if (propertyId) params.set('propertyId', propertyId);
+        if (status)     params.set('status', status);
+
+        const res      = await fetch(`${API}/maintenance-requests?${params.toString()}`, { headers: authHeaders() });
+        const requests = await res.json();
+        if (!res.ok) { showToast('Failed to load maintenance requests', 'error'); return; }
+
+        renderMaintenanceTable(requests);
+
+        // Badge/bell/dashboard-alert counts must always reflect ALL open
+        // requests, never just what the table's status filter currently
+        // shows. If no filter is active, `requests` already IS the full
+        // set — reuse it. Otherwise fetch the unfiltered set separately.
+        if (!status) {
+            _applyMaintenanceCounts(requests);
+        } else {
+            await _refreshMaintenanceCounts();
+        }
+
+    } catch (err) {
+        showToast('Failed to load maintenance requests', 'error');
+        console.error(err);
+    }
+}
+
+function _applyMaintenanceCounts(requests) {
+    _allMaintenanceRequests = requests;
+    _maintenanceOpenCount   = requests.filter(r => r.status !== 'completed').length;
+
+    const badge = document.getElementById('maintenanceBadge');
+    if (badge) {
+        badge.textContent   = _maintenanceOpenCount;
+        badge.style.display = _maintenanceOpenCount > 0 ? 'inline-block' : 'none';
+    }
+
+    _updateNotifBell();
+    if (typeof _renderMaintenanceAlertCard === 'function') _renderMaintenanceAlertCard();
+}
+
+async function _refreshMaintenanceCounts() {
+    try {
+        const propertyId = getPropertyId();
+        const params = new URLSearchParams();
+        if (propertyId) params.set('propertyId', propertyId);
+
+        const res      = await fetch(`${API}/maintenance-requests?${params.toString()}`, { headers: authHeaders() });
+        const requests = await res.json();
+        if (!res.ok) return;
+
+        _applyMaintenanceCounts(requests);
+
+    } catch (err) {
+        console.error('_refreshMaintenanceCounts error:', err.message);
+    }
+}
+
+async function submitMaintenanceUpdate() {
+    const id     = document.getElementById('maintUpdateId').value;
+    const status = document.getElementById('maintUpdateStatus').value;
+    const cost   = document.getElementById('maintUpdateCost').value;
+    const note   = document.getElementById('maintUpdateNote').value.trim();
+
+    try {
+        const res  = await fetch(`${API}/maintenance-requests/${id}/status`, {
+            method: 'PUT', headers: authHeaders(),
+            body:   JSON.stringify({ status, cost: cost || null, resolutionNote: note })
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.message || 'Update failed', 'error'); return; }
+
+        showToast('Request updated ', 'success');
+        closeModal('modal-maintenance-update');
+        await loadMaintenanceRequests();
+        loadDashboard();
+
+    } catch (err) {
+        showToast('Network error', 'error');
+        console.error(err);
+    }
+}
+
 
 
 // ═══════════════════════════════════════
 // NOTIFICATION BELL
 // ═══════════════════════════════════════
 
-let _msgUnreadTotal  = 0;
-let _inquiryNewCount = 0;
+let _msgUnreadTotal       = 0;
+let _inquiryNewCount      = 0;
+let _maintenanceOpenCount = 0;
+let _allMaintenanceRequests = [];
 
 function _updateNotifBell() {
-    const total = _msgUnreadTotal + _inquiryNewCount;
+    const total = _msgUnreadTotal + _inquiryNewCount + _maintenanceOpenCount;
     const badge = document.getElementById('notifBadge');
     if (!badge) return;
     if (total > 0) {
@@ -180,7 +268,7 @@ function _renderNotifDropdown() {
             </div>`);
     }
 
-    if (_inquiryNewCount > 0) {
+ if (_inquiryNewCount > 0) {
         items.push(`
             <div class="notif-item" onclick="closeNotifDropdown();showSection('inquiries')">
                 <span class="notif-item-icon">📩</span>
@@ -192,16 +280,28 @@ function _renderNotifDropdown() {
             </div>`);
     }
 
+    if (_maintenanceOpenCount > 0) {
+        items.push(`
+            <div class="notif-item" onclick="closeNotifDropdown();showSection('maintenance')">
+                <span class="notif-item-icon">🔧</span>
+                <div class="notif-item-body">
+                    <div class="notif-item-title">Open Repair Requests</div>
+                    <div class="notif-item-sub">${_maintenanceOpenCount} awaiting action</div>
+                </div>
+                <span class="notif-item-count" style="background:rgba(251,191,36,0.12);color:var(--warn);border:1px solid rgba(251,191,36,0.25)">${_maintenanceOpenCount}</span>
+            </div>`);
+    }
+
     dropdown.innerHTML = `
         <div class="notif-dropdown-header">
             <span>Notifications</span>
             ${items.length > 0
-                ? `<span style="color:var(--accent);font-weight:700">${_msgUnreadTotal + _inquiryNewCount}</span>`
+                ? `<span style="color:var(--accent);font-weight:700">${_msgUnreadTotal + _inquiryNewCount + _maintenanceOpenCount}</span>`
                 : ''}
         </div>
         ${items.length > 0
             ? items.join('')
-            : '<div class="notif-empty">🎉 All caught up!</div>'}`;
+            : '<div class="notif-empty"> All caught up!</div>'}`;
 }
 
 
@@ -224,19 +324,19 @@ function setActiveProperty(id, name) {
     localStorage.setItem('activePropertyId', id);
     localStorage.setItem('activePropertyName', name || 'Property');
 
-    // Property switcher button label
+    // Property switcher button label + location — kept in sync immediately;
+    // renderPropertySwitcher() (called right after by every caller of this
+    // function) confirms/refreshes both from the properties cache.
     const nameEl = document.getElementById('activePropertyName');
     if (nameEl) nameEl.textContent = name || 'Property';
 
-    // Full-width property name strip — update from cache for location too
-    const topbarEl = document.getElementById('topbarPropertyDisplay');
-    if (topbarEl) {
+    const locEl = document.getElementById('activePropertyLoc');
+    if (locEl) {
         const prop = _propertiesCache.find(p => p._id === id);
-        topbarEl.textContent = prop
-            ? (prop.name + (prop.location ? '  ·  📍 ' + prop.location : ''))
-            : (name || '—');
+        locEl.innerHTML = prop && prop.location ? `${ICON('pin',12)} ${prop.location}` : '';
     }
 }
+
 
 async function loadProperties() {
     try {
@@ -259,15 +359,7 @@ async function loadProperties() {
             }
         }
 
-        // ── Ensure topbar property strip reflects the active property ──
-        const topbarEl = document.getElementById('topbarPropertyDisplay');
-        if (topbarEl && getPropertyId()) {
-            const active = _propertiesCache.find(p => p._id === getPropertyId());
-            if (active) {
-                topbarEl.textContent = active.name + (active.location ? '  ·  📍 ' + active.location : '');
-            }
-        }
-
+        
         renderPropertySwitcher(_propertiesCache);
         updatePaymentSetupPropertySelect(_propertiesCache);
         renderPropertiesGrid(_propertiesCache);
@@ -295,9 +387,11 @@ function switchProperty(id, name) {
     loadUnread();
     loadDashboard();
     loadRecentActivity();
+    loadExpenses();
+    loadMaintenanceRequests()
     if (document.getElementById('sec-activity')?.classList.contains('active')) loadActivity();
 
-    showToast(`Switched to ${name} 🏠`, 'success');
+    showToast(`Switched to ${name} `, 'success');
 }
 
 function togglePropertyMenu() {
@@ -333,7 +427,8 @@ async function addProperty() {
     if (!name) { showToast('Property name is required', 'warn'); return; }
 
     const btn = document.querySelector('#modal-add-property .btn-primary');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Creating...'; }
+    if (btn) { btn.disabled = true; btn.innerHTML = `${ICON('hourglass',14)} Creating...`; }
+    
 
     try {
         const res  = await fetch(`${API}/properties/create`, {
@@ -349,7 +444,7 @@ async function addProperty() {
             return;
         }
 
-        showToast(`${name} created ✅`, 'success');
+        showToast(`${name} created `, 'success');
         closeModal('modal-add-property');
 
         // If the landlord dropped a pin while creating this property, save it now
@@ -657,7 +752,9 @@ async function submitPropertyLocation() {
     if (!_locPickerCoords) { showToast('Tap the map to drop a pin first', 'warn'); return; }
 
     const btn = document.getElementById('locPickerSaveBtn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving...'; }
+        if (btn) { btn.disabled = true; btn.innerHTML = `${ICON('hourglass',14)} Saving...`; }
+    
+    
 
     try {
         const res  = await fetch(`${API}/properties/${propertyId}/location`, {
@@ -668,7 +765,7 @@ async function submitPropertyLocation() {
         const data = await res.json();
         if (!res.ok) { showToast(data.message || 'Failed to save location', 'error'); return; }
 
-        showToast('Location saved ✅', 'success');
+        showToast('Location saved ', 'success');
         closeModal('modal-set-location');
         await loadProperties();
 
@@ -676,7 +773,7 @@ async function submitPropertyLocation() {
         showToast('Network error', 'error');
         console.error('submitPropertyLocation error:', err);
     } finally {
-        if (btn) { btn.disabled = false; btn.textContent = '💾 Save Location'; }
+        if (btn) { btn.disabled = false; btn.innerHTML = `${ICON('lock',14)} Save Location`; }
     }
 }
 
@@ -729,11 +826,11 @@ async function onCommissionPropertyChange() {
         document.getElementById('commSumCollected').textContent = `Ksh ${Number(data.totalCollected).toLocaleString()}`;
         document.getElementById('commSumDue').textContent       = `Ksh ${Number(data.amountDue).toLocaleString()}`;
 
-        const statusEl = document.getElementById('commSumStatus');
+    const statusEl = document.getElementById('commSumStatus');
         statusEl.innerHTML = data.alreadyPaid
-            ? '<span class="pill pill-green">Paid ✅</span>'
+            ? `<span class="pill pill-green" style="display:inline-flex;align-items:center;gap:3px">${ICON('check',10)} Paid</span>`
             : data.amountDue > 0
-            ? '<span class="pill pill-yellow">Due ⚠️</span>'
+            ? `<span class="pill pill-yellow" style="display:inline-flex;align-items:center;gap:3px">${ICON('warning',10)} Due</span>`
             : '<span class="pill pill-green">Nothing due</span>';
 
         const payBtn = document.getElementById('commissionPayBtn');
@@ -756,7 +853,9 @@ async function payCommission() {
     if (!phone)                { showToast('Enter your M-Pesa phone number', 'error'); return; }
 
     const btn = document.getElementById('commissionPayBtn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending...'; }
+        if (btn) { btn.disabled = true; btn.innerHTML = `${ICON('hourglass',14)} Sending...`; }
+    
+    
 
     try {
         const res  = await fetch(`${API}/commission/pay`, {
@@ -769,10 +868,10 @@ async function payCommission() {
 
         showToast('M-Pesa prompt sent! Enter your PIN 📱', 'success');
         const statusEl = document.getElementById('commissionPayStatus');
-        if (statusEl) {
+                if (statusEl) {
             statusEl.style.display = 'block';
             statusEl.style.color   = 'var(--text-dim)';
-            statusEl.textContent   = '⏳ Waiting for payment confirmation...';
+            statusEl.innerHTML     = `${ICON('hourglass',12)} Waiting for payment confirmation...`;
         }
         _pollCommission(propertyId, month);
 
@@ -780,7 +879,7 @@ async function payCommission() {
         showToast('Network error', 'error');
         console.error('payCommission error:', err);
     } finally {
-        if (btn) { btn.disabled = false; btn.textContent = '📱 Pay with M-Pesa'; }
+       if (btn) { btn.disabled = false; btn.innerHTML = `${ICON('phone',14)} Pay with M-Pesa`; }
     }
 }
 
@@ -792,19 +891,21 @@ function _pollCommission(propertyId, month) {
         const statusEl = document.getElementById('commissionPayStatus');
         if (attempts > 20) {
             clearInterval(_commissionPollingTimer);
-            if (statusEl) { statusEl.textContent = '⚠️ Timeout. Check your M-Pesa messages.'; statusEl.style.color = 'var(--warn)'; }
+            if (statusEl) { statusEl.innerHTML = `${ICON('warning',12)} Timeout. Check your M-Pesa messages.`; statusEl.style.color = 'var(--warn)'; }
             return;
         }
+        
         try {
             const res  = await fetch(
                 `${API}/commission/summary/${propertyId}/${encodeURIComponent(month)}`,
                 { headers: authHeaders() }
             );
             const data = await res.json();
+          
             if (res.ok && data.alreadyPaid) {
                 clearInterval(_commissionPollingTimer);
-                if (statusEl) { statusEl.textContent = '✅ Commission paid — thank you!'; statusEl.style.color = 'var(--accent)'; }
-                showToast('Commission paid 🎉', 'success');
+                if (statusEl) { statusEl.innerHTML = `${ICON('check',12)} Commission paid — thank you!`; statusEl.style.color = 'var(--accent)'; }
+                showToast('Commission paid', 'success');
                 onCommissionPropertyChange();
                 loadCommissionStatus();
             }
@@ -824,7 +925,7 @@ function openDangerModal({ icon = '⚠️', title, message, label = 'Confirm', t
     document.getElementById('dangerMessage').innerHTML = message;
 
     const btn = document.getElementById('dangerConfirmBtn');
-    btn.textContent = label;
+    btn.innerHTML   = label;
     btn.className   = `btn btn-full ${type === 'warn' ? 'btn-warn' : 'btn-danger'}`;
 
     _dangerCallback = onConfirm;
@@ -834,7 +935,7 @@ function openDangerModal({ icon = '⚠️', title, message, label = 'Confirm', t
 async function confirmDangerAction() {
     if (typeof _dangerCallback !== 'function') return;
     const btn = document.getElementById('dangerConfirmBtn');
-    btn.disabled = true; btn.textContent = '⏳ Processing...';
+    btn.disabled = true; btn.innerHTML = `${ICON('hourglass',14)} Processing...`;
     try { await _dangerCallback(); }
     finally { btn.disabled = false; closeDangerModal(); }
 }
@@ -862,7 +963,6 @@ async function loadLandlordProfile() {
         const dotEl    = document.getElementById('payStatusDot');
         const textEl   = document.getElementById('payStatusText');
         const setupBtn = document.getElementById('setupPayBtn');
-        const chipEl   = document.getElementById('landlordChip');
 
         const activeProp = (data.properties || []).find(p => p._id === getPropertyId())
                         || (data.properties || [])[0];
@@ -870,31 +970,27 @@ async function loadLandlordProfile() {
         if (nameEl) nameEl.textContent = activeProp ? activeProp.name : (data.propertyName || 'Your Property');
         if (locEl)  locEl.innerHTML    = `<span>📍</span> ${activeProp ? (activeProp.location || '—') : (data.propertyLocation || '—')}`;
         if (mgrEl)  mgrEl.innerHTML    = `<span>👤</span> Managed by ${data.name || '—'}`;
-        if (chipEl) chipEl.textContent = data.name || 'Landlord';
 
-        // ── Update full-width topbar property strip ──
-        const topbarEl = document.getElementById('topbarPropertyDisplay');
-        if (topbarEl) {
-            const displayName = activeProp
-                ? (activeProp.name + (activeProp.location ? '  ·  📍 ' + activeProp.location : ''))
-                : (data.propertyName || '—');
-            topbarEl.textContent = displayName;
-        }
-
+        // ── Topbar property switcher (single source of truth for name +
+        //    location in the top bar — no separate duplicate strip). ──
+        const switcherNameEl = document.getElementById('activePropertyName');
+        const switcherLocEl  = document.getElementById('activePropertyLoc');
+        if (switcherNameEl) switcherNameEl.textContent = activeProp ? activeProp.name : (data.propertyName || 'Property');
+        if (switcherLocEl)  switcherLocEl.innerHTML     = activeProp && activeProp.location ? `${ICON('pin',12)} ${activeProp.location}` : '';
         const anyConfigured    = (data.properties || []).some(p => p.paymentConfigured);
         const activeConfigured = activeProp ? activeProp.paymentConfigured : false;
 
-        if (activeConfigured) {
+                if (activeConfigured) {
             if (badgeEl) { badgeEl.className = 'pay-status-badge active'; }
             if (dotEl)   { dotEl.className   = 'pay-status-dot active'; }
-            if (textEl)  { textEl.textContent = '🟢 Payments Active'; }
+            if (textEl)  { textEl.textContent = 'Payments Active'; }
             if (setupBtn){ setupBtn.style.display = 'none'; }
             const payBanner = document.getElementById('payConfigBanner');
             if (payBanner) payBanner.classList.add('hidden');
         } else {
             if (badgeEl) { badgeEl.className = 'pay-status-badge inactive'; }
             if (dotEl)   { dotEl.className   = 'pay-status-dot inactive'; }
-            if (textEl)  { textEl.textContent = '🔴 Payments Not Configured'; }
+            if (textEl)  { textEl.textContent = 'Payments Not Configured'; }
             if (setupBtn){ setupBtn.style.display = 'inline-flex'; }
             const payBanner = document.getElementById('payConfigBanner');
             if (payBanner) payBanner.classList.remove('hidden');
@@ -972,8 +1068,7 @@ function onSetupPropertyChange() {
     const titleEl    = document.getElementById('paySetupModalTitle');
 
     if (!propertyId) {
-        // No property loaded yet — show form for first-time setup
-        if (titleEl) titleEl.textContent = '⚙️ M-Pesa Payment Setup';
+        if (titleEl) titleEl.innerHTML = `${ICON('settings',16)} M-Pesa Payment Setup`;
         showPaySetupPanel('form');
         return;
     }
@@ -985,8 +1080,8 @@ function onSetupPropertyChange() {
     _resetPaySetupState();
 
     if (prop.paymentConfigured) {
-        // ── Panel A: already configured ──
-        if (titleEl) titleEl.textContent = '⚙️ M-Pesa Credentials';
+        if (titleEl) titleEl.innerHTML = `${ICON('settings',16)} M-Pesa Credentials`;
+        
 
         // Compute 30-day eligibility
         const lastUpdated = prop.paymentLastUpdated;
@@ -1007,12 +1102,12 @@ function onSetupPropertyChange() {
             }
         }
 
-        const statusEl = document.getElementById('paySetupStatusInfo');
+    const statusEl = document.getElementById('paySetupStatusInfo');
         if (statusEl) {
             statusEl.innerHTML = `
                 <div style="background:var(--accent-dim);border:1px solid rgba(110,231,183,0.2);border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.85rem">
                     <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem">
-                        <span style="color:var(--accent);font-size:1.1rem">✅</span>
+                        <span style="color:var(--accent);display:flex">${ICON('check',18)}</span>
                         <span style="font-size:0.85rem;font-weight:600;color:var(--text)">M-Pesa Configured</span>
                     </div>
                     <div style="font-family:'JetBrains Mono',monospace;font-size:0.62rem;color:var(--text-dim)">
@@ -1030,9 +1125,10 @@ function onSetupPropertyChange() {
         if (!canUpdate && nextUpdate) {
             if (limitEl) {
                 limitEl.innerHTML = `
-                    <div style="background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);border-radius:8px;padding:0.65rem 0.9rem;margin-bottom:0.85rem;font-family:'JetBrains Mono',monospace;font-size:0.68rem;color:var(--danger);line-height:1.65">
-                        🔒 Credentials were recently updated.<br>
-                        Next update allowed: <strong>${nextUpdate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
+                    <div style="background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);border-radius:8px;padding:0.65rem 0.9rem;margin-bottom:0.85rem;font-family:'JetBrains Mono',monospace;font-size:0.68rem;color:var(--danger);line-height:1.65;display:flex;gap:6px">
+                        <span>${ICON('lock',14)}</span>
+                        <span>Credentials were recently updated.<br>
+                        Next update allowed: <strong>${nextUpdate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</strong></span>
                     </div>`;
             }
             if (otpBtn) { otpBtn.disabled = true; otpBtn.style.opacity = '0.45'; otpBtn.title = 'Update not allowed yet'; }
@@ -1044,8 +1140,7 @@ function onSetupPropertyChange() {
         showPaySetupPanel('status');
 
     } else {
-        // ── Panel C: not yet configured — show form directly ──
-        if (titleEl) titleEl.textContent = '⚙️ M-Pesa Payment Setup';
+        if (titleEl) titleEl.innerHTML = `${ICON('settings',16)} M-Pesa Payment Setup`;
         showPaySetupPanel('form');
     }
 }
@@ -1054,7 +1149,9 @@ async function requestPaymentOtp() {
     const btn    = document.getElementById('paySetupRequestOtpBtn');
     const rateEl = document.getElementById('paySetupOtpRateMsg');
 
-    if (btn)    { btn.disabled = true; btn.textContent = '⏳ Sending OTP…'; }
+        if (btn)    { btn.disabled = true; btn.innerHTML = `${ICON('hourglass',14)} Sending OTP…`; }
+    
+    
     if (rateEl) { rateEl.style.display = 'none'; rateEl.textContent = ''; }
 
     try {
@@ -1073,7 +1170,7 @@ async function requestPaymentOtp() {
             return;
         }
 
-        showToast('OTP sent to your email 📧', 'success');
+        showToast('OTP sent to your email ', 'success');
         const otpInput = document.getElementById('setupOtpCode');
         if (otpInput) otpInput.value = '';
         showPaySetupPanel('otp');
@@ -1084,7 +1181,7 @@ async function requestPaymentOtp() {
         showToast(msg, 'error');
         console.error('requestPaymentOtp error:', err);
     } finally {
-        if (btn) { btn.disabled = false; btn.textContent = '📧 Send OTP to Edit Credentials'; }
+        if (btn) { btn.disabled = false; btn.innerHTML = `${ICON('mail',14)} Send OTP to Edit Credentials`; }
     }
 }
 
@@ -1099,8 +1196,8 @@ function verifyPaymentOtp() {
     _paySetupOtp     = code;
     _paySetupEditing = true;
 
-    const titleEl = document.getElementById('paySetupModalTitle');
-    if (titleEl) titleEl.textContent = '✏️ Edit M-Pesa Credentials';
+const titleEl = document.getElementById('paySetupModalTitle');
+    if (titleEl) titleEl.innerHTML = `${ICON('edit',16)} Edit M-Pesa Credentials`;
 
     showPaySetupPanel('form');
     showToast('OTP accepted — enter your new credentials below', 'success');
@@ -1126,7 +1223,9 @@ async function savePaymentSetup() {
     }
 
     const btn = document.getElementById('savePaySetupBtn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving…'; }
+        if (btn) { btn.disabled = true; btn.innerHTML = `${ICON('hourglass',14)} Saving…`; }
+    
+    
 
     try {
         // Backend: POST /landlord/setup-payments
@@ -1152,7 +1251,7 @@ async function savePaymentSetup() {
             return;
         }
 
-        showToast('Payment credentials saved securely 🔐', 'success');
+        showToast('Payment credentials saved securely ', 'success');
         localStorage.setItem('paymentConfigured',  'true');
         localStorage.setItem('onboardingComplete', 'true');
 
@@ -1168,7 +1267,7 @@ async function savePaymentSetup() {
         console.error('savePaymentSetup error:', err.message);
     } finally {
         const btnEl = document.getElementById('savePaySetupBtn');
-        if (btnEl) { btnEl.disabled = false; btnEl.textContent = '🔐 Save Credentials Securely'; }
+        if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = `${ICON('lock',14)} Save Credentials Securely`; }
     }
 }
 
@@ -1197,6 +1296,9 @@ async function loadDashboard() {
         document.getElementById('occupied').textContent     = data.occupiedHouses;
         document.getElementById('vacant').textContent       = data.vacantHouses;
         document.getElementById('totalTenants').textContent = data.totalTenants;
+        document.getElementById('expenses').textContent  = (data.totalExpenses || 0).toLocaleString();
+        document.getElementById('netIncome').textContent = (data.netIncome || 0).toLocaleString();
+        document.getElementById('openMaintenance').textContent = data.openMaintenanceCount || 0;
 
         if (data.landlordProfile) {
             const nameEl = document.getElementById('propertyNameDisplay');
@@ -1301,7 +1403,9 @@ async function addTenant() {
     }
 
     const btn = document.querySelector('#sec-addTenant .btn-primary');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Creating...'; }
+        if (btn) { btn.disabled = true; btn.innerHTML = `${ICON('hourglass',14)} Creating...`; }
+    
+    
 
     try {
         const res  = await fetch(`${API}/tenants/create`, {
@@ -1318,9 +1422,9 @@ async function addTenant() {
         }
 
         if (data.isReturning) {
-            showToast(`${name} has been added to your property 🏠`, 'success');
+            showToast(`${name} has been added to your property `, 'success');
         } else {
-            showToast(`${name} created — welcome email sent 📧`, 'success');
+            showToast(`${name} created — welcome email sent `, 'success');
         }
 
         ['newName', 'newPhone', 'newEmail', 'newDueDate'].forEach(id => {
@@ -1334,7 +1438,7 @@ async function addTenant() {
         showToast('Network error', 'error');
         console.error(err);
     } finally {
-        if (btn) { btn.disabled = false; btn.textContent = 'Create Tenant & Send Welcome Email'; }
+        if (btn) { btn.disabled = false; btn.innerHTML = `${ICON('addTenant',14)} Create Tenant &amp; Send Welcome Email`; }
     }
 }
 
@@ -1371,7 +1475,7 @@ async function resetTenantPassword(tenantId, newPassword) {
 
         if (!res.ok) { showToast(data.message || 'Reset failed', 'error'); return; }
 
-        showToast('Password reset — tenant will be forced to change on next login ✅', 'success');
+        showToast('Password reset — tenant will be forced to change on next login ', 'success');
         closeModal('modal-reset');
 
     } catch (err) {
@@ -1392,7 +1496,7 @@ async function reactivateTenant(tenantId, houseId) {
             return false;
         }
 
-        showToast(data.message || 'Tenant reactivated ✅', 'success');
+        showToast(data.message || 'Tenant reactivated ', 'success');
         await loadTenants();
         await loadMovedOutTenants();
         await loadHouses();
@@ -1446,7 +1550,9 @@ async function bulkRemindSelected() {
     if (!ids.length) return;
 
     const btn = document.getElementById('bulkRemindBtn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending...'; }
+        if (btn) { btn.disabled = true; btn.innerHTML = `${ICON('hourglass',14)} Sending...`; }
+    
+    
 
     try {
         const res  = await fetch(`${API}/tenants/bulk-remind`, {
@@ -1464,7 +1570,7 @@ async function bulkRemindSelected() {
         showToast('Network error', 'error');
         console.error(err);
     } finally {
-        if (btn) { btn.disabled = false; btn.textContent = '🔔 Send Reminder'; }
+        if (btn) { btn.disabled = false; btn.innerHTML = `${ICON('bell',14)} Send Reminder`; }
     }
 }
 
@@ -1521,7 +1627,7 @@ async function addHouse() {
 
         if (!res.ok) { showToast(data.message || 'Failed to add house', 'error'); return; }
 
-        showToast(`House ${name} added ✅`, 'success');
+        showToast(`House ${name} added `, 'success');
         document.getElementById('houseName').value = '';
         document.getElementById('houseRent').value = '';
         await loadHouses();
@@ -1541,17 +1647,18 @@ function deleteHouse(id) {
         }
     });
 
-    openDangerModal({
-        icon:    '🏡',
+       openDangerModal({
+        icon:    ICON('houses', 44),
         title:   'Delete House',
         message: `Are you sure you want to permanently delete <strong>${houseName}</strong>?`,
         label:   'Delete House',
         type:    'danger',
+        
         onConfirm: async () => {
             const res  = await fetch(`${API}/house/${id}`, { method: 'DELETE', headers: authHeaders() });
             const data = await res.json();
             if (!res.ok) { showToast(data.message || 'Delete failed', 'error'); return; }
-            showToast('House deleted ✅', 'success');
+            showToast('House deleted ', 'success');
             await loadHouses();
         }
     });
@@ -1568,15 +1675,16 @@ function assignHouse() {
     const tenant = _allTenants.find(t => t._id === tenantId);
     const house  = _allHouses.find(h => h._id === houseId);
 
-    openDangerModal({
-        icon:    '🔑',
+        openDangerModal({
+        icon:    ICON('key', 44),
         title:   'Confirm House Assignment',
         message: `Assign <strong>${tenant?.name || '—'}</strong> to <strong>${house?.name || '—'}</strong>?<br><br>
                   <span style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;color:var(--text-muted)">
                     Monthly Rent: Ksh ${Number(house?.rent || 0).toLocaleString()}
                   </span>`,
-        label:   '🔑 Assign House',
+        label:   `${ICON('key',14)} Assign House`,
         type:    'warn',
+        
         onConfirm: async () => {
             const res  = await fetch(`${API}/assign-house/${tenantId}/${houseId}`, {
                 method: 'PUT', headers: authHeaders()
@@ -1600,11 +1708,12 @@ function moveOutTenant() {
     const tenantName = sel.options[sel.selectedIndex]?.text || 'this tenant';
 
     openDangerModal({
-        icon:    '🚪',
+        icon:    ICON('door', 44),
         title:   'Move Out Tenant',
         message: `Are you sure you want to move out <strong>${tenantName}</strong>?<br><br>Their house will be marked as <strong>available</strong> and they will receive a move-out notification email. Their login and payment history are preserved.`,
         label:   'Move Out',
         type:    'warn',
+        
         onConfirm: async () => {
             const res  = await fetch(`${API}/move-out/${tenantId}`, { method: 'PUT', headers: authHeaders() });
             const data = await res.json();
@@ -1955,17 +2064,18 @@ function deleteRule(id) {
         }
     });
 
-    openDangerModal({
-        icon:    '📜',
+        openDangerModal({
+        icon:    ICON('rules', 44),
         title:   'Delete Rule',
         message: `Are you sure you want to delete <strong>${ruleTitle}</strong>?<br><br>Tenants will no longer see this rule.`,
         label:   'Delete Rule',
         type:    'danger',
+       
         onConfirm: async () => {
             const res  = await fetch(`${API}/rules/${id}`, { method: 'DELETE', headers: authHeaders() });
             const data = await res.json();
             if (!res.ok) { showToast(data.message || 'Delete failed', 'error'); return; }
-            showToast('Rule deleted ✅', 'success');
+            showToast('Rule deleted ', 'success');
             await loadRules();
         }
     });
@@ -1987,6 +2097,72 @@ async function loadRules() {
 }
 
 
+async function addExpense() {
+    const category    = document.getElementById('expenseCategory').value;
+    const amount      = document.getElementById('expenseAmount').value;
+    const month       = document.getElementById('expenseMonth').value.trim();
+    const note        = document.getElementById('expenseNote').value.trim();
+    const propertyId  = getPropertyId();
+
+    if (!amount || !month) { showToast('Amount and month are required', 'warn'); return; }
+    if (!propertyId)       { showToast('No active property selected', 'warn'); return; }
+
+    try {
+        const res  = await fetch(`${API}/expenses`, {
+            method: 'POST', headers: authHeaders(),
+            body:   JSON.stringify({ propertyId, category, amount: Number(amount), month, note })
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.message || 'Failed to record expense', 'error'); return; }
+
+        showToast('Expense recorded ', 'success');
+        document.getElementById('expenseAmount').value = '';
+        document.getElementById('expenseNote').value   = '';
+        await loadExpenses();
+        loadDashboard();
+
+    } catch (err) {
+        showToast('Network error', 'error');
+        console.error(err);
+    }
+}
+
+async function loadExpenses() {
+    try {
+        const propertyId = getPropertyId();
+        const url = propertyId ? `${API}/expenses?propertyId=${propertyId}` : `${API}/expenses`;
+
+        const res      = await fetch(url, { headers: authHeaders() });
+        const expenses = await res.json();
+        if (!res.ok) { showToast('Failed to load expenses', 'error'); return; }
+
+        renderExpensesTable(expenses);
+    } catch (err) {
+        showToast('Failed to load expenses', 'error');
+        console.error(err);
+    }
+}
+
+function deleteExpense(id) {
+   
+    openDangerModal({
+        icon:    ICON('box', 44),
+        title:   'Delete Expense',
+        message: 'Permanently delete this expense record? This cannot be undone.',
+        label:   'Delete Expense',
+        type:    'danger',
+        
+        onConfirm: async () => {
+            const res  = await fetch(`${API}/expenses/${id}`, { method: 'DELETE', headers: authHeaders() });
+            const data = await res.json();
+            if (!res.ok) { showToast(data.message || 'Delete failed', 'error'); return; }
+            showToast('Expense deleted ', 'success');
+            await loadExpenses();
+            loadDashboard();
+        }
+    });
+}
+
 // ═══════════════════════════════════════
 // ANNOUNCEMENTS
 // ═══════════════════════════════════════
@@ -2006,7 +2182,7 @@ async function addAnnouncement() {
         const data = await res.json();
         if (!res.ok) { showToast(data.message || 'Post failed', 'error'); return; }
 
-        showToast('Announcement posted ✅', 'success');
+        showToast('Announcement posted ', 'success');
         document.getElementById('announcementText').value = '';
         await loadAnnouncements();
     } catch (err) {
@@ -2016,17 +2192,18 @@ async function addAnnouncement() {
 }
 
 function deleteAnnouncement(id) {
-    openDangerModal({
-        icon:    '📢',
+        openDangerModal({
+        icon:    ICON('announcements', 44),
         title:   'Delete Announcement',
         message: `Are you sure you want to delete this announcement?<br><br>It will be permanently removed and tenants will no longer see it.`,
         label:   'Delete Announcement',
         type:    'danger',
+        
         onConfirm: async () => {
             const res  = await fetch(`${API}/announcements/${id}`, { method: 'DELETE', headers: authHeaders() });
             const data = await res.json();
             if (!res.ok) { showToast(data.message || 'Delete failed', 'error'); return; }
-            showToast('Announcement deleted ✅', 'success');
+            showToast('Announcement deleted ', 'success');
             await loadAnnouncements();
         }
     });
@@ -2082,7 +2259,7 @@ async function toggleMaintenance() {
         }
         const chip = document.getElementById('maintenanceChip');
         chip.style.display = on ? 'inline-block' : 'none';
-        showToast(on ? '🔧 Maintenance mode ON' : '✅ Maintenance mode OFF', on ? 'warn' : 'success');
+        showToast(on ? '🔧 Maintenance mode ON' : ' Maintenance mode OFF', on ? 'warn' : 'success');
     } catch (err) {
         showToast('Network error', 'error');
         document.getElementById('maintenanceToggle').checked = !on;
@@ -2320,7 +2497,7 @@ async function updateInquiryStatus(id, status, silent = false) {
             if (!silent) showToast(data.message || 'Update failed', 'error');
             return;
         }
-        if (!silent) showToast(`Marked as ${status} ✅`, 'success');
+        if (!silent) showToast(`Marked as ${status} `, 'success');
         closeModal('modal-inquiry-detail');
         loadInquiries();
         loadInquiryBadge();
@@ -2331,22 +2508,20 @@ async function updateInquiryStatus(id, status, silent = false) {
 }
 
 function deleteInquiry(id) {
-    // Close inquiry detail modal first so danger modal is not obscured.
-    // #modal-danger.open { z-index: 9998 } in CSS also guarantees it floats on top,
-    // but closing the detail modal first is the cleanest UX.
     closeModal('modal-inquiry-detail');
 
     openDangerModal({
-        icon:    '📩',
+        icon:    ICON('inquiries', 44),
         title:   'Delete Inquiry',
         message: 'Permanently delete this inquiry? This cannot be undone.',
         label:   'Delete',
         type:    'danger',
+        
         onConfirm: async () => {
             const res  = await fetch(`${API}/inquiries/${id}`, { method: 'DELETE', headers: authHeaders() });
             const data = await res.json();
             if (!res.ok) { showToast(data.message || 'Delete failed', 'error'); return; }
-            showToast('Inquiry deleted ✅', 'success');
+            showToast('Inquiry deleted ', 'success');
             loadInquiries();
             loadInquiryBadge();
         }
@@ -2394,7 +2569,9 @@ async function saveListingDescription() {
     }
 
     const btn = document.getElementById('listingEditorSaveBtn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving…'; }
+        if (btn) { btn.disabled = true; btn.innerHTML = `${ICON('hourglass',14)} Saving…`; }
+
+    
 
     try {
         const body = { description };
@@ -2417,10 +2594,10 @@ async function saveListingDescription() {
         console.error(err);
     } finally {
         const btnEl = document.getElementById('listingEditorSaveBtn');
-        if (btnEl) {
-            btnEl.disabled    = false;
-            btnEl.textContent = pendingListed ? '💾 Save & Make Visible' : '💾 Save Description';
-        }
+       if (btnEl) {
+        btnEl.disabled    = false;
+        btnEl.innerHTML   = pendingListed ? `${ICON('lock',14)} Save &amp; Make Visible` : `${ICON('lock',14)} Save Description`;
+    }
     }
 }
 
@@ -2481,11 +2658,10 @@ async function handlePhotoUpload(event) {
 
         // Update progress text for multi-file uploads
         if (toUpload.length > 1 && progress) {
-            progress.textContent = `⏳ Uploading ${i + 1} of ${toUpload.length}…`;
+            progress.innerHTML = `${ICON('hourglass',12)} Uploading ${i + 1} of ${toUpload.length}…`;
         } else if (progress) {
-            progress.textContent = '⏳ Uploading…';
+            progress.innerHTML = `${ICON('hourglass',12)} Uploading…`;
         }
-
         try {
             const formData = new FormData();
             formData.append('photo', file);
@@ -2518,8 +2694,8 @@ async function handlePhotoUpload(event) {
     if (uploaded > 0 && failed === 0) {
         showToast(
             uploaded === 1
-                ? 'Photo uploaded ✅'
-                : `${uploaded} photos uploaded ✅`,
+                ? 'Photo uploaded '
+                : `${uploaded} photos uploaded `,
             'success'
         );
     } else if (uploaded > 0 && failed > 0) {
@@ -2553,7 +2729,7 @@ async function handlePhotoDelete(propertyId, photoUrl) {
             return;
         }
 
-        showToast('Photo removed ✅', 'success');
+        showToast('Photo removed ', 'success');
 
         if (prop) prop.photos = data.photos || [];
         _renderListingEditorPhotos(prop ? prop.photos : [], propertyId);
@@ -2586,9 +2762,13 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     syncMaintenanceToggle();
 
-    const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
-    const dashMonthEl  = document.getElementById('dashMonth');
-    if (dashMonthEl) dashMonthEl.value = currentMonth;
+      const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+
+    // dashMonth (Dashboard filter) and expenseMonth (Expense recording) are
+    // <select> elements generated from the same list — see
+    // dashboard.js:_populateMonthSelect — so they can never drift apart.
+    _populateMonthSelect('dashMonth',    { count: 12 });
+    _populateMonthSelect('expenseMonth', { count: 12 });
 
     const monthEl = document.getElementById('month');
     if (monthEl && !monthEl.value) monthEl.value = currentMonth;
@@ -2605,8 +2785,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     loadUnread();
     loadDashboard();
     loadInquiryBadge();
+    loadMaintenanceRequests();
 });
-
 // ═══════════════════════════════════════
 // POLLING
 // ═══════════════════════════════════════
@@ -2619,6 +2799,7 @@ setInterval(loadMovedOutTenants,  30000);
 setInterval(loadLandlordProfile,  60000);
 setInterval(loadProperties,      120000);
 setInterval(loadInquiryBadge,     30000);
+setInterval(_refreshMaintenanceCounts, 30000);
 setInterval(checkPlatformMaintenance, 20000);
 
 // ═══════════════════════════════════════

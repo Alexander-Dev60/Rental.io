@@ -170,11 +170,26 @@
     @media (max-width: 480px) { .btn-ghost { display: none; } }
 
     /* ── MAP VIEW ── */
-    .map-toggle-row { position: relative; z-index: 1; max-width: 980px; margin: 0 auto 18px; padding: 0 20px; display: flex; justify-content: flex-end; }
+    .map-toggle-row {
+      position: relative; z-index: 1; max-width: 980px; margin: 0 auto 18px; padding: 0 20px;
+      display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+    }
+    .map-legend {
+      display: flex; gap: 14px; align-items: center;
+      opacity: 0; pointer-events: none; transition: opacity .2s ease;
+    }
+    .map-legend.show { opacity: 1; pointer-events: auto; }
+    .map-legend-item {
+      display: flex; align-items: center; gap: 5px;
+      font-family: var(--font-m); font-size: .58rem; letter-spacing: .06em;
+      color: var(--muted); text-transform: uppercase;
+    }
+    .map-legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
     .map-toggle-btn {
       background: var(--card); border: 1px solid var(--border2); border-radius: 8px;
       color: var(--muted); font-family: var(--font-m); font-size: .62rem; letter-spacing: .08em;
       padding: 7px 14px; cursor: pointer; transition: all .18s;
+      display: inline-flex; align-items: center; gap: 6px;
     }
     .map-toggle-btn:hover, .map-toggle-btn.active { border-color: var(--primary); color: var(--primary); }
     #listingsMap {
@@ -182,11 +197,20 @@
       display: none;
     }
     #listingsMap.show { display: block; }
+    .listings-map-frame { position: relative; }
     #listingsMapInner { width: 100%; height: 420px; border-radius: 18px; border: 1px solid var(--border2); overflow: hidden; }
+    .map-empty-overlay {
+      position: absolute; inset: 0; z-index: 500;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+      background: rgba(11,15,26,.6); backdrop-filter: blur(3px);
+      border-radius: 18px; text-align: center; padding: 2rem;
+      pointer-events: none;
+    }
+    .map-empty-overlay p { font-size: .78rem; color: #f7f2e4; max-width: 280px; line-height: 1.6; }
     .leaflet-popup-content-wrapper { background: var(--modal-bg); color: var(--text); border-radius: 10px; }
     .leaflet-popup-tip { background: var(--modal-bg); }
     .map-popup-name { font-family: var(--font-d); font-style: italic; font-size: 0.95rem; margin-bottom: 4px; }
-    .map-popup-loc  { font-family: var(--font-m); font-size: 0.6rem; color: var(--gold); margin-bottom: 6px; }
+    .map-popup-loc  { font-family: var(--font-m); font-size: 0.6rem; color: var(--gold); margin-bottom: 6px; display: flex; align-items: center; gap: 4px; }
 
 
     /* ── LANDLORD STRIP ── */
@@ -296,6 +320,28 @@
       border-color: var(--primary);
       box-shadow: 0 0 0 3px rgba(224,187,100,.12);
     }
+    .filter-location-wrap { position: relative; }
+    .filter-location-dropdown {
+      position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+      background: var(--toast-bg); border: 1px solid var(--border2);
+      border-radius: 12px; max-height: 240px; overflow-y: auto;
+      box-shadow: 0 16px 50px rgba(0,0,0,.45);
+      backdrop-filter: blur(16px);
+      z-index: 30; display: none;
+    }
+    .filter-location-dropdown.show { display: block; }
+    .filter-location-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 13px; font-size: .8rem; color: var(--text);
+      cursor: pointer; transition: background .15s;
+    }
+    .filter-location-item:hover, .filter-location-item:focus { background: rgba(224,187,100,.1); }
+    .filter-location-count {
+      font-family: var(--font-m); font-size: .58rem; color: var(--muted2);
+      flex-shrink: 0; margin-left: 10px;
+    }
+    .filter-location-empty { padding: 13px; font-size: .75rem; color: var(--muted2); text-align: center; }
+    .filters-caption { font-size: .7rem; color: var(--muted2); line-height: 1.5; margin-top: 10px; }
     .filter-available {
       display: flex; align-items: center; gap: 7px;
       cursor: pointer; padding-bottom: 10px;
@@ -305,8 +351,7 @@
       accent-color: var(--primary); cursor: pointer;
     }
     .filter-available span {
-      font-family: var(--font-m); font-size: .55rem;
-      letter-spacing: .1em; text-transform: uppercase;
+      font-family: var(--font-m); font-size: .55rem; letter-spacing: .1em; text-transform: uppercase;
       color: var(--muted2); white-space: nowrap;
     }
         
@@ -722,7 +767,7 @@
       border-radius: 10px; padding: 10px 14px; margin-bottom: 18px;
     }
     .inq-prop-name { font-family: var(--font-d); font-style: italic; font-size: 1rem; color: var(--text); margin-bottom: 2px; }
-    .inq-prop-loc { font-family: var(--font-m); font-size: .58rem; color: var(--gold); opacity: .8; }
+    .inq-prop-loc { font-family: var(--font-m); font-size: .58rem; color: var(--gold); opacity: .8; display: flex; align-items: center; gap: 4px; }
     .inq-field { margin-bottom: 12px; }
     .inq-label {
       display: block; font-family: var(--font-m); font-size: .56rem;
@@ -760,7 +805,7 @@
       border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,.4);
       backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
     }
-    .empty-icon { font-size: 2.8rem; display: block; margin-bottom: 14px; }
+    .empty-icon { display: flex; justify-content: center; margin-bottom: 14px; }
     .empty-title { font-family: var(--font-d); font-style: italic; font-size: 1.4rem; color: var(--text); margin-bottom: 8px; }
     .empty-sub { font-size: .8rem; color: var(--muted); line-height: 1.7; }
     .skeleton-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; }
@@ -867,9 +912,6 @@
   <div class="bg" id="bgEl">
     <img class="active" src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=1400&q=80" alt="">
     <img src="https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1400&q=80" alt="">
-    <img src="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1400&q=80" alt="">
-    <img src="https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=1400&q=80" alt="">
-    <img src="https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=1400&q=80" alt="">
   </div>
   <div class="overlay"></div>
 
@@ -902,7 +944,7 @@
   <!-- Landlord strip -->
   <div class="landlord-strip">
     <div class="landlord-strip-inner">
-      <span style="font-size:1.2rem;flex-shrink:0">🏠</span>
+      <span data-icon="houses" data-icon-size="20" style="flex-shrink:0;color:var(--gold)"></span>
       <p class="strip-text">
         <strong>Are you a landlord?</strong>
         List your properties on Affordable Rentals — tenants browse and contact you directly.
@@ -943,21 +985,24 @@
     <div class="filters-card">
       <div class="filters-row">
         <div class="filter-group filter-search">
-          <label class="filter-label">Search Location</label>
-          <input type="text" class="filter-input" id="filterLocation"
-            placeholder="e.g. Westlands, Kilimani, Thika…"
-            onkeydown="if(event.key==='Enter') applyFilters()">
+          <label class="filter-label" for="filterLocation">Search Location</label>
+          <div class="filter-location-wrap">
+            <input type="text" class="filter-input" id="filterLocation" autocomplete="off"
+              placeholder="e.g. Westlands, Kilimani, Thika…"
+              onkeydown="if(event.key==='Enter') applyFilters()">
+            <div class="filter-location-dropdown" id="filterLocationDropdown"></div>
+          </div>
         </div>
         <div class="filter-group">
-          <label class="filter-label">Min Rent (Ksh)</label>
+          <label class="filter-label" for="filterMinRent">Min Rent (Ksh)</label>
           <input type="number" class="filter-input" id="filterMinRent"
-            placeholder="e.g. 10000" style="max-width:128px"
+            placeholder="e.g. 10000" min="0" style="max-width:128px"
             onkeydown="if(event.key==='Enter') applyFilters()">
         </div>
         <div class="filter-group">
-          <label class="filter-label">Max Rent (Ksh)</label>
+          <label class="filter-label" for="filterMaxRent">Max Rent (Ksh)</label>
           <input type="number" class="filter-input" id="filterMaxRent"
-            placeholder="e.g. 30000" style="max-width:128px"
+            placeholder="e.g. 30000" min="0" style="max-width:128px"
             onkeydown="if(event.key==='Enter') applyFilters()">
         </div>
         <label class="filter-available">
@@ -966,6 +1011,7 @@
         </label>
         <button class="filter-btn" id="searchBtn" onclick="applyFilters()">Search</button>
       </div>
+      <p class="filters-caption">Tip: "Available only" hides fully-occupied properties from the results below.</p>
       <div class="active-filters" id="activeFilters" style="display:none"></div>
     </div>
   </div>
@@ -973,10 +1019,20 @@
   
   <!-- Map toggle -->
   <div class="map-toggle-row">
-    <button class="map-toggle-btn" id="mapToggleBtn" onclick="toggleListingsMap()">🗺️ Map View</button>
+    <div class="map-legend" id="mapLegend">
+      <span class="map-legend-item"><span class="map-legend-dot" style="background:#e0bb64"></span>Available</span>
+      <span class="map-legend-item"><span class="map-legend-dot" style="background:#f87171"></span>Fully occupied</span>
+    </div>
+    <button class="map-toggle-btn" id="mapToggleBtn" onclick="toggleListingsMap()"></button>
   </div>
   <div id="listingsMap">
-    <div id="listingsMapInner"></div>
+    <div class="listings-map-frame">
+      <div id="listingsMapInner"></div>
+      <div class="map-empty-overlay" id="mapEmptyOverlay" style="display:none">
+        <span data-icon="map" data-icon-size="26" style="color:#f7f2e4"></span>
+        <p>Map locations coming soon — not all properties have been geo-tagged yet.</p>
+      </div>
+    </div>
   </div>
 
   <!-- Main content -->
@@ -1040,19 +1096,38 @@
     </div>
   </div>
 
+  <!-- icons.js must load before any script calls ICON() -->
+  <script src="icons.js"></script>
   <script src="config.js" onerror="void 0"></script>
+
+  <!-- Wire the static [data-icon] placeholders (JS-generated markup calls ICON() directly) -->
+  <script>
+  (function wireIcons() {
+    try {
+      document.querySelectorAll('[data-icon]').forEach(el => {
+        const name = el.dataset.icon;
+        const size = parseInt(el.dataset.iconSize, 10) || 16;
+        el.innerHTML = ICON(name, size);
+      });
+    } catch (err) {
+      console.error('wireIcons error:', err);
+    }
+  })();
+  </script>
+
   <script>
     // ── CONFIG ──
     const API_BASE = (window.API) || 'http://localhost:3000';
 
-    // ── BG SLIDESHOW ──
+    // ── BG SLIDESHOW — 2 photos, even 5-minute rotation ──
+    const BG_INTERVAL = 5 * 60 * 1000; // 5 minutes
     const bgImgs = document.querySelectorAll('.bg img');
     let bgIdx = 0;
     setInterval(() => {
       bgImgs[bgIdx].classList.remove('active');
       bgIdx = (bgIdx + 1) % bgImgs.length;
       bgImgs[bgIdx].classList.add('active');
-    }, 5000);
+    }, BG_INTERVAL);
 
     // ── STATE ──
     let _all = [], _filtered = [], _currentPage = 1;
@@ -1061,6 +1136,7 @@
     let _inquiryPropId = null;
     const _galleryState = {}, _galleryTimers = {};
     const GALLERY_INTERVAL = 3500, GALLERY_PAUSE = 6000;
+    let _locationIndex = [];
 
     // ════════════
     // TOAST
@@ -1074,36 +1150,45 @@
 
     // ════════════════════════════════════════
     // BUBBLE NOTIFICATIONS
+    // Built only from real listing data — vacancy counts, recent
+    // listings, and rent info — never a fabricated "X just did Y" event.
     // ════════════════════════════════════════
-    const BUBBLE_EVENTS = [
-      { text: (names) => `Tenant registered in <strong>${names[0]}</strong>`, dot: 'green' },
-      { text: (names) => `New listing: <strong>${names[1]}</strong>`, dot: 'blue' },
-      { text: (names) => `Payment received at <strong>${names[0]}</strong>`, dot: 'gold' },
-      { text: (names) => `Inquiry sent to <strong>${names[1] || names[0]}</strong>`, dot: 'purple' },
-      { text: (names) => `Unit vacated at <strong>${names[0]}</strong>`, dot: 'gold' },
-      { text: (names) => `New tenant inquiry for <strong>${names[1] || names[0]}</strong>`, dot: 'blue' },
-      { text: (names) => `Rent reminder sent — <strong>${names[0]}</strong>`, dot: 'purple' },
-      { text: (names) => `Lease renewed at <strong>${names[0]}</strong>`, dot: 'green' },
-    ];
-
-    let _bubbleNames = ['Sunrise Apartments', 'GreenView Estate', 'Palm Court', 'Blue Ridge Flats', 'Westlands Heights'];
+    function bubbleFactsFor(p) {
+      const facts = [];
+      if ((p.vacantCount || 0) > 0) {
+        facts.push({
+          text: `<strong>${esc(p.name)}</strong> has ${p.vacantCount} unit${p.vacantCount > 1 ? 's' : ''} available`,
+          dot: 'gold'
+        });
+      }
+      if (p.createdAt) {
+        const ageDays = (Date.now() - new Date(p.createdAt).getTime()) / 86400000;
+        if (ageDays >= 0 && ageDays <= 7) {
+          facts.push({
+            text: `New listing: <strong>${esc(p.name)}</strong> in ${esc(p.location || 'Kenya')}`,
+            dot: 'blue'
+          });
+        }
+      }
+      if (p.rentRange && p.rentRange.min) {
+        facts.push({
+          text: `<strong>${esc(p.name)}</strong> from Ksh ${Number(p.rentRange.min).toLocaleString()}/mo`,
+          dot: 'purple'
+        });
+      }
+      return facts;
+    }
 
     function spawnBubble() {
-      if (_all.length) {
-        _bubbleNames = _all.map(p => p.name).filter(Boolean);
-      }
-      if (!_bubbleNames.length) return;
+      if (!_all.length) return;
+      const candidates = _all.flatMap(p => bubbleFactsFor(p));
+      if (!candidates.length) return;
 
-      const event = BUBBLE_EVENTS[Math.floor(Math.random() * BUBBLE_EVENTS.length)];
-      const shuffled = [..._bubbleNames].sort(() => Math.random() - .5);
-      const html = event.text(shuffled);
-
+      const pick = candidates[Math.floor(Math.random() * candidates.length)];
       const bubble = document.createElement('div');
       bubble.className = 'bubble';
-      bubble.innerHTML = `<span class="bubble-dot ${event.dot}"></span><span>${html}</span>`;
+      bubble.innerHTML = `<span class="bubble-dot ${pick.dot}"></span><span>${pick.text}</span>`;
       document.getElementById('bubbleContainer').appendChild(bubble);
-
-      // Remove after animation completes
       setTimeout(() => bubble.remove(), 6200);
     }
 
@@ -1139,6 +1224,74 @@
       }
     }
 
+    // ════════════════════════
+    // LOCATION TYPE-AHEAD
+    // ════════════════════════
+    async function loadLocationIndex() {
+      try {
+        const res = await fetch(`${API_BASE}/public/listings`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const counts = {};
+        data.forEach(p => {
+          const loc = (p.location || '').trim();
+          if (!loc) return;
+          counts[loc] = (counts[loc] || 0) + 1;
+        });
+        _locationIndex = Object.entries(counts)
+          .map(([location, count]) => ({ location, count }))
+          .sort((a, b) => b.count - a.count);
+      } catch (err) {
+        console.warn('loadLocationIndex failed:', err.message);
+      }
+    }
+
+    function renderFilterLocationDropdown(items) {
+      const dd = document.getElementById('filterLocationDropdown');
+      if (!dd) return;
+      if (!items.length) {
+        dd.innerHTML = '<div class="filter-location-empty">No matching locations.</div>';
+        return;
+      }
+      dd.innerHTML = items.slice(0, 8).map(it => `
+        <div class="filter-location-item" role="button" tabindex="0" data-loc="${esc(it.location)}">
+          <span>${esc(it.location)}</span>
+          <span class="filter-location-count">${it.count} ${it.count === 1 ? 'property' : 'properties'}</span>
+        </div>`).join('');
+    }
+
+    function setupLocationTypeahead() {
+      const input = document.getElementById('filterLocation');
+      const dd    = document.getElementById('filterLocationDropdown');
+      if (!input || !dd) return;
+
+      input.addEventListener('focus', () => {
+        renderFilterLocationDropdown(_locationIndex);
+        dd.classList.add('show');
+      });
+      input.addEventListener('input', () => {
+        const q = input.value.trim().toLowerCase();
+        const filtered = q
+          ? _locationIndex.filter(it => it.location.toLowerCase().includes(q))
+          : _locationIndex;
+        renderFilterLocationDropdown(filtered);
+        dd.classList.add('show');
+      });
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') { dd.classList.remove('show'); input.blur(); }
+      });
+      dd.addEventListener('click', (e) => {
+        const item = e.target.closest('.filter-location-item');
+        if (!item) return;
+        input.value = item.dataset.loc;
+        dd.classList.remove('show');
+        applyFilters();
+      });
+      document.addEventListener('click', (e) => {
+        if (!dd.contains(e.target) && e.target !== input) dd.classList.remove('show');
+      });
+    }
+
     // ════════════
     // FILTERS
     // ════════════
@@ -1156,7 +1309,7 @@
       _currentPage = 1;
       fetchListings(_activeFilters).then(data => {
         _all = data; _filtered = sortAndFilter(data);
-        updateStats(data); renderPage();
+        updateStats(_filtered); renderPage();
       });
     }
 
@@ -1176,11 +1329,11 @@
       c.style.display = 'flex';
       c.innerHTML = tags.map(([k, v]) => {
         const label =
-          k === 'location'      ? `📍 ${v}` :
+          k === 'location'      ? `${ICON('pin',9)} ${esc(v)}` :
           k === 'minRent'       ? `Min: Ksh ${Number(v).toLocaleString()}` :
           k === 'maxRent'       ? `Max: Ksh ${Number(v).toLocaleString()}` :
-          k === 'availableOnly' ? `✓ Available only` : v;
-        return `<span class="active-filter-tag" onclick="clearFilter('${k}')"><span>${label}</span> ✕</span>`;
+          k === 'availableOnly' ? `${ICON('check',9)} Available only` : v;
+        return `<span class="active-filter-tag" onclick="clearFilter('${k}')"><span style="display:inline-flex;align-items:center;gap:4px">${label}</span> ✕</span>`;
       }).join('');
     }
 
@@ -1230,11 +1383,12 @@
       if (!total) {
         content.innerHTML = `
           <div class="empty-state">
-            <span class="empty-icon">🏡</span>
+            <span class="empty-icon" style="color:var(--muted2)">${ICON('properties',44)}</span>
             <div class="empty-title">No properties found</div>
             <p class="empty-sub">Try adjusting your filters or check back soon.</p>
           </div>`;
         document.getElementById('pagination').style.display = 'none';
+        if (_mapVisible) renderMapMarkers();
         return;
       }
 
@@ -1324,19 +1478,19 @@
               </div>
             </div>
             <div class="featured-body">
-              <div class="featured-location">📍 ${esc(p.location||'—')}</div>
+              <div class="featured-location">${ICON('pin',10)} ${esc(p.location||'—')}</div>
               <div class="featured-name">${esc(p.name)}</div>
               <div class="featured-desc">${esc(p.description||'Contact the landlord for more details.')}</div>
               <div class="card-meta" style="margin-bottom:16px">
-                ${rentStr ? `<span class="chip chip--blue">💰 ${rentStr}</span>` : ''}
-                ${p.vacantCount>0 ? `<span class="chip chip--gold">🏠 ${p.vacantCount} available</span>` : `<span class="chip chip--red">Fully occupied</span>`}
+                ${rentStr ? `<span class="chip chip--blue">${ICON('cash',10)} ${rentStr}</span>` : ''}
+                ${p.vacantCount>0 ? `<span class="chip chip--gold">${ICON('houses',10)} ${p.vacantCount} available</span>` : `<span class="chip chip--red">Fully occupied</span>`}
                 ${p.totalHouses ? `<span class="chip chip--purple">${p.totalHouses} total units</span>` : ''}
               </div>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
-                ${p.phone ? `<a href="tel:${p.phone}" class="action-btn action-call">📞 Call</a>` : ''}
-                ${waHref  ? `<a href="${waHref}" target="_blank" rel="noopener" class="action-btn action-wa">💬 WhatsApp</a>` : ''}
-                <button class="action-btn action-inquiry" onclick='openInquiry(${JSON.stringify({_id:p._id,name:p.name,location:p.location})})'>✉️ Inquire</button>
-                <button class="action-btn action-view" onclick='openViewModal("${p._id}")'>🔍 View Details</button>
+                ${p.phone ? `<a href="tel:${p.phone}" class="action-btn action-call">${ICON('phone',11)} Call</a>` : ''}
+                ${waHref  ? `<a href="${waHref}" target="_blank" rel="noopener" class="action-btn action-wa">${ICON('messages',11)} WhatsApp</a>` : ''}
+                <button class="action-btn action-inquiry" onclick='openInquiry(${JSON.stringify({_id:p._id,name:p.name,location:p.location})})'>${ICON('mail',11)} Inquire</button>
+                <button class="action-btn action-view" onclick='openViewModal("${p._id}")'>${ICON('search',11)} View Details</button>
               </div>
             </div>
           </div>
@@ -1371,12 +1525,12 @@
             <div class="vacancy-badge ${isFull?'full':'available'}">${isFull?'Fully Occupied':vacant+' available'}</div>
           </div>
           <div class="card-body">
-            <div class="card-location">📍 ${esc(p.location||'—')}</div>
+            <div class="card-location">${ICON('pin',10)} ${esc(p.location||'—')}</div>
             <div class="card-name" title="${esc(p.name)}">${esc(p.name)}</div>
             <div class="card-desc-short">${esc(p.description||'Contact the landlord for more details.')}</div>
             <div class="card-meta">
-              ${rentStr ? `<span class="chip chip--blue">💰 ${rentStr}</span>` : ''}
-              ${!isFull ? `<span class="chip chip--gold">🏠 ${vacant} available</span>` : `<span class="chip chip--red">Fully occupied</span>`}
+              ${rentStr ? `<span class="chip chip--blue">${ICON('cash',10)} ${rentStr}</span>` : ''}
+              ${!isFull ? `<span class="chip chip--gold">${ICON('houses',10)} ${vacant} available</span>` : `<span class="chip chip--red">Fully occupied</span>`}
               ${total ? `<span class="chip chip--purple">${total} total</span>` : ''}
             </div>
           </div>
@@ -1389,10 +1543,10 @@
             <span>${100 - fillPct}%</span>
           </div>` : ''}
           <div class="card-actions">
-            ${p.phone ? `<a href="tel:${p.phone}" class="action-btn action-call">📞 Call</a>` : ''}
-            ${waHref  ? `<a href="${waHref}" target="_blank" rel="noopener" class="action-btn action-wa">💬 WA</a>` : ''}
-            <button class="action-btn action-inquiry" onclick='openInquiry(${JSON.stringify({_id:p._id,name:p.name,location:p.location})})'>✉️ Inquire</button>
-            <button class="action-btn action-view" onclick='openViewModal("${p._id}")'>🔍 View More</button>
+            ${p.phone ? `<a href="tel:${p.phone}" class="action-btn action-call">${ICON('phone',11)} Call</a>` : ''}
+            ${waHref  ? `<a href="${waHref}" target="_blank" rel="noopener" class="action-btn action-wa">${ICON('messages',11)} WA</a>` : ''}
+            <button class="action-btn action-inquiry" onclick='openInquiry(${JSON.stringify({_id:p._id,name:p.name,location:p.location})})'>${ICON('mail',11)} Inquire</button>
+            <button class="action-btn action-view" onclick='openViewModal("${p._id}")'>${ICON('search',11)} View More</button>
           </div>
         </div>`;
     }
@@ -1429,7 +1583,7 @@
           </div>
         </div>
         <div class="vm-body">
-          <div class="vm-location">📍 ${esc(p.location||'—')}</div>
+          <div class="vm-location">${ICON('pin',10)} ${esc(p.location||'—')}</div>
           <div class="vm-name">${esc(p.name)}</div>
 
           <div class="vm-units-display">
@@ -1458,16 +1612,16 @@
           <div class="vm-desc">${esc(p.description || 'No description provided. Contact the landlord directly for more information about this property.')}</div>
 
           <div class="vm-chips">
-            ${rentStr ? `<span class="chip chip--lg chip--blue">💰 ${rentStr}</span>` : ''}
-            ${vacant>0 ? `<span class="chip chip--lg chip--gold">🏠 ${vacant} unit${vacant>1?'s':''} available</span>` : `<span class="chip chip--lg chip--red">Fully Occupied</span>`}
+            ${rentStr ? `<span class="chip chip--lg chip--blue">${ICON('cash',11)} ${rentStr}</span>` : ''}
+            ${vacant>0 ? `<span class="chip chip--lg chip--gold">${ICON('houses',11)} ${vacant} unit${vacant>1?'s':''} available</span>` : `<span class="chip chip--lg chip--red">Fully Occupied</span>`}
             ${total ? `<span class="chip chip--lg chip--purple">${total} units total</span>` : ''}
-            ${p.phone ? `<span class="chip chip--lg chip--green">📞 ${esc(p.phone)}</span>` : ''}
+            ${p.phone ? `<span class="chip chip--lg chip--green">${ICON('phone',11)} ${esc(p.phone)}</span>` : ''}
           </div>
 
           <div class="vm-actions">
-            ${p.phone ? `<a href="tel:${p.phone}" class="vm-action action-call">📞 Call Landlord</a>` : ''}
-            ${waHref  ? `<a href="${waHref}" target="_blank" rel="noopener" class="vm-action action-wa">💬 WhatsApp</a>` : ''}
-            <button class="vm-action action-inquiry" onclick='closeViewModal();openInquiry(${JSON.stringify({_id:p._id,name:p.name,location:p.location})})'>✉️ Send Inquiry</button>
+            ${p.phone ? `<a href="tel:${p.phone}" class="vm-action action-call">${ICON('phone',12)} Call Landlord</a>` : ''}
+            ${waHref  ? `<a href="${waHref}" target="_blank" rel="noopener" class="vm-action action-wa">${ICON('messages',12)} WhatsApp</a>` : ''}
+            <button class="vm-action action-inquiry" onclick='closeViewModal();openInquiry(${JSON.stringify({_id:p._id,name:p.name,location:p.location})})'>${ICON('mail',12)} Send Inquiry</button>
           </div>
         </div>`;
 
@@ -1554,7 +1708,7 @@
     function openInquiry(property) {
       _inquiryPropId = property._id;
       document.getElementById('inqPropName').textContent = property.name || '—';
-      document.getElementById('inqPropLoc').textContent  = property.location ? `📍 ${property.location}` : '';
+      document.getElementById('inqPropLoc').innerHTML = property.location ? `${ICON('pin',9)} ${esc(property.location)}` : '';
       document.getElementById('inqFormBody').innerHTML = `
         <div class="inq-field">
           <label class="inq-label" for="inqName">Your Name</label>
@@ -1601,7 +1755,7 @@
       } catch {}
       document.getElementById('inqFormBody').innerHTML = `
         <div style="text-align:center;padding:2rem 0">
-          <div style="font-size:3rem;margin-bottom:14px">✅</div>
+          <div style="margin-bottom:14px;display:flex;justify-content:center;color:var(--success)">${ICON('checkCircle',48)}</div>
           <div style="font-family:var(--font-d);font-style:italic;font-size:1.3rem;color:var(--success);margin-bottom:8px">Inquiry sent!</div>
           <p style="font-size:.8rem;color:var(--muted);line-height:1.7">
             The landlord will contact you at <strong style="color:var(--text)">${esc(phone)}</strong> shortly.
@@ -1678,7 +1832,7 @@
     function showError() {
       document.getElementById('mainContent').innerHTML = `
         <div class="empty-state">
-          <span class="empty-icon">⚠️</span>
+          <span class="empty-icon" style="color:var(--error)">${ICON('warning',44)}</span>
           <div class="empty-title">Couldn't load listings</div>
           <p class="empty-sub">Check your connection and try again.</p>
           <button onclick="initPage()" style="margin-top:18px;background:var(--primary);border:none;color:#fff;font-family:var(--font-m);font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;padding:8px 20px;border-radius:8px;cursor:pointer">↻ Retry</button>
@@ -1692,13 +1846,23 @@
     let _listingsMap = null, _mapMarkers = [];
     let _mapVisible = false;
 
+    function setMapToggleLabel() {
+      const btn = document.getElementById('mapToggleBtn');
+      if (!btn) return;
+      btn.innerHTML = _mapVisible
+        ? `${ICON('list',12)} List View`
+        : `${ICON('map',12)} Map View`;
+    }
+
     function toggleListingsMap() {
       _mapVisible = !_mapVisible;
-      const wrap = document.getElementById('listingsMap');
-      const btn  = document.getElementById('mapToggleBtn');
+      const wrap   = document.getElementById('listingsMap');
+      const btn    = document.getElementById('mapToggleBtn');
+      const legend = document.getElementById('mapLegend');
       wrap.classList.toggle('show', _mapVisible);
       btn.classList.toggle('active', _mapVisible);
-      btn.textContent = _mapVisible ? '📋 List View' : '🗺️ Map View';
+      setMapToggleLabel();
+      if (legend) legend.classList.toggle('show', _mapVisible);
       if (_mapVisible) {
         if (!_listingsMap) initListingsMap();
         setTimeout(() => _listingsMap && _listingsMap.invalidateSize(), 100);
@@ -1721,16 +1885,28 @@
 
       // Properties need a `geo.coordinates` field ([lng, lat]) to appear here.
       // See backend note — /public/listings must select `geo` for this to populate.
-      const withGeo = _all.filter(p => p.geo && Array.isArray(p.geo.coordinates));
+      // Sourced from _filtered (not _all) so the map always matches the
+      // currently active filters (location / rent / available-only).
+      const withGeo = _filtered.filter(p => p.geo && Array.isArray(p.geo.coordinates));
+
+      const overlay = document.getElementById('mapEmptyOverlay');
+      if (overlay) overlay.style.display = withGeo.length ? 'none' : 'flex';
       if (!withGeo.length) return;
 
       const bounds = [];
       withGeo.forEach(p => {
         const [lng, lat] = p.geo.coordinates;
-        const marker = L.marker([lat, lng]).addTo(_listingsMap);
+        const isAvailable = (p.vacantCount || 0) > 0;
+        const marker = L.circleMarker([lat, lng], {
+          radius: 9,
+          weight: 2,
+          color: isAvailable ? '#e0bb64' : '#f87171',
+          fillColor: isAvailable ? '#e0bb64' : '#f87171',
+          fillOpacity: 0.85
+        }).addTo(_listingsMap);
         marker.bindPopup(`
           <div class="map-popup-name">${esc(p.name)}</div>
-          <div class="map-popup-loc">📍 ${esc(p.formattedAddress || p.location || '—')}</div>
+          <div class="map-popup-loc">${ICON('pin',9)} ${esc(p.formattedAddress || p.location || '—')}</div>
           <button onclick="openViewModal('${p._id}')" style="font-family:var(--font-m);font-size:.6rem;letter-spacing:.06em;background:var(--primary);color:#fff;border:none;border-radius:6px;padding:5px 10px;cursor:pointer">View Details</button>
         `);
         _mapMarkers.push(marker);
@@ -1743,6 +1919,7 @@
     // INIT
     // ════════════
     async function initPage() {
+      setMapToggleLabel();
       const urlParams = new URLSearchParams(window.location.search);
       const urlLoc    = urlParams.get('location');
       if (urlLoc) {
@@ -1750,9 +1927,11 @@
         _activeFilters.location = urlLoc;
         renderActiveFilterTags();
       }
+      loadLocationIndex();
+      setupLocationTypeahead();
       const data = await fetchListings(_activeFilters);
       _all = data; _filtered = sortAndFilter(data);
-      updateStats(data); renderPage();
+      updateStats(_filtered); renderPage();
     }
 
     window.addEventListener('DOMContentLoaded', initPage);
@@ -1768,7 +1947,7 @@
         if (!res.ok) return;
         const fresh = await res.json();
         _all = fresh; _filtered = sortAndFilter(fresh);
-        updateStats(fresh); renderPage();
+        updateStats(_filtered); renderPage();
       } catch {}
     }, 45_000);
   </script>

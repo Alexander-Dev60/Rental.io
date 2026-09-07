@@ -194,12 +194,14 @@
   }
 
   /* ── Status pill ── */
-  .status-pill {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.58rem; letter-spacing: 0.06em;
-    padding: 3px 7px; border-radius: 99px; font-weight: 500;
-    white-space: nowrap; flex-shrink: 0;
-  }
+ 
+.status-pill {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.58rem; letter-spacing: 0.06em;
+  padding: 3px 7px; border-radius: 99px; font-weight: 500;
+  white-space: nowrap; flex-shrink: 0;
+  display: inline-flex; align-items: center; gap: 3px;
+}
   .status-pill.paid    { background:rgba(52,211,153,0.12);  color:var(--green); border:1px solid rgba(52,211,153,0.25); }
   .status-pill.partial { background:rgba(251,191,36,0.12);  color:var(--amber); border:1px solid rgba(251,191,36,0.25); }
   .status-pill.unpaid  { background:rgba(248,113,113,0.12); color:var(--red);   border:1px solid rgba(248,113,113,0.25); }
@@ -219,9 +221,9 @@
     padding: 0; display: flex; align-items: center; justify-content: center;
     margin: 0;
   }
-  .btn-logout:hover { border-color: var(--red); color: var(--red); }
-  .btn-logout .btn-logout-text { display: none; }
-  .btn-logout::before { content: '⏻'; font-size: 0.9rem; line-height: 1; }
+.btn-logout:hover { border-color: var(--red); color: var(--red); } 
+.btn-logout .btn-logout-text { display: none; }
+.btn-logout-icon { display: flex; align-items: center; justify-content: center; }
 
   /* ── Property badge (header-right) ──
      Hidden on mobile — shown from 480px up. */
@@ -245,8 +247,9 @@
       width: auto; height: auto;
       padding: 0.35rem 0.8rem;
     }
-    .btn-logout::before { display: none; }
-    .btn-logout .btn-logout-text { display: inline; }
+    
+.btn-logout-icon { display: none; }
+.btn-logout .btn-logout-text { display: inline; }
   }
 
   /* ── ≥768px: also show property badge ── */
@@ -711,9 +714,14 @@
       in tenant.js, inserted before #headerStatus.
     -->
     <span class="status-pill" id="headerStatus"></span>
-    <button class="btn-logout" onclick="logout()"><span class="btn-logout-text">Sign Out</span></button>
+    <!-- after -->
+<button class="btn-logout" onclick="logout()">
+  <span class="btn-logout-icon" id="btnLogoutIcon"></span>
+  <span class="btn-logout-text">Sign Out</span>
+</button>
   </div>
 </header>
+
 
 <!-- ═══ PAGE BODY ═══ -->
 <div class="page-body">
@@ -721,18 +729,19 @@
   <!-- Desktop sidebar -->
   <aside class="sidebar-desktop" id="desktopSidebar">
     <div class="sidebar-nav">
-      <div class="dsk-nav-item active" onclick="showSection('home')">    <span class="icon">🏠</span>Home    </div>
-      <div class="dsk-nav-item"        onclick="showSection('profile')"> <span class="icon">👤</span>Profile </div>
-      <div class="dsk-nav-item"        onclick="showSection('pay')">     <span class="icon">💳</span>Pay Rent</div>
-      <div class="dsk-nav-item"        onclick="showSection('receipts')"><span class="icon">🧾</span>Receipts</div>
-      <div class="dsk-nav-item"        onclick="showSection('messages')">
-        <span class="icon">💬</span>Messages
-        <span class="bnav-badge" id="dskMsgBadge" style="position:static;margin-left:auto;display:none"></span>
-      </div>
-      <div class="dsk-nav-item"        onclick="showSection('notices')"> <span class="icon">📢</span>Notices </div>
-      <div class="dsk-nav-item"        onclick="showSection('rules')">   <span class="icon">📜</span>Rules   </div>
-      <div class="dsk-nav-item"        onclick="showSection('settings')"><span class="icon">⚙️</span>Settings</div>
+      <div class="dsk-nav-item active" onclick="showSection('home')">    <span class="icon" id="navIcon_home"></span>Home    </div>
+    <div class="dsk-nav-item"        onclick="showSection('profile')"> <span class="icon" id="navIcon_profile"></span>Profile </div>
+    <div class="dsk-nav-item"        onclick="showSection('pay')">     <span class="icon" id="navIcon_pay"></span>Pay Rent</div>
+    <div class="dsk-nav-item"        onclick="showSection('receipts')"><span class="icon" id="navIcon_receipts"></span>Receipts</div>
+    <div class="dsk-nav-item"        onclick="showSection('messages')">
+      <span class="icon" id="navIcon_messages"></span>Messages
+      <span class="bnav-badge" id="dskMsgBadge" style="position:static;margin-left:auto;display:none"></span>
     </div>
+    <div class="dsk-nav-item"        onclick="showSection('notices')"> <span class="icon" id="navIcon_notices"></span>Notices </div>
+    <div class="dsk-nav-item"        onclick="showSection('rules')">   <span class="icon" id="navIcon_rules"></span>Rules   </div>
+    <div class="dsk-nav-item" onclick="showSection('maintenance')"><span class="icon" id="navIcon_maintenance"></span>Maintenance</div>
+    <div class="dsk-nav-item"        onclick="showSection('settings')"><span class="icon" id="navIcon_settings"></span>Settings</div>
+</div>
 
     <div class="sidebar-footer">
       <div style="font-family:'DM Mono',monospace;font-size:0.56rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-dim);margin-bottom:0.5rem">Appearance</div>
@@ -818,15 +827,16 @@
       </div>
 
       <div class="card">
-        <div class="card-label">Quick Actions</div>
+  <div class="card-label">Quick Actions</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-top:0.1rem">
-          <button class="btn btn-primary"   onclick="showSection('pay')">     💳 Pay Rent</button>
-          <button class="btn btn-secondary" onclick="showSection('receipts')">🧾 Receipts</button>
-          <button class="btn btn-secondary" onclick="showSection('messages')">💬 Message</button>
-          <button class="btn btn-secondary" onclick="showSection('notices')"> 📢 Notices</button>
-        </div>
+          <button class="btn btn-primary"   onclick="showSection('pay')" id="qaPayBtn"></button>
+          <button class="btn btn-secondary" onclick="showSection('receipts')" id="qaReceiptsBtn"></button>
+          <button class="btn btn-secondary" onclick="showSection('messages')" id="qaMessageBtn"></button>
+          <button class="btn btn-secondary" onclick="showSection('notices')" id="qaNoticesBtn"></button>
+          <button class="btn btn-secondary" onclick="showSection('maintenance')" style="grid-column:span 2" id="qaMaintenanceBtn"></button>
       </div>
     </div>
+  </div>
 
     <!-- ─── PROFILE ─── -->
     <div class="section" id="sec-profile">
@@ -907,7 +917,7 @@
         </div>
         <input type="text"   id="payMonth"  placeholder="Month (e.g. May 2026)" oninput="checkMonthBalance()">
         <input type="number" id="payAmount" placeholder="Amount to pay (Ksh)" min="1">
-        <button class="mpesa-btn" id="mpesaBtn" onclick="payWithMpesa()">📱 Pay with M-Pesa</button>
+        <button class="mpesa-btn" id="mpesaBtn" onclick="payWithMpesa()"></button>
         <!--
           TYPER 3 — Pay Rent tip
           .pay-tip-line: fixed height 1.2em, overflow:hidden.
@@ -932,7 +942,7 @@
         -->
         <span class="receipts-tip-line" id="receiptsTip"></span>
         <div id="receiptsList">
-          <div class="empty-state"><span class="empty-icon">🧾</span>No receipts yet</div>
+          <div class="empty-state"><span class="empty-icon" id="emptyIcon_receipts"></span>No receipts yet</div>
         </div>
       </div>
     </div>
@@ -949,7 +959,7 @@
             When no messages, this div shows.
           -->
           <div class="empty-state">
-            <span class="empty-icon">💬</span>
+            <span class="empty-icon" id="emptyIcon_messages"></span>
             <span id="messagesEmptyText">Send a message to your landlord.</span>
           </div>
         </div>
@@ -967,7 +977,7 @@
       </div>
       <div class="card">
         <div id="noticesList">
-          <div class="empty-state"><span class="empty-icon">📢</span>No announcements yet</div>
+          <div class="empty-state"><span class="empty-icon" id="emptyIcon_notices"></span>No announcements yet</div>
         </div>
       </div>
     </div>
@@ -979,10 +989,42 @@
       </div>
       <div class="card">
         <div id="rulesList">
-          <div class="empty-state"><span class="empty-icon">📜</span>No rules posted yet</div>
+          <div class="empty-state"><span class="empty-icon" id="emptyIcon_rules"></span>No rules posted yet</div>
         </div>
       </div>
     </div>
+
+    <!-- ─── MAINTENANCE ─── -->
+<div class="section" id="sec-maintenance">
+  <div class="sec-header">
+    <div class="sec-title">Maintenance</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Report an Issue</div>
+    <select id="maintCategory">
+      <!-- after -->
+      <option value="plumbing">Plumbing</option>
+      <option value="electrical">Electrical</option>
+      <option value="structural">Structural</option>
+      <option value="appliance">Appliance</option>
+      <option value="pest">Pest</option>
+      <option value="other">Other</option>
+    </select>
+    <select id="maintPriority">
+      <option value="low">Low priority</option>
+      <option value="medium" selected>Medium priority</option>
+      <option value="high">High priority</option>
+    </select>
+    <textarea id="maintDescription" placeholder="Describe the issue..."></textarea>
+    <button class="btn btn-primary" onclick="submitMaintenanceRequest()">Submit Request</button>
+  </div>
+  <div class="card">
+    <div class="card-label">My Requests</div>
+    <div id="maintRequestsList">
+      <div class="empty-state"><span class="empty-icon" id="emptyIcon_maintenance"></span>No requests yet</div>
+    </div>
+  </div>
+</div>
 
     <!-- ─── SETTINGS ─── -->
     <div class="section" id="sec-settings">
@@ -1066,7 +1108,7 @@
       <!-- Sign out -->
       <div class="card settings-section" style="border-color:rgba(248,113,113,0.18)">
         <div class="settings-label" style="color:var(--red)">Session</div>
-        <button class="btn btn-danger" onclick="logout()">⏻ Sign Out</button>
+        <button class="btn btn-danger" onclick="logout()" id="settingsSignOutBtn"></button>
       </div>
     </div>
 
@@ -1075,14 +1117,14 @@
 
 <!-- ═══ BOTTOM NAV ═══ -->
 <nav class="bottom-nav">
-  <div class="bnav-item active" onclick="showSection('home')"     id="bnav-home">    <span class="bnav-icon">🏠</span>Home    </div>
-  <div class="bnav-item"        onclick="showSection('profile')"  id="bnav-profile"> <span class="bnav-icon">👤</span>Profile </div>
-  <div class="bnav-item"        onclick="showSection('pay')"      id="bnav-pay">     <span class="bnav-icon">💳</span>Pay     </div>
-  <div class="bnav-item"        onclick="showSection('messages')" id="bnav-messages">
-    <span class="bnav-icon">💬</span>Chat
-    <span class="bnav-badge" id="msgBadge" style="display:none">!</span>
-  </div>
-  <div class="bnav-item"        onclick="showSection('settings')" id="bnav-settings"><span class="bnav-icon">⚙️</span>Settings</div>
+ <div class="bnav-item active" onclick="showSection('home')"     id="bnav-home">    <span class="bnav-icon" id="bnavIcon_home"></span>Home    </div>
+<div class="bnav-item"        onclick="showSection('profile')"  id="bnav-profile"> <span class="bnav-icon" id="bnavIcon_profile"></span>Profile </div>
+<div class="bnav-item"        onclick="showSection('pay')"      id="bnav-pay">     <span class="bnav-icon" id="bnavIcon_pay"></span>Pay     </div>
+<div class="bnav-item"        onclick="showSection('messages')" id="bnav-messages">
+  <span class="bnav-icon" id="bnavIcon_messages"></span>Chat
+  <span class="bnav-badge" id="msgBadge" style="display:none">!</span>
+</div>
+<div class="bnav-item"        onclick="showSection('settings')" id="bnav-settings"><span class="bnav-icon" id="bnavIcon_settings"></span>Settings</div>
 </nav>
 
 <div id="toast"></div>
@@ -1116,7 +1158,55 @@ function togglePwEye(inputId, btn) {
 }
 </script>
 
+<script src="icons.js"></script>
 <script src="config.js"></script>
+<script>
+(function wireStaticIcons() {
+  const set = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+  try {
+    // Sidebar (desktop)
+    set('navIcon_home', ICON('home', 15));
+    set('navIcon_profile', ICON('user', 15));
+    set('navIcon_pay', ICON('payments', 15));
+    set('navIcon_receipts', ICON('receipts', 15));
+    set('navIcon_messages', ICON('messages', 15));
+    set('navIcon_notices', ICON('announcements', 15));
+    set('navIcon_rules', ICON('rules', 15));
+    set('navIcon_maintenance', ICON('maintenance', 15));
+    set('navIcon_settings', ICON('settings', 15));
+
+    // Bottom nav (mobile)
+    set('bnavIcon_home', ICON('home', 18));
+    set('bnavIcon_profile', ICON('user', 18));
+    set('bnavIcon_pay', ICON('payments', 18));
+    set('bnavIcon_messages', ICON('messages', 18));
+    set('bnavIcon_settings', ICON('settings', 18));
+
+    // Home — quick actions
+    set('qaPayBtn', `${ICON('payments',14)} Pay Rent`);
+    set('qaReceiptsBtn', `${ICON('receipts',14)} Receipts`);
+    set('qaMessageBtn', `${ICON('messages',14)} Message`);
+    set('qaNoticesBtn', `${ICON('announcements',14)} Notices`);
+    set('qaMaintenanceBtn', `${ICON('maintenance',14)} Report Issue`);
+
+    // Pay Rent
+    set('mpesaBtn', `${ICON('phone',14)} Pay with M-Pesa`);
+
+    // Empty states
+    set('emptyIcon_receipts', ICON('receipts', 28));
+    set('emptyIcon_messages', ICON('messages', 26));
+    set('emptyIcon_notices', ICON('announcements', 26));
+    set('emptyIcon_rules', ICON('rules', 26));
+    set('emptyIcon_maintenance', ICON('maintenance', 26));
+
+    // Sign out
+    set('btnLogoutIcon', ICON('logout', 14));
+    set('settingsSignOutBtn', `${ICON('logout',14)} Sign Out`);
+  } catch (err) {
+    console.error('wireStaticIcons error:', err);
+  }
+})();
+</script>
 <script src="tenant.js"></script>
 <script src="session-manager.js"></script>
 
