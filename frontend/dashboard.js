@@ -1534,13 +1534,13 @@ async function submitGenerateHouses() {
             .map(g => ({ label: g.label, prefix: g.prefix, start: g.start, count: g.count, padWidth: g.padWidth }))
     };
  
-           openDangerModal({
-            icon:    ICON('flash', 44),
-            title:   'Confirm Extend Group',
-            message: `Add <strong>${count} unit(s)</strong> to <strong>${group.label || group.prefix}</strong>, continuing from <strong>${group.nextName}</strong>?`,
-            label:   `Add ${count} Unit(s)`,
-            type:    'warn',
-            
+               openDangerModal({
+        icon:    ICON('flash', 44),
+        title:   'Confirm Generate Units',
+        message: `Generate <strong>${names.length} unit(s)</strong> at <strong>Ksh ${Number(rent).toLocaleString()}</strong> / month each?`,
+        label:   `Generate ${names.length} Unit(s)`,
+        type:    'warn',
+
         onConfirm: async () => {
             try {
                 const res  = await fetch(`${API}/houses/generate`, {
@@ -1549,7 +1549,7 @@ async function submitGenerateHouses() {
                 });
                 const data = await res.json();
                 if (!res.ok) { showToast(data.message || 'Generation failed', 'error'); return; }
- 
+
                 showToast(data.message, 'success');
                 closeModal('modal-generate-houses');
                 await loadHouses();
@@ -1560,7 +1560,6 @@ async function submitGenerateHouses() {
         }
     });
 }
-
 // ═══════════════════════════════════════
 // MESSAGING — Two-panel persistent system
 // ═══════════════════════════════════════

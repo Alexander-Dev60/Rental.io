@@ -286,12 +286,36 @@
   }
 
   /* Main row: menu button, property switcher, right controls */
-  .topbar-main-row {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 0.7rem 1.5rem; gap: 1rem; flex-wrap: wrap;
-  }
-  .topbar-title { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.3rem; color: var(--text); }
-  .topbar-right { display: flex; align-items: center; gap: 0.6rem; }
+      .topbar-main-row {
+      display: flex; flex-direction: column; gap: 0.4rem;
+      padding: 0.7rem 1.5rem;
+    }
+    .topbar-row-1 {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 0.75rem; width: 100%;
+    }
+    .topbar-row-1-left {
+      display: flex; align-items: center; gap: 0.75rem;
+      min-width: 0;      /* lets the switcher shrink instead of pushing the bell off-screen */
+      flex: 1 1 auto;
+    }
+    .topbar-right {
+      display: flex; align-items: center; gap: 0.6rem;
+      flex-shrink: 0;    /* bell always stays fully visible */
+    }
+    .property-switcher { min-width: 0; }
+    .property-switcher-btn { min-width: 0; }   /* allows text-overflow:ellipsis to actually kick in */
+
+    .topbar-row-2 {
+      width: 100%;
+      display: flex; flex-direction: column; gap: 0;
+      overflow: hidden;  /* gives the typer a stable, clipped width to animate inside */
+      min-width: 0;
+    }
+    .topbar-title {
+      display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .topbar-typer { width: 100%; }
   .landlord-chip { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; letter-spacing: 0.1em; background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(110,231,183,0.2); padding: 0.3rem 0.7rem; border-radius: 99px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   /* ── QUICK-ACCESS BAR — always visible, regardless of section ── */
@@ -678,18 +702,7 @@
 
   /* Title/typer block gets its own line so the typing animation
      never shifts the menu button, property switcher, or bell icon */
-  .topbar-main-row > .flex:first-child {
-    width: 100%;
-    justify-content: space-between;
-  }
-  .topbar-title-block {
-    order: 3;
-    flex-basis: 100%;
-    margin-top: 0.35rem;
-  }
-  .topbar-right {
-    order: 2;
-  }
+  
 }
   .mobile-menu-btn { display: none; }
 
@@ -846,41 +859,42 @@
   <div class="topbar">
     <!-- Main row: menu button, property switcher, title, right controls -->
     <div class="topbar-main-row">
-      <div class="flex">
-        <button class="mobile-menu-btn" onclick="openSidebar()" id="mobileMenuBtn"></button>
 
-        <!-- Property switcher — the ONE control for the active property.
-             Always shows a working dropdown with real content (current
-             property, marked active, plus "+ Add Property") no matter how
-             many properties exist, so tapping it is never a dead end. -->
-        <div class="property-switcher" id="propertySwitcher">
-          <button class="property-switcher-btn" id="propertySwitcherBtn" onclick="togglePropertyMenu()">
-            <span class="prop-icon" id="propSwitcherIcon"></span>
-            <span class="prop-name" id="activePropertyName">Property</span>
-            <span class="prop-loc" id="activePropertyLoc"></span>
-            <span id="switcherArrow" style="display:flex"></span>
-          </button>
-          <div class="property-menu" id="propertyMenu" style="display:none"></div>
-        </div>
+  <!-- Row 1: menu button + property switcher ............ bell -->
+  <div class="topbar-row-1">
+    <div class="topbar-row-1-left">
+      <button class="mobile-menu-btn" onclick="openSidebar()" id="mobileMenuBtn"></button>
 
-       <div class="topbar-title-block" style="display:flex;flex-direction:column;justify-content:center;gap:0">
-         <span class="topbar-title" id="topbarTitle">Dashboard</span>
-          <span class="topbar-typer" id="topbarGreeting"></span>
-        </div>
-      </div>
-      <div class="topbar-right">
-        <span id="maintenanceChip" style="display:none" class="pill pill-yellow"></span>
-        <!-- Bell notification icon -->
-        <div class="notif-bell" id="notifBell">
-          <button class="notif-bell-btn" onclick="toggleNotifDropdown()" title="Notifications">
-            <span id="notifBellIcon"></span>
-            <span class="notif-badge" id="notifBadge" style="display:none">0</span>
-          </button>
-          <div class="notif-dropdown" id="notifDropdown" style="display:none"></div>
-        </div>
-        
+      <div class="property-switcher" id="propertySwitcher">
+        <button class="property-switcher-btn" id="propertySwitcherBtn" onclick="togglePropertyMenu()">
+          <span class="prop-icon" id="propSwitcherIcon"></span>
+          <span class="prop-name" id="activePropertyName">Property</span>
+          <span class="prop-loc" id="activePropertyLoc"></span>
+          <span id="switcherArrow" style="display:flex"></span>
+        </button>
+        <div class="property-menu" id="propertyMenu" style="display:none"></div>
       </div>
     </div>
+
+    <div class="topbar-right">
+      <span id="maintenanceChip" style="display:none" class="pill pill-yellow"></span>
+      <div class="notif-bell" id="notifBell">
+        <button class="notif-bell-btn" onclick="toggleNotifDropdown()" title="Notifications">
+          <span id="notifBellIcon"></span>
+          <span class="notif-badge" id="notifBadge" style="display:none">0</span>
+        </button>
+        <div class="notif-dropdown" id="notifDropdown" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 2: section title + typewriter -->
+  <div class="topbar-row-2">
+    <span class="topbar-title" id="topbarTitle">Dashboard</span>
+    <span class="topbar-typer" id="topbarGreeting"></span>
+  </div>
+
+</div>
 
     <!-- ── QUICK-ACCESS BAR — always visible no matter which section is open.
          Shows the items landlords need instantly: Dashboard, Record Payment,

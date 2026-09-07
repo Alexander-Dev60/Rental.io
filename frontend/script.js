@@ -920,7 +920,7 @@ function _pollCommission(propertyId, month) {
 let _dangerCallback = null;
 
 function openDangerModal({ icon = '⚠️', title, message, label = 'Confirm', type = 'danger', onConfirm }) {
-    document.getElementById('dangerIcon').textContent  = icon;
+    document.getElementById('dangerIcon').innerHTML  = icon;
     document.getElementById('dangerTitle').textContent = title;
     document.getElementById('dangerMessage').innerHTML = message;
 
