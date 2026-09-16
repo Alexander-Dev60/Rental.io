@@ -53,6 +53,7 @@ function logout() {
     }
 
     localStorage.clear();
+    
 
     Object.entries(preservedTourFlags).forEach(([key, value]) => {
         localStorage.setItem(key, value);
