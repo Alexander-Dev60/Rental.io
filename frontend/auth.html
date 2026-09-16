@@ -883,8 +883,9 @@
       } catch { return null; }
     }
 
-    function dashboardFor(role) {
-      return role === 'landlord' ? 'dashboard.html' : 'tenant.html';
+      function dashboardFor(role) {
+      if (role === 'landlord' || role === 'caretaker') return 'dashboard.html';
+      return 'tenant.html';
     }
 
     function storeActiveProperty(properties) {
@@ -953,6 +954,14 @@
         if (user.role === 'landlord') {
           localStorage.setItem('onboardingComplete', data.onboardingComplete ? 'true' : 'false');
           localStorage.setItem('paymentConfigured',  data.paymentConfigured  ? 'true' : 'false');
+          if (Array.isArray(data.properties) && data.properties.length) {
+            storeActiveProperty(data.properties);
+          }
+        }
+
+        if (user.role === 'caretaker') {
+          localStorage.setItem('caretakerLandlordName', data.landlord?.name || '');
+          localStorage.setItem('caretakerPermissions',  JSON.stringify(data.permissions || {}));
           if (Array.isArray(data.properties) && data.properties.length) {
             storeActiveProperty(data.properties);
           }

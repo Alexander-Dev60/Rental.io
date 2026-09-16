@@ -18,8 +18,11 @@ function getUserFromToken(token) {
 }
 
 // ── Redirect destination by role ──
+// Caretakers reuse the landlord dashboard shell (with reduced nav via
+// data-caretaker CSS hiding) rather than a separate page.
 function dashboardFor(role) {
-    return role === 'landlord' ? 'dashboard.html' : 'tenant.html';
+    if (role === 'landlord' || role === 'caretaker') return 'dashboard.html';
+    return 'tenant.html';
 }
 
 // ── Auto-redirect if already logged in ──
@@ -117,6 +120,17 @@ async function submitLogin() {
         if (user.role === 'landlord') {
             localStorage.setItem('onboardingComplete', data.onboardingComplete ? 'true' : 'false');
             localStorage.setItem('paymentConfigured',  data.paymentConfigured  ? 'true' : 'false');
+            if (Array.isArray(data.properties) && data.properties.length) {
+                storeActiveProperty(data.properties);
+            }
+        }
+
+        // ── Caretaker: stash their assigned properties, employer name, and
+        // permission flags so dashboard.js can restrict the UI without a
+        // second round-trip on page load. ──
+        if (user.role === 'caretaker') {
+            localStorage.setItem('caretakerLandlordName', data.landlord?.name || '');
+            localStorage.setItem('caretakerPermissions',  JSON.stringify(data.permissions || {}));
             if (Array.isArray(data.properties) && data.properties.length) {
                 storeActiveProperty(data.properties);
             }

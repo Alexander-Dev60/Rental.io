@@ -23,7 +23,8 @@ const SECTION_TITLES = {
     rules:         'House Rules',
     activity:      'Activity Log',
     inquiries:     'Rental Inquiries',
-    maintenance: 'Repair Requests',
+    maintenance:   'Repair Requests',
+    caretakers:    'Caretakers',
 };
 
 function showSection(name) {
@@ -46,8 +47,9 @@ function showSection(name) {
     document.body.style.overflow = '';
 
     // Lazy-load section data
+    if (name === 'dashboard')     { loadDashboard(); loadRecentActivity(); }
     if (name === 'assign')        { loadTenants(); loadHouses(); }
-    if (name === 'tenants')       { loadTenants(); loadMovedOutTenants(); }
+    if (name === 'tenants')       { loadTenants(); loadMovedOutTenants(); loadHouses(); }
     if (name === 'arrears')       { loadArrears(); }
     if (name === 'messages')      { initMessagingSection(); }
     if (name === 'announcements') { loadAnnouncements(); }
@@ -58,6 +60,7 @@ function showSection(name) {
     if (name === 'activity')      { loadActivity(); }
     if (name === 'expenses')      { loadExpenses(); }
     if (name === 'maintenance')   { loadMaintenanceRequests(); }
+    if (name === 'caretakers')    { loadCaretakers(); }
 }
 
 function toggleSidebar() {
@@ -160,12 +163,53 @@ function renderPropertySwitcher(properties) {
                 : '<span style="font-size:0.6rem;color:var(--text-dim);flex-shrink:0">No M-Pesa</span>'}
             ${p._id === activeId ? `<span style="color:var(--accent);margin-left:0.5rem;flex-shrink:0;display:flex">${ICON('check',12)}</span>` : ''}
         </div>`
-    ).join('') + `
+    ).join('') + (IS_CARETAKER ? '' : `
         <div class="property-menu-item" style="border-top:1px solid var(--border);margin-top:3px;padding-top:0.6rem"
              onclick="closePropertyMenu(); openModal('modal-add-property')">
             <span style="color:var(--accent);display:flex">${ICON('plus',14)}</span>
             <div class="property-menu-name" style="color:var(--accent)">Add Property</div>
-        </div>`;
+        </div>`);
+}
+
+function setMpesaAcctType(type) {
+    document.getElementById('setupAcctType').value = type;
+    document.getElementById('acctTypePaybillBtn').className =
+        `btn btn-sm ${type === 'paybill' ? 'btn-primary' : 'btn-secondary'}`;
+    document.getElementById('acctTypeTillBtn').className =
+        `btn btn-sm ${type === 'till' ? 'btn-primary' : 'btn-secondary'}`;
+
+    const label = document.getElementById('setupPaybillLabel');
+    const hint  = document.getElementById('setupPaybillHint');
+    const input = document.getElementById('setupPaybill');
+    if (type === 'till') {
+        label.textContent = 'Till Number';
+        input.placeholder = 'e.g. 5123456';
+        hint.textContent  = 'Your Safaricom Till Number (Buy Goods).';
+    } else {
+        label.textContent = 'Paybill Number';
+        input.placeholder = 'e.g. 174379';
+        hint.textContent  = 'Your Safaricom Business Shortcode / Paybill number.';
+    }
+
+    // A type has now been chosen — unlock the credential fields
+    ['setupPaybill', 'setupConsumerKey', 'setupConsumerSecret', 'setupPasskey'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = false;
+    });
+}
+
+function resetMpesaAcctTypeSelection() {
+    document.getElementById('setupAcctType').value = '';
+    document.getElementById('acctTypePaybillBtn').className = 'btn btn-secondary btn-sm';
+    document.getElementById('acctTypeTillBtn').className    = 'btn btn-secondary btn-sm';
+    document.getElementById('setupPaybillLabel').textContent = 'Paybill Number';
+    document.getElementById('setupPaybill').placeholder      = 'e.g. 174379';
+    document.getElementById('setupPaybillHint').textContent  = 'Your Safaricom Business Shortcode / Paybill number.';
+
+    ['setupPaybill', 'setupConsumerKey', 'setupConsumerSecret', 'setupPasskey'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.disabled = true; el.value = ''; }
+    });
 }
 
 function updatePaymentSetupPropertySelect(properties) {
@@ -369,14 +413,14 @@ function handleTenantClick(event, tenant) {
     menu.className = 'ctx-menu';
     menu.dataset.tenantId = tenant._id;
 
-        menu.innerHTML = `
-        <div class="ctx-item" onclick="_ctxViewProfile('${tenant._id}')">${ICON('eye',14)} View Profile</div>
+    const canDelete = !isCaretaker();
+     menu.innerHTML = `
         <div class="ctx-item" onclick="_ctxPayRent('${tenant._id}')">${ICON('payments',14)} Pay Rent</div>
         <div class="ctx-divider"></div>
         <div class="ctx-item" onclick="_ctxResetPassword('${tenant._id}')">${ICON('key',14)} Reset Password</div>
+        ${canDelete ? `
         <div class="ctx-divider"></div>
-        <div class="ctx-item danger" onclick="_ctxDelete('${tenant._id}')">${ICON('trash',14)} Delete Permanently</div>`;
-    if (row) {
+        <div class="ctx-item danger" onclick="_ctxDelete('${tenant._id}')">${ICON('trash',14)} Delete Permanently</div>` : ''}`;    if (row) {
         row.style.position = 'relative';
         row.appendChild(menu);
     }
@@ -404,12 +448,12 @@ function handleMovedOutTenantClick(event, tenant) {
     menu.className = 'ctx-menu';
     menu.dataset.tenantId = tenant._id;
 
+    const canDelete = !isCaretaker();
         menu.innerHTML = `
-        <div class="ctx-item" onclick="_ctxViewProfile('${tenant._id}')">${ICON('eye',14)} View Profile &amp; History</div>
-        <div class="ctx-divider"></div>
         <div class="ctx-item" style="color:var(--accent)" onclick="_ctxReactivate('${tenant._id}')">${ICON('loop',14)} Reactivate Tenant</div>
+        ${canDelete ? `
         <div class="ctx-divider"></div>
-        <div class="ctx-item danger" onclick="_ctxDelete('${tenant._id}')">${ICON('trash',14)} Delete Permanently</div>`;
+        <div class="ctx-item danger" onclick="_ctxDelete('${tenant._id}')">${ICON('trash',14)} Delete Permanently</div>` : ''}`;
     if (row) {
         row.style.position = 'relative';
         row.appendChild(menu);
@@ -425,13 +469,11 @@ function handleMovedOutTenantClick(event, tenant) {
     }, 0);
 }
 
-function _ctxViewProfile(id) {
-    document.querySelectorAll('.ctx-menu').forEach(m => m.remove());
-    loadTenantProfile(id);
-}
+
 
 function _ctxPayRent(id) {
     document.querySelectorAll('.ctx-menu').forEach(m => m.remove());
+    if (!_checkCaretakerPermission('canRecordPayments', 'record payments')) return;
     const tenant = _allTenants.find(t => t._id === id);
     if (tenant) openPayModal(tenant);
 }
@@ -444,6 +486,10 @@ function _ctxResetPassword(id) {
 
 function _ctxDelete(id) {
     document.querySelectorAll('.ctx-menu').forEach(m => m.remove());
+    if (isCaretaker()) {
+        showToast('Caretakers cannot permanently delete tenants', 'warn');
+        return;
+    }
     const tenant = _allTenants.find(t => t._id === id)
                 || _movedOutTenants.find(t => t._id === id);
     if (tenant) openDeleteModal(tenant);
@@ -504,24 +550,22 @@ function openReactivateModal(tenant) {
     const availableHouses = (typeof _allHouses !== 'undefined' ? _allHouses : [])
         .filter(h => h.status === 'available');
 
-    if (availableHouses.length) {
-        sel.innerHTML = `<option value="">— Select a house —</option>` +
+    // ── houseSelect no longer exists — the Assign section is now
+    //    house-card based (see sec-assign), so there's no dropdown to
+    //    fall back to. If nothing's available, just say so plainly. ──
+    sel.innerHTML = availableHouses.length
+        ? `<option value="">— Select a house —</option>` +
             availableHouses.map(h =>
                 `<option value="${h._id}">${h.name} — Ksh ${Number(h.rent).toLocaleString()} / mo</option>`
-            ).join('');
-    } else {
-        const sourceSelect = document.getElementById('houseSelect');
-        if (sourceSelect && sourceSelect.options.length > 1) {
-            sel.innerHTML = sourceSelect.innerHTML;
-        } else {
-            sel.innerHTML = `<option value="">No available houses — add one first</option>`;
-        }
-    }
+            ).join('')
+        : `<option value="">No available houses — add one first</option>`;
 
     modal.classList.add('open');
 }
 
 async function submitReactivate() {
+    if (!_checkCaretakerPermission('canManageTenants', 'reactivate tenants')) return;
+
     const tenantId = document.getElementById('reactivateTenantId').value;
     const houseId  = document.getElementById('reactivateHouseSelect').value;
 
@@ -688,6 +732,8 @@ function renderProfile(data) {
 }
 
 function quickPay(tenantId) {
+    if (!_checkCaretakerPermission('canRecordPayments', 'record payments')) return;
+
     const tenant = _allTenants.find(t => t._id === tenantId);
     if (tenant) openPayModal(tenant);
     else showToast('Tenant not found — click Refresh', 'warn');
@@ -723,16 +769,17 @@ function renderExpensesTable(expenses) {
 // HOUSE GRID
 // ═══════════════════════════════════════
 
-function renderHouseGrid(houses) {
-    const grid = document.getElementById('houseGrid');
- 
-    _renderHouseGroupLegend(houses);
- 
+function renderHouseGrid(houses, gridElId = 'houseGrid', legendElId = 'houseGroupLegend') {
+    const grid = document.getElementById(gridElId);
+    if (!grid) return;
+
+    _renderHouseGroupLegend(houses, legendElId);
+
     if (!houses.length) {
-        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><span class="icon">🏡</span>No houses added yet</div>';
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><span class="icon">${ICON('houses',26)}</span>No houses added yet</div>`;
         return;
     }
- 
+
     grid.innerHTML = houses.map(h => {
         const groupPill = h.group
             ? `<span style="display:inline-block;font-family:'JetBrains Mono',monospace;font-size:0.55rem;font-weight:700;
@@ -742,7 +789,7 @@ function renderHouseGrid(houses) {
                  ${h.group.label || h.group.prefix || 'Group'}
                </span>`
             : '';
- 
+
         return `
         <div class="house-card ${h.status}"
              onclick="houseOptions(event, ${JSON.stringify(h).replace(/"/g, '&quot;')})">
@@ -756,20 +803,20 @@ function renderHouseGrid(houses) {
         </div>`;
     }).join('');
 }
- 
-function _renderHouseGroupLegend(houses) {
-    const legendEl = document.getElementById('houseGroupLegend');
+
+function _renderHouseGroupLegend(houses, legendElId = 'houseGroupLegend') {
+    const legendEl = document.getElementById(legendElId);
     if (!legendEl) return;
- 
-    const seen   = new Map();
+
+    const seen = new Map();
     houses.forEach(h => {
         if (h.group && !seen.has(h.group._id || h.group)) {
             seen.set(h.group._id || h.group, h.group);
         }
     });
- 
+
     if (!seen.size) { legendEl.innerHTML = ''; return; }
- 
+
     legendEl.innerHTML = [...seen.values()].map(g => `
         <span style="display:inline-flex;align-items:center;gap:0.35rem;font-family:'JetBrains Mono',monospace;font-size:0.62rem;color:var(--text-dim)">
             <span style="width:8px;height:8px;border-radius:50%;background:${_groupColor(g.colorIndex)};display:inline-block"></span>
@@ -782,62 +829,39 @@ function _renderHouseGroupLegend(houses) {
 //    or grid layout. Also dismisses on any scroll event. ──
 function houseOptions(event, house) {
     event.stopPropagation();
-
-    // Remove any existing house context menus
     document.querySelectorAll('.house-ctx-menu').forEach(m => m.remove());
 
     const card = event.currentTarget;
-    const rect  = card.getBoundingClientRect();
-
+    const rect = card.getBoundingClientRect();
     const menu = document.createElement('div');
     menu.className = 'ctx-menu house-ctx-menu';
 
+    const headerHtml = `<div class="ctx-item" style="font-size:0.7rem;color:var(--text-dim);font-family:'JetBrains Mono',monospace;cursor:default">${house.name}</div><div class="ctx-divider"></div>`;
+
     if (house.status === 'available') {
-        menu.innerHTML = `
-            <div class="ctx-item" style="font-size:0.7rem;color:var(--text-dim);font-family:'JetBrains Mono',monospace;cursor:default">${house.name}</div>
-            <div class="ctx-divider"></div>
-            <div class="ctx-item" onclick="openAssignModal('${house._id}', '${house.name.replace(/'/g, "\\'")}')">${ICON('key',14)} Assign Tenant</div>
-            <div class="ctx-item danger" onclick="deleteHouse('${house._id}')">${ICON('trash',14)} Delete House</div>`;
+        menu.innerHTML = headerHtml +
+            `<div class="ctx-item" onclick="openAssignModal('${house._id}', '${house.name.replace(/'/g, "\\'")}')">${ICON('key',14)} Assign Tenant</div>` +
+            (IS_CARETAKER ? '' : `<div class="ctx-item danger" onclick="deleteHouse('${house._id}')">${ICON('trash',14)} Delete House</div>`);
     } else {
         const tenantLabel = house.tenantName ? `Move Out ${house.tenantName}` : 'Move Out Tenant';
-        menu.innerHTML = `
-            <div class="ctx-item" style="font-size:0.7rem;color:var(--text-dim);font-family:'JetBrains Mono',monospace;cursor:default">${house.name}</div>
-            <div class="ctx-divider"></div>
-            <div class="ctx-item" style="color:var(--warn)"
-                 onclick="confirmMoveOutByHouse('${house._id}', '${house.name.replace(/'/g, "\\'")}', '${(house.tenantId || '').replace(/'/g, "\\'")}', '${(house.tenantName || 'Tenant').replace(/'/g, "\\'")}')">
-                ${ICON('door',14)} ${tenantLabel}
-            </div>
-            <div class="ctx-item danger" onclick="deleteHouse('${house._id}')">${ICON('trash',14)} Delete House</div>`;
+        // ── Caretakers can now move tenants out from here too — only
+        //    Delete House stays landlord-only. Permission is enforced
+        //    inside confirmMoveOutByHouse() before the action runs. ──
+        menu.innerHTML = headerHtml +
+            `<div class="ctx-item" style="color:var(--warn)" onclick="confirmMoveOutByHouse('${house._id}', '${house.name.replace(/'/g, "\\'")}', '${(house.tenantId || '').replace(/'/g, "\\'")}', '${(house.tenantName || 'Tenant').replace(/'/g, "\\'")}')">${ICON('door',14)} ${tenantLabel}</div>` +
+            (IS_CARETAKER ? '' : `<div class="ctx-item danger" onclick="deleteHouse('${house._id}')">${ICON('trash',14)} Delete House</div>`);
     }
 
-    // ── Compute fixed position below card, with overflow guards ──
-    const menuW = 210;
-    const menuH = 140; // approximate
-
-    let top  = rect.bottom + 4;
-    let left = rect.left;
-
-    // Prevent overflow off right edge
+    const menuW = 210, menuH = 140;
+    let top = rect.bottom + 4, left = rect.left;
     if (left + menuW > window.innerWidth - 8) left = window.innerWidth - menuW - 8;
     if (left < 8) left = 8;
-
-    // Flip above card if menu would go off bottom edge
     if (top + menuH > window.innerHeight - 8) top = rect.top - menuH - 4;
     if (top < 8) top = 8;
 
-    menu.style.cssText = `
-        position: fixed;
-        top: ${top}px;
-        left: ${left}px;
-        z-index: 9999;
-        width: max-content;
-        min-width: 180px;
-        max-width: 260px;
-    `;
-
+    menu.style.cssText = `position: fixed; top: ${top}px; left: ${left}px; z-index: 9999; width: max-content; min-width: 180px; max-width: 260px;`;
     document.body.appendChild(menu);
 
-    // Dismiss on click outside or any scroll
     function dismiss(e) {
         if (!menu.contains(e.target)) {
             menu.remove();
@@ -850,7 +874,6 @@ function houseOptions(event, house) {
         document.removeEventListener('click', dismiss);
         window.removeEventListener('scroll', onScroll, true);
     }
-
     setTimeout(() => {
         document.addEventListener('click', dismiss);
         window.addEventListener('scroll', onScroll, true);
@@ -858,9 +881,11 @@ function houseOptions(event, house) {
 }
 
 function openAssignModal(houseId, houseName) {
+    if (!_checkCaretakerPermission('canManageTenants', 'assign houses')) return;
     document.querySelectorAll('.house-ctx-menu').forEach(m => m.remove());
 
     let modal = document.getElementById('modal-assign-house');
+    
     if (!modal) {
         modal = document.createElement('div');
         modal.id        = 'modal-assign-house';
@@ -927,11 +952,13 @@ async function submitAssignFromModal() {
 
 function confirmMoveOutByHouse(houseId, houseName, tenantId, tenantName) {
     document.querySelectorAll('.house-ctx-menu').forEach(m => m.remove());
+    if (!_checkCaretakerPermission('canManageTenants', 'move out tenants')) return;
 
     if (!tenantId) {
         showToast('Could not identify the tenant. Use Move Out from the Houses section.', 'warn');
         return;
     }
+  
 
        openDangerModal({
         icon:    ICON('door', 44),
@@ -959,7 +986,7 @@ function confirmMoveOutByHouse(houseId, houseName, tenantId, tenantName) {
 // ═══════════════════════════════════════
 
 function populateTenantSelects(tenants) {
-    const ids = ['tenantSelect', 'payTenantSelect', 'moveOutSelect'];
+    const ids = ['payTenantSelect', 'moveOutSelect'];
     ids.forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
@@ -967,36 +994,10 @@ function populateTenantSelects(tenants) {
             tenants.map(t => `<option value="${t._id}">${t.name}</option>`).join('');
     });
 
-    // ── Restore saved assign-section tenant selection across page refreshes ──
-    const savedTenantId = localStorage.getItem('assignTenantId');
-    if (savedTenantId) {
-        const el = document.getElementById('tenantSelect');
-        if (el && el.querySelector(`option[value="${savedTenantId}"]`)) {
-            el.value = savedTenantId;
-        }
-    }
-
-    // Refresh the messaging tenant panel whenever tenants reload
     renderMsgTenantList(tenants);
 }
 
-function populateHouseSelects(houses) {
-    const el = document.getElementById('houseSelect');
-    if (!el) return;
-    el.innerHTML = `<option value="">— Select house —</option>` +
-        houses
-            .filter(h => h.status === 'available')
-            .map(h => `<option value="${h._id}">${h.name} (Ksh ${Number(h.rent).toLocaleString()})</option>`)
-            .join('');
 
-    // ── Restore saved assign-section house selection across page refreshes ──
-    const savedHouseId = localStorage.getItem('assignHouseId');
-    if (savedHouseId) {
-        if (el.querySelector(`option[value="${savedHouseId}"]`)) {
-            el.value = savedHouseId;
-        }
-    }
-}
 
 
 // ═══════════════════════════════════════
@@ -1068,6 +1069,19 @@ function renderActivityLog(logs) {
         return;
     }
 
+    const actorLabel = {
+        caretaker: IS_CARETAKER ? 'You' : 'Caretaker',
+        system:    'System',
+        stacklord: 'Admin',
+        landlord:  IS_CARETAKER ? 'Landlord' : 'You'
+    };
+    const actorColor = {
+        caretaker: '#60a5fa',
+        system:    'var(--text-dim)',
+        stacklord: 'var(--warn)',
+        landlord:  'var(--text-dim)'
+    };
+
     feed.innerHTML = logs.map(l => `
         <div class="activity-item">
             <span class="activity-icon">${ACTIVITY_ICONS[l.action] || '•'}</span>
@@ -1075,6 +1089,7 @@ function renderActivityLog(logs) {
                 <div class="activity-desc">${l.message}</div>
                 <div class="activity-meta">
                     <span class="pill" style="background:var(--bg3);color:var(--text-dim);border:1px solid var(--border);font-size:0.55rem">${l.action}</span>
+                    <span class="pill" style="font-size:0.55rem;background:${actorColor[l.actor] || 'var(--bg3)'}22;color:${actorColor[l.actor] || 'var(--text-dim)'};border:1px solid var(--border)">${actorLabel[l.actor] || l.actor}</span>
                 </div>
             </div>
             <div class="activity-time">${_activityTimeAgo(l.createdAt)}</div>
@@ -1129,6 +1144,8 @@ function renderMaintenanceTable(requests) {
         high:   '<span class="pill pill-red">High</span>'
     };
 
+    const canManage = !isCaretaker() || (getCaretakerPermissions() || {}).canManageMaintenance;
+
     tbody.innerHTML = requests.map(r => `
         <tr>
             <td><strong style="color:var(--text)">${r.tenant?.name || '—'}</strong></td>
@@ -1138,7 +1155,9 @@ function renderMaintenanceTable(requests) {
             <td style="font-size:0.75rem;color:var(--text-dim);max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r.description.replace(/"/g,'&quot;')}">${r.description}</td>
             <td>${statusPill[r.status] || r.status}</td>
             <td class="td-mono" style="font-size:0.65rem;color:var(--text-dim)">${_timeAgo(r.createdAt)}</td>
-            <td><button class="btn btn-secondary btn-sm" onclick="openMaintenanceUpdateModal('${r._id}', '${(r.tenant?.name || 'Tenant').replace(/'/g,"\\'")}', '${r.status}', ${r.cost ?? 'null'}, '${(r.resolutionNote || '').replace(/'/g,"\\'")}')">Update</button></td>
+            <td>${canManage
+                ? `<button class="btn btn-secondary btn-sm" onclick="openMaintenanceUpdateModal('${r._id}', '${(r.tenant?.name || 'Tenant').replace(/'/g,"\\'")}', '${r.status}', ${r.cost ?? 'null'}, '${(r.resolutionNote || '').replace(/'/g,"\\'")}')">Update</button>`
+                : `<button class="btn btn-secondary btn-sm" disabled title="You do not have permission to update repair requests" style="opacity:0.5;cursor:not-allowed">${ICON('lock',14)}</button>`}</td>
         </tr>`).join('');
 }
 
@@ -1223,6 +1242,50 @@ function renderRules(rules) {
             </div>
             <button class="btn btn-danger btn-sm" onclick="deleteRule('${r._id}')" style="flex-shrink:0">${ICON('trash',14)}</button>
         </div>`).join('');
+}
+
+// ═══════════════════════════════════════
+// CARETAKERS — rendering
+// ═══════════════════════════════════════
+
+function renderCaretakersList(caretakers) {
+    const el = document.getElementById('caretakersList');
+    if (!el) return;
+
+    if (!caretakers.length) {
+        el.innerHTML = `<div class="empty-state"><span class="icon">${ICON('hardhat',26)}</span>No caretakers yet</div>`;
+        return;
+    }
+
+    el.innerHTML = caretakers.map(c => {
+        const propNames = (c.properties || []).map(p => p.name || 'Property').join(', ') || 'None assigned';
+        const perms      = c.caretakerPermissions || {};
+              const permLabels = [
+            perms.canManageTenants     ? 'Tenants'       : null,
+            perms.canRecordPayments    ? 'Payments'      : null,
+            perms.canManageMaintenance ? 'Maintenance'   : null,
+            perms.canMessageTenants    ? 'Messages'      : null,
+            perms.canPostAnnouncements ? 'Announcements' : null
+        ].filter(Boolean);
+
+        return `
+            <div style="padding:0.85rem 0;border-bottom:1px solid var(--border)">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;margin-bottom:0.35rem">
+                    <div style="font-size:0.85rem;font-weight:600;color:var(--text)">${c.name}</div>
+                    <div style="display:flex;gap:0.4rem;flex-shrink:0">
+                        <button class="btn btn-secondary btn-sm" onclick="openEditCaretakerModal('${c._id}')">${ICON('edit',14)}</button>
+                        <button class="btn btn-danger btn-sm" onclick="revokeCaretaker('${c._id}', '${c.name.replace(/'/g, "\\'")}')">${ICON('trash',14)}</button>
+                    </div>
+                </div>
+                <div style="font-size:0.68rem;color:var(--text-dim);font-family:'JetBrains Mono',monospace;margin-bottom:0.4rem">${c.email} &middot; ${c.phone || '&mdash;'}</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:0.4rem">${ICON('properties',12)} ${propNames}</div>
+                <div style="display:flex;gap:0.35rem;flex-wrap:wrap">
+                    ${permLabels.length
+                        ? permLabels.map(l => `<span class="pill pill-green">${l}</span>`).join('')
+                        : '<span class="pill" style="background:var(--bg3);color:var(--text-dim);border:1px solid var(--border)">No permissions granted</span>'}
+                </div>
+            </div>`;
+    }).join('');
 }
 
 // ═══════════════════════════════════════
@@ -1646,13 +1709,13 @@ async function openChatThread(tenantId, tenantName) {
     if (avatar) avatar.textContent = tenantName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
     if (name)   name.textContent   = tenantName;
     if (status) status.textContent = 'Loading messages…';
-
     document.getElementById('msgNoSelection').style.display  = 'none';
     document.getElementById('msgChatBody').style.display     = 'flex';
-    document.getElementById('msgChatFooter').style.display   = 'flex';
+
+    const canMessage = !isCaretaker() || (getCaretakerPermissions() || {}).canMessageTenants;
+    document.getElementById('msgChatFooter').style.display   = canMessage ? 'flex' : 'none';
 
     await loadAdminChat(tenantId);
-
     if (status) status.textContent = 'Active tenant';
 }
 
@@ -1723,6 +1786,8 @@ function openChatWithTenant(tenantId, tenantName) {
 // ═══════════════════════════════════════
 
 function makePayment() {
+    if (!_checkCaretakerPermission('canRecordPayments', 'record payments')) return;
+
     const tenantId   = document.getElementById('payTenantSelect').value;
     const amount     = document.getElementById('amount').value;
     const month      = document.getElementById('month').value.trim();
@@ -1741,6 +1806,8 @@ function makePayment() {
 }
 
 function openPayConfirmModal() {
+    if (!_checkCaretakerPermission('canRecordPayments', 'record payments')) return;
+
     const tenantId = document.getElementById('payModalTenantId').value;
     const amount   = document.getElementById('payModalAmount').value;
     const month    = document.getElementById('payModalMonth').value.trim();

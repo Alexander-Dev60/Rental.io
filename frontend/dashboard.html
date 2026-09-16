@@ -43,7 +43,9 @@
     var base64 = token.split('.')[1];
     if (!base64) throw new Error('Malformed token');
     base64 = base64.replace(/-/g, '+').replace(/_/g, '/');
+
     var payload = JSON.parse(atob(base64));
+    document.documentElement.setAttribute('data-caretaker', payload.role === 'caretaker' ? 'true' : 'false');
 
     if (payload.exp && Date.now() >= payload.exp * 1000) {
       localStorage.removeItem('token');
@@ -51,11 +53,12 @@
       window.location.replace('auth.html');
       return;
     }
-    if (payload.role && payload.role !== 'landlord') {
+   if (payload.role && payload.role !== 'landlord' && payload.role !== 'caretaker') {
       window.__AUTH_INVALID__ = true;
       window.location.replace(payload.role === 'tenant' ? 'tenant.html' : 'auth.html');
       return;
     }
+    
     if (payload.mustChangePassword) {
       window.__AUTH_INVALID__ = true;
       window.location.replace('change-password.html');
@@ -189,6 +192,9 @@
   .sidebar-header { padding: 1.25rem 1.25rem 0.85rem; border-bottom: 1px solid var(--border); flex-shrink: 0; }
   .sidebar-logo { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.3rem; color: var(--accent); display: flex; align-items: center; gap: 0.5rem; }
   .sidebar-role { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); margin-top: 0.25rem; }
+
+  [data-caretaker="true"] .caretaker-hidden { display: none !important; }
+
   .sidebar-nav { flex: 1; overflow-y: auto; padding: 0.75rem 0; min-height: 0; }
   .nav-section { padding: 0.5rem 1.25rem 0.25rem; font-size: 0.58rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); margin-top: 0.5rem; }
   .nav-item { display: flex; align-items: center; gap: 0.65rem; padding: 0.6rem 1.25rem; cursor: pointer; color: var(--text-muted); font-size: 0.82rem; font-weight: 500; transition: all 0.15s; border-left: 2px solid transparent; user-select: none; }
@@ -666,6 +672,34 @@
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 
+
+  /* ═══ SPOTLIGHT TOUR ═══ */
+.tour-catcher { position: fixed; inset: 0; z-index: 10000; background: transparent; }
+.tour-spotlight {
+  position: fixed; z-index: 10001; border-radius: 10px;
+  box-shadow: 0 0 0 9999px rgba(6,8,14,0.78);
+  border: 2px solid var(--accent);
+  transition: top 0.35s cubic-bezier(0.4,0,0.2,1), left 0.35s cubic-bezier(0.4,0,0.2,1),
+              width 0.35s cubic-bezier(0.4,0,0.2,1), height 0.35s cubic-bezier(0.4,0,0.2,1);
+  pointer-events: none;
+}
+.tour-card {
+  position: fixed; z-index: 10002; max-width: 300px;
+  background: var(--panel2); border: 1px solid var(--border2); border-radius: 12px;
+  padding: 1.1rem 1.25rem; box-shadow: 0 20px 60px rgba(0,0,0,0.55);
+  animation: tourPop 0.25s cubic-bezier(0.34,1.4,0.64,1) both;
+  transition: top 0.35s cubic-bezier(0.4,0,0.2,1), left 0.35s cubic-bezier(0.4,0,0.2,1);
+}
+@keyframes tourPop { from { opacity:0; transform: scale(0.92) translateY(6px); } to { opacity:1; transform: scale(1) translateY(0); } }
+.tour-step-count { font-family:'JetBrains Mono',monospace; font-size:0.6rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-dim); margin-bottom:0.5rem; }
+.tour-title { font-family:'Instrument Serif',serif; font-style:italic; font-size:1.15rem; color:var(--text); margin-bottom:0.4rem; }
+.tour-desc { font-size:0.8rem; color:var(--text-muted); line-height:1.55; margin-bottom:1rem; }
+.tour-actions { display:flex; align-items:center; justify-content:space-between; gap:0.5rem; }
+.tour-skip { background:transparent; border:none; color:var(--text-dim); font-size:0.72rem; cursor:pointer; font-family:'Space Grotesk',sans-serif; padding:0.3rem 0; }
+.tour-skip:hover { color:var(--danger); }
+.tour-nav-btns { display:flex; gap:0.5rem; }
+@media (max-width:480px) { .tour-card { max-width: calc(100vw - 2rem); } }
+
   @media (max-width: 480px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
     @media (max-width: 1180px) and (min-width: 769px) {
     :root { --sidebar-w: var(--sidebar-w-tablet); }
@@ -717,7 +751,7 @@
 <!-- ═══ BANNER WRAPPER ═══ -->
 <div class="banner-wrapper" id="bannerWrapper">
   <div class="sub-banner" id="subBanner"></div>
-  <div class="pay-config-banner hidden" id="payConfigBanner">
+  <div class="pay-config-banner hidden caretaker-hidden" id="payConfigBanner">
     <span class="pay-config-banner-text" id="payConfigBannerText"></span>
     <button class="btn-banner" onclick="openModal('modal-pay-setup')">Setup Now</button>
   </div>
@@ -766,58 +800,63 @@
       </svg>
       Affordable Rentals
     </div>
-    <div class="sidebar-role">Landlord Console</div>
+
+    <div class="sidebar-role" id="sidebarRoleLabel">Landlord Console</div>
+
   </div>
 
   <nav class="sidebar-nav">
     <div class="nav-section">Overview</div>
-    <div class="nav-item active" onclick="showSection('dashboard')"><span class="icon"></span> Dashboard</div>
-
+    <div class="nav-item active" data-tour="dashboard" onclick="showSection('dashboard')"><span class="icon"></span> Dashboard</div>
     <div class="nav-section">Tenants</div>
-    <div class="nav-item" onclick="showSection('tenants')">  <span class="icon"></span> All Tenants</div>
-    <div class="nav-item" onclick="showSection('arrears')">  <span class="icon"></span> Arrears
+    <div class="nav-item" data-tour="tenants" onclick="showSection('tenants')">  <span class="icon"></span> All Tenants</div>
+    <div class="nav-item" data-tour="arrears" onclick="showSection('arrears')">  <span class="icon"></span> Arrears
       <span class="nav-badge" id="arrearsBadge" style="display:none">0</span>
     </div>
-    <div class="nav-item" onclick="showSection('addTenant')"><span class="icon"></span> Add Tenant</div>
+    <div class="nav-item" data-tour="addTenant" onclick="showSection('addTenant')"><span class="icon"></span> Add Tenant</div>
+    <div class="nav-item" data-tour="assign" onclick="showSection('assign')"><span class="icon"></span> Assign House</div>
 
-    <div class="nav-section">Properties</div>
-    <div class="nav-item" onclick="showSection('properties')"><span class="icon"></span> My Properties</div>
-    <div class="nav-item" onclick="showSection('houses')">   <span class="icon"></span> Houses</div>
-    <div class="nav-item" onclick="showSection('assign')">   <span class="icon"></span> Assign House</div>
+    <div class="nav-section caretaker-hidden">Properties</div>
+    <div class="nav-item caretaker-hidden" data-tour="properties" onclick="showSection('properties')"><span class="icon"></span> My Properties</div>
+    <div class="nav-item caretaker-hidden" data-tour="houses" onclick="showSection('houses')">   <span class="icon"></span> Houses</div>
 
     <div class="nav-section">Finance</div>
-    <div class="nav-item" onclick="showSection('payments')"><span class="icon"></span> Record Payment</div>
-    <div class="nav-item" onclick="showSection('expenses')"><span class="icon"></span> Expenses</div>
-    <div class="nav-item" onclick="showSection('receipts')"><span class="icon"></span> Receipts</div>
+    <div class="nav-item" data-tour="payments" onclick="showSection('payments')"><span class="icon"></span> Record Payment</div>
+    <div class="nav-item caretaker-hidden" data-tour="expenses" onclick="showSection('expenses')"><span class="icon"></span> Expenses</div>
+    <div class="nav-item caretaker-hidden" onclick="showSection('receipts')"><span class="icon"></span> Receipts</div>
 
     <div class="nav-section">Repairs</div>
-    <div class="nav-item" onclick="showSection('maintenance')">
-      <span class="icon"></span> Repair Requests
-      <span class="nav-badge" id="maintenanceBadge" style="display:none">0</span>
-    </div>
+   <div class="nav-item" data-tour="maintenance" onclick="showSection('maintenance')">
+  <span class="icon"></span> Repair Requests
+  <span class="nav-badge" id="maintenanceBadge" style="display:none">0</span>
+</div>
 
     <div class="nav-section">Communication</div>
-    <div class="nav-item" onclick="showSection('messages')">
+    <div class="nav-item" data-tour="messages" onclick="showSection('messages')">
       <span class="icon"></span> Messages
       <span class="nav-badge" id="msgBadge" style="display:none">0</span>
     </div>
-    <div class="nav-item" onclick="showSection('announcements')"><span class="icon"></span> Announcements</div>
-    <div class="nav-item" onclick="showSection('rules')">        <span class="icon"></span> Rules   </div>
 
-        <div class="nav-section">Activity</div>
-    <div class="nav-item" onclick="showSection('activity')"><span class="icon"></span> Activity Log</div>
+    <div class="nav-item" data-tour="announcements"  onclick="showSection('announcements')"><span class="icon"></span> Announcements</div>
+    <div class="nav-item caretaker-hidden" onclick="showSection('rules')">        <span class="icon"></span> Rules   </div>
 
-    <div class="nav-section">Listings</div>
-    <div class="nav-item" onclick="showSection('inquiries')">
+    <div class="nav-section">Activity</div>
+    <div class="nav-item" data-tour="activity" onclick="showSection('activity')"><span class="icon"></span> Activity Log</div>
+
+    <div class="nav-section caretaker-hidden">Team</div>
+    <div class="nav-item caretaker-hidden" data-tour="caretakers" onclick="showSection('caretakers')"><span class="icon"></span> Caretakers</div>
+
+    <div class="nav-section caretaker-hidden">Listings</div>
+    <div class="nav-item caretaker-hidden" onclick="showSection('inquiries')">
       <span class="icon"></span> Inquiries
       <span class="nav-badge" id="inquiryBadge" style="display:none">0</span>
     </div>
 
-    <div class="nav-section">Account</div>
-    <div class="nav-item" onclick="openModal('modal-pay-setup')"><span class="icon"></span> Payment Setup</div>
+    <div class="nav-section caretaker-hidden">Account</div>
+    <div class="nav-item caretaker-hidden" data-tour="paymentSetup" onclick="openModal('modal-pay-setup')"><span class="icon"></span> Payment Setup</div>
   </nav>
 
-  <div class="sub-status-card" id="commissionCard" onclick="openModal('modal-commission')" title="Click to view commission owed">
+    <div class="sub-status-card caretaker-hidden" id="commissionCard" onclick="openModal('modal-commission')" title="Click to view commission owed">
       <div class="sub-status-card-top">
         <span class="sub-status-label">Commission</span>
         <span class="sub-status-badge active" id="commissionRateBadge">—%</span>
@@ -825,7 +864,7 @@
       <div class="sub-days-label" id="commissionOwedLabel">Loading...</div>
     </div>
 
-    <div class="maintenance-row">
+    <div class="maintenance-row caretaker-hidden">
       <span class="maintenance-label" id="maintenanceRowLabel"></span>
       <label class="toggle-switch">
         <input type="checkbox" id="maintenanceToggle" onchange="toggleMaintenance()">
@@ -865,7 +904,7 @@
     <div class="topbar-row-1-left">
       <button class="mobile-menu-btn" onclick="openSidebar()" id="mobileMenuBtn"></button>
 
-      <div class="property-switcher" id="propertySwitcher">
+      <div class="property-switcher" id="propertySwitcher" data-tour="propertySwitcher">
         <button class="property-switcher-btn" id="propertySwitcherBtn" onclick="togglePropertyMenu()">
           <span class="prop-icon" id="propSwitcherIcon"></span>
           <span class="prop-name" id="activePropertyName">Property</span>
@@ -878,7 +917,7 @@
 
     <div class="topbar-right">
       <span id="maintenanceChip" style="display:none" class="pill pill-yellow"></span>
-      <div class="notif-bell" id="notifBell">
+      <div class="notif-bell" id="notifBell" data-tour="notifBell">
         <button class="notif-bell-btn" onclick="toggleNotifDropdown()" title="Notifications">
           <span id="notifBellIcon"></span>
           <span class="notif-badge" id="notifBadge" style="display:none">0</span>
@@ -901,9 +940,9 @@
          Messages, Repair Requests, Inquiries, Arrears — each with a live count. ── -->
     <div class="quickbar-wrap">
       <div class="quickbar" id="quickbar">
-        <div class="quickbar-item active" data-qb="dashboard" onclick="showSection('dashboard')">
-          <span class="qb-icon" id="qbIcon_dashboard"></span><span>Dashboard</span>
-        </div>
+        <div class="quickbar-item active caretaker-hidden" data-qb="dashboard" onclick="showSection('dashboard')">
+        <span class="qb-icon" id="qbIcon_dashboard"></span><span>Dashboard</span>
+      </div>
         <div class="quickbar-item" data-qb="payments" onclick="showSection('payments')">
           <span class="qb-icon" id="qbIcon_payments"></span><span>Record Payment</span>
         </div>
@@ -915,7 +954,7 @@
           <span class="qb-icon" id="qbIcon_maintenance"></span><span>Repair Requests</span>
           <span class="qb-count" id="qbMaintCount" style="display:none">0</span>
         </div>
-        <div class="quickbar-item" data-qb="inquiries" onclick="showSection('inquiries')">
+        <div class="quickbar-item caretaker-hidden" data-qb="inquiries" onclick="showSection('inquiries')">
           <span class="qb-icon" id="qbIcon_inquiries"></span><span>Inquiries</span>
           <span class="qb-count" id="qbInqCount" style="display:none">0</span>
         </div>
@@ -951,7 +990,7 @@
           <span class="pay-status-dot inactive" id="payStatusDot"></span>
           <span id="payStatusText">Payments Not Configured</span>
         </div>
-        <button class="btn btn-secondary btn-sm" onclick="openModal('modal-pay-setup')" id="setupPayBtn" style="display:none"></button>
+        <button class="btn btn-secondary btn-sm caretaker-hidden" onclick="openModal('modal-pay-setup')" id="setupPayBtn" style="display:none"></button>
       </div>
     </div>
 
@@ -1105,14 +1144,14 @@
       <button class="btn btn-secondary btn-sm" onclick="loadHouses()" id="housesRefreshBtn"></button>
     </div>
     <div class="grid-2 mb-3">
-      <div class="card">
+      <div class="card caretaker-hidden">
         <div class="card-title">Add New House</div>
         <button class="btn btn-secondary btn-full" onclick="openModal('modal-generate-houses')" style="margin-top:0.5rem" id="genUnitsBtn"></button>
         <input type="text"   id="houseName" placeholder="House name (e.g. A-12)">
         <input type="number" id="houseRent" placeholder="Monthly rent (Ksh)">
         <button class="btn btn-primary btn-full" onclick="addHouse()" id="addHouseBtn"></button>
       </div>
-      <div class="card">
+      <div class="card caretaker-hidden">
         <div class="card-title">Move Out Tenant</div>
         <select id="moveOutSelect"></select>
         <button class="btn btn-warn btn-full" onclick="moveOutTenant()" style="margin-top:0.25rem" id="moveOutBtn"></button>
@@ -1123,22 +1162,20 @@
   </div>
 
 
-  <!-- ─── ASSIGN HOUSE ─── -->
-  <div class="section" id="sec-assign">
-    <div class="section-header"><div class="section-title">Assign House to Tenant</div></div>
-    <div style="max-width:400px">
-      <div class="card">
-        <div class="card-title">Select Tenant &amp; House</div>
-        <p class="field-hint" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:0.55rem 0.75rem;margin-top:0;font-family:'JetBrains Mono',monospace;font-size:0.65rem">
-          Your selection is remembered across page refreshes. A confirmation will appear before assigning.
-        </p>
-        <!-- onchange saves selection to localStorage for persistence across refreshes -->
-        <select id="tenantSelect" onchange="localStorage.setItem('assignTenantId', this.value)"></select>
-        <select id="houseSelect"  onchange="localStorage.setItem('assignHouseId',  this.value)"></select>
-        <button class="btn btn-primary btn-full" onclick="assignHouse()" id="assignHouseBtn"></button>
-      </div>
-    </div>
+
+   <!-- ─── ASSIGN HOUSE ─── -->
+  <!-- ─── ASSIGN / MOVE OUT — house card view ─── -->
+<div class="section" id="sec-assign">
+  <div class="section-header">
+    <div class="section-title">Assign House</div>
+    <button class="btn btn-secondary btn-sm" onclick="loadHouses()" id="assignHousesRefreshBtn"></button>
   </div>
+  <p class="field-hint" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:0.75rem 1rem;margin-top:0;margin-bottom:1.25rem">
+    Click a house below to assign a tenant, or move one out.
+  </p>
+  <div id="assignHouseGroupLegend" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.85rem"></div>
+  <div class="house-grid" id="assignHouseGrid"><div class="empty-state" style="grid-column:1/-1">Loading houses…</div></div>
+</div>
 
 
   <!-- ─── PAYMENTS ─── -->
@@ -1408,6 +1445,40 @@
     </div>
   </div>
 
+    <!-- ─── CARETAKERS ─── -->
+  <div class="section" id="sec-caretakers">
+    <div class="section-header">
+      <div class="section-title">Caretakers</div>
+      <button class="btn btn-secondary btn-sm" onclick="loadCaretakers()" id="caretakersRefreshBtn"></button>
+    </div>
+    <p class="field-hint" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:0.75rem 1rem;margin-top:0;margin-bottom:1.25rem">
+      Caretakers get limited dashboard access scoped to the properties you assign them, covering repair requests, tenant messaging, and cash payments depending on the permissions you grant.
+    </p>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Add Caretaker</div>
+        <input type="text" id="newCaretakerName" placeholder="Full name *">
+        <input type="text" id="newCaretakerPhone" placeholder="Phone number *">
+        <input type="email" id="newCaretakerEmail" placeholder="Email address *">
+      <label class="pay-setup-label" style="display:block;margin-top:0.5rem">Assign Properties</label>
+        <div id="newCaretakerProperties" style="display:flex;flex-direction:column;gap:0.4rem;margin-bottom:0.85rem;max-height:160px;overflow-y:auto;background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:0.65rem 0.75rem">
+          <div class="empty-state" style="padding:0.5rem">Loading properties...</div>
+        </div>
+        <label class="pay-setup-label" style="display:block;margin-top:0.25rem">Permissions</label>
+        <div id="newCaretakerPermissions" style="display:flex;flex-direction:column;gap:0.4rem;margin-bottom:1rem;background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:0.65rem 0.75rem"></div>
+        <button class="btn btn-primary btn-full" onclick="addCaretaker()" id="addCaretakerBtn"></button>
+      </div>
+      <div class="card">
+        <div class="card-title">Current Caretakers</div>
+        <div id="caretakersList">
+          <div class="empty-state"><span class="icon" id="emptyIcon_caretakers_lg"></span>No caretakers yet</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+
 </main>
 
 
@@ -1480,21 +1551,30 @@
         <span id="paySetupSecureIcon"></span><span><strong>Secure Storage</strong> — Credentials are AES-256 encrypted before saving.</span>
       </div>
       <div class="pay-setup-field">
-        <label class="pay-setup-label">Paybill Number</label>
-        <input type="text" id="setupPaybill" placeholder="e.g. 174379" style="margin-bottom:0">
-        <div class="pay-setup-hint">Your Safaricom Business Shortcode / Paybill number.</div>
+        <label class="pay-setup-label">Account Type</label>
+        <div style="display:flex;gap:0.5rem;margin-bottom:0.6rem">
+          <button type="button" class="btn btn-secondary btn-sm" id="acctTypePaybillBtn" onclick="setMpesaAcctType('paybill')" style="flex:1">Paybill</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="acctTypeTillBtn" onclick="setMpesaAcctType('till')" style="flex:1">Till Number</button>
+        </div>
+        <input type="hidden" id="setupAcctType" value="">
       </div>
       <div class="pay-setup-field">
+        <label class="pay-setup-label" id="setupPaybillLabel">Paybill Number</label>
+        <input type="text" id="setupPaybill" placeholder="e.g. 174379" style="margin-bottom:0" disabled>
+        <div class="pay-setup-hint" id="setupPaybillHint">Your Safaricom Business Shortcode / Paybill number.</div>
+      </div>
+      
+      <div class="pay-setup-field">
         <label class="pay-setup-label">Consumer Key</label>
-        <input type="password" id="setupConsumerKey" placeholder="From Safaricom Developer Portal" style="margin-bottom:0">
+        <input type="password" id="setupConsumerKey" placeholder="From Safaricom Developer Portal" style="margin-bottom:0" disabled>
       </div>
       <div class="pay-setup-field">
         <label class="pay-setup-label">Consumer Secret</label>
-        <input type="password" id="setupConsumerSecret" placeholder="From Safaricom Developer Portal" style="margin-bottom:0">
+        <input type="password" id="setupConsumerSecret" placeholder="From Safaricom Developer Portal" style="margin-bottom:0" disabled>
       </div>
       <div class="pay-setup-field">
         <label class="pay-setup-label">Lipa Na M-Pesa Passkey</label>
-        <input type="password" id="setupPasskey" placeholder="Your STK Push passkey" style="margin-bottom:0">
+        <input type="password" id="setupPasskey" placeholder="Your STK Push passkey" style="margin-bottom:0" disabled>
       </div>
       <button class="btn btn-primary btn-full" id="savePaySetupBtn" onclick="savePaymentSetup()" style="margin-top:0.5rem">
       </button>
@@ -1789,6 +1869,24 @@
 </div>
 
 
+<!-- ─── EDIT CARETAKER ─── -->
+<div class="modal-overlay" id="modal-edit-caretaker">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header">
+      <div class="modal-title" id="editCaretakerModalTitle"></div>
+      <button class="modal-close" onclick="closeModal('modal-edit-caretaker')" id="editCaretakerCloseBtn"></button>
+    </div>
+    <div class="card-title" id="editCaretakerName" style="margin-bottom:0.5rem"></div>
+    <input type="hidden" id="editCaretakerId">
+    <label class="pay-setup-label" style="display:block;margin-top:0.25rem">Assigned Properties</label>
+    <div id="editCaretakerProperties" style="display:flex;flex-direction:column;gap:0.4rem;margin-bottom:0.85rem;max-height:140px;overflow-y:auto;background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:0.65rem 0.75rem"></div>
+    <label class="pay-setup-label" style="display:block;margin-top:0.25rem">Permissions</label>
+    <div id="editCaretakerPermissions" style="display:flex;flex-direction:column;gap:0.4rem;margin-bottom:1rem;background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:0.65rem 0.75rem"></div>
+    <button class="btn btn-primary btn-full" onclick="submitEditCaretaker()" id="saveEditCaretakerBtn"></button>
+  </div>
+</div>
+
+
 <div id="toast"></div>
 
 <!-- ═══════════════════════════════════════
@@ -1816,11 +1914,14 @@
     dashboard: 'dashboard', tenants: 'tenants', arrears: 'arrears', addTenant: 'addTenant',
     properties: 'properties', houses: 'houses', assign: 'assign', payments: 'payments',
     expenses: 'expenses', receipts: 'receipts', maintenance: 'maintenance', messages: 'messages',
-    announcements: 'announcements', rules: 'rules', activity: 'activity', inquiries: 'inquiries', settings: 'settings'
+    announcements: 'announcements', rules: 'rules', activity: 'activity', caretakers: 'hardhat',
+    inquiries: 'inquiries', settings: 'settings'
   };
+
   document.querySelectorAll('.nav-item .icon').forEach((el, i) => {
-    const order = ['dashboard','tenants','arrears','addTenant','properties','houses','assign',
-      'payments','expenses','receipts','maintenance','messages','announcements','rules','activity','inquiries','settings'];
+    const order = ['dashboard','tenants','arrears','addTenant','assign','properties','houses',
+      'payments','expenses','receipts','maintenance','messages','announcements','rules','activity',
+      'caretakers','inquiries','settings'];
     const name = order[i];
     if (name) el.innerHTML = ICON(navIcons[name], 16);
   });
@@ -1891,7 +1992,8 @@
   set('moveOutBtn', `${ICON('door',14)} Move Out`);
 
   // Assign
-  set('assignHouseBtn', `${ICON('assign',14)} Assign`);
+   
+  set('assignHousesRefreshBtn', `${ICON('refresh',14)} Refresh`);
 
   // Payments
   set('recordPaymentBtn', `${ICON('payments',14)} Record &amp; Email Receipt`);
@@ -1924,8 +2026,24 @@
   set('emptyIcon_inquiries_lg', ICON('inquiries', 26));
 
   // Activity
+    // Activity
   set('activityRefreshBtn', `${ICON('refresh',14)} Refresh`);
   set('emptyIcon_activity_lg', ICON('activity', 26));
+
+  // Caretakers
+  set('caretakersRefreshBtn', `${ICON('refresh',14)} Refresh`);
+  set('addCaretakerBtn', `${ICON('hardhat',14)} Create Caretaker &amp; Send Login Email`);
+  set('emptyIcon_caretakers_lg', ICON('hardhat', 26));
+  set('editCaretakerModalTitle', `${ICON('edit',16)} Edit Caretaker`);
+  set('editCaretakerCloseBtn', ICON('close', 16));
+  set('saveEditCaretakerBtn', `${ICON('lock',14)} Save Changes`);
+
+  // Sidebar role label — reflects the account type
+  const roleLabelEl = document.getElementById('sidebarRoleLabel');
+  if (roleLabelEl) {
+    const isCaretaker = document.documentElement.getAttribute('data-caretaker') === 'true';
+    roleLabelEl.textContent = isCaretaker ? 'Caretaker Console' : 'Landlord Console';
+  }
 
   // ── Modals ──
   set('onboardingIconWrap', ICON('properties', 40));
@@ -2107,8 +2225,15 @@ async function checkAccountSuspension() {
         banner.style.display = 'block';
         setTimeout(updateBannerHeight, 50);
       }
-    } else {
+        } else {
       overlay.classList.remove('show');
+      const banner = document.getElementById('subBanner');
+      if (banner) {
+        banner.style.display = 'none';
+        banner.className     = 'sub-banner';
+        banner.innerHTML     = '';
+        setTimeout(updateBannerHeight, 50);
+      }
     }
   } catch (err) { console.error('Account status check error:', err.message); }
 }
@@ -2282,19 +2407,245 @@ async function loadRecentActivity() {
 // ── Window load init ──
 window.addEventListener('load', () => {
   if (window.__AUTH_INVALID__) return;
-  setTimeout(loadCommissionStatus, 800);
-  setTimeout(checkAccountSuspension, 800);
-  setInterval(loadCommissionStatus, 5 * 60 * 1000);
-  setInterval(checkAccountSuspension, 5 * 60 * 1000);
   _startAdminTypers();
+
+  if (!IS_CARETAKER) {
+    setTimeout(loadCommissionStatus, 800);
+    setTimeout(checkAccountSuspension, 800);
+    setInterval(loadCommissionStatus, 5 * 60 * 1000);
+    setInterval(checkAccountSuspension, 5 * 60 * 1000);
+  }
+
   setTimeout(loadRecentActivity, 1500);
   setInterval(loadRecentActivity, 2 * 60 * 1000);
+
+  setTimeout(() => maybeStartTour(), 1500);
 });
 </script>
 
 <script src="script.js"></script>
 <script src="dashboard.js"></script>
 <script src="session-manager.js"></script>
+
+
+
+<script>
+// ═══════════════════════════════════════
+// SPOTLIGHT TOUR — first-login walkthrough (landlord & caretaker)
+// ═══════════════════════════════════════
+
+const TOUR_STEPS = [
+  { sel: '[data-tour="propertySwitcher"]', title: 'Property Switcher', desc: 'Shows which property you\'re currently viewing — switch between multiple properties here.' },
+  { sel: '[data-tour="dashboard"]',    title: 'Dashboard',       desc: 'Your overview — income, arrears, occupancy and open repair requests at a glance.' },
+  { sel: '[data-tour="tenants"]',      title: 'All Tenants',     desc: 'View every tenant, check their payment history, and manage their house assignment.' },
+  { sel: '[data-tour="arrears"]',      title: 'Arrears',         desc: 'See every tenant currently behind on rent, and jump straight to recording a payment for them.' },
+  { sel: '[data-tour="addTenant"]',    title: 'Add Tenant',      desc: 'Bring a new tenant onto the platform — they\'ll get a welcome email with login details.' },
+  { sel: '[data-tour="assign"]',       title: 'Assign House',    desc: 'Click a house card to assign a tenant to it, or move a tenant out.' },
+  { sel: '[data-tour="properties"]',   title: 'My Properties',   desc: 'Manage all your properties, their public listing status, and map location.' },
+  { sel: '[data-tour="houses"]',       title: 'Houses',          desc: 'Add individual houses or bulk-generate units for a property.' },
+  { sel: '[data-tour="payments"]',     title: 'Record Payment',  desc: 'Log a rent payment for any tenant — cash, M-Pesa, bank transfer, or other.' },
+  { sel: '[data-tour="expenses"]',     title: 'Expenses',        desc: 'Track property expenses like water, electricity and repairs against your income.' },
+  { sel: '[data-tour="maintenance"]',  title: 'Repair Requests', desc: 'Track and update maintenance issues tenants report, from reported to completed.' },
+  { sel: '[data-tour="messages"]',     title: 'Messages',        desc: 'Chat directly with tenants — replies are sent straight to their tenant portal.' },
+  { sel: '[data-tour="announcements"]',title: 'Announcements',   desc: 'Post updates that go out to every tenant on the property at once.' },
+  { sel: '[data-tour="activity"]',     title: 'Activity Log',    desc: 'A running record of everything that happens on this property — tenants, payments, repairs.' },
+  { sel: '[data-tour="caretakers"]',   title: 'Caretakers',      desc: 'Add caretaker accounts with scoped permissions across your properties.' },
+  { sel: '[data-tour="paymentSetup"]', title: 'Payment Setup',   desc: 'Configure M-Pesa Paybill or Till details so tenants can pay rent directly.' },
+  { sel: '[data-tour="notifBell"]',    title: 'Notifications',   desc: 'Unread messages, new repair requests and inquiries all surface here.' }
+];
+
+let _tourIndex = 0;
+let _tourWasSidebarOpen = false;
+let _tourEls = {};
+let _tourResizeTimer = null;
+
+function _tourUserId() {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) return 'anon';
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+    return payload.id || 'anon';
+  } catch { return 'anon'; }
+}
+
+function _tourStorageKey() { return `tourSeen_${_tourUserId()}`; }
+
+function maybeStartTour(attemptsLeft = 15) {
+  if (window.__AUTH_INVALID__) return;
+  if (localStorage.getItem(_tourStorageKey()) === 'true') return;
+
+  if (document.querySelector('.modal-overlay.open')) {
+    if (attemptsLeft <= 0) return;
+    setTimeout(() => maybeStartTour(attemptsLeft - 1), 1000);
+    return;
+  }
+
+  // Steps whose target doesn't exist are dropped. Note: offsetParent can be
+  // non-null even for a mobile-sidebar item that's currently slid off-screen
+  // (translateX doesn't affect offsetParent), so this filter only catches
+  // caretaker-hidden / missing elements — the actual on-screen visibility
+  // per step is handled live by _prepareSidebarForStep during the tour.
+  const usableSteps = TOUR_STEPS.filter(s => {
+    const el = document.querySelector(s.sel);
+    return el && el.offsetParent !== null;
+  });
+  if (!usableSteps.length) return;
+
+  _startTour(usableSteps);
+}
+
+// A step's target is either inside the mobile sidebar or out in the topbar/
+// main area. On mobile these need different sidebar states to be visible
+// and undimmed — this is the fix for the spotlight "pointing at nothing".
+function _elementNeedsSidebar(el) {
+  return !!el.closest('#sidebar');
+}
+
+// Ensures the mobile sidebar is open/closed correctly for the given step's
+// target before we measure its position, waiting out the 0.3s slide
+// transition whenever a toggle actually happens. On desktop this is a
+// same-tick no-op — the sidebar has no hide/show state there.
+function _prepareSidebarForStep(el, cb) {
+  const isMobile = window.innerWidth <= 768;
+  if (!isMobile) { cb(); return; }
+
+  const sidebar = document.getElementById('sidebar');
+  const needsSidebar = _elementNeedsSidebar(el);
+  const isOpen = !!sidebar?.classList.contains('open');
+
+  if (needsSidebar === isOpen) { cb(); return; }
+
+  if (needsSidebar) openSidebar(); else closeSidebar();
+  setTimeout(cb, 320);
+}
+
+function _startTour(steps) {
+  _tourIndex = 0;
+  _tourWasSidebarOpen = !!document.getElementById('sidebar')?.classList.contains('open');
+
+  _tourEls.catcher = document.createElement('div');
+  _tourEls.catcher.className = 'tour-catcher';
+  _tourEls.catcher.addEventListener('click', e => e.stopPropagation());
+
+  _tourEls.spotlight = document.createElement('div');
+  _tourEls.spotlight.className = 'tour-spotlight';
+
+  _tourEls.card = document.createElement('div');
+  _tourEls.card.className = 'tour-card';
+
+  document.body.append(_tourEls.catcher, _tourEls.spotlight, _tourEls.card);
+  _tourEls.steps = steps;
+
+  _renderTourStep();
+
+  document.addEventListener('keydown', _tourKeyHandler);
+  window.addEventListener('resize', _tourReposition);
+}
+
+function _tourKeyHandler(e) {
+  if (e.key === 'Escape')     endTour();
+  if (e.key === 'ArrowRight') _tourNext();
+  if (e.key === 'ArrowLeft')  _tourBack();
+}
+
+// Debounced full re-render on resize — not just a reposition — because
+// crossing the 768px breakpoint mid-tour changes whether a step even
+// needs the mobile sidebar toggled.
+function _tourReposition() {
+  if (!_tourEls.steps) return;
+  clearTimeout(_tourResizeTimer);
+  _tourResizeTimer = setTimeout(_renderTourStep, 150);
+}
+
+function _renderTourStep() {
+  const steps = _tourEls.steps;
+  const step  = steps[_tourIndex];
+  const el    = document.querySelector(step.sel);
+  if (!el) { _tourNext(); return; }
+
+  _prepareSidebarForStep(el, () => {
+    // Instant scroll, not smooth — a smooth-scroll animation racing a
+    // fixed timeout is what caused the spotlight to land on the wrong
+    // element before. Double rAF waits for the instant scroll (and any
+    // sidebar toggle above) to actually paint before we measure.
+    el.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        _positionTourAt(step);
+        _tourEls.card.innerHTML = `
+          <div class="tour-step-count">Step ${_tourIndex + 1} of ${steps.length}</div>
+          <div class="tour-title">${step.title}</div>
+          <div class="tour-desc">${step.desc}</div>
+          <div class="tour-actions">
+            <button class="tour-skip" onclick="endTour()">Skip tour</button>
+            <div class="tour-nav-btns">
+              ${_tourIndex > 0 ? `<button class="btn btn-secondary btn-sm" onclick="_tourBack()">← Back</button>` : ''}
+              <button class="btn btn-primary btn-sm" onclick="_tourNext()">${_tourIndex === steps.length - 1 ? `${ICON('check',14)} Done` : 'Next →'}</button>
+            </div>
+          </div>`;
+      });
+    });
+  });
+}
+
+function _positionTourAt(step) {
+  const el = document.querySelector(step.sel);
+  if (!el) return;
+  const rect = el.getBoundingClientRect();
+  const pad  = 6;
+
+  _tourEls.spotlight.style.top    = `${rect.top - pad}px`;
+  _tourEls.spotlight.style.left   = `${rect.left - pad}px`;
+  _tourEls.spotlight.style.width  = `${rect.width + pad * 2}px`;
+  _tourEls.spotlight.style.height = `${rect.height + pad * 2}px`;
+
+  const cardW = 300, cardH = 190, gap = 14;
+  let top  = rect.top;
+  let left = rect.right + gap;
+
+  if (left + cardW > window.innerWidth - 12) { left = rect.left; top = rect.bottom + gap; }
+  if (top + cardH > window.innerHeight - 12) top = window.innerHeight - cardH - 12;
+  if (top < 12) top = 12;
+  if (left + cardW > window.innerWidth - 12) left = window.innerWidth - cardW - 12;
+  if (left < 12) left = 12;
+
+  _tourEls.card.style.top  = `${top}px`;
+  _tourEls.card.style.left = `${left}px`;
+}
+
+function _tourNext() {
+  if (_tourIndex >= _tourEls.steps.length - 1) { endTour(); return; }
+  _tourIndex++;
+  _renderTourStep();
+}
+
+function _tourBack() {
+  if (_tourIndex <= 0) return;
+  _tourIndex--;
+  _renderTourStep();
+}
+
+function endTour() {
+  localStorage.setItem(_tourStorageKey(), 'true');
+  document.removeEventListener('keydown', _tourKeyHandler);
+  window.removeEventListener('resize', _tourReposition);
+  clearTimeout(_tourResizeTimer);
+  ['catcher', 'spotlight', 'card'].forEach(k => _tourEls[k]?.remove());
+  _tourEls = {};
+
+  // Restore whatever sidebar state the person had before the tour started
+  // — the tour may have toggled it open/closed several times per step.
+  if (window.innerWidth <= 768) {
+    const sidebar = document.getElementById('sidebar');
+    const isOpen = !!sidebar?.classList.contains('open');
+    if (isOpen !== _tourWasSidebarOpen) {
+      if (_tourWasSidebarOpen) openSidebar(); else closeSidebar();
+    }
+  }
+}
+</script>
+
 <script>
   // Sliding session: idle-warning modal + silent background refresh.
   // Only initializes if a token is already present (guardLandlord in

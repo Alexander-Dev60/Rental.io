@@ -125,7 +125,7 @@ function logout() {
         return;
     }
 
-    if (p.role === 'landlord') { window.location.href = 'dashboard.html'; return; }
+    if (p.role === 'landlord' || p.role === 'caretaker') { window.location.href = 'dashboard.html'; return; }
 
     // FIX: tenant still has a pending forced password change — send them
     // to change it before they can use the dashboard with a temp password.
@@ -1376,6 +1376,8 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     await loadProfile();
     await checkUnreadBadge();
+
+    setTimeout(() => maybeStartTour(), 1200);
 
     setInterval(async () => {
         const still = await checkMaintenance();

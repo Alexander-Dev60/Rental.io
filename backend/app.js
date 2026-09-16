@@ -11,7 +11,7 @@ const ALLOWED_ORIGINS = [
     //'http://localhost:5500',
     
     //'http://127.0.0.1:5503',
-    //'http://127.0.0.1:5502',
+     'http://127.0.0.1:5502',
 ];
 
 app.use(cors({
@@ -50,6 +50,7 @@ const {
         sendMoveOutEmail,
         sendPasswordResetEmail,
         sendTenantWelcomeEmail,
+        sendCaretakerWelcomeEmail,
         sendPaymentOtpEmail,
         sendRentReceiptEmail,
         sendMpesaConfirmationEmail,
@@ -180,6 +181,15 @@ function buildFloorNamePairs(floor) {
 function logActivity({ landlord, property = null, action, message, meta = null, actor = 'landlord' }) {
     AuditLog.create({ landlord, property, action, message, meta, actor })
         .catch(err => console.error('logActivity error:', err.message));
+}
+
+// ── Returns null for a landlord acting on their own dashboard (implied —
+// no need to label it), or the caretaker's name so activity entries read
+// "... — by <CaretakerName>" instead of just showing the property owner. ──
+async function getActorName(req) {
+    if (req.user.role !== 'caretaker') return null;
+    const caretaker = await User.findById(req.user.id).select('name');
+    return caretaker?.name || 'Caretaker';
 }
 
 // ═══════════════════════════════════════
@@ -397,19 +407,82 @@ function landlordOnly(req, res, next) {
     next();
 }
 
+// ── Caretaker role gates ──
+function caretakerOnly(req, res, next) {
+    if (req.user.role !== 'caretaker') {
+        return res.status(403).json({ message: 'Caretakers only' });
+    }
+    next();
+}
+
+function landlordOrCaretaker(req, res, next) {
+    if (req.user.role !== 'landlord' && req.user.role !== 'caretaker') {
+        return res.status(403).json({ message: 'Access denied' });
+    }
+    next();
+}
+
+// ── Resolves the effective "landlord scope" for a request — for a landlord
+// this is just their own id; for a caretaker it's the landlordId they work
+// under. Every shared route should call this instead of hardcoding
+// req.user.id, so the branching logic lives in one place. ──
+async function resolveLandlordScope(req) {
+    if (req.user.role === 'landlord')  return req.user.id;
+    if (req.user.role === 'caretaker') return req.user.landlordId;
+    return null;
+}
+
+// ── Caretaker-specific property gate — checks the property belongs to their
+// employer AND is in their assigned properties list. Landlords bypass this
+// entirely (their existing Property.findOne({..., landlord: req.user.id})
+// checks in each route already enforce ownership). ──
+async function checkCaretakerPropertyAccess(req, res, next) {
+    if (req.user.role !== 'caretaker') return next();
+
+    const propertyId = req.body.propertyId || req.params.propertyId || req.query.propertyId;
+    if (!propertyId) return next();
+
+    try {
+        const caretaker = await User.findById(req.user.id).select('properties');
+        if (!caretaker) return res.status(404).json({ message: 'Caretaker not found' });
+
+        const assigned = (caretaker.properties || []).map(String).includes(String(propertyId));
+        if (!assigned) {
+            return res.status(403).json({ message: 'You are not assigned to this property' });
+        }
+        next();
+    } catch (err) {
+        console.error('checkCaretakerPropertyAccess error:', err.message);
+        res.status(500).json({ message: 'Server error' });
+    }
+}
+
 // ── FIX (plans → commission migration): replaces checkSubscription.
 // The platform is free forever now, so this ONLY checks the moderation
 // suspend switch — no more trial/grace/expired billing lifecycle. ──
+// FIX: previously only checked req.user.role === 'landlord', so if a
+// landlord's account got suspended, every caretaker they'd created kept
+// full access through every landlordOrCaretaker route (payments, tenants,
+// messages, announcements, maintenance, etc.) — suspension only blocked
+// the landlord's own login, not their staff. Now resolves the effective
+// landlord scope for BOTH roles and checks that account's status, so a
+// suspended landlord's caretakers are locked out at the same moment the
+// landlord is.
 async function checkAccountStatus(req, res, next) {
-    if (req.user.role !== 'landlord') return next();
+    if (req.user.role !== 'landlord' && req.user.role !== 'caretaker') return next();
 
     try {
-        const landlord = await User.findById(req.user.id).select('accountStatus suspendedReason');
+        const landlordScope = await resolveLandlordScope(req);
+        if (!landlordScope) return res.status(403).json({ message: 'Access denied' });
+
+        const landlord = await User.findById(landlordScope).select('accountStatus suspendedReason');
         if (!landlord) return res.status(404).json({ message: 'Landlord not found' });
 
         if (landlord.accountStatus === 'suspended') {
             return res.status(403).json({
-                message:       `Your account has been suspended. Reason: ${landlord.suspendedReason || 'Contact support.'}`,
+                message: req.user.role === 'caretaker'
+                    ? `This account has been suspended. Reason: ${landlord.suspendedReason || 'Contact support.'}`
+                    : `Your account has been suspended. Reason: ${landlord.suspendedReason || 'Contact support.'}`,
                 accountStatus: 'suspended',
                 code:          'ACCOUNT_SUSPENDED'
             });
@@ -427,21 +500,32 @@ async function checkAccountStatus(req, res, next) {
 //    currently suspended for unpaid commission. Does NOT block payment
 //    recording or STK push — a suspended property must still be able to
 //    collect rent so the landlord can pay down what's owed. ──
+// FIX: previously scoped to req.user.id directly, which only works for
+// landlords. A caretaker's id is never a property's `landlord` field, so
+// the lookup always missed and the check silently passed through
+// (fail-open) rather than blocking. Not currently exploitable — every
+// route this middleware guards is landlordOnly — but fixing the scope
+// resolution here means it stays correct if a route's access level ever
+// changes, instead of silently reopening this gap.
 async function checkPropertySuspension(req, res, next) {
     try {
         const propertyId = req.body.propertyId || req.params.propertyId || req.query.propertyId;
         if (!propertyId) return next();
 
-        // Scoped to req.user.id — a property that isn't theirs now just
-        // falls through silently, and the route's own findOne({..., landlord})
-        // check produces the 404. No more cross-landlord existence/suspension leak.
-        const property = await Property.findOne({ _id: propertyId, landlord: req.user.id })
+        const landlordScope = await resolveLandlordScope(req);
+        if (!landlordScope) return next(); // let the route's own auth checks handle it
+
+        const property = await Property.findOne({ _id: propertyId, landlord: landlordScope })
             .select('isSuspended suspendedReason name');
 
         if (property && property.isSuspended) {
             return res.status(403).json({
-                message: `${property.name} is suspended — ${property.suspendedReason || 'unpaid commission'}. Settle the balance from the Commission panel to restore access.`,
-                code:    'PROPERTY_SUSPENDED'
+                message: `${property.name} is suspended — ${property.suspendedReason || 'unpaid commission'}. ${
+                    req.user.role === 'caretaker'
+                        ? 'Contact your landlord to resolve this.'
+                        : 'Settle the balance from the Commission panel to restore access.'
+                }`,
+                code: 'PROPERTY_SUSPENDED'
             });
         }
         next();
@@ -785,7 +869,7 @@ app.post('/login', async (req, res) => {
         const secret = process.env.JWT_SECRET;
         if (!secret) return res.status(500).json({ message: 'Server configuration error' });
 
-        if (user.role === 'tenant' && user.mustChangePassword) {
+         if ((user.role === 'tenant' || user.role === 'caretaker') && user.mustChangePassword) {
             // ← INSERT: clear rate limit here too — this branch also means
             // the password was correct, so it's a legitimate login
             loginRateLimit.delete(rlKey);
@@ -816,7 +900,7 @@ app.post('/login', async (req, res) => {
             { expiresIn: '2h' }
         );
 
-        const response = { token };
+                const response = { token };
 
         if (user.role === 'landlord') {
             const properties = await Property.find({ landlord: user._id })
@@ -834,6 +918,29 @@ app.post('/login', async (req, res) => {
             response.properties = properties;
         }
 
+        // ── Caretaker: return only their assigned properties + who they
+        // work for, so the frontend never needs a second round-trip just
+        // to render the property switcher or know which UI to hide. ──
+        if (user.role === 'caretaker') {
+            const landlordUser = await User.findById(user.landlordId).select('name propertyName');
+            const properties   = await Property.find({ _id: { $in: user.properties || [] } })
+                .select('name location paymentConfigured isActive')
+                .sort({ createdAt: 1 });
+
+            response.caretaker = {
+                id:    user._id,
+                name:  user.name,
+                email: user.email,
+                phone: user.phone
+            };
+            response.landlord = {
+                id:   user.landlordId,
+                name: landlordUser?.name || '—'
+            };
+            response.properties  = properties;
+            response.permissions = user.caretakerPermissions;
+        }
+
         res.json(response);
 
     } catch (err) {
@@ -843,8 +950,8 @@ app.post('/login', async (req, res) => {
 
 app.post('/auth/force-change-password', authMiddleware, async (req, res) => {
     try {
-        if (req.user.role !== 'tenant') {
-            return res.status(403).json({ message: 'Tenants only' });
+        if (req.user.role !== 'tenant' && req.user.role !== 'caretaker') {
+            return res.status(403).json({ message: 'Tenants and caretakers only' });
         }
 
         const newPassword = req.body.newPassword || '';
@@ -1120,8 +1227,34 @@ app.post('/reset-password-confirm', async (req, res) => {
 // LANDLORD PROFILE & ONBOARDING
 // ═══════════════════════════════════════
 
-app.get('/landlord/profile', authMiddleware, landlordOnly, async (req, res) => {
+app.get('/landlord/profile', authMiddleware, landlordOrCaretaker, async (req, res) => {
     try {
+        // ── Caretaker: scoped equivalent response. No mpesa/subscription/
+        // accountStatus fields — those are landlord-account concepts a
+        // caretaker has no ownership of. Their own name/email comes from
+        // their own User doc; "who they work for" comes from landlordId. ──
+        if (req.user.role === 'caretaker') {
+            const caretaker = await User.findById(req.user.id).select('name email phone landlordId properties');
+            if (!caretaker) return res.status(404).json({ message: 'Caretaker not found' });
+
+            const landlordUser = await User.findById(caretaker.landlordId).select('accountStatus suspendedReason');
+
+            const properties = await Property.find({ _id: { $in: caretaker.properties || [] } })
+                .select('name location phone paymentConfigured isActive isSuspended suspendedReason')
+                .sort({ createdAt: 1 });
+
+            return res.json({
+                id:                 caretaker._id,
+                name:               caretaker.name,
+                email:              caretaker.email,
+                phone:              caretaker.phone,
+                onboardingComplete: true,   // caretakers never go through onboarding
+                paymentConfigured:  properties.some(p => p.paymentConfigured),
+                accountStatus:      landlordUser?.accountStatus || 'active', // reflects employer's account, not their own
+                properties
+            });
+        }
+
         const landlord = await User.findById(req.user.id)
             .select('-password -mpesaConsumerKey -mpesaConsumerSecret -mpesaPasskey');
 
@@ -1232,7 +1365,8 @@ app.post('/landlord/setup-payments', authMiddleware, landlordOnly, async (req, r
 
 try {
 
-    const { paybillNumber, consumerKey, consumerSecret, passkey, propertyId, otp } = req.body;
+    const { paybillNumber, consumerKey, consumerSecret, passkey, propertyId, otp, accountType } = req.body;
+    const finalAccountType = accountType === 'till' ? 'till' : 'paybill'; // default safe
 
         if (!paybillNumber || !consumerKey || !consumerSecret || !passkey || !propertyId) {
                 return res.status(400).json({ message: 'All payment fields and propertyId are required' });
@@ -1274,6 +1408,7 @@ try {
                 }
 
                 property.paybillNumber       = sanitize(paybillNumber);
+                property.mpesaAccountType    = finalAccountType;
                 property.mpesaConsumerKey    = encrypt(consumerKey);
                 property.mpesaConsumerSecret = encrypt(consumerSecret);
                 property.mpesaPasskey        = encrypt(passkey);
@@ -1297,12 +1432,188 @@ try {
 
              });
 
-        } catch (err) {
+                } catch (err) {
             console.error('Setup payments error:', err.message);
             res.status(500).json({ message: 'Failed to save payment credentials' });
     }
 });
 
+
+// ═══════════════════════════════════════
+// CARETAKERS
+// ═══════════════════════════════════════
+//
+// A caretaker is a landlord-created helper account, scoped to a subset of
+// the landlord's properties. Reuses User.landlordId (already used for
+// tenants) to mean "who this account works for" — role: 'caretaker'
+// disambiguates it from a tenant using the same field.
+
+// ── Landlord: create a caretaker account ──
+app.post('/landlord/caretakers/create', authMiddleware, landlordOnly, checkAccountStatus, async (req, res) => {
+    try {
+        const name        = sanitize(req.body.name  || '');
+        const email       = sanitize(req.body.email || '').toLowerCase();
+        const phone       = sanitize(req.body.phone || '');
+        const propertyIds = Array.isArray(req.body.propertyIds) ? req.body.propertyIds : [];
+
+        if (!name || !email || !phone) {
+            return res.status(400).json({ message: 'name, email and phone are required' });
+        }
+        if (!propertyIds.length) {
+            return res.status(400).json({ message: 'Assign at least one property' });
+        }
+
+        // Verify all propertyIds actually belong to this landlord
+        const owned = await Property.find({ _id: { $in: propertyIds }, landlord: req.user.id }).select('_id');
+        if (owned.length !== propertyIds.length) {
+            return res.status(400).json({ message: 'One or more properties do not belong to you' });
+        }
+
+        const existing = await User.findOne({ email });
+        if (existing) return res.status(400).json({ message: 'An account with this email already exists' });
+
+        const tempPassword   = crypto.randomBytes(6).toString('base64').slice(0, 8);
+        const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+        const landlordUser = await User.findById(req.user.id).select('name');
+
+        // Only accept known permission keys, whitelisted — never trust an
+        // arbitrary object shape from the client into a schema subdocument.
+        const allowedPermKeys = ['canRecordPayments', 'canManageMaintenance', 'canMessageTenants', 'canPostAnnouncements', 'canManageTenants'];
+        const caretakerPermissions = {};
+        if (req.body.permissions && typeof req.body.permissions === 'object') {
+            for (const key of allowedPermKeys) {
+                if (typeof req.body.permissions[key] === 'boolean') {
+                    caretakerPermissions[key] = req.body.permissions[key];
+                }
+            }
+        }
+
+        const caretaker = await User.create({
+            name, email, phone,
+            password:             hashedPassword,
+            role:                  'caretaker',
+            landlordId:            req.user.id,
+            properties:            propertyIds,
+            mustChangePassword:    true,
+            ...(Object.keys(caretakerPermissions).length && { caretakerPermissions })
+        });
+
+        // NOTE: requires sendCaretakerWelcomeEmail to be added to emails.js
+        // (mirrors sendTenantWelcomeEmail's shape) and imported at the top
+        // of this file before this route will send mail successfully.
+        if (typeof sendCaretakerWelcomeEmail === 'function') {
+            sendCaretakerWelcomeEmail({
+                name, email, tempPassword,
+                landlordName: landlordUser?.name || 'Your landlord'
+            }).catch(err => console.error('Caretaker welcome email failed:', err.message));
+        }
+
+        logActivity({
+            landlord: req.user.id,
+            action:   'caretaker.created',
+            message:  `${name} added as caretaker for ${owned.length} propert${owned.length === 1 ? 'y' : 'ies'}`,
+            meta:     { caretakerId: caretaker._id, propertyIds }
+        });
+
+        res.status(201).json({
+            message:   'Caretaker created — welcome email sent ✅',
+            caretaker: { id: caretaker._id, name, email, phone, properties: propertyIds }
+        });
+
+    } catch (err) {
+        console.error('Create caretaker error:', err.message);
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// ── Landlord: list their caretakers ──
+app.get('/landlord/caretakers', authMiddleware, landlordOnly, async (req, res) => {
+    try {
+        const caretakers = await User.find({ landlordId: req.user.id, role: 'caretaker' })
+            .select('-password')
+            .populate('properties', 'name location')
+            .sort({ createdAt: 1 });
+        res.json({ caretakers });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ── Landlord: update a caretaker's assigned properties / permissions ──
+app.put('/landlord/caretakers/:id', authMiddleware, landlordOnly, async (req, res) => {
+    try {
+        const caretaker = await User.findOne({ _id: req.params.id, landlordId: req.user.id, role: 'caretaker' });
+        if (!caretaker) return res.status(404).json({ message: 'Caretaker not found' });
+
+        if (Array.isArray(req.body.propertyIds)) {
+            const owned = await Property.find({ _id: { $in: req.body.propertyIds }, landlord: req.user.id }).select('_id');
+            if (owned.length !== req.body.propertyIds.length) {
+                return res.status(400).json({ message: 'One or more properties do not belong to you' });
+            }
+            caretaker.properties = req.body.propertyIds;
+        }
+
+        if (req.body.permissions && typeof req.body.permissions === 'object') {
+            const allowedKeys = ['canRecordPayments', 'canManageMaintenance', 'canMessageTenants', 'canPostAnnouncements'];
+            for (const key of allowedKeys) {
+                if (typeof req.body.permissions[key] === 'boolean') {
+                    caretaker.caretakerPermissions[key] = req.body.permissions[key];
+                }
+            }
+        }
+
+        await caretaker.save();
+        res.json({ message: 'Caretaker updated ✅', caretaker });
+
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ── Landlord: revoke a caretaker's access entirely ──
+app.delete('/landlord/caretakers/:id', authMiddleware, landlordOnly, async (req, res) => {
+    try {
+        const caretaker = await User.findOneAndDelete({ _id: req.params.id, landlordId: req.user.id, role: 'caretaker' });
+        if (!caretaker) return res.status(404).json({ message: 'Caretaker not found' });
+
+        logActivity({
+            landlord: req.user.id,
+            action:   'caretaker.revoked',
+            message:  `${caretaker.name}'s caretaker access was revoked`,
+            meta:     { caretakerId: caretaker._id }
+        });
+
+        res.json({ message: 'Caretaker access revoked ✅' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+
+// ── Caretaker: fetch my own current permissions + assigned properties.
+// Called on every dashboard load (and periodically) so a landlord editing
+// permissions takes effect without forcing the caretaker to log out. ──
+app.get('/caretaker/me', authMiddleware, caretakerOnly, async (req, res) => {
+    try {
+        const caretaker = await User.findById(req.user.id).select('properties caretakerPermissions landlordId');
+        if (!caretaker) return res.status(404).json({ message: 'Caretaker not found' });
+
+        const properties = await Property.find({ _id: { $in: caretaker.properties || [] } })
+            .select('name location paymentConfigured isActive');
+
+        const landlordUser = await User.findById(caretaker.landlordId).select('name');
+
+        res.json({
+            permissions: caretaker.caretakerPermissions,
+            properties,
+            landlord: { name: landlordUser?.name || '—' }
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 // ═══════════════════════════════════════
 // PROPERTIES
@@ -1336,9 +1647,18 @@ app.post('/properties/create', authMiddleware, landlordOnly, checkAccountStatus,
     }
 });
 
-app.get('/properties', authMiddleware, landlordOnly, async (req, res) => {
+app.get('/properties', authMiddleware, landlordOrCaretaker, async (req, res) => {
     try {
-        const properties = await Property.find({ landlord: req.user.id }).sort({ createdAt: 1 });
+        const landlordScope = await resolveLandlordScope(req);
+        const query = { landlord: landlordScope };
+
+        // Caretakers only ever see their own assigned subset
+        if (req.user.role === 'caretaker') {
+            const caretaker = await User.findById(req.user.id).select('properties');
+            query._id = { $in: caretaker.properties || [] };
+        }
+
+        const properties = await Property.find(query).sort({ createdAt: 1 });
         res.json({ properties });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1457,8 +1777,15 @@ app.delete('/properties/:id', authMiddleware, landlordOnly, async (req, res) => 
 // TENANTS
 // ═══════════════════════════════════════
 
-app.post('/tenants/create', authMiddleware, landlordOnly, checkAccountStatus, checkPropertySuspension, async (req, res) => {
+app.post('/tenants/create', authMiddleware, landlordOrCaretaker, checkAccountStatus, checkPropertySuspension, checkCaretakerPropertyAccess, async (req, res) => {
     try {
+        if (req.user.role === 'caretaker') {
+            const caretakerCheck = await User.findById(req.user.id).select('caretakerPermissions');
+            if (!caretakerCheck?.caretakerPermissions?.canManageTenants) {
+                return res.status(403).json({ message: 'You do not have permission to add tenants' });
+            }
+        }
+
         // FIX Bug 22: sanitize inputs
         const name       = sanitize(req.body.name  || '');
         const email      = sanitize(req.body.email || '').toLowerCase();
@@ -1474,11 +1801,14 @@ app.post('/tenants/create', authMiddleware, landlordOnly, checkAccountStatus, ch
             return res.status(400).json({ message: 'propertyId is required' });
         }
 
-        const property = await Property.findOne({ _id: propertyId, landlord: req.user.id });
+        const landlordScope = await resolveLandlordScope(req);
+        const property = await Property.findOne({ _id: propertyId, landlord: landlordScope });
         if (!property) return res.status(404).json({ message: 'Property not found' });
 
+        const actorName = await getActorName(req);
+
         // FIX (plans → commission migration): no more tenant-cap check — unlimited tenants per property.
-        const landlordUser = await User.findById(req.user.id);
+        const landlordUser = await User.findById(landlordScope);
 
         const existingTenantHere = await Tenant.findOne({ property: propertyId, email });
         if (existingTenantHere) {
@@ -1499,15 +1829,15 @@ app.post('/tenants/create', authMiddleware, landlordOnly, checkAccountStatus, ch
             });
         }
 
-        let house = null;
+    let house = null;
         if (houseId) {
-            house = await House.findOne({ _id: houseId, property: propertyId, landlord: req.user.id });
+            house = await House.findOne({ _id: houseId, property: propertyId, landlord: landlordScope });
             if (!house)                      return res.status(404).json({ message: 'House not found' });
             if (house.status === 'occupied') return res.status(400).json({ message: 'House is already occupied' });
         }
 
         const tenantData = {
-            landlord: req.user.id,
+            landlord: landlordScope,
             property: propertyId,
             name,
             email,
@@ -1544,7 +1874,7 @@ app.post('/tenants/create', authMiddleware, landlordOnly, checkAccountStatus, ch
                 password:           hashedPassword,
                 role:               'tenant',
                 tenantId:           tenant._id,
-                landlordId:         req.user.id,
+                landlordId:         landlordScope,
                 mustChangePassword: true
             });
 
@@ -1562,7 +1892,7 @@ app.post('/tenants/create', authMiddleware, landlordOnly, checkAccountStatus, ch
 
         await TenantMembership.create({
             user:     userId,
-            landlord: req.user.id,
+            landlord: landlordScope,
             property: propertyId,
             tenant:   tenant._id,
             house:    houseId || null,
@@ -1581,11 +1911,13 @@ app.post('/tenants/create', authMiddleware, landlordOnly, checkAccountStatus, ch
         }
 
         logActivity({
-            landlord: req.user.id, property: propertyId,
+            landlord: landlordScope, property: propertyId,
             action:   isReturning ? 'tenant.readded' : 'tenant.created',
-            message:  `${name} was ${isReturning ? 're-added to' : 'created for'} ${property.name}`,
-            meta:     { tenantId: tenant._id }
+            message:  `${name} was ${isReturning ? 're-added to' : 'created for'} ${property.name}${actorName ? ` — by ${actorName}` : ''}`,
+            meta:     { tenantId: tenant._id, actorName },
+            actor:    actorName ? 'caretaker' : 'landlord'
         });
+
         res.status(201).json({
             message: isReturning
                 ? 'Tenant added to your property. Notification email sent 📧'
@@ -1633,14 +1965,32 @@ app.put('/tenants/:id', authMiddleware, landlordOnly, async (req, res) => {
 // ASSIGN HOUSE
 // ═══════════════════════════════════════
 
-app.put('/assign-house/:tenantId/:houseId', authMiddleware, landlordOnly, async (req, res) => {
+app.put('/assign-house/:tenantId/:houseId', authMiddleware, landlordOrCaretaker, checkAccountStatus, async (req, res) => {
     try {
-        const tenant = await Tenant.findOne({ _id: req.params.tenantId, landlord: req.user.id });
-        const house  = await House.findOne({ _id: req.params.houseId, landlord: req.user.id });
+        const landlordScope = await resolveLandlordScope(req);
+        if (!landlordScope) return res.status(403).json({ message: 'Access denied' });
+
+        const tenant = await Tenant.findOne({ _id: req.params.tenantId, landlord: landlordScope });
+        const house  = await House.findOne({ _id: req.params.houseId, landlord: landlordScope });
 
         if (!tenant || !house) {
             return res.status(404).json({ message: 'Tenant or House not found' });
         }
+
+        if (req.user.role === 'caretaker') {
+            const caretaker = await User.findById(req.user.id).select('properties caretakerPermissions');
+            if (!caretaker?.caretakerPermissions?.canManageTenants) {
+                return res.status(403).json({ message: 'You do not have permission to assign or reactivate tenants' });
+            }
+            const assignedIds = (caretaker.properties || []).map(String);
+            const houseOk  = assignedIds.includes(String(house.property));
+            const tenantOk = !tenant.property || assignedIds.includes(String(tenant.property));
+            if (!houseOk || !tenantOk) {
+                return res.status(403).json({ message: 'You are not assigned to this property' });
+            }
+        }
+       
+         const actorName = await getActorName(req);
 
         if (house.status === 'occupied') {
             return res.status(400).json({ message: 'This house is already occupied ❌' });
@@ -1657,13 +2007,11 @@ app.put('/assign-house/:tenantId/:houseId', authMiddleware, landlordOnly, async 
             }
         }
 
-        // FIX Bug 1 + Bug 3: cross-landlord reactivation check
         if (tenant.status === 'moved_out') {
-            // Block reactivation if this email is already active under a different landlord
             const activeTenantElsewhere = await Tenant.findOne({
-                email:   tenant.email,
-                status:  'active',
-                _id:     { $ne: tenant._id }
+                email:  tenant.email,
+                status: 'active',
+                _id:    { $ne: tenant._id }
             });
             if (activeTenantElsewhere) {
                 const activeProp = await Property.findById(activeTenantElsewhere.property).select('name');
@@ -1679,17 +2027,18 @@ app.put('/assign-house/:tenantId/:houseId', authMiddleware, landlordOnly, async 
             tenant.lastLandlord = null;
             tenant.property     = house.property;
 
-            // FIX Bug 2: re-link User account to this landlord
+            // FIX: re-link to the actual landlord, not the caretaker
+                        // FIX Bug 2: re-link User account to this landlord
             await User.findOneAndUpdate(
                 { tenantId: tenant._id },
-                { landlordId: req.user.id }
+                { landlordId: landlordScope }
             );
 
             // FIX Bug 11: use separate findOne + save instead of upsert with sort
             // to avoid the MongoDB upsert+sort unreliability
             const existingMembership = await TenantMembership.findOne({
                 tenant:   tenant._id,
-                landlord: req.user.id
+                landlord: landlordScope
             }).sort({ createdAt: -1 });
 
             if (existingMembership) {
@@ -1702,7 +2051,7 @@ app.put('/assign-house/:tenantId/:houseId', authMiddleware, landlordOnly, async 
             } else {
                 await TenantMembership.create({
                     user:     (await User.findOne({ tenantId: tenant._id }).select('_id'))?._id,
-                    landlord: req.user.id,
+                    landlord: landlordScope,
                     property: house.property,
                     tenant:   tenant._id,
                     house:    house._id,
@@ -1720,17 +2069,16 @@ app.put('/assign-house/:tenantId/:houseId', authMiddleware, landlordOnly, async 
         await house.save();
 
         logActivity({
-            landlord: req.user.id, property: house.property,
+            landlord: landlordScope, property: house.property,
             action:   wasReactivation ? 'tenant.reactivated' : 'tenant.assigned',
-            message:  `${tenant.name} assigned to ${house.name}`,
-            meta:     { tenantId: tenant._id, houseId: house._id }
+            message: `${tenant.name} assigned to ${house.name}${actorName ? ` — by ${actorName}` : ''}`,
+            meta:     { tenantId: tenant._id, houseId: house._id },            
+            actor:   actorName ? 'caretaker' : 'landlord'
         });
 
-        // FIX Bug 12: only update membership for fresh (non-reactivated) active assignments
-        // Reactivation path already handled the membership update above
         if (tenant.status === 'active' && !tenant.isNew) {
             await TenantMembership.findOneAndUpdate(
-                { tenant: tenant._id, status: 'active', landlord: req.user.id },
+                { tenant: tenant._id, status: 'active', landlord: landlordScope },
                 { house: house._id }
             );
         }
@@ -1743,16 +2091,29 @@ app.put('/assign-house/:tenantId/:houseId', authMiddleware, landlordOnly, async 
     }
 });
 
-
 // ═══════════════════════════════════════
 // MOVE OUT
 // ═══════════════════════════════════════
 
 // FIX Bug 10: guard against calling move-out on already moved-out tenant
-app.put('/move-out/:tenantId', authMiddleware, landlordOnly, async (req, res) => {
+app.put('/move-out/:tenantId', authMiddleware, landlordOrCaretaker, checkAccountStatus, async (req, res) => {
     try {
-        const tenant = await Tenant.findOne({ _id: req.params.tenantId, landlord: req.user.id });
+        if (req.user.role === 'caretaker') {
+            const caretakerCheck = await User.findById(req.user.id).select('caretakerPermissions');
+            if (!caretakerCheck?.caretakerPermissions?.canManageTenants) {
+                return res.status(403).json({ message: 'You do not have permission to move out tenants' });
+            }
+        }
+
+        const landlordScope = await resolveLandlordScope(req);
+        const tenant = await Tenant.findOne({ _id: req.params.tenantId, landlord: landlordScope });
         if (!tenant) return res.status(404).json({ message: 'Tenant not found' });
+
+        if (req.user.role === 'caretaker') {
+            const caretaker = await User.findById(req.user.id).select('properties');
+            const assigned  = (caretaker.properties || []).map(String).includes(String(tenant.property));
+            if (!assigned) return res.status(403).json({ message: 'You are not assigned to this property' });
+        }
 
         // FIX Bug 10
         if (tenant.status === 'moved_out') {
@@ -1760,8 +2121,10 @@ app.put('/move-out/:tenantId', authMiddleware, landlordOnly, async (req, res) =>
         }
         if (!tenant.house) return res.status(400).json({ message: 'This tenant is not assigned to any house' });
 
-        const house = await House.findOne({ _id: tenant.house, landlord: req.user.id });
+        const house = await House.findOne({ _id: tenant.house, landlord: landlordScope });
         if (!house) return res.status(404).json({ message: 'House not found' });
+
+        const actorName = await getActorName(req);
 
         tenant.lastHouse    = tenant.house;
         tenant.lastProperty = tenant.property;
@@ -1794,11 +2157,12 @@ app.put('/move-out/:tenantId', authMiddleware, landlordOnly, async (req, res) =>
 
         res.json({ message: 'Tenant moved out successfully 🏠➡️🚪', tenant, house });
 
-        logActivity({
-            landlord: req.user.id, property: tenant.property,
+                logActivity({
+            landlord: landlordScope, property: tenant.property,
             action:   'tenant.moved_out',
-            message:  `${tenant.name} moved out of ${house.name}`,
-            meta:     { tenantId: tenant._id, houseId: house._id }
+            message:  `${tenant.name} moved out of ${house.name}${actorName ? ` — by ${actorName}` : ''}`,
+            meta:     { tenantId: tenant._id, houseId: house._id, actorName },
+            actor:    actorName ? 'caretaker' : 'landlord'
         });
 
     } catch (err) {
@@ -1858,8 +2222,9 @@ app.delete('/tenant/:id', authMiddleware, landlordOnly, async (req, res) => {
 
 app.get('/tenants', authMiddleware, async (req, res) => {
     try {
-        if (req.user.role === 'landlord') {
-            const query = { landlord: req.user.id };
+        if (req.user.role === 'landlord' || req.user.role === 'caretaker') {
+            const landlordScope = await resolveLandlordScope(req);
+            const query = { landlord: landlordScope };
 
             const statusParam = req.query.status;
             if (!statusParam || statusParam === 'active') {
@@ -1868,10 +2233,22 @@ app.get('/tenants', authMiddleware, async (req, res) => {
                 query.status = 'moved_out';
             }
 
+            // ── Caretakers are further restricted to their assigned properties ──
+            let caretakerPropertyIds = null;
+            if (req.user.role === 'caretaker') {
+                const caretaker = await User.findById(req.user.id).select('properties');
+                caretakerPropertyIds = (caretaker.properties || []).map(String);
+            }
+
             if (req.query.propertyId) {
-                const property = await Property.findOne({ _id: req.query.propertyId, landlord: req.user.id });
+                if (caretakerPropertyIds && !caretakerPropertyIds.includes(String(req.query.propertyId))) {
+                    return res.status(403).json({ message: 'You are not assigned to this property' });
+                }
+                const property = await Property.findOne({ _id: req.query.propertyId, landlord: landlordScope });
                 if (!property) return res.status(404).json({ message: 'Property not found' });
                 query.property = req.query.propertyId;
+            } else if (caretakerPropertyIds) {
+                query.property = { $in: caretakerPropertyIds };
             }
 
             const tenants = await Tenant.find(query)
@@ -1903,9 +2280,17 @@ app.get('/tenant/:id', authMiddleware, async (req, res) => {
             return res.status(403).json({ message: 'Forbidden' });
         }
 
-        const query = req.user.role === 'landlord'
-            ? { _id: req.params.id, landlord: req.user.id }
-            : { _id: req.params.id };
+        let query;
+        if (req.user.role === 'landlord') {
+            query = { _id: req.params.id, landlord: req.user.id };
+        } else if (req.user.role === 'caretaker') {
+            const landlordScope       = await resolveLandlordScope(req);
+            const caretaker           = await User.findById(req.user.id).select('properties');
+            const caretakerPropertyIds = (caretaker.properties || []).map(String);
+            query = { _id: req.params.id, landlord: landlordScope, property: { $in: caretakerPropertyIds } };
+        } else {
+            query = { _id: req.params.id };
+        }
 
         const tenant = await Tenant.findOne(query)
             .populate('house')
@@ -1963,13 +2348,25 @@ app.post('/houses', authMiddleware, landlordOnly, checkAccountStatus, checkPrope
 
 app.get('/houses', authMiddleware, async (req, res) => {
     try {
-        if (req.user.role === 'landlord') {
-            const query = { landlord: req.user.id };
+        if (req.user.role === 'landlord' || req.user.role === 'caretaker') {
+            const landlordScope = await resolveLandlordScope(req);
+            const query = { landlord: landlordScope };
+
+            let caretakerPropertyIds = null;
+            if (req.user.role === 'caretaker') {
+                const caretaker = await User.findById(req.user.id).select('properties');
+                caretakerPropertyIds = (caretaker.properties || []).map(String);
+            }
 
             if (req.query.propertyId) {
-                const property = await Property.findOne({ _id: req.query.propertyId, landlord: req.user.id });
+                if (caretakerPropertyIds && !caretakerPropertyIds.includes(String(req.query.propertyId))) {
+                    return res.status(403).json({ message: 'You are not assigned to this property' });
+                }
+                const property = await Property.findOne({ _id: req.query.propertyId, landlord: landlordScope });
                 if (!property) return res.status(404).json({ message: 'Property not found' });
                 query.property = req.query.propertyId;
+            } else if (caretakerPropertyIds) {
+                query.property = { $in: caretakerPropertyIds };
             }
 
            
@@ -2279,8 +2676,17 @@ async function getMonthSummary(tenantId, month, rent) {
 // PAYMENTS
 // ═══════════════════════════════════════
 
-app.post('/payments', authMiddleware, landlordOnly, checkAccountStatus, async (req, res) => {
+app.post('/payments', authMiddleware, landlordOrCaretaker, checkAccountStatus, async (req, res) => {
     try {
+        if (req.user.role === 'caretaker') {
+            const caretakerCheck = await User.findById(req.user.id).select('caretakerPermissions');
+            if (!caretakerCheck?.caretakerPermissions?.canRecordPayments) {
+                return res.status(403).json({ message: 'You do not have permission to record payments' });
+            }
+        }
+
+              const landlordScope = await resolveLandlordScope(req);
+        const actorName = await getActorName(req);
         const tenantId = req.body.tenantId || '';
         const amount   = Number(req.body.amount);
         const month    = sanitize(req.body.month  || '');
@@ -2294,9 +2700,16 @@ app.post('/payments', authMiddleware, landlordOnly, checkAccountStatus, async (r
             return res.status(400).json({ message: 'Amount must be greater than 0' });
         }
 
-        const tenant = await Tenant.findOne({ _id: tenantId, landlord: req.user.id }).populate('house');
+        const tenant = await Tenant.findOne({ _id: tenantId, landlord: landlordScope }).populate('house');
         if (!tenant)       return res.status(404).json({ message: 'Tenant not found' });
         if (!tenant.house) return res.status(400).json({ message: 'Tenant has no house assigned' });
+
+        // Caretakers may only record payments for properties they're assigned to
+        if (req.user.role === 'caretaker') {
+            const caretaker = await User.findById(req.user.id).select('properties');
+            const assigned  = (caretaker.properties || []).map(String).includes(String(tenant.property));
+            if (!assigned) return res.status(403).json({ message: 'You are not assigned to this property' });
+        }
 
         const rent    = tenant.house.rent;
         const summary = await getMonthSummary(tenantId, month, rent);
@@ -2317,8 +2730,8 @@ app.post('/payments', authMiddleware, landlordOnly, checkAccountStatus, async (r
         const newBalance   = Math.max(0, rent - newTotalPaid);
         const newStatus    = newBalance === 0 ? 'paid' : 'partial';
 
-        const payment = await Payment.create({
-            landlord:   req.user.id,
+    const payment = await Payment.create({
+            landlord:   landlordScope,
             property:   tenant.property,
             tenant:     tenant._id,
             house:      tenant.house._id,
@@ -2372,10 +2785,11 @@ app.post('/payments', authMiddleware, landlordOnly, checkAccountStatus, async (r
         }).catch(err => console.error('Receipt email failed:', err.message));
 
         logActivity({
-            landlord: req.user.id, property: tenant.property,
+            landlord: landlordScope, property: tenant.property,
             action:   'payment.recorded',
-            message:  `${tenant.name} paid Ksh ${Number(amount).toLocaleString()} for ${month}`,
-            meta:     { paymentId: payment._id, amount, method, status: newStatus }
+            message:  `${tenant.name} paid Ksh ${Number(amount).toLocaleString()} for ${month}${actorName ? ` — recorded by ${actorName}` : ''}`,
+            meta:     { paymentId: payment._id, amount, method, status: newStatus, actorName },
+            actor:    actorName ? 'caretaker' : 'landlord'
         });
 
         res.json({
@@ -2392,14 +2806,26 @@ app.post('/payments', authMiddleware, landlordOnly, checkAccountStatus, async (r
     }
 });
 
-app.get('/payments', authMiddleware, landlordOnly, async (req, res) => {
+app.get('/payments', authMiddleware, landlordOrCaretaker, async (req, res) => {
     try {
-        const query = { landlord: req.user.id };
+        const landlordScope = await resolveLandlordScope(req);
+        const query = { landlord: landlordScope };
+
+        let caretakerPropertyIds = null;
+        if (req.user.role === 'caretaker') {
+            const caretaker = await User.findById(req.user.id).select('properties');
+            caretakerPropertyIds = (caretaker.properties || []).map(String);
+        }
 
         if (req.query.propertyId) {
-            const property = await Property.findOne({ _id: req.query.propertyId, landlord: req.user.id });
+            if (caretakerPropertyIds && !caretakerPropertyIds.includes(String(req.query.propertyId))) {
+                return res.status(403).json({ message: 'You are not assigned to this property' });
+            }
+            const property = await Property.findOne({ _id: req.query.propertyId, landlord: landlordScope });
             if (!property) return res.status(404).json({ message: 'Property not found' });
             query.property = req.query.propertyId;
+        } else if (caretakerPropertyIds) {
+            query.property = { $in: caretakerPropertyIds };
         }
 
         const payments = await Payment.find(query)
@@ -2499,15 +2925,27 @@ app.get('/payments/months/:tenantId', authMiddleware, async (req, res) => {
 });
 
 // FIX Bug 15: batch arrears calculation to avoid N+1 queries
-app.get('/arrears', authMiddleware, landlordOnly, async (req, res) => {
+app.get('/arrears', authMiddleware, landlordOrCaretaker, async (req, res) => {
     try {
-        const query        = { landlord: req.user.id, status: 'active' };
+        const landlordScope = await resolveLandlordScope(req);
+        const query        = { landlord: landlordScope, status: 'active' };
         const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
 
+        let caretakerPropertyIds = null;
+        if (req.user.role === 'caretaker') {
+            const caretaker = await User.findById(req.user.id).select('properties');
+            caretakerPropertyIds = (caretaker.properties || []).map(String);
+        }
+
         if (req.query.propertyId) {
-            const property = await Property.findOne({ _id: req.query.propertyId, landlord: req.user.id });
+            if (caretakerPropertyIds && !caretakerPropertyIds.includes(String(req.query.propertyId))) {
+                return res.status(403).json({ message: 'You are not assigned to this property' });
+            }
+            const property = await Property.findOne({ _id: req.query.propertyId, landlord: landlordScope });
             if (!property) return res.status(404).json({ message: 'Property not found' });
             query.property = req.query.propertyId;
+        } else if (caretakerPropertyIds) {
+            query.property = { $in: caretakerPropertyIds };
         }
 
         const tenants = await Tenant.find(query).populate('house');
@@ -2555,16 +2993,91 @@ app.get('/arrears', authMiddleware, landlordOnly, async (req, res) => {
     }
 });
 
-// FIX Bug 15: batch arrears calculation for specific month too
-app.get('/arrears/:month', authMiddleware, landlordOnly, async (req, res) => {
+
+app.get('/arrears/export', authMiddleware, landlordOnly, async (req, res) => {
     try {
-        const month = req.params.month;
+        const month = sanitize(req.query.month || '') || new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
         const query = { landlord: req.user.id, status: 'active' };
 
         if (req.query.propertyId) {
             const property = await Property.findOne({ _id: req.query.propertyId, landlord: req.user.id });
             if (!property) return res.status(404).json({ message: 'Property not found' });
             query.property = req.query.propertyId;
+        }
+
+        const tenants   = await Tenant.find(query).populate('house').populate('property', 'name');
+        const tenantIds = tenants.filter(t => t.house).map(t => t._id);
+
+        const payments = await Payment.find({
+            tenant: { $in: tenantIds },
+            month,
+            status: { $in: ['paid', 'partial'] }
+        }).select('tenant amount');
+
+        const paidMap = {};
+        for (const p of payments) {
+            const key = String(p.tenant);
+            paidMap[key] = (paidMap[key] || 0) + p.amount;
+        }
+
+        const rows = [['Tenant', 'Email', 'Phone', 'Property', 'House', 'Rent', 'Paid', 'Balance', 'Status', 'Month']];
+
+        for (const tenant of tenants) {
+            if (!tenant.house) continue;
+            const rent      = tenant.house.rent;
+            const totalPaid = paidMap[String(tenant._id)] || 0;
+            const balance   = Math.max(0, rent - totalPaid);
+            if (balance <= 0) continue;
+
+            rows.push([
+                tenant.name, tenant.email, tenant.phone || '',
+                tenant.property?.name || '', tenant.house.name,
+                rent, totalPaid, balance,
+                totalPaid > 0 ? 'partial' : 'unpaid', month
+            ]);
+        }
+
+        // RFC 4180-safe CSV escaping
+        const csv = rows.map(row =>
+            row.map(cell => {
+                const str = String(cell ?? '');
+                return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+            }).join(',')
+        ).join('\r\n');
+
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="arrears-${month.replace(/\s+/g, '-')}.csv"`);
+        res.send(csv);
+
+    } catch (err) {
+        console.error('arrears export error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+// FIX Bug 15: batch arrears calculation for specific month too
+app.get('/arrears/:month', authMiddleware, landlordOrCaretaker, async (req, res) => {
+    try {
+        const month = req.params.month;
+        const landlordScope = await resolveLandlordScope(req);
+        const query = { landlord: landlordScope, status: 'active' };
+
+        let caretakerPropertyIds = null;
+        if (req.user.role === 'caretaker') {
+            const caretaker = await User.findById(req.user.id).select('properties');
+            caretakerPropertyIds = (caretaker.properties || []).map(String);
+        }
+
+        if (req.query.propertyId) {
+            if (caretakerPropertyIds && !caretakerPropertyIds.includes(String(req.query.propertyId))) {
+                return res.status(403).json({ message: 'You are not assigned to this property' });
+            }
+            const property = await Property.findOne({ _id: req.query.propertyId, landlord: landlordScope });
+            if (!property) return res.status(404).json({ message: 'Property not found' });
+            query.property = req.query.propertyId;
+        } else if (caretakerPropertyIds) {
+            query.property = { $in: caretakerPropertyIds };
         }
 
         const tenants   = await Tenant.find(query).populate('house');
@@ -2764,13 +3277,25 @@ app.get('/maintenance-requests', authMiddleware, async (req, res) => {
     try {
         let query;
 
-        if (req.user.role === 'landlord') {
-            query = { landlord: req.user.id };
+        if (req.user.role === 'landlord' || req.user.role === 'caretaker') {
+            const landlordScope = await resolveLandlordScope(req);
+            query = { landlord: landlordScope };
+
+            let caretakerPropertyIds = null;
+            if (req.user.role === 'caretaker') {
+                const caretaker = await User.findById(req.user.id).select('properties');
+                caretakerPropertyIds = (caretaker.properties || []).map(String);
+            }
 
             if (req.query.propertyId) {
-                const property = await Property.findOne({ _id: req.query.propertyId, landlord: req.user.id });
+                if (caretakerPropertyIds && !caretakerPropertyIds.includes(String(req.query.propertyId))) {
+                    return res.status(403).json({ message: 'You are not assigned to this property' });
+                }
+                const property = await Property.findOne({ _id: req.query.propertyId, landlord: landlordScope });
                 if (!property) return res.status(404).json({ message: 'Property not found' });
                 query.property = req.query.propertyId;
+            } else if (caretakerPropertyIds) {
+                query.property = { $in: caretakerPropertyIds };
             }
             if (req.query.status) query.status = req.query.status;
 
@@ -2793,17 +3318,32 @@ app.get('/maintenance-requests', authMiddleware, async (req, res) => {
     }
 });
 
-app.put('/maintenance-requests/:id/status', authMiddleware, landlordOnly, async (req, res) => {
+app.put('/maintenance-requests/:id/status', authMiddleware, landlordOrCaretaker, async (req, res) => {
     try {
+        if (req.user.role === 'caretaker') {
+            const caretakerCheck = await User.findById(req.user.id).select('caretakerPermissions');
+            if (!caretakerCheck?.caretakerPermissions?.canManageMaintenance) {
+                return res.status(403).json({ message: 'You do not have permission to manage maintenance requests' });
+            }
+        }
+
+        const actorName = await getActorName(req);
         const { status, cost, resolutionNote } = req.body;
         const allowed = ['reported', 'in_progress', 'completed'];
         if (!allowed.includes(status)) {
             return res.status(400).json({ message: `Status must be one of: ${allowed.join(', ')}` });
         }
 
-        const request = await MaintenanceRequest.findOne({ _id: req.params.id, landlord: req.user.id })
+        const landlordScope = await resolveLandlordScope(req);
+        const request = await MaintenanceRequest.findOne({ _id: req.params.id, landlord: landlordScope })
             .populate('tenant', 'name');
         if (!request) return res.status(404).json({ message: 'Maintenance request not found' });
+
+        if (req.user.role === 'caretaker') {
+            const caretaker = await User.findById(req.user.id).select('properties');
+            const assigned  = (caretaker.properties || []).map(String).includes(String(request.property));
+            if (!assigned) return res.status(403).json({ message: 'You are not assigned to this property' });
+        }
 
         request.status = status;
         if (cost !== undefined && cost !== null && cost !== '') request.cost = Number(cost);
@@ -2814,10 +3354,11 @@ app.put('/maintenance-requests/:id/status', authMiddleware, landlordOnly, async 
         await request.save();
 
         logActivity({
-            landlord: req.user.id, property: request.property,
+            landlord: landlordScope, property: request.property,
             action:   'maintenance.status_changed',
-            message:  `${request.tenant?.name || 'Tenant'}'s ${request.category} request marked ${status}`,
-            meta:     { requestId: request._id, status }
+            message:  `${request.tenant?.name || 'Tenant'}'s ${request.category} request marked ${status}${actorName ? ` — by ${actorName}` : ''}`,
+            meta:     { requestId: request._id, status, actorName },
+            actor:    actorName ? 'caretaker' : 'landlord'
         });
 
         res.json({ message: 'Request updated ✅', request });
@@ -2841,14 +3382,26 @@ app.delete('/maintenance-requests/:id', authMiddleware, landlordOnly, async (req
 // ACTIVITY LOG
 // ═══════════════════════════════════════
 
-app.get('/activity', authMiddleware, landlordOnly, async (req, res) => {
+app.get('/activity', authMiddleware, landlordOrCaretaker, async (req, res) => {
     try {
-        const query = { landlord: req.user.id };
+        const landlordScope = await resolveLandlordScope(req);
+        const query = { landlord: landlordScope };
+
+        let caretakerPropertyIds = null;
+        if (req.user.role === 'caretaker') {
+            const caretaker = await User.findById(req.user.id).select('properties');
+            caretakerPropertyIds = (caretaker.properties || []).map(String);
+        }
 
         if (req.query.propertyId) {
-            const property = await Property.findOne({ _id: req.query.propertyId, landlord: req.user.id });
+            if (caretakerPropertyIds && !caretakerPropertyIds.includes(String(req.query.propertyId))) {
+                return res.status(403).json({ message: 'You are not assigned to this property' });
+            }
+            const property = await Property.findOne({ _id: req.query.propertyId, landlord: landlordScope });
             if (!property) return res.status(404).json({ message: 'Property not found' });
             query.property = req.query.propertyId;
+        } else if (caretakerPropertyIds) {
+            query.property = { $in: caretakerPropertyIds };
         }
         if (req.query.action) query.action = req.query.action;
 
@@ -2928,66 +3481,7 @@ app.post('/tenants/bulk-remind', authMiddleware, landlordOnly, checkAccountStatu
     }
 });
 
-app.get('/arrears/export', authMiddleware, landlordOnly, async (req, res) => {
-    try {
-        const month = sanitize(req.query.month || '') || new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
-        const query = { landlord: req.user.id, status: 'active' };
 
-        if (req.query.propertyId) {
-            const property = await Property.findOne({ _id: req.query.propertyId, landlord: req.user.id });
-            if (!property) return res.status(404).json({ message: 'Property not found' });
-            query.property = req.query.propertyId;
-        }
-
-        const tenants   = await Tenant.find(query).populate('house').populate('property', 'name');
-        const tenantIds = tenants.filter(t => t.house).map(t => t._id);
-
-        const payments = await Payment.find({
-            tenant: { $in: tenantIds },
-            month,
-            status: { $in: ['paid', 'partial'] }
-        }).select('tenant amount');
-
-        const paidMap = {};
-        for (const p of payments) {
-            const key = String(p.tenant);
-            paidMap[key] = (paidMap[key] || 0) + p.amount;
-        }
-
-        const rows = [['Tenant', 'Email', 'Phone', 'Property', 'House', 'Rent', 'Paid', 'Balance', 'Status', 'Month']];
-
-        for (const tenant of tenants) {
-            if (!tenant.house) continue;
-            const rent      = tenant.house.rent;
-            const totalPaid = paidMap[String(tenant._id)] || 0;
-            const balance   = Math.max(0, rent - totalPaid);
-            if (balance <= 0) continue;
-
-            rows.push([
-                tenant.name, tenant.email, tenant.phone || '',
-                tenant.property?.name || '', tenant.house.name,
-                rent, totalPaid, balance,
-                totalPaid > 0 ? 'partial' : 'unpaid', month
-            ]);
-        }
-
-        // RFC 4180-safe CSV escaping
-        const csv = rows.map(row =>
-            row.map(cell => {
-                const str = String(cell ?? '');
-                return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
-            }).join(',')
-        ).join('\r\n');
-
-        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-        res.setHeader('Content-Disposition', `attachment; filename="arrears-${month.replace(/\s+/g, '-')}.csv"`);
-        res.send(csv);
-
-    } catch (err) {
-        console.error('arrears export error:', err.message);
-        res.status(500).json({ error: err.message });
-    }
-});
 
 
 // ═══════════════════════════════════════
@@ -3062,7 +3556,9 @@ app.post('/stkpush', authMiddleware, async (req, res) => {
                 BusinessShortCode: shortcode,
                 Password:          password,
                 Timestamp:         timestamp,
-                TransactionType:   'CustomerPayBillOnline',
+                TransactionType:   property.mpesaAccountType === 'till'
+                                ? 'CustomerBuyGoodsOnline'
+                                : 'CustomerPayBillOnline',
                 Amount:            stkAmount,
                 PartyA:            normalizedPhone,
                 PartyB:            shortcode,
@@ -3334,23 +3830,38 @@ app.get('/receipt/pdf/:paymentId', authMiddleware, async (req, res) => {
 // ═══════════════════════════════════════
 
 // FIX Bug 15: batch payment aggregation instead of N+1 getMonthSummary calls
-app.get('/dashboard/:month', authMiddleware, landlordOnly, checkAccountStatus, async (req, res) => {
+app.get('/dashboard/:month', authMiddleware, landlordOrCaretaker, checkAccountStatus, async (req, res) => {
     try {
-        const month         = req.params.month;
-        const tenantQuery   = { landlord: req.user.id, status: 'active' };
-        const houseQuery    = { landlord: req.user.id };
-        const expenseQuery  = { landlord: new mongoose.Types.ObjectId(req.user.id), month };
-        const maintQuery    = { landlord: req.user.id, status: { $in: ['reported', 'in_progress'] } };
-        let   propertyInfo  = null;
+        const month          = req.params.month;
+        const landlordScope  = await resolveLandlordScope(req);
+        const tenantQuery    = { landlord: landlordScope, status: 'active' };
+        const houseQuery     = { landlord: landlordScope };
+        const expenseQuery   = { landlord: new mongoose.Types.ObjectId(landlordScope), month };
+        const maintQuery     = { landlord: landlordScope, status: { $in: ['reported', 'in_progress'] } };
+        let   propertyInfo   = null;
+
+        let caretakerPropertyIds = null;
+        if (req.user.role === 'caretaker') {
+            const caretaker = await User.findById(req.user.id).select('properties');
+            caretakerPropertyIds = (caretaker.properties || []).map(String);
+        }
 
         if (req.query.propertyId) {
-            const property = await Property.findOne({ _id: req.query.propertyId, landlord: req.user.id });
+            if (caretakerPropertyIds && !caretakerPropertyIds.includes(String(req.query.propertyId))) {
+                return res.status(403).json({ message: 'You are not assigned to this property' });
+            }
+            const property = await Property.findOne({ _id: req.query.propertyId, landlord: landlordScope });
             if (!property) return res.status(404).json({ message: 'Property not found' });
             tenantQuery.property  = req.query.propertyId;
             houseQuery.property   = req.query.propertyId;
             expenseQuery.property = new mongoose.Types.ObjectId(req.query.propertyId);
             maintQuery.property   = req.query.propertyId;
             propertyInfo = { id: property._id, name: property.name, location: property.location };
+        } else if (caretakerPropertyIds) {
+            tenantQuery.property  = { $in: caretakerPropertyIds };
+            houseQuery.property   = { $in: caretakerPropertyIds };
+            expenseQuery.property = { $in: caretakerPropertyIds.map(id => new mongoose.Types.ObjectId(id)) };
+            maintQuery.property   = { $in: caretakerPropertyIds };
         }
 
         const tenants = await Tenant.find(tenantQuery).populate('house');
@@ -3399,7 +3910,7 @@ app.get('/dashboard/:month', authMiddleware, landlordOnly, checkAccountStatus, a
         //    "open" across month boundaries until resolved) ──
         const openMaintenanceCount = await MaintenanceRequest.countDocuments(maintQuery);
 
-        const landlord = await User.findById(req.user.id)
+        const landlord = await User.findById(landlordScope)
             .select('name propertyName propertyLocation paymentConfigured accountStatus');
 
         res.json({
@@ -3686,9 +4197,17 @@ app.get('/rules', authMiddleware, async (req, res) => {
     try {
         let query;
 
-        if (req.user.role === 'landlord') {
+        if (req.user.role === 'landlord' || req.user.role === 'caretaker') {
             if (!req.query.propertyId) return res.status(400).json({ message: 'propertyId is required' });
-            const property = await Property.findOne({ _id: req.query.propertyId, landlord: req.user.id });
+            const landlordScope = await resolveLandlordScope(req);
+
+            if (req.user.role === 'caretaker') {
+                const caretaker = await User.findById(req.user.id).select('properties');
+                const assigned  = (caretaker.properties || []).map(String).includes(String(req.query.propertyId));
+                if (!assigned) return res.status(403).json({ message: 'You are not assigned to this property' });
+            }
+
+            const property = await Property.findOne({ _id: req.query.propertyId, landlord: landlordScope });
             if (!property) return res.status(404).json({ message: 'Property not found' });
             query = { property: req.query.propertyId };
         } else {
@@ -3719,18 +4238,32 @@ app.delete('/rules/:id', authMiddleware, landlordOnly, async (req, res) => {
 // ANNOUNCEMENTS
 // ═══════════════════════════════════════
 
-app.post('/announcements', authMiddleware, landlordOnly, async (req, res) => {
+app.post('/announcements', authMiddleware, landlordOrCaretaker, async (req, res) => {
     try {
+        if (req.user.role === 'caretaker') {
+            const caretakerCheck = await User.findById(req.user.id).select('caretakerPermissions');
+            if (!caretakerCheck?.caretakerPermissions?.canPostAnnouncements) {
+                return res.status(403).json({ message: 'You do not have permission to post announcements' });
+            }
+        }
+
+        const landlordScope = await resolveLandlordScope(req);
         const propertyId = req.body.propertyId || null;
         const message    = sanitize(req.body.message || '', 1000);
 
         if (!propertyId) return res.status(400).json({ message: 'propertyId is required' });
         if (!message)    return res.status(400).json({ message: 'Message is required' });
 
-        const property = await Property.findOne({ _id: propertyId, landlord: req.user.id });
+        if (req.user.role === 'caretaker') {
+            const caretaker = await User.findById(req.user.id).select('properties');
+            const assigned  = (caretaker.properties || []).map(String).includes(String(propertyId));
+            if (!assigned) return res.status(403).json({ message: 'You are not assigned to this property' });
+        }
+
+        const property = await Property.findOne({ _id: propertyId, landlord: landlordScope });
         if (!property) return res.status(404).json({ message: 'Property not found' });
 
-        const a = await Announcement.create({ message, landlord: req.user.id, property: propertyId });
+        const a = await Announcement.create({ message, landlord: landlordScope, property: propertyId });
         res.json(a);
     } catch (err) {
         res.status(500).json({ message: 'Error creating announcement' });
@@ -3741,9 +4274,17 @@ app.get('/announcements', authMiddleware, async (req, res) => {
     try {
         let query;
 
-        if (req.user.role === 'landlord') {
+        if (req.user.role === 'landlord' || req.user.role === 'caretaker') {
             if (!req.query.propertyId) return res.status(400).json({ message: 'propertyId is required' });
-            const property = await Property.findOne({ _id: req.query.propertyId, landlord: req.user.id });
+            const landlordScope = await resolveLandlordScope(req);
+
+            if (req.user.role === 'caretaker') {
+                const caretaker = await User.findById(req.user.id).select('properties');
+                const assigned  = (caretaker.properties || []).map(String).includes(String(req.query.propertyId));
+                if (!assigned) return res.status(403).json({ message: 'You are not assigned to this property' });
+            }
+
+            const property = await Property.findOne({ _id: req.query.propertyId, landlord: landlordScope });
             if (!property) return res.status(404).json({ message: 'Property not found' });
             query = { property: req.query.propertyId };
         } else {
@@ -3805,8 +4346,16 @@ app.post('/messages', authMiddleware, async (req, res) => {
     }
 });
 
-app.post('/messages/reply', authMiddleware, landlordOnly, async (req, res) => {
+app.post('/messages/reply', authMiddleware, landlordOrCaretaker, async (req, res) => {
     try {
+        if (req.user.role === 'caretaker') {
+            const caretakerCheck = await User.findById(req.user.id).select('caretakerPermissions');
+            if (!caretakerCheck?.caretakerPermissions?.canMessageTenants) {
+                return res.status(403).json({ message: 'You do not have permission to message tenants' });
+            }
+        }
+
+        const landlordScope = await resolveLandlordScope(req);
         const tenantId = req.body.tenantId || '';
         const text     = sanitize(req.body.text || '', 2000);
 
@@ -3814,11 +4363,20 @@ app.post('/messages/reply', authMiddleware, landlordOnly, async (req, res) => {
             return res.status(400).json({ message: 'tenantId and text are required' });
         }
 
-        const tenant = await Tenant.findOne({ _id: tenantId, landlord: req.user.id });
+        const tenant = await Tenant.findOne({ _id: tenantId, landlord: landlordScope });
         if (!tenant) return res.status(403).json({ message: 'Forbidden' });
 
+        if (req.user.role === 'caretaker') {
+            const caretaker = await User.findById(req.user.id).select('properties');
+            const assigned  = (caretaker.properties || []).map(String).includes(String(tenant.property));
+            if (!assigned) return res.status(403).json({ message: 'You are not assigned to this property' });
+        }
+
+        // Always sent as 'landlord' — the tenant-facing chat UI only
+        // distinguishes landlord vs tenant, not who on the landlord's
+        // team actually typed the reply.
         const msg = await Message.create({
-            landlord: req.user.id,
+            landlord: landlordScope,
             property: tenant.property,
             tenant:   tenantId,
             sender:   'landlord',
@@ -3863,10 +4421,17 @@ app.get('/messages/my', authMiddleware, async (req, res) => {
 });
 
 // FIX Bug 17: paginate landlord chat thread
-app.get('/messages/thread/:tenantId', authMiddleware, landlordOnly, async (req, res) => {
+app.get('/messages/thread/:tenantId', authMiddleware, landlordOrCaretaker, async (req, res) => {
     try {
-        const tenant = await Tenant.findOne({ _id: req.params.tenantId, landlord: req.user.id });
+        const landlordScope = await resolveLandlordScope(req);
+        const tenant = await Tenant.findOne({ _id: req.params.tenantId, landlord: landlordScope });
         if (!tenant) return res.status(403).json({ message: 'Forbidden' });
+
+        if (req.user.role === 'caretaker') {
+            const caretaker = await User.findById(req.user.id).select('properties');
+            const assigned  = (caretaker.properties || []).map(String).includes(String(tenant.property));
+            if (!assigned) return res.status(403).json({ message: 'You are not assigned to this property' });
+        }
 
         const page  = Math.max(1, parseInt(req.query.page) || 1);
         const limit = 50;
@@ -3901,8 +4466,9 @@ app.put('/messages/read/:tenantId', authMiddleware, async (req, res) => {
                 { property: tenant.property, tenant: req.params.tenantId, sender: 'landlord', isRead: false },
                 { isRead: true }
             );
-        } else {
-            const tenant = await Tenant.findOne({ _id: req.params.tenantId, landlord: req.user.id });
+                } else {
+            const landlordScope = await resolveLandlordScope(req);
+            const tenant = await Tenant.findOne({ _id: req.params.tenantId, landlord: landlordScope });
             if (!tenant) return res.status(403).json({ message: 'Forbidden' });
 
             await Message.updateMany(
@@ -3918,18 +4484,30 @@ app.put('/messages/read/:tenantId', authMiddleware, async (req, res) => {
     }
 });
 
-app.get('/messages/unread', authMiddleware, landlordOnly, async (req, res) => {
+app.get('/messages/unread', authMiddleware, landlordOrCaretaker, async (req, res) => {
     try {
+        const landlordScope = await resolveLandlordScope(req);
         const matchQuery = {
-            landlord: new mongoose.Types.ObjectId(req.user.id),
+            landlord: new mongoose.Types.ObjectId(landlordScope),
             sender:   'tenant',
             isRead:   false
         };
 
+        let caretakerPropertyIds = null;
+        if (req.user.role === 'caretaker') {
+            const caretaker = await User.findById(req.user.id).select('properties');
+            caretakerPropertyIds = (caretaker.properties || []).map(String);
+        }
+
         if (req.query.propertyId) {
-            const property = await Property.findOne({ _id: req.query.propertyId, landlord: req.user.id });
+            if (caretakerPropertyIds && !caretakerPropertyIds.includes(String(req.query.propertyId))) {
+                return res.status(403).json({ message: 'You are not assigned to this property' });
+            }
+            const property = await Property.findOne({ _id: req.query.propertyId, landlord: landlordScope });
             if (!property) return res.status(404).json({ message: 'Property not found' });
             matchQuery.property = new mongoose.Types.ObjectId(req.query.propertyId);
+        } else if (caretakerPropertyIds) {
+            matchQuery.property = { $in: caretakerPropertyIds.map(id => new mongoose.Types.ObjectId(id)) };
         }
 
         const unread = await Message.aggregate([
@@ -4987,35 +5565,49 @@ app.post('/public/inquiries', async (req, res) => {
 //  Paginated: ?page=1&limit=20
 // ─────────────────────────────────────────────────────────
 
-app.get('/inquiries', authMiddleware, landlordOnly, checkAccountStatus, async (req, res) => {
+app.get('/inquiries', authMiddleware, landlordOrCaretaker, checkAccountStatus, async (req, res) => {
     try {
-        const query  = { landlord: req.user.id };
+        const landlordScope = await resolveLandlordScope(req);
+        const query  = { landlord: landlordScope };
         const page   = Math.max(1, parseInt(req.query.page)  || 1);
         const limit  = Math.min(50, parseInt(req.query.limit) || 20);
         const skip   = (page - 1) * limit;
 
+        let caretakerPropertyIds = null;
+        if (req.user.role === 'caretaker') {
+            const caretaker = await User.findById(req.user.id).select('properties');
+            caretakerPropertyIds = (caretaker.properties || []).map(String);
+        }
+
         if (req.query.propertyId) {
-            const property = await Property.findOne({ _id: req.query.propertyId, landlord: req.user.id });
+            if (caretakerPropertyIds && !caretakerPropertyIds.includes(String(req.query.propertyId))) {
+                return res.status(403).json({ message: 'You are not assigned to this property' });
+            }
+            const property = await Property.findOne({ _id: req.query.propertyId, landlord: landlordScope });
             if (!property) return res.status(404).json({ message: 'Property not found' });
             query.property = req.query.propertyId;
+        } else if (caretakerPropertyIds) {
+            query.property = { $in: caretakerPropertyIds };
         }
+
+        // Base scope (before status filter) reused for the unread count below,
+        // so a caretaker's badge only ever counts inquiries on their own properties.
+        const unreadQuery = { ...query, status: 'new' };
 
         if (req.query.status) {
             query.status = req.query.status;
         }
 
-        const [inquiries, total] = await Promise.all([
+        const [inquiries, total, unreadCount] = await Promise.all([
             Inquiry.find(query)
                 .populate('property', 'name location')
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit)
                 .lean(),
-            Inquiry.countDocuments(query)
+            Inquiry.countDocuments(query),
+            Inquiry.countDocuments(unreadQuery)
         ]);
-
-        // Count unread separately for badge
-        const unreadCount = await Inquiry.countDocuments({ landlord: req.user.id, status: 'new' });
 
         res.json({
             inquiries,
@@ -5037,12 +5629,17 @@ app.get('/inquiries', authMiddleware, landlordOnly, checkAccountStatus, async (r
 //  Fast badge count for sidebar — landlord only.
 // ─────────────────────────────────────────────────────────
 
-app.get('/inquiries/unread-count', authMiddleware, landlordOnly, async (req, res) => {
+app.get('/inquiries/unread-count', authMiddleware, landlordOrCaretaker, async (req, res) => {
     try {
-        const count = await Inquiry.countDocuments({
-            landlord: req.user.id,
-            status:   'new'
-        });
+        const landlordScope = await resolveLandlordScope(req);
+        const query = { landlord: landlordScope, status: 'new' };
+
+        if (req.user.role === 'caretaker') {
+            const caretaker = await User.findById(req.user.id).select('properties');
+            query.property = { $in: (caretaker.properties || []).map(String) };
+        }
+
+        const count = await Inquiry.countDocuments(query);
         res.json({ count });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -5055,7 +5652,7 @@ app.get('/inquiries/unread-count', authMiddleware, landlordOnly, async (req, res
 //  Update inquiry status: new → read → contacted → archived
 // ─────────────────────────────────────────────────────────
 
-app.put('/inquiries/:id/status', authMiddleware, landlordOnly, async (req, res) => {
+app.put('/inquiries/:id/status', authMiddleware, landlordOrCaretaker, async (req, res) => {
     try {
         const { status, notes } = req.body;
         const allowed = ['new', 'read', 'contacted', 'archived'];
@@ -5063,8 +5660,15 @@ app.put('/inquiries/:id/status', authMiddleware, landlordOnly, async (req, res) 
             return res.status(400).json({ message: `Status must be one of: ${allowed.join(', ')}` });
         }
 
-        const inquiry = await Inquiry.findOne({ _id: req.params.id, landlord: req.user.id });
+        const landlordScope = await resolveLandlordScope(req);
+        const inquiry = await Inquiry.findOne({ _id: req.params.id, landlord: landlordScope });
         if (!inquiry) return res.status(404).json({ message: 'Inquiry not found' });
+
+        if (req.user.role === 'caretaker') {
+            const caretaker = await User.findById(req.user.id).select('properties');
+            const assigned  = (caretaker.properties || []).map(String).includes(String(inquiry.property));
+            if (!assigned) return res.status(403).json({ message: 'You are not assigned to this property' });
+        }
 
         inquiry.status = status;
         if (typeof notes === 'string') inquiry.notes = sanitize(notes, 500);

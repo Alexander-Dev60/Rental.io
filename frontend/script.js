@@ -6,6 +6,23 @@
 
 const API = CONFIG.API_URL;
 
+// Set by the early auth-guard script in dashboard.html's <head>. Reused
+// here so we never call landlord-only endpoints on a caretaker's behalf.
+const IS_CARETAKER = document.documentElement.getAttribute('data-caretaker') === 'true';
+function getCaretakerPermissions() {
+    if (!IS_CARETAKER) return {};
+    try { return JSON.parse(localStorage.getItem('caretakerPermissions') || '{}'); }
+    catch { return {}; }
+}
+
+function applyCaretakerPermissionUI() {
+    if (!IS_CARETAKER) return;
+    const perms = getCaretakerPermissions();
+
+    const postCard = document.getElementById('postAnnouncementBtn')?.closest('.card');
+    if (postCard) postCard.style.display = perms.canPostAnnouncements ? '' : 'none';
+}
+
 function getToken() {
     return localStorage.getItem('token');
 }
@@ -23,8 +40,101 @@ function authHeaders() {
 }
 
 function logout() {
+    // Preserve tour-completion flags across logout — otherwise a returning
+    // landlord/caretaker sees the spotlight tour again even though they
+    // already completed (or skipped) it, since localStorage.clear() below
+    // would wipe tourSeen_<userId> along with the auth token.
+    const preservedTourFlags = {};
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('tourSeen_')) {
+            preservedTourFlags[key] = localStorage.getItem(key);
+        }
+    }
+
     localStorage.clear();
+
+    Object.entries(preservedTourFlags).forEach(([key, value]) => {
+        localStorage.setItem(key, value);
+    });
+
     window.location.href = 'auth.html';
+}
+
+// ═══════════════════════════════════════
+// CARETAKER PERMISSIONS
+// ═══════════════════════════════════════
+
+function isCaretaker() {
+    return document.documentElement.getAttribute('data-caretaker') === 'true';
+}
+
+function getCaretakerPermissions() {
+    try {
+        const raw = localStorage.getItem('caretakerPermissions');
+        return raw ? JSON.parse(raw) : null;
+    } catch {
+        return null;
+    }
+}
+
+// Returns true if the action is allowed. If not, shows a toast and returns
+// false — call this as an early-return guard at the top of any action
+// (record payment, post announcement, update maintenance, send message)
+// so a denied caretaker can never trigger the request, even by bypassing
+// a disabled button via devtools or a stale cached page.
+function _checkCaretakerPermission(permKey, actionLabel) {
+    if (!isCaretaker()) return true;
+    const perms = getCaretakerPermissions() || {};
+    if (perms[permKey]) return true;
+    showToast(`Your caretaker account does not have permission to ${actionLabel}`, 'warn');
+    return false;
+}
+
+// Disables the main entry-point buttons for actions this caretaker isn't
+// permitted to take. Runs once at page load — the buttons involved are
+// static HTML (present at DOMContentLoaded), not dynamically generated.
+// Fetches this caretaker's current permissions/properties from the server
+// and updates localStorage — the login-time snapshot goes stale the moment
+// a landlord edits permissions, so this must run on every load, not just once.
+async function refreshCaretakerContext() {
+    if (!isCaretaker()) return;
+    try {
+        const res  = await fetch(`${API}/caretaker/me`, { headers: authHeaders() });
+        const data = await res.json();
+        if (!res.ok) return;
+
+        localStorage.setItem('caretakerPermissions', JSON.stringify(data.permissions || {}));
+        if (data.landlord?.name) localStorage.setItem('caretakerLandlordName', data.landlord.name);
+
+    } catch (err) {
+        console.error('refreshCaretakerContext error:', err.message);
+    }
+}
+
+// Enables/disables the static entry-point buttons based on the CURRENT
+// permission snapshot in localStorage. Idempotent and safe to re-run any
+// number of times — it always sets both the enabled and disabled state
+// explicitly, so a permission that was just re-granted actually re-enables
+// its button instead of staying stuck disabled from an earlier check.
+function applyCaretakerPermissionGates() {
+    if (!isCaretaker()) return;
+    const perms = getCaretakerPermissions() || {};
+
+    const gate = (id, allowed, reason) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.disabled      = !allowed;
+        el.title         = allowed ? '' : reason;
+        el.style.opacity = allowed ? '1' : '0.5';
+        el.style.cursor  = allowed ? '' : 'not-allowed';
+    };
+
+    gate('recordPaymentBtn',    perms.canRecordPayments,    'Your caretaker account does not have permission to record payments');
+    gate('postAnnouncementBtn', perms.canPostAnnouncements, 'Your caretaker account does not have permission to post announcements');
+    gate('addTenantBtn',        perms.canManageTenants,     'Your caretaker account does not have permission to add tenants');
+    gate('assignHouseBtn',      perms.canManageTenants,     'Your caretaker account does not have permission to assign houses');
+    gate('moveOutBtnAssign',    perms.canManageTenants,     'Your caretaker account does not have permission to move out tenants');
 }
 
 // ── Guard: redirect if not logged in, not landlord, or token already expired ──
@@ -45,7 +155,7 @@ function logout() {
             return;
         }
 
-        if (payload.role !== 'landlord') { window.location.href = 'tenant.html'; return; }
+        if (payload.role !== 'landlord' && payload.role !== 'caretaker') { window.location.href = 'tenant.html'; return; }
         if (payload.mustChangePassword)  { window.location.href = 'change-password.html'; return; }
 
         // FIX: hard-stop safety net. session-manager.js handles the idle-warning
@@ -70,6 +180,30 @@ function logout() {
     }
 })();
 
+function applyCaretakerHeaderFallback() {
+    const activeId   = getPropertyId();
+    const activeProp = _propertiesCache.find(p => p._id === activeId) || _propertiesCache[0];
+
+    const nameEl = document.getElementById('propertyNameDisplay');
+    const locEl  = document.getElementById('propertyLocationDisplay');
+    const mgrEl  = document.getElementById('landlordNameDisplay');
+
+    if (nameEl) nameEl.textContent = activeProp ? activeProp.name : 'Your Property';
+    if (locEl)  locEl.innerHTML    = `<span>📍</span> ${activeProp?.location || '—'}`;
+
+    const landlordName = localStorage.getItem('caretakerLandlordName');
+    if (mgrEl) mgrEl.innerHTML = `<span>👤</span> Managed by ${landlordName || '—'}`;
+
+    const badgeEl     = document.getElementById('payStatusBadge');
+    const dotEl       = document.getElementById('payStatusDot');
+    const textEl      = document.getElementById('payStatusText');
+    const configured  = activeProp?.paymentConfigured;
+
+    if (badgeEl) badgeEl.className = `pay-status-badge ${configured ? 'active' : 'inactive'}`;
+    if (dotEl)   dotEl.className   = `pay-status-dot ${configured ? 'active' : 'inactive'}`;
+    if (textEl)  textEl.textContent = configured ? 'Payments Active' : 'Payments Not Configured';
+    // setupPayBtn stays hidden — caretakers never get a Setup button
+}
 
 // ═══════════════════════════════════════
 // PLATFORM-WIDE MAINTENANCE
@@ -170,6 +304,8 @@ async function _refreshMaintenanceCounts() {
 }
 
 async function submitMaintenanceUpdate() {
+    if (!_checkCaretakerPermission('canManageMaintenance', 'update repair requests')) return;
+
     const id     = document.getElementById('maintUpdateId').value;
     const status = document.getElementById('maintUpdateStatus').value;
     const cost   = document.getElementById('maintUpdateCost').value;
@@ -385,11 +521,16 @@ function switchProperty(id, name) {
     loadAnnouncements();
     loadRules();
     loadUnread();
-    loadDashboard();
-    loadRecentActivity();
-    loadExpenses();
-    loadMaintenanceRequests()
+    loadMaintenanceRequests();
     if (document.getElementById('sec-activity')?.classList.contains('active')) loadActivity();
+
+    if (!IS_CARETAKER) {
+        loadDashboard();
+        loadRecentActivity();
+        loadExpenses();
+    } else {
+        applyCaretakerHeaderFallback();
+    }
 
     showToast(`Switched to ${name} `, 'success');
 }
@@ -968,8 +1109,16 @@ async function loadLandlordProfile() {
                         || (data.properties || [])[0];
 
         if (nameEl) nameEl.textContent = activeProp ? activeProp.name : (data.propertyName || 'Your Property');
-        if (locEl)  locEl.innerHTML    = `<span>📍</span> ${activeProp ? (activeProp.location || '—') : (data.propertyLocation || '—')}`;
-        if (mgrEl)  mgrEl.innerHTML    = `<span>👤</span> Managed by ${data.name || '—'}`;
+        if (locEl)  locEl.innerHTML    = `${ICON('pin',12)} ${activeProp ? (activeProp.location || '—') : (data.propertyLocation || '—')}`;
+
+        if (mgrEl) {
+            if (isCaretaker()) {
+                const landlordName = localStorage.getItem('caretakerLandlordName') || '—';
+                mgrEl.innerHTML = `${ICON('user',12)} Managed by ${landlordName} <span style="color:var(--accent);margin-left:0.35rem">(Caretaker)</span>`;
+            } else {
+                mgrEl.innerHTML = `${ICON('user',12)} Managed by ${data.name || '—'}`;
+            }
+        }
 
         // ── Topbar property switcher (single source of truth for name +
         //    location in the top bar — no separate duplicate strip). ──
@@ -1022,6 +1171,188 @@ async function skipOnboarding() {
     }
 }
 
+// ═══════════════════════════════════════
+// CARETAKERS — API calls
+// ═══════════════════════════════════════
+
+
+let _caretakersCache = [];
+
+// Single source of truth for the permission checkboxes — used by both the
+// Add Caretaker form (new account, defaults unchecked except the two safe
+// ones) and the Edit Caretaker modal (pre-checked from the current record).
+const CARETAKER_PERM_DEFS = [
+    { key: 'canManageTenants',     label: 'Add, assign, move out and reactivate tenants', defaultOn: false },
+    { key: 'canRecordPayments',    label: 'Record cash / manual payments',                defaultOn: true  },
+    { key: 'canManageMaintenance', label: 'Update repair request status',                 defaultOn: true  },
+    { key: 'canMessageTenants',    label: 'Reply to tenant messages',                     defaultOn: true  },
+    { key: 'canPostAnnouncements', label: 'Post announcements',                           defaultOn: false }
+];
+
+function _renderCaretakerPermCheckboxes(containerId, permMap = {}, useDefaults = false) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = CARETAKER_PERM_DEFS.map(p => {
+        const checked = useDefaults ? p.defaultOn : !!permMap[p.key];
+        return `
+            <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.78rem;color:var(--text-muted);cursor:pointer">
+                <input type="checkbox" data-perm="${p.key}" ${checked ? 'checked' : ''} style="width:auto;margin:0">
+                ${p.label}
+            </label>`;
+    }).join('');
+}
+
+function _getCheckedPermissions(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return {};
+    const permissions = {};
+    container.querySelectorAll('input[data-perm]').forEach(i => {
+        permissions[i.dataset.perm] = i.checked;
+    });
+    return permissions;
+}
+
+function _renderCaretakerPropertyCheckboxes(containerId, selectedIds = []) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    if (!_propertiesCache.length) {
+        container.innerHTML = '<div class="empty-state" style="padding:0.5rem">No properties yet — add one first</div>';
+        return;
+    }
+    container.innerHTML = _propertiesCache.map(p => `
+        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.78rem;color:var(--text-muted);cursor:pointer">
+            <input type="checkbox" value="${p._id}" ${selectedIds.includes(p._id) ? 'checked' : ''} style="width:auto;margin:0">
+            ${p.name}
+        </label>`).join('');
+}
+
+function _getCheckedValues(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return [];
+    return Array.from(container.querySelectorAll('input[type="checkbox"]:checked')).map(i => i.value);
+}
+
+async function loadCaretakers() {
+    _renderCaretakerPropertyCheckboxes('newCaretakerProperties');
+    _renderCaretakerPermCheckboxes('newCaretakerPermissions', {}, true);
+
+    try {
+        const res  = await fetch(`${API}/landlord/caretakers`, { headers: authHeaders() });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.message || 'Failed to load caretakers', 'error'); return; }
+
+        _caretakersCache = data.caretakers || [];
+        renderCaretakersList(_caretakersCache);
+
+    } catch (err) {
+        showToast('Network error', 'error');
+        console.error('loadCaretakers error:', err);
+    }
+}
+
+async function addCaretaker() {
+    const name        = document.getElementById('newCaretakerName')?.value.trim();
+    const phone       = document.getElementById('newCaretakerPhone')?.value.trim();
+    const email        = document.getElementById('newCaretakerEmail')?.value.trim();
+    const propertyIds = _getCheckedValues('newCaretakerProperties');
+    const permissions  = _getCheckedPermissions('newCaretakerPermissions');
+
+    if (!name || !phone || !email) { showToast('Name, phone and email are required', 'warn'); return; }
+    if (!propertyIds.length)       { showToast('Assign at least one property', 'warn'); return; }
+
+    const btn = document.getElementById('addCaretakerBtn');
+    if (btn) { btn.disabled = true; btn.innerHTML = `${ICON('hourglass',14)} Creating...`; }
+
+    try {
+        const res  = await fetch(`${API}/landlord/caretakers/create`, {
+            method:  'POST',
+            headers: authHeaders(),
+            body:    JSON.stringify({ name, phone, email, propertyIds, permissions })
+        });
+        const data = await res.json();
+
+        if (!res.ok) { showToast(data.message || 'Failed to create caretaker', 'error'); return; }
+
+        showToast('Caretaker created — login email sent', 'success');
+        ['newCaretakerName', 'newCaretakerPhone', 'newCaretakerEmail'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        await loadCaretakers();
+
+    } catch (err) {
+        showToast('Network error', 'error');
+        console.error('addCaretaker error:', err);
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = `${ICON('hardhat',14)} Create Caretaker &amp; Send Login Email`; }
+    }
+}
+
+function openEditCaretakerModal(caretakerId) {
+    const caretaker = _caretakersCache.find(c => c._id === caretakerId);
+    if (!caretaker) { showToast('Caretaker not found — refresh and try again', 'warn'); return; }
+
+    document.getElementById('editCaretakerId').value         = caretaker._id;
+    document.getElementById('editCaretakerName').textContent = caretaker.name;
+
+    const assignedIds = (caretaker.properties || []).map(p => p._id || p);
+    _renderCaretakerPropertyCheckboxes('editCaretakerProperties', assignedIds);
+
+    _renderCaretakerPermCheckboxes('editCaretakerPermissions', caretaker.caretakerPermissions || {});
+
+    openModal('modal-edit-caretaker');
+}
+
+async function submitEditCaretaker() {
+    const caretakerId = document.getElementById('editCaretakerId').value;
+    const propertyIds = _getCheckedValues('editCaretakerProperties');
+    const permissions = _getCheckedPermissions('editCaretakerPermissions');
+
+    if (!propertyIds.length) { showToast('Assign at least one property', 'warn'); return; }
+
+    const btn = document.getElementById('saveEditCaretakerBtn');
+    if (btn) { btn.disabled = true; btn.innerHTML = `${ICON('hourglass',14)} Saving...`; }
+
+    try {
+        const res  = await fetch(`${API}/landlord/caretakers/${caretakerId}`, {
+            method:  'PUT',
+            headers: authHeaders(),
+            body:    JSON.stringify({ propertyIds, permissions })
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.message || 'Update failed', 'error'); return; }
+
+        showToast('Caretaker updated', 'success');
+        closeModal('modal-edit-caretaker');
+        await loadCaretakers();
+
+    } catch (err) {
+        showToast('Network error', 'error');
+        console.error('submitEditCaretaker error:', err);
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = `${ICON('lock',14)} Save Changes`; }
+    }
+}
+
+function revokeCaretaker(caretakerId, caretakerName) {
+    openDangerModal({
+        icon:    ICON('trash', 44),
+        title:   'Revoke Caretaker Access',
+        message: `Revoke access for <strong>${caretakerName}</strong>? They will no longer be able to log in.`,
+        label:   'Revoke Access',
+        type:    'danger',
+        onConfirm: async () => {
+            const res  = await fetch(`${API}/landlord/caretakers/${caretakerId}`, {
+                method: 'DELETE', headers: authHeaders()
+            });
+            const data = await res.json();
+            if (!res.ok) { showToast(data.message || 'Failed to revoke access', 'error'); return; }
+            showToast('Caretaker access revoked', 'success');
+            await loadCaretakers();
+        }
+    });
+}
+
 
 // ═══════════════════════════════════════════════════════
 //  PAYMENT SETUP — OTP & 30-day limit panel system
@@ -1069,6 +1400,7 @@ function onSetupPropertyChange() {
 
     if (!propertyId) {
         if (titleEl) titleEl.innerHTML = `${ICON('settings',16)} M-Pesa Payment Setup`;
+        resetMpesaAcctTypeSelection();
         showPaySetupPanel('form');
         return;
     }
@@ -1081,7 +1413,11 @@ function onSetupPropertyChange() {
 
     if (prop.paymentConfigured) {
         if (titleEl) titleEl.innerHTML = `${ICON('settings',16)} M-Pesa Credentials`;
-        
+
+        // Pre-select this property's existing account type so it's already
+        // correct by the time OTP is verified and the form panel appears —
+        // editing shouldn't silently reset Till accounts back to Paybill.
+        setMpesaAcctType(prop.mpesaAccountType === 'till' ? 'till' : 'paybill');
 
         // Compute 30-day eligibility
         const lastUpdated = prop.paymentLastUpdated;
@@ -1102,7 +1438,7 @@ function onSetupPropertyChange() {
             }
         }
 
-    const statusEl = document.getElementById('paySetupStatusInfo');
+        const statusEl = document.getElementById('paySetupStatusInfo');
         if (statusEl) {
             statusEl.innerHTML = `
                 <div style="background:var(--accent-dim);border:1px solid rgba(110,231,183,0.2);border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.85rem">
@@ -1111,7 +1447,7 @@ function onSetupPropertyChange() {
                         <span style="font-size:0.85rem;font-weight:600;color:var(--text)">M-Pesa Configured</span>
                     </div>
                     <div style="font-family:'JetBrains Mono',monospace;font-size:0.62rem;color:var(--text-dim)">
-                        Last updated: ${lastUpdStr}
+                        Last updated: ${lastUpdStr} · ${prop.mpesaAccountType === 'till' ? 'Till Number' : 'Paybill'}
                     </div>
                 </div>`;
         }
@@ -1141,6 +1477,7 @@ function onSetupPropertyChange() {
 
     } else {
         if (titleEl) titleEl.innerHTML = `${ICON('settings',16)} M-Pesa Payment Setup`;
+        resetMpesaAcctTypeSelection();
         showPaySetupPanel('form');
     }
 }
@@ -1205,15 +1542,18 @@ const titleEl = document.getElementById('paySetupModalTitle');
 
 async function savePaymentSetup() {
     const propertyId     = document.getElementById('setupPropertyId')?.value;
+    const accountType    = document.getElementById('setupAcctType')?.value;
     const paybillNumber  = document.getElementById('setupPaybill')?.value.trim();
     const consumerKey    = document.getElementById('setupConsumerKey')?.value.trim();
     const consumerSecret = document.getElementById('setupConsumerSecret')?.value.trim();
     const passkey        = document.getElementById('setupPasskey')?.value.trim();
 
-    if (!propertyId) { showToast('Select a property first', 'warn'); return; }
+    if (!propertyId)  { showToast('Select a property first', 'warn'); return; }
+    if (!accountType) { showToast('Select Paybill or Till Number first', 'warn'); return; }
     if (!paybillNumber || !consumerKey || !consumerSecret || !passkey) {
         showToast('All payment fields are required', 'warn'); return;
     }
+    
 
     // When editing existing credentials, OTP is required
     if (_paySetupEditing && !_paySetupOtp) {
@@ -1231,7 +1571,9 @@ async function savePaymentSetup() {
         // Backend: POST /landlord/setup-payments
         // First setup: no `otp` field needed
         // Editing:     `otp` field required; backend validates and enforces 30-day limit
-        const body = { propertyId, paybillNumber, consumerKey, consumerSecret, passkey };
+        const accountType = document.getElementById('setupAcctType')?.value || 'paybill';
+        const body = { propertyId, paybillNumber, consumerKey, consumerSecret, passkey, accountType };
+        
         if (_paySetupEditing && _paySetupOtp) body.otp = _paySetupOtp;
 
         const res  = await fetch(`${API}/landlord/setup-payments`, {
@@ -1300,14 +1642,23 @@ async function loadDashboard() {
         document.getElementById('netIncome').textContent = (data.netIncome || 0).toLocaleString();
         document.getElementById('openMaintenance').textContent = data.openMaintenanceCount || 0;
 
-        if (data.landlordProfile) {
+                if (data.landlordProfile) {
             const nameEl = document.getElementById('propertyNameDisplay');
             const locEl  = document.getElementById('propertyLocationDisplay');
             const mgrEl  = document.getElementById('landlordNameDisplay');
             if (nameEl) nameEl.textContent = data.property?.name || data.landlordProfile.propertyName || 'Your Property';
-            if (locEl)  locEl.innerHTML    = `<span>📍</span> ${data.property?.location || data.landlordProfile.propertyLocation || '—'}`;
-            if (mgrEl)  mgrEl.innerHTML    = `<span>👤</span> Managed by ${data.landlordProfile.name || '—'}`;
+            if (locEl)  locEl.innerHTML    = `${ICON('pin',12)} ${data.property?.location || data.landlordProfile.propertyLocation || '—'}`;
+
+            if (mgrEl) {
+                if (isCaretaker()) {
+                    const landlordName = localStorage.getItem('caretakerLandlordName') || '—';
+                    mgrEl.innerHTML = `${ICON('user',12)} Managed by ${landlordName} <span style="color:var(--accent);margin-left:0.35rem">(Caretaker)</span>`;
+                } else {
+                    mgrEl.innerHTML = `${ICON('user',12)} Managed by ${data.landlordProfile.name || '—'}`;
+                }
+            }
         }
+
 
         renderCharts(data);
 
@@ -1389,6 +1740,8 @@ async function loadTenantProfile(id) {
 }
 
 async function addTenant() {
+    if (!_checkCaretakerPermission('canManageTenants', 'add tenants')) return;
+
     const name       = document.getElementById('newName').value.trim();
     const phone      = document.getElementById('newPhone').value.trim();
     const email      = document.getElementById('newEmail').value.trim();
@@ -1577,13 +1930,10 @@ async function bulkRemindSelected() {
 async function loadHouses() {
     try {
         const propertyId = getPropertyId();
-        const url        = propertyId
-            ? `${API}/houses?propertyId=${propertyId}`
-            : `${API}/houses`;
+        const url = propertyId ? `${API}/houses?propertyId=${propertyId}` : `${API}/houses`;
 
         const res    = await fetch(url, { headers: authHeaders() });
         const houses = await res.json();
-
         if (!res.ok) { showToast('Failed to load houses', 'error'); return; }
 
         const enriched = houses.map(h => {
@@ -1600,8 +1950,8 @@ async function loadHouses() {
         });
 
         _allHouses = enriched;
-        renderHouseGrid(enriched);
-        populateHouseSelects(enriched);
+        renderHouseGrid(enriched);                                          // Houses tab (landlord)
+        renderHouseGrid(enriched, 'assignHouseGrid', 'assignHouseGroupLegend'); // Assign section (landlord + caretaker)
 
     } catch (err) {
         showToast('Failed to load houses', 'error');
@@ -1639,6 +1989,8 @@ async function addHouse() {
 }
 
 function deleteHouse(id) {
+    document.querySelectorAll('.house-ctx-menu').forEach(m => m.remove());
+
     const cards = document.querySelectorAll('.house-card');
     let houseName = 'this house';
     cards.forEach(c => {
@@ -1667,44 +2019,14 @@ function deleteHouse(id) {
 // ── UPDATED: shows a confirmation modal with tenant + house details
 //    before calling the API. Selection is saved to localStorage for
 //    persistence across page refreshes (onchange handlers in HTML). ──
-function assignHouse() {
-    const tenantId = document.getElementById('tenantSelect').value;
-    const houseId  = document.getElementById('houseSelect').value;
-    if (!tenantId || !houseId) { showToast('Select both tenant and house', 'warn'); return; }
 
-    const tenant = _allTenants.find(t => t._id === tenantId);
-    const house  = _allHouses.find(h => h._id === houseId);
 
-        openDangerModal({
-        icon:    ICON('key', 44),
-        title:   'Confirm House Assignment',
-        message: `Assign <strong>${tenant?.name || '—'}</strong> to <strong>${house?.name || '—'}</strong>?<br><br>
-                  <span style="font-family:'JetBrains Mono',monospace;font-size:0.8rem;color:var(--text-muted)">
-                    Monthly Rent: Ksh ${Number(house?.rent || 0).toLocaleString()}
-                  </span>`,
-        label:   `${ICON('key',14)} Assign House`,
-        type:    'warn',
-        
-        onConfirm: async () => {
-            const res  = await fetch(`${API}/assign-house/${tenantId}/${houseId}`, {
-                method: 'PUT', headers: authHeaders()
-            });
-            const data = await res.json();
-            if (!res.ok) { showToast(data.message || data.error || 'Assign failed', 'error'); return; }
-            showToast(data.message, 'success');
-            // Clear saved selection after successful assignment
-            localStorage.removeItem('assignTenantId');
-            localStorage.removeItem('assignHouseId');
-            await loadHouses();
-            await loadTenants();
-        }
-    });
-}
+function moveOutTenant(selectId = 'moveOutSelect') {
+    if (!_checkCaretakerPermission('canManageTenants', 'move out tenants')) return;
 
-function moveOutTenant() {
-    const tenantId   = document.getElementById('moveOutSelect').value;
+    const sel        = document.getElementById(selectId);
+    const tenantId   = sel ? sel.value : '';
     if (!tenantId) { showToast('Select a tenant', 'warn'); return; }
-    const sel        = document.getElementById('moveOutSelect');
     const tenantName = sel.options[sel.selectedIndex]?.text || 'this tenant';
 
     openDangerModal({
@@ -1937,6 +2259,46 @@ async function loadArrears() {
 }
 
 
+async function exportArrearsCsv() {
+    const monthInput = document.getElementById('arrearsMonth');
+    const month       = monthInput ? monthInput.value.trim() : '';
+    const propertyId  = getPropertyId();
+
+    const params = new URLSearchParams();
+    if (month)      params.set('month', month);
+    if (propertyId) params.set('propertyId', propertyId);
+
+    const url = `${API}/arrears/export${params.toString() ? '?' + params.toString() : ''}`;
+
+    try {
+        const res = await fetch(url, {
+            headers: { 'Authorization': 'Bearer ' + getToken() }
+        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            showToast(err.message || 'Failed to export arrears', 'error');
+            return;
+        }
+
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = `arrears-${(month || 'current').replace(/\s+/g, '-')}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+
+        showToast('Arrears CSV downloaded', 'success');
+
+    } catch (err) {
+        showToast('Network error', 'error');
+        console.error('exportArrearsCsv error:', err);
+    }
+}
+
 // ═══════════════════════════════════════
 // MESSAGES — API calls
 // ═══════════════════════════════════════
@@ -1967,6 +2329,8 @@ async function loadAdminChat(tenantId) {
 }
 
 async function sendAdminMessage() {
+    if (!_checkCaretakerPermission('canMessageTenants', 'message tenants')) return;
+
     const tenantId = _activeChatTenantId;
     const text     = document.getElementById('adminMsg').value.trim();
     if (!tenantId) { showToast('Select a tenant first', 'warn'); return; }
@@ -2168,6 +2532,8 @@ function deleteExpense(id) {
 // ═══════════════════════════════════════
 
 async function addAnnouncement() {
+    if (!_checkCaretakerPermission('canPostAnnouncements', 'post announcements')) return;
+
     const message    = document.getElementById('announcementText').value.trim();
     const propertyId = getPropertyId();
 
@@ -2749,33 +3115,33 @@ async function handlePhotoDelete(propertyId, photoUrl) {
 window.addEventListener('DOMContentLoaded', async () => {
     if (window.__AUTH_INVALID__) return;
 
-    // Checked before any other request — a landlord opening the dashboard
-    // during a platform-wide maintenance window should see exactly one
-    // screen, not a burst of failed-request toasts from every load* call
-    // below hitting 503.
     const underMaintenance = await checkPlatformMaintenance();
     if (underMaintenance) return;
 
     const saved = localStorage.getItem('admin-theme') || 'dark';
     setTheme(saved);
     refreshSessionStatus();
-
     syncMaintenanceToggle();
 
-      const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
-
-    // dashMonth (Dashboard filter) and expenseMonth (Expense recording) are
-    // <select> elements generated from the same list — see
-    // dashboard.js:_populateMonthSelect — so they can never drift apart.
+    const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
     _populateMonthSelect('dashMonth',    { count: 12 });
     _populateMonthSelect('expenseMonth', { count: 12 });
 
     const monthEl = document.getElementById('month');
     if (monthEl && !monthEl.value) monthEl.value = currentMonth;
 
+    await refreshCaretakerContext();
+    applyCaretakerPermissionGates();
+
     await loadLandlordProfile();
     await loadProperties();
-    checkOnboarding();
+
+    if (!IS_CARETAKER) {
+        checkOnboarding();
+        
+    } else {
+        applyCaretakerHeaderFallback();
+    }
 
     loadTenants();
     loadMovedOutTenants();
@@ -2783,9 +3149,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     loadAnnouncements();
     loadRules();
     loadUnread();
-    loadDashboard();
     loadInquiryBadge();
     loadMaintenanceRequests();
+    applyCaretakerPermissionUI();
+
+    loadDashboard();
 });
 // ═══════════════════════════════════════
 // POLLING
@@ -2793,6 +3161,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 setInterval(loadUnread,           15000);
 setInterval(loadHouses,           30000);
+setInterval(async () => { await refreshCaretakerContext(); applyCaretakerPermissionGates(); }, 30000);
 setInterval(loadArrears,          60000);
 setInterval(loadTenants,          30000);
 setInterval(loadMovedOutTenants,  30000);

@@ -39,9 +39,9 @@ const userSchema = new mongoose.Schema({
         required: true
     },
 
-    role: {
+        role: {
         type:    String,
-        enum:    ['landlord', 'tenant'],
+        enum:    ['landlord', 'tenant', 'caretaker'],
         default: 'tenant'
     },
 
@@ -114,14 +114,30 @@ const userSchema = new mongoose.Schema({
         default: null
     },
 
-    mustChangePassword: {
+        mustChangePassword: {
         type:    Boolean,
         default: false
     },
 
-    // ── FIX: replaces subscriptionStatus. Free platform now — this is
-    // purely a moderation switch (stacklord suspend/unsuspend), not a
-    // billing state. No trial/active/grace/expired lifecycle anymore. ──
+    // ── Caretaker-only fields ──
+    // `landlordId` above (already used for tenants) doubles as "which
+    // landlord this caretaker works for". `properties` scopes exactly
+    // which properties they can see/act on — a caretaker may only be
+    // assigned a subset of a landlord's full portfolio.
+    properties: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref:  'Property',
+        default: []
+    }],
+
+        caretakerPermissions: {
+        canRecordPayments:    { type: Boolean, default: true },
+        canManageMaintenance: { type: Boolean, default: true },
+        canMessageTenants:    { type: Boolean, default: true },
+        canPostAnnouncements: { type: Boolean, default: false },
+        canManageTenants:     { type: Boolean, default: false }
+    },
+    
     accountStatus: {
         type:    String,
         enum:    ['active', 'suspended'],
@@ -169,6 +185,13 @@ userSchema.index({ landlordId: 1 });
 userSchema.index({ role: 1 });
 userSchema.index({ subdomain: 1 }, { unique: true, sparse: true }); // sparse → nulls don't collide
 
+// ── Compound index for caretaker lookups — every caretaker-scoped query
+// filters by landlordId + role: 'caretaker' together (e.g. GET
+// /landlord/caretakers, checkCaretakerPropertyAccess). A compound index
+// here is more efficient than relying on the two separate single-field
+// indexes above, since Mongo can satisfy the whole filter from one index
+// scan instead of intersecting two. ──
+userSchema.index({ landlordId: 1, role: 1 });
 userSchema.set('toJSON',   { virtuals: true });
 userSchema.set('toObject', { virtuals: true });
 

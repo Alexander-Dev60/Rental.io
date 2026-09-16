@@ -64,6 +64,12 @@ const propertySchema = new mongoose.Schema({
         trim:    true,
         default: null
     },
+    // models/Property.js
+    mpesaAccountType: {
+        type: String,
+        enum: ['paybill', 'till'],
+        default: 'paybill'
+    },
 
     paybillNumber: {
         type:    String,

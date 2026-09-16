@@ -678,6 +678,34 @@
   ::-webkit-scrollbar-track { background:transparent; }
   ::-webkit-scrollbar-thumb { background:var(--border2);border-radius:2px; }
   ::selection { background:var(--accent-dim);color:var(--text); }
+
+  /* ═══ SPOTLIGHT TOUR ═══ */
+.tour-catcher { position: fixed; inset: 0; z-index: 10000; background: transparent; }
+.tour-spotlight {
+  position: fixed; z-index: 10001; border-radius: 10px;
+  box-shadow: 0 0 0 9999px rgba(6,8,14,0.78);
+  border: 2px solid var(--accent);
+  transition: top 0.35s cubic-bezier(0.4,0,0.2,1), left 0.35s cubic-bezier(0.4,0,0.2,1),
+              width 0.35s cubic-bezier(0.4,0,0.2,1), height 0.35s cubic-bezier(0.4,0,0.2,1);
+  pointer-events: none;
+}
+.tour-card {
+  position: fixed; z-index: 10002; max-width: 290px;
+  background: var(--panel2); border: 1px solid var(--border2); border-radius: 12px;
+  padding: 1.1rem 1.25rem; box-shadow: 0 20px 60px rgba(0,0,0,0.55);
+  animation: tourPop 0.25s cubic-bezier(0.34,1.4,0.64,1) both;
+  transition: top 0.35s cubic-bezier(0.4,0,0.2,1), left 0.35s cubic-bezier(0.4,0,0.2,1);
+}
+@keyframes tourPop { from { opacity:0; transform: scale(0.92) translateY(6px); } to { opacity:1; transform: scale(1) translateY(0); } }
+.tour-step-count { font-family:'DM Mono',monospace; font-size:0.58rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-dim); margin-bottom:0.5rem; }
+.tour-title { font-family:'DM Serif Display',serif; font-style:italic; font-size:1.1rem; color:var(--text); margin-bottom:0.4rem; }
+.tour-desc { font-size:0.78rem; color:var(--text-muted); line-height:1.55; margin-bottom:1rem; }
+.tour-actions { display:flex; align-items:center; justify-content:space-between; gap:0.5rem; }
+.tour-skip { background:transparent; border:none; color:var(--text-dim); font-size:0.7rem; cursor:pointer; font-family:'DM Sans',sans-serif; padding:0.3rem 0; }
+.tour-skip:hover { color:var(--red); }
+.tour-nav-btns { display:flex; gap:0.5rem; }
+.tour-nav-btns .btn { width: auto; margin: 0; }
+@media (max-width:480px) { .tour-card { max-width: calc(100vw - 2rem); } }
   </style>
 </head>
 
@@ -729,19 +757,19 @@
   <!-- Desktop sidebar -->
   <aside class="sidebar-desktop" id="desktopSidebar">
     <div class="sidebar-nav">
-      <div class="dsk-nav-item active" onclick="showSection('home')">    <span class="icon" id="navIcon_home"></span>Home    </div>
-    <div class="dsk-nav-item"        onclick="showSection('profile')"> <span class="icon" id="navIcon_profile"></span>Profile </div>
-    <div class="dsk-nav-item"        onclick="showSection('pay')">     <span class="icon" id="navIcon_pay"></span>Pay Rent</div>
-    <div class="dsk-nav-item"        onclick="showSection('receipts')"><span class="icon" id="navIcon_receipts"></span>Receipts</div>
-    <div class="dsk-nav-item"        onclick="showSection('messages')">
-      <span class="icon" id="navIcon_messages"></span>Messages
-      <span class="bnav-badge" id="dskMsgBadge" style="position:static;margin-left:auto;display:none"></span>
+      <div class="dsk-nav-item active" data-tour-key="home" onclick="showSection('home')">    <span class="icon" id="navIcon_home"></span>Home    </div>
+      <div class="dsk-nav-item" data-tour-key="profile" onclick="showSection('profile')"> <span class="icon" id="navIcon_profile"></span>Profile </div>
+      <div class="dsk-nav-item" data-tour-key="pay" onclick="showSection('pay')">     <span class="icon" id="navIcon_pay"></span>Pay Rent</div>
+      <div class="dsk-nav-item" data-tour-key="receipts" onclick="showSection('receipts')"><span class="icon" id="navIcon_receipts"></span>Receipts</div>
+      <div class="dsk-nav-item" data-tour-key="messages" onclick="showSection('messages')">
+        <span class="icon" id="navIcon_messages"></span>Messages
+        <span class="bnav-badge" id="dskMsgBadge" style="position:static;margin-left:auto;display:none"></span>
+      </div>
+      <div class="dsk-nav-item" data-tour-key="notices" onclick="showSection('notices')"> <span class="icon" id="navIcon_notices"></span>Notices </div>
+      <div class="dsk-nav-item" data-tour-key="rules" onclick="showSection('rules')">   <span class="icon" id="navIcon_rules"></span>Rules   </div>
+      <div class="dsk-nav-item" data-tour-key="maintenance" onclick="showSection('maintenance')"><span class="icon" id="navIcon_maintenance"></span>Maintenance</div>
+      <div class="dsk-nav-item" data-tour-key="settings" onclick="showSection('settings')"><span class="icon" id="navIcon_settings"></span>Settings</div>
     </div>
-    <div class="dsk-nav-item"        onclick="showSection('notices')"> <span class="icon" id="navIcon_notices"></span>Notices </div>
-    <div class="dsk-nav-item"        onclick="showSection('rules')">   <span class="icon" id="navIcon_rules"></span>Rules   </div>
-    <div class="dsk-nav-item" onclick="showSection('maintenance')"><span class="icon" id="navIcon_maintenance"></span>Maintenance</div>
-    <div class="dsk-nav-item"        onclick="showSection('settings')"><span class="icon" id="navIcon_settings"></span>Settings</div>
-</div>
 
     <div class="sidebar-footer">
       <div style="font-family:'DM Mono',monospace;font-size:0.56rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-dim);margin-bottom:0.5rem">Appearance</div>
@@ -1117,14 +1145,14 @@
 
 <!-- ═══ BOTTOM NAV ═══ -->
 <nav class="bottom-nav">
- <div class="bnav-item active" onclick="showSection('home')"     id="bnav-home">    <span class="bnav-icon" id="bnavIcon_home"></span>Home    </div>
-<div class="bnav-item"        onclick="showSection('profile')"  id="bnav-profile"> <span class="bnav-icon" id="bnavIcon_profile"></span>Profile </div>
-<div class="bnav-item"        onclick="showSection('pay')"      id="bnav-pay">     <span class="bnav-icon" id="bnavIcon_pay"></span>Pay     </div>
-<div class="bnav-item"        onclick="showSection('messages')" id="bnav-messages">
-  <span class="bnav-icon" id="bnavIcon_messages"></span>Chat
-  <span class="bnav-badge" id="msgBadge" style="display:none">!</span>
-</div>
-<div class="bnav-item"        onclick="showSection('settings')" id="bnav-settings"><span class="bnav-icon" id="bnavIcon_settings"></span>Settings</div>
+  <div class="bnav-item active" data-tour-key="home" onclick="showSection('home')"     id="bnav-home">    <span class="bnav-icon" id="bnavIcon_home"></span>Home    </div>
+  <div class="bnav-item" data-tour-key="profile" onclick="showSection('profile')"  id="bnav-profile"> <span class="bnav-icon" id="bnavIcon_profile"></span>Profile </div>
+  <div class="bnav-item" data-tour-key="pay" onclick="showSection('pay')"      id="bnav-pay">     <span class="bnav-icon" id="bnavIcon_pay"></span>Pay     </div>
+  <div class="bnav-item" data-tour-key="messages" onclick="showSection('messages')" id="bnav-messages">
+    <span class="bnav-icon" id="bnavIcon_messages"></span>Chat
+    <span class="bnav-badge" id="msgBadge" style="display:none">!</span>
+  </div>
+  <div class="bnav-item" data-tour-key="settings" onclick="showSection('settings')" id="bnav-settings"><span class="bnav-icon" id="bnavIcon_settings"></span>Settings</div>
 </nav>
 
 <div id="toast"></div>
@@ -1209,6 +1237,240 @@ function togglePwEye(inputId, btn) {
 </script>
 <script src="tenant.js"></script>
 <script src="session-manager.js"></script>
+
+<script>
+// ═══════════════════════════════════════
+// SPOTLIGHT TOUR — first-login walkthrough
+// ═══════════════════════════════════════
+// Steps target a data-tour-key that exists on BOTH the desktop sidebar item
+// and the mobile bottom-nav item for the same section — only one is ever
+// visible. _tourFindVisible() picks whichever is on-screen; keys with no
+// visible match (e.g. "receipts" on mobile) are dropped, so the tour is
+// naturally shorter on phones. The usable list is recomputed on every render
+// so crossing the 768px breakpoint mid-tour stays consistent.
+
+const TOUR_STEPS = [
+  { key: 'home',        title: 'Home',          desc: 'Your overview — total paid, this month\'s balance, and your assigned house at a glance.' },
+  { key: 'profile',     title: 'Profile',       desc: 'Your account details and full payment history.' },
+  { key: 'pay',         title: 'Pay Rent',      desc: 'Pay your rent via M-Pesa — enter the month and amount, and a prompt is sent to your phone.' },
+  { key: 'receipts',    title: 'Receipts',      desc: 'Every payment you\'ve made, with a downloadable PDF receipt for each.' },
+  { key: 'messages',    title: 'Messages',      desc: 'Chat directly with your landlord — ask questions or follow up anytime.' },
+  { key: 'notices',     title: 'Announcements', desc: 'Updates your landlord posts for everyone on the property.' },
+  { key: 'rules',       title: 'House Rules',   desc: 'Rules and guidelines set for your property.' },
+  { key: 'maintenance', title: 'Maintenance',   desc: 'Report a repair issue and track its progress until it\'s resolved.' },
+  { key: 'settings',    title: 'Settings',      desc: 'Update your password, and switch the app\'s appearance.' }
+];
+
+let _tourIndex = 0;
+let _tourEls = {};
+let _tourResizeTimer = null;
+let _tourActive = false;
+
+// icons.js may not have every key — never let a missing icon kill a render.
+function _tourIcon(name, size) {
+  try { return (typeof ICON === 'function') ? ICON(name, size) : ''; }
+  catch { return ''; }
+}
+
+function _tourUserId() {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) return 'anon';
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+    return payload.tenantId || payload.id || payload._id || payload.sub || 'anon';
+  } catch { return 'anon'; }
+}
+
+function _tourStorageKey() { return `tourSeen_${_tourUserId()}`; }
+
+function _tourFindVisible(key) {
+  const candidates = document.querySelectorAll(`[data-tour-key="${key}"]`);
+  for (const el of candidates) {
+    if (el.offsetParent !== null && el.getBoundingClientRect().width > 0) return el;
+  }
+  return null;
+}
+
+function _tourUsableSteps() {
+  return TOUR_STEPS.filter(s => _tourFindVisible(s.key) !== null);
+}
+
+function maybeStartTour(attemptsLeft = 15) {
+  if (_tourActive) return;
+
+  // Maintenance screen hides the nav entirely — wait it out.
+  if (document.getElementById('maintenanceScreen')) {
+    if (attemptsLeft <= 0) return;
+    setTimeout(() => maybeStartTour(attemptsLeft - 1), 1000);
+    return;
+  }
+
+  if (localStorage.getItem(_tourStorageKey()) === 'true') return;
+
+  const usableSteps = _tourUsableSteps();
+  if (!usableSteps.length) {
+    if (attemptsLeft <= 0) return;
+    setTimeout(() => maybeStartTour(attemptsLeft - 1), 500);
+    return;
+  }
+
+  _startTour(usableSteps);
+}
+
+function _startTour(steps) {
+  _tourActive = true;
+  _tourIndex  = 0;
+
+  _tourEls.catcher = document.createElement('div');
+  _tourEls.catcher.className = 'tour-catcher';
+  _tourEls.catcher.addEventListener('click', e => e.stopPropagation());
+
+  _tourEls.spotlight = document.createElement('div');
+  _tourEls.spotlight.className = 'tour-spotlight';
+
+  _tourEls.card = document.createElement('div');
+  _tourEls.card.className = 'tour-card';
+
+  document.body.append(_tourEls.catcher, _tourEls.spotlight, _tourEls.card);
+  _tourEls.steps = steps;
+  _renderTourStep();
+
+  document.addEventListener('keydown', _tourKeyHandler);
+  window.addEventListener('resize', _tourReposition);
+}
+
+function _tourKeyHandler(e) {
+  if (e.key === 'Escape')     endTour();
+  if (e.key === 'ArrowRight') _tourNext();
+  if (e.key === 'ArrowLeft')  _tourBack();
+}
+
+// Debounced full re-render — crossing 768px swaps which element
+// (sidebar vs bottom-nav) is the live target for the current step.
+function _tourReposition() {
+  if (!_tourActive) return;
+  clearTimeout(_tourResizeTimer);
+  _tourResizeTimer = setTimeout(_renderTourStep, 150);
+}
+
+function _renderTourStep() {
+  if (!_tourActive || !_tourEls.card) return;
+
+  // Recompute from the live DOM every time, so a breakpoint change
+  // never leaves us pointing at an element that's now hidden.
+  const steps = _tourUsableSteps();
+  if (!steps.length) { endTour(); return; }
+  _tourEls.steps = steps;
+
+  if (_tourIndex < 0) _tourIndex = 0;
+  if (_tourIndex > steps.length - 1) _tourIndex = steps.length - 1;
+
+  const step = steps[_tourIndex];
+  const el   = _tourFindVisible(step.key);
+  if (!el) { endTour(); return; }
+
+  el.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+
+  const isLast = _tourIndex === steps.length - 1;
+  _tourEls.card.innerHTML = `
+    <div class="tour-step-count">Step ${_tourIndex + 1} of ${steps.length}</div>
+    <div class="tour-title">${step.title}</div>
+    <div class="tour-desc">${step.desc}</div>
+    <div class="tour-actions">
+      <button class="tour-skip" onclick="endTour()">Skip tour</button>
+      <div class="tour-nav-btns">
+        ${_tourIndex > 0 ? `<button class="btn btn-secondary btn-sm" onclick="_tourBack()">← Back</button>` : ''}
+        <button class="btn btn-primary btn-sm" onclick="_tourNext()">${isLast ? `${_tourIcon('check',14)} Done` : 'Next →'}</button>
+      </div>
+    </div>`;
+
+  // Position AFTER the content is in, so the card's real height is known.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => _positionTourAt(el));
+  });
+}
+
+function _positionTourAt(el) {
+  if (!_tourActive || !_tourEls.card) return;
+
+  const rect = el.getBoundingClientRect();
+  const pad  = 6;
+
+  _tourEls.spotlight.style.top    = `${rect.top - pad}px`;
+  _tourEls.spotlight.style.left   = `${rect.left - pad}px`;
+  _tourEls.spotlight.style.width  = `${rect.width + pad * 2}px`;
+  _tourEls.spotlight.style.height = `${rect.height + pad * 2}px`;
+
+  // Measured, not assumed — the card is taller than 180px in practice.
+  const cardW = _tourEls.card.offsetWidth  || 290;
+  const cardH = _tourEls.card.offsetHeight || 180;
+  const gap   = 14;
+  const vw    = window.innerWidth;
+  const vh    = window.innerHeight;
+
+  let top  = rect.top - cardH - gap;   // default: above the target (bottom-nav case)
+  let left = rect.left;
+
+  // If above would clip the top (desktop sidebar items), try right, then below.
+  if (top < 12) {
+    top  = rect.top;
+    left = rect.right + gap;
+    if (left + cardW > vw - 12) {
+      left = rect.left;
+      top  = rect.bottom + gap;
+    }
+  }
+
+  if (top + cardH > vh - 12) top = vh - cardH - 12;
+  if (top < 12) top = 12;
+  if (left + cardW > vw - 12) left = vw - cardW - 12;
+  if (left < 12) left = 12;
+
+  _tourEls.card.style.top  = `${top}px`;
+  _tourEls.card.style.left = `${left}px`;
+}
+
+function _tourNext() {
+  if (!_tourActive) return;
+  if (_tourIndex >= _tourEls.steps.length - 1) { endTour(); return; }
+  _tourIndex++;
+  _renderTourStep();
+}
+
+function _tourBack() {
+  if (!_tourActive || _tourIndex <= 0) return;
+  _tourIndex--;
+  _renderTourStep();
+}
+
+function endTour() {
+  if (!_tourActive) return;
+  _tourActive = false;
+  localStorage.setItem(_tourStorageKey(), 'true');
+  document.removeEventListener('keydown', _tourKeyHandler);
+  window.removeEventListener('resize', _tourReposition);
+  clearTimeout(_tourResizeTimer);
+  ['catcher', 'spotlight', 'card'].forEach(k => _tourEls[k]?.remove());
+  _tourEls = {};
+}
+
+// ── THE MISSING PIECE ──────────────────────────────────
+// Nothing was ever calling maybeStartTour(), so the tour never ran.
+// Small delay lets the maintenance check and loadProfile() settle first.
+function _bootTour() { setTimeout(() => maybeStartTour(), 900); }
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', _bootTour);
+} else {
+  _bootTour();
+}
+
+// Handy for testing — run resetTour() in the console, then reload.
+function resetTour() {
+  localStorage.removeItem(_tourStorageKey());
+  console.log('Tour reset — reload the page to see it.');
+}
+</script>
 
 <!-- ══════════════════════════════════════════════════════
      TYPERS — wired AFTER tenant.js loads so startTyper()

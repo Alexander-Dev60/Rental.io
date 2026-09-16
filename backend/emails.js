@@ -422,6 +422,100 @@ async function sendTenantWelcomeEmail({ name, email, tempPassword, propertyName,
     console.log(`📧 Tenant ${isReturning ? 'notification' : 'welcome'} email sent to ${email}`);
 }
 
+// ═══════════════════════════════════════════════════════
+// 3b. CARETAKER WELCOME EMAIL
+//    Sent when a landlord creates a caretaker account.
+//    Includes temporary password + forced change notice —
+//    same pattern as the new-tenant branch of sendTenantWelcomeEmail.
+// ═══════════════════════════════════════════════════════
+
+async function sendCaretakerWelcomeEmail({ name, email, tempPassword, landlordName }) {
+    const firstName = name.split(' ')[0];
+
+    const { error } = await resend.emails.send({
+        from:    FROM,
+        to:      email,
+        subject: `🔧 You've been added as a caretaker — Login Details Inside`,
+        html: `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+        <body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif">
+          <div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+
+            <div style="background:linear-gradient(135deg,#0f172a,#1e3a5f);padding:40px 32px;text-align:center">
+              <div style="font-size:48px;margin-bottom:12px">🔧</div>
+              <h1 style="color:#ffffff;margin:0;font-size:24px;font-weight:700;letter-spacing:-0.5px">You've been added as a caretaker</h1>
+              <p style="color:#7dd3fc;margin:8px 0 0;font-size:13px">Working with ${landlordName} · Affordable Rentals</p>
+            </div>
+
+            <div style="padding:36px 32px">
+              <p style="color:#1e293b;font-size:16px;margin:0 0 16px">Hi <strong>${firstName}</strong> 👋,</p>
+              <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">
+                <strong>${landlordName}</strong> has given you caretaker access on <strong>Affordable Rentals</strong>
+                to help manage day-to-day operations for their assigned properties. Use the temporary password
+                below to log in, then you'll be asked to set a new password of your choice.
+              </p>
+
+              <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:24px;margin-bottom:24px">
+                <p style="color:#0369a1;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;margin:0 0 16px;font-weight:600">YOUR LOGIN CREDENTIALS</p>
+                <table style="width:100%;border-collapse:collapse">
+                  <tr>
+                    <td style="color:#64748b;font-size:13px;padding:8px 0;vertical-align:middle">Email</td>
+                    <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right;font-family:'Courier New',monospace">${email}</td>
+                  </tr>
+                  <tr>
+                    <td style="color:#64748b;font-size:13px;padding:8px 0;vertical-align:middle">Temporary Password</td>
+                    <td style="text-align:right">
+                      <span style="background:#1d4ed8;color:#ffffff;font-family:'Courier New',monospace;font-size:15px;font-weight:700;padding:6px 14px;border-radius:6px;letter-spacing:2px;display:inline-block">
+                        ${tempPassword}
+                      </span>
+                    </td>
+                  </tr>
+                </table>
+              </div>
+
+              <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:14px 18px;margin-bottom:24px">
+                <p style="color:#92400e;font-size:13px;margin:0;font-weight:600">⚠️ Important</p>
+                <p style="color:#78350f;font-size:13px;line-height:1.6;margin:6px 0 0">
+                  You will be required to change this temporary password immediately after your first login.
+                  Choose a strong password that only you know.
+                </p>
+              </div>
+
+              <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:20px 24px;margin-bottom:28px">
+                <p style="color:#64748b;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;margin:0 0 12px;font-weight:600">WITH YOUR ACCOUNT YOU CAN</p>
+                <table style="width:100%;border-collapse:collapse">
+                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">🔧</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">View and update repair requests for your assigned properties</td></tr>
+                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">👥</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">View tenants and occupancy across your assigned properties</td></tr>
+                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">💬</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">Message tenants directly, where permitted</td></tr>
+                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">💳</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">Record cash or manual rent payments, where permitted</td></tr>
+                </table>
+              </div>
+
+              <div style="text-align:center;margin-bottom:28px">
+                <a href="${DASHBOARD_URL}/auth.html"
+                   style="display:inline-block;background:linear-gradient(135deg,#1d4ed8,#0ea5e9);color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:14px 32px;border-radius:8px;letter-spacing:0.02em">
+                  Login to My Dashboard →
+                </a>
+              </div>
+
+              <p style="color:#94a3b8;font-size:12px;line-height:1.6;margin:0">
+                If you have any questions, contact ${landlordName} or email us at
+                <a href="mailto:support@affordablerentals.site" style="color:#1d4ed8">support@affordablerentals.site</a>.
+              </p>
+            </div>
+
+            ${_footer('You received this because a landlord gave you caretaker access on Affordable Rentals.')}
+          </div>
+        </body>
+        </html>`
+    });
+
+    if (error) throw new Error(`Caretaker welcome email failed: ${error.message}`);
+    console.log(`📧 Caretaker welcome email sent to ${email}`);
+}
+
 
 // ═══════════════════════════════════════════════════════
 // 4. RENT REMINDER EMAIL
@@ -1030,6 +1124,7 @@ module.exports = {
     sendWelcomeEmail,
     sendLandlordWelcomeEmail,
     sendTenantWelcomeEmail,
+    sendCaretakerWelcomeEmail,
     sendRentReminder,
     sendMoveOutEmail,
     sendPasswordResetEmail,

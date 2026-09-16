@@ -4,7 +4,7 @@ const auditLogSchema = new mongoose.Schema({
     landlord: { type: mongoose.Schema.Types.ObjectId, ref: 'User',     required: true, index: true },
     property: { type: mongoose.Schema.Types.ObjectId, ref: 'Property', index: true },
     action:   { type: String, required: true },                 // e.g. 'tenant.created'
-    actor:    { type: String, enum: ['landlord', 'system', 'stacklord'], default: 'landlord' },
+    actor:    { type: String, enum: ['landlord', 'system', 'stacklord','caretaker'], default: 'landlord' },
     message:  { type: String, required: true, maxlength: 300 }, // human-readable, shown in the feed
     meta:     { type: mongoose.Schema.Types.Mixed },             // structured extras, optional
     createdAt: { type: Date, default: Date.now }
