@@ -160,6 +160,7 @@ const userSchema = new mongoose.Schema({
         trim:    true
     },
 
+// AFTER:
     // ── Terms of Service / Privacy Policy acceptance (landlords only) ──
     // Recorded at registration so there's a durable, queryable record of
     // *when* and *which version* of the terms a landlord agreed to — the
@@ -176,7 +177,55 @@ const userSchema = new mongoose.Schema({
 
     suspendedReason: { type: String, default: null },
     suspendedAt:     { type: Date,   default: null },
-    suspendedBy:     { type: String, default: null }
+    suspendedBy:     { type: String, default: null },
+
+    // ── Referral program (landlords only) ──
+    // Set once, at registration, from the ?ref= param on the signup link —
+    // never updated afterward. Points at the referring landlord's own User
+    // _id. Null for the vast majority of accounts (organic signups, tenants,
+    // caretakers), so this is deliberately left out of the compound/query
+    // indexes below — GET /landlord/referrals filters by this field but at
+    // low-to-moderate volume a collection scan is fine, and adding an index
+    // for a field this sparse isn't worth the write-overhead yet.
+    referredBy: {
+        type:    mongoose.Schema.Types.ObjectId,
+        ref:     'User',
+        default: null
+    },
+
+    // ── Public referral code — what actually appears in a shareable link ──
+    // Deliberately NOT the same thing as this landlord's own _id: an
+    // ObjectId embeds a timestamp and has low real-world entropy, so handing
+    // it out in a link that gets forwarded around WhatsApp is a guessable,
+    // permanent, unrotatable handle straight into the database. This field
+    // is a separate, opaque, revocable value that only ever maps back to the
+    // landlord server-side (see getOrCreateReferralCode() in app.js) —
+    // sparse so non-landlord roles with no code don't collide on null.
+    //
+    // NOTE: deliberately NO `default: null` here. A sparse index only skips
+    // documents where the field is truly absent — a document with the field
+    // explicitly set to null is still indexed, so a default of null would
+    // mean the second user ever saved (tenant, caretaker, anyone) throws a
+    // duplicate-key error on a field they never touched. Leaving the field
+    // genuinely unset until getOrCreateReferralCode() assigns one is what
+    // makes `sparse` actually work as intended.
+    referralCode: {
+        type:   String,
+        unique: true,
+        sparse: true
+    },
+
+    // ── Referral qualification (referred landlords only) ──
+    // Set EXACTLY ONCE, the first time this landlord satisfies whatever
+    // qualification rules are enabled in PlatformSettings.referralQualificationRules
+    // (see checkReferralQualification() in app.js). Never re-evaluated or
+    // cleared afterward — if the stacklord tightens the rules later, landlords
+    // who already qualified under the old rules stay qualified. This is the
+    // field maybeGrantReferralReward() counts against referralRequiredCount.
+    referralQualifiedAt: {
+        type:    Date,
+        default: null
+    }
 
 }, { timestamps: true });
 

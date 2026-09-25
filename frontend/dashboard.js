@@ -122,7 +122,11 @@ function _populateMonthSelect(selectId, { count = 12, ahead = 0, selected } = {}
 
 let _toastTimer;
 
+// AFTER:
 function showToast(msg, type = '') {
+    // Overlay already covers this — a flood of "Failed to load X" toasts
+    // underneath it during platform maintenance adds nothing.
+    if (window.__PLATFORM_MAINTENANCE_ACTIVE__) return;
     const t = document.getElementById('toast');
     t.textContent = msg;
     t.className   = `show ${type}`;
@@ -1344,28 +1348,29 @@ let _genExtendGroups = [];   // cached list from GET /houses/groups
  
 function setGenMode(mode) {
     _genMode = mode;
- 
+
     document.getElementById('genModeSimpleBtn').className =
         `btn btn-sm ${mode === 'simple' ? 'btn-primary' : 'btn-secondary'}`;
     document.getElementById('genModeAdvBtn').className =
         `btn btn-sm ${mode === 'advanced' ? 'btn-primary' : 'btn-secondary'}`;
     document.getElementById('genModeExtendBtn').className =
         `btn btn-sm ${mode === 'extend' ? 'btn-primary' : 'btn-secondary'}`;
- 
+
     document.getElementById('genAddGroupBtn').style.display = mode === 'advanced' ? 'block' : 'none';
     document.getElementById('genGroupsWrap').style.display  = mode === 'extend' ? 'none' : 'block';
     document.getElementById('genExtendWrap').style.display  = mode === 'extend' ? 'block' : 'none';
- 
+    document.getElementById('genBuildingNameWrap').style.display = mode === 'advanced' ? 'block' : 'none';
+
     const rentField = document.getElementById('genHouseRent');
     if (rentField) {
         rentField.placeholder = mode === 'extend'
             ? 'Leave blank to match this group\'s existing rent'
             : 'e.g. 8000';
     }
- 
-    if (mode === 'extend') {
-        loadGenExtendGroups();
-    } else {
+
+    loadGenExtendGroups({ silent: mode !== 'extend' });
+
+    if (mode !== 'extend') {
         _genGroups = [_newGenGroup()];
         renderGenGroups();
     }
@@ -1385,6 +1390,39 @@ function removeGenGroup(idx) {
 function updateGenGroup(idx, field, value) {
     _genGroups[idx][field] = field === 'prefix' || field === 'label' ? value : Number(value);
     _renderGenPreview();
+    if (field === 'prefix') _checkGenPrefixReuse();
+}
+
+function _checkGenPrefixReuse() {
+    if (_genMode === 'extend') return; // Extend mode already targets one specific group explicitly
+
+    _genGroups.forEach((g, i) => {
+        const el = document.getElementById(`genReuseWarning-${i}`);
+        if (!el) return;
+
+        const prefixTrim = (g.prefix || '').trim().toLowerCase();
+        if (!prefixTrim) { el.style.display = 'none'; el.innerHTML = ''; return; }
+
+        const match = (_genExtendGroups || []).find(eg => (eg.prefix || '').trim().toLowerCase() === prefixTrim);
+        if (!match) { el.style.display = 'none'; el.innerHTML = ''; return; }
+
+        el.style.display = 'block';
+        el.style.cssText = 'display:block;background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.25);border-radius:6px;padding:0.55rem 0.75rem;font-size:0.68rem;color:var(--warn);line-height:1.65';
+        el.innerHTML = `
+            ${ICON('warning',12)} Prefix "<strong>${g.prefix}</strong>" is already used by
+            <strong>${match.label || match.prefix}</strong> (${match.count} unit(s), next: ${match.nextName}).
+            Generating here won't overwrite anything, but the numbering will belong to two separate groups.
+            <button type="button" class="btn btn-secondary btn-sm" style="margin-top:0.4rem;display:block"
+                    onclick="_switchToExtendGroup('${match._id}')">Extend "${match.label || match.prefix}" instead</button>`;
+    });
+}
+
+function _switchToExtendGroup(groupId) {
+    setGenMode('extend');
+    setTimeout(() => {
+        const sel = document.getElementById('genExtendGroupSelect');
+        if (sel) { sel.value = groupId; onGenExtendGroupChange(); }
+    }, 60); // wait for loadGenExtendGroups (triggered by setGenMode) to finish populating the dropdown
 }
 
 function renderGenGroups() {
@@ -1393,12 +1431,14 @@ function renderGenGroups() {
 
     wrap.innerHTML = _genGroups.map((g, i) => `
         <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:0.85rem;margin-bottom:0.65rem">
-            ${_genMode === 'advanced' ? `
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
-                    <input type="text" placeholder="Group label (e.g. Ground Floor)" value="${g.label}"
-                           oninput="updateGenGroup(${i}, 'label', this.value)" style="margin:0;flex:1">
-                     ${_genGroups.length > 1 ? `<button class="btn btn-danger btn-sm" style="margin-left:0.5rem" onclick="removeGenGroup(${i})">${ICON('close',12)}</button>` : ''}
-                </div>` : ''}
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+                <input type="text"
+                       placeholder="${_genMode === 'advanced' ? 'Floor label (e.g. Floor 1, Ground Floor, Podium) *' : 'Building / block name (e.g. Sunrise Tower, Annex Block) *'}"
+                       value="${g.label}"
+                       oninput="updateGenGroup(${i}, 'label', this.value)" style="margin:0;flex:1">
+                 ${_genMode === 'advanced' && _genGroups.length > 1 ? `<button class="btn btn-danger btn-sm" style="margin-left:0.5rem" onclick="removeGenGroup(${i})">${ICON('close',12)}</button>` : ''}
+            </div>
+            <div id="genReuseWarning-${i}" style="display:none;margin-bottom:0.6rem"></div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem">
                 <div>
                     <label class="pay-setup-label">Prefix</label>
@@ -1424,36 +1464,39 @@ function renderGenGroups() {
         </div>`).join('');
 
     _renderGenPreview();
+    _checkGenPrefixReuse();
 }
-
  
-async function loadGenExtendGroups() {
+async function loadGenExtendGroups(opts = {}) {
+    const { silent = false } = opts;
     const sel = document.getElementById('genExtendGroupSelect');
-    if (sel) sel.innerHTML = `<option value="">Loading groups…</option>`;
- 
+    if (sel && !silent) sel.innerHTML = `<option value="">Loading groups…</option>`;
+
     try {
         const propertyId = getPropertyId();
         const res  = await fetch(`${API}/houses/groups?propertyId=${propertyId}`, { headers: authHeaders() });
         const data = await res.json();
-        if (!res.ok) { showToast(data.message || 'Failed to load groups', 'error'); return; }
- 
+        if (!res.ok) { if (!silent) showToast(data.message || 'Failed to load groups', 'error'); return; }
+
         _genExtendGroups = data.groups || [];
- 
+
         if (!_genExtendGroups.length) {
-            if (sel) sel.innerHTML = `<option value="">No existing groups — use Simple or Per-Floor instead</option>`;
-            _renderGenPreview();
+            if (sel && !silent) sel.innerHTML = `<option value="">No existing groups — use Simple or Per-Floor instead</option>`;
+            if (!silent) _renderGenPreview();
+            _checkGenPrefixReuse();
             return;
         }
- 
-        if (sel) {
+
+        if (sel && !silent) {
             sel.innerHTML = _genExtendGroups.map(g =>
                 `<option value="${g._id}">${g.label || g.prefix || 'Group'} — ${g.count} unit(s), next: ${g.nextName}</option>`
             ).join('');
         }
-        onGenExtendGroupChange();
- 
+        if (!silent) onGenExtendGroupChange();
+        _checkGenPrefixReuse();
+
     } catch (err) {
-        if (sel) sel.innerHTML = `<option value="">Failed to load — try again</option>`;
+        if (sel && !silent) sel.innerHTML = `<option value="">Failed to load — try again</option>`;
         console.error('loadGenExtendGroups error:', err);
     }
 }
@@ -1482,6 +1525,27 @@ function _computeGenNames() {
         }
     }
     return names;
+}
+function _buildingNamePrefix() {
+    if (_genMode !== 'advanced') return '';
+    return (document.getElementById('genBuildingName')?.value || '').trim();
+}
+
+// Single source of truth for the label each group actually gets saved
+// with — combines the shared Building Name (Advanced mode only) with
+// each row's own Floor label, so "Sunrise Tower" + "Floor 1" / "Floor 2"
+// become two distinct, self-identifying groups instead of one blob.
+function _finalGenFloors() {
+    const buildingName = _buildingNamePrefix();
+    return _genGroups
+        .filter(g => Number(g.count) > 0)
+        .map(g => ({
+            label:    buildingName ? `${buildingName} — ${g.label}`.trim() : g.label,
+            prefix:   g.prefix,
+            start:    g.start,
+            count:    g.count,
+            padWidth: g.padWidth
+        }));
 }
 
  
@@ -1522,25 +1586,80 @@ function _renderGenPreview() {
         return;
     }
  
-    // ── simple / advanced (unchanged from the first patch) ──
+        // ── simple / advanced ──
     const names  = _computeGenNames();
     const unique = new Set(names);
- 
+
     if (!names.length) {
         box.textContent = 'Fill in the fields above to see a preview';
         if (countEl) countEl.textContent = '';
+        _clearGenConflictWarning();
         return;
     }
- 
+
     if (countEl) countEl.textContent = `${names.length} unit${names.length !== 1 ? 's' : ''}`;
- 
+
     if (unique.size !== names.length) {
         box.innerHTML = `<span style="color:var(--danger);display:inline-flex;align-items:center;gap:5px">${ICON('warning',14)} Duplicate names in this configuration — adjust prefixes or start numbers</span>`;
+        _clearGenConflictWarning();
         return;
     }
- 
+
     const shown = names.slice(0, 60);
     box.textContent = shown.join('   ') + (names.length > 60 ? `   … +${names.length - 60} more` : '');
+
+    _debouncedGenConflictCheck();
+}
+
+let _genConflictCheckTimer = null;
+function _debouncedGenConflictCheck() {
+    clearTimeout(_genConflictCheckTimer);
+    _genConflictCheckTimer = setTimeout(_runGenConflictCheck, 450);
+}
+
+function _clearGenConflictWarning() {
+    const el = document.getElementById('genConflictWarning');
+    if (el) { el.style.display = 'none'; el.innerHTML = ''; }
+}
+
+async function _runGenConflictCheck() {
+    if (_genMode === 'extend') return;
+    const propertyId = getPropertyId();
+    if (!propertyId) return;
+
+    const config = { floors: _finalGenFloors() };
+    if (!config.floors.length) return;
+
+    try {
+        const res  = await fetch(`${API}/houses/generate-preview`, {
+            method: 'POST', headers: authHeaders(),
+            body:   JSON.stringify({ config, propertyId })
+        });
+        const data = await res.json();
+        if (!res.ok) return;
+
+        const el = document.getElementById('genConflictWarning');
+        if (!el) return;
+
+        if (data.conflicts && data.conflicts.length) {
+            const byGroup = {};
+            data.conflicts.forEach(c => {
+                byGroup[c.groupLabel] = byGroup[c.groupLabel] || [];
+                byGroup[c.groupLabel].push(c.name);
+            });
+            const lines = Object.entries(byGroup).map(([label, ns]) =>
+                `<strong>${label}</strong>: ${ns.slice(0, 8).join(', ')}${ns.length > 8 ? ` +${ns.length - 8} more` : ''}`
+            ).join('<br>');
+
+            el.style.cssText = 'display:block;background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.25);border-radius:6px;padding:0.6rem 0.8rem;font-size:0.68rem;color:var(--danger);line-height:1.7;margin-top:0.6rem';
+            el.innerHTML = `${ICON('warning',12)} ${data.conflicts.length} name(s) already exist in this property:<br>${lines}`;
+        } else {
+            el.style.display = 'none';
+            el.innerHTML = '';
+        }
+    } catch (err) {
+        console.error('_runGenConflictCheck error:', err);
+    }
 }
 
 
@@ -1561,7 +1680,8 @@ async function submitGenerateHouses() {
             title:   'Confirm Extend Group',
             message: `Add <strong>${count} unit(s)</strong> to <strong>${group.label || group.prefix}</strong>, continuing from <strong>${group.nextName}</strong>?`,
             label:   `Add ${count} Unit(s)`,
-            type:    'warn',
+            type:    'warn',           
+        
             onConfirm: async () => {
                 try {
                     const res  = await fetch(`${API}/houses/extend-group`, {
@@ -1569,8 +1689,18 @@ async function submitGenerateHouses() {
                         body:   JSON.stringify({ propertyId, groupId: group._id, count, rent })
                     });
                     const data = await res.json();
-                    if (!res.ok) { showToast(data.message || 'Failed to extend group', 'error'); return; }
- 
+                    if (!res.ok) {
+                        if (data.conflicts && data.conflicts.length) {
+                            const byGroup = {};
+                            data.conflicts.forEach(c => { byGroup[c.groupLabel] = byGroup[c.groupLabel] || []; byGroup[c.groupLabel].push(c.name); });
+                            const lines = Object.entries(byGroup).map(([label, ns]) => `${label}: ${ns.join(', ')}`).join(' | ');
+                            showToast(`Names already exist — ${lines}`, 'error');
+                        } else {
+                            showToast(data.message || 'Failed to extend group', 'error');
+                        }
+                        return;
+                    }
+
                     showToast(data.message, 'success');
                     closeModal('modal-generate-houses');
                     await loadHouses();
@@ -1583,7 +1713,11 @@ async function submitGenerateHouses() {
         return;
     }
  
-    // ── simple / advanced (unchanged from the first patch) ──
+
+    // ── simple / advanced ──
+    const missingLabel = _genGroups.some(g => Number(g.count) > 0 && !(g.label || '').trim());
+    if (missingLabel) { showToast('Give this building/block a name before generating', 'warn'); return; }
+
     const rent = Number(document.getElementById('genHouseRent')?.value);
     if (!rent || rent <= 0) { showToast('Enter a valid rent amount', 'warn'); return; }
  
@@ -1591,13 +1725,14 @@ async function submitGenerateHouses() {
     if (!names.length) { showToast('No units to generate — check your configuration', 'warn'); return; }
     if (new Set(names).size !== names.length) { showToast('Fix duplicate names before generating', 'warn'); return; }
  
-    const config = {
-        floors: _genGroups
-            .filter(g => Number(g.count) > 0)
-            .map(g => ({ label: g.label, prefix: g.prefix, start: g.start, count: g.count, padWidth: g.padWidth }))
-    };
+    // FIX: was building `floors` straight from _genGroups, which skips the
+    // Building Name field entirely — Advanced mode's "Sunrise Tower" +
+    // "Floor 1"/"Floor 2" combination never reached the server. Use the
+    // same combiner the live preview already uses so what gets saved
+    // matches what the landlord saw in the preview box.
+    const config = { floors: _finalGenFloors() };
  
-               openDangerModal({
+    openDangerModal({
         icon:    ICON('flash', 44),
         title:   'Confirm Generate Units',
         message: `Generate <strong>${names.length} unit(s)</strong> at <strong>Ksh ${Number(rent).toLocaleString()}</strong> / month each?`,
@@ -1611,7 +1746,17 @@ async function submitGenerateHouses() {
                     body:   JSON.stringify({ propertyId, rent, config })
                 });
                 const data = await res.json();
-                if (!res.ok) { showToast(data.message || 'Generation failed', 'error'); return; }
+                if (!res.ok) {
+                    if (data.conflicts && data.conflicts.length) {
+                        const byGroup = {};
+                        data.conflicts.forEach(c => { byGroup[c.groupLabel] = byGroup[c.groupLabel] || []; byGroup[c.groupLabel].push(c.name); });
+                        const lines = Object.entries(byGroup).map(([label, ns]) => `${label}: ${ns.join(', ')}`).join(' | ');
+                        showToast(`Names already exist — ${lines}`, 'error');
+                    } else {
+                        showToast(data.message || 'Generation failed', 'error');
+                    }
+                    return;
+                }
 
                 showToast(data.message, 'success');
                 closeModal('modal-generate-houses');
@@ -2046,6 +2191,73 @@ function renderInquiriesTable(inquiries) {
             </td>
         </tr>`;
     }).join('');
+}
+
+// ═══════════════════════════════════════
+// REFER & EARN — progress bar + reward panel
+// (data fetched by loadReferralData() in script.js; this only renders it)
+// ═══════════════════════════════════════
+
+function _escHtmlRef(str) {
+    return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function _fmtRefDate(d) {
+    return d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) : '';
+}
+
+function renderReferralProgress(data) {
+    const required  = data.requiredCount   ?? 5;
+    const qualified = data.qualifiedCount  ?? 0;
+    const percent   = data.progressPercent ?? 0;
+    const remaining = Math.max(0, required - qualified);
+    const reward    = data.reward || null;
+
+    const introEl = document.getElementById('referralRequiredInline');
+    if (introEl) introEl.textContent = required;
+
+    const labelEl = document.getElementById('referralProgressLabel');
+    if (labelEl) labelEl.textContent = `You've referred ${qualified} / ${required} landlords.`;
+
+    const pctEl = document.getElementById('referralProgressPercent');
+    if (pctEl) pctEl.textContent = `${percent}%`;
+
+    const barEl = document.getElementById('referralProgressBar');
+    if (barEl) barEl.style.width = `${percent}%`;
+
+    const remainingEl = document.getElementById('referralProgressRemaining');
+    if (remainingEl) {
+        remainingEl.textContent = reward
+            ? '' // reward already earned — nothing left to count down
+            : (remaining === 1
+                ? '1 more qualified referral to unlock your reward.'
+                : `${remaining} more qualified referrals to unlock your reward.`);
+    }
+
+    const panel = document.getElementById('referralRewardPanel');
+    if (!panel) return;
+
+    if (!reward) {
+        panel.innerHTML = `A qualified referral is a new landlord who joins, finishes setting up a property, and processes their first payment. Reach ${required} and your next month becomes commission-free.`;
+        return;
+    }
+
+    if (reward.status === 'scheduled') {
+        panel.innerHTML = `
+            <div style="color:var(--accent);font-weight:600;margin-bottom:0.35rem">🎉 Reward unlocked!</div>
+            Your commission-free month starts <strong style="color:var(--text)">${_escHtmlRef(_fmtRefDate(reward.periodStart))}</strong>
+            and runs through <strong style="color:var(--text)">${_escHtmlRef(_fmtRefDate(reward.periodEnd))}</strong>.
+            No platform commission will be deducted from your qualifying rent transactions during that period.`;
+    } else if (reward.status === 'active') {
+        panel.innerHTML = `
+            <div style="color:var(--accent);font-weight:600;margin-bottom:0.35rem">✅ Reward active — ${_escHtmlRef(reward.month)}</div>
+            No platform commission is being deducted from your rent transactions this month. It resumes normally from
+            ${_escHtmlRef(_fmtRefDate(new Date(new Date(reward.periodEnd).getTime() + 86400000)))}.`;
+    } else {
+        panel.innerHTML = `
+            <div style="color:var(--text);font-weight:600;margin-bottom:0.35rem">Reward used — ${_escHtmlRef(reward.month)}</div>
+            You've already redeemed your one-time referral reward. Thanks for growing Affordable Rentals!`;
+    }
 }
 
 function openInquiryDetail(inq) {

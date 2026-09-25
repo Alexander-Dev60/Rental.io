@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0b0f1a">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
   <!-- ═══════════════════════════════════════════════════════
        EARLY AUTH GUARD — must be the very first script in <head>.
 
@@ -73,6 +76,71 @@
   </script>
 
   <meta charset="UTF-8">
+  <!-- Tour readiness gate: the product tour waits for full load, fonts, the page loader,
+       finished API requests and a stable layout before it measures anything. -->
+  <script>
+  // AFTER:
+  
+  (function () {
+    var net = window.__arNet = { pending: 0, last: performance.now() };
+    var nativeFetch = window.fetch;
+    if (typeof nativeFetch === 'function') {
+      window.fetch = function () {
+        net.pending++;
+        var p = nativeFetch.apply(this, arguments).then(function (res) {
+          // Platform-wide kill switch: catch it the instant ANY request hits
+          // it, not just the 20s /platform-status poll. Response is cloned
+          // so the caller's own .json()/.text() read still works normally.
+          if (res.status === 503 && !window.__PLATFORM_MAINTENANCE_ACTIVE__) {
+            res.clone().json().then(function (data) {
+              if (data && data.code === 'PLATFORM_MAINTENANCE') {
+                window.__PLATFORM_MAINTENANCE_ACTIVE__ = true;
+                if (typeof window.showPlatformMaintenanceOverlay === 'function') {
+                  window.showPlatformMaintenanceOverlay(data.message);
+                }
+              }
+            }).catch(function () {}); // non-JSON 503 (rare) — ignore, not our case
+          }
+          return res;
+        });
+        var done = function () { net.pending = Math.max(0, net.pending - 1); net.last = performance.now(); };
+        p.then(done, done);
+        return p;
+      };
+    }
+
+
+    var ready = null;
+    window._arTourReady = function (minAfterLoad) {
+      if (ready) return ready;
+      ready = new Promise(function (resolve) {
+        var loaded = new Promise(function (r) {
+          if (document.readyState === 'complete') r(); else window.addEventListener('load', function () { r(); }, { once: true });
+        });
+        var fonts = (document.fonts && document.fonts.ready) ? document.fonts.ready.catch(function () {}) : Promise.resolve();
+        var cap = performance.now() + 15000;          // never block the tour forever
+        Promise.all([loaded, fonts]).then(function () {
+          var loadedAt = performance.now(), lastKey = '', stable = 0;
+          (function tick() {
+            var now = performance.now();
+            var loader = document.getElementById('pageLoader');
+            var busy = net.pending > 0 || (now - net.last) < 600 ||
+                       (now - loadedAt) < (minAfterLoad || 0) ||
+                       (loader && !loader.classList.contains('hide'));
+            var key = document.documentElement.scrollHeight + '|' + document.getElementsByTagName('*').length;
+            if (!busy && key === lastKey) stable++; else stable = 0;
+            lastKey = key;
+            if (stable >= 15 || now > cap) return resolve();
+            requestAnimationFrame(tick);
+          })();
+        });
+      });
+      return ready;
+    };
+  })();
+
+  </script>
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/png" href="./public/affordablerentalsLogo.png">
   <title>Dashboard — Affordable Rentals</title>
@@ -126,6 +194,25 @@
   }
 
   svg.ico { display: inline-block; vertical-align: -3px; flex-shrink: 0; }
+
+  /* ═══ PAGE LOADER ═══ */
+#pageLoader {
+  position: fixed; inset: 0; z-index: 5000;
+  background: var(--bg);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; transition: opacity .3s ease;
+}
+#pageLoader.hide { opacity: 0; pointer-events: none; }
+.loader-spinner {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 3px solid var(--border2); border-top-color: var(--accent);
+  animation: loaderSpin .8s linear infinite;
+}
+@keyframes loaderSpin { to { transform: rotate(360deg); } }
+.loader-label {
+  font-family: 'JetBrains Mono', monospace; font-size: .68rem;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--text-dim);
+}
 
   /* ── BANNERS ── */
   .banner-wrapper {
@@ -243,6 +330,28 @@
   .theme-dot[data-theme="orange"] { background: #ea580c; }
   .btn-logout { width: 100%; background: transparent; border: 1px solid var(--border2); color: var(--text-muted); font-family: 'Space Grotesk', sans-serif; font-size: 0.75rem; font-weight: 500; letter-spacing: 0.08em; padding: 0.5rem; border-radius: 6px; cursor: pointer; transition: all 0.15s; display:flex; align-items:center; justify-content:center; gap:0.5rem; }
   .btn-logout:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* ── TAKE A TOUR button — deliberately bluish/gradient so it visually
+       matches the restyled spotlight tour it launches, independent of
+       whichever accent theme (dark/light/blue/orange) is active. ── */
+  .btn-tour {
+    width: 100%;
+    background: linear-gradient(135deg, rgba(96,165,250,0.16), rgba(129,140,248,0.16));
+    border: 1px solid rgba(96,165,250,0.4);
+    color: #7db8ff;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em;
+    padding: 0.55rem; border-radius: 7px; cursor: pointer;
+    transition: all 0.15s; display: flex; align-items: center;
+    justify-content: center; gap: 0.5rem; margin-bottom: 0.65rem;
+  }
+  .btn-tour:hover {
+    background: linear-gradient(135deg, rgba(96,165,250,0.28), rgba(129,140,248,0.28));
+    border-color: rgba(96,165,250,0.7);
+    color: #a9d1ff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(96,165,250,0.2);
+  }
 
   .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 250; backdrop-filter: blur(2px); }
   .sidebar-overlay.show { display: block; }
@@ -673,31 +782,66 @@
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 
 
-  /* ═══ SPOTLIGHT TOUR ═══ */
+  /* ═══ SPOTLIGHT TOUR — bluish, stylised ═══ */
+:root {
+  --tour-blue:        #5aa4ff;
+  --tour-blue2:       #8f8bff;
+  --tour-blue-soft:   #7db8ff;
+  --tour-blue-dim:    rgba(90,164,255,0.14);
+  --tour-blue-border: rgba(90,164,255,0.4);
+}
 .tour-catcher { position: fixed; inset: 0; z-index: 10000; background: transparent; }
 .tour-spotlight {
-  position: fixed; z-index: 10001; border-radius: 10px;
-  box-shadow: 0 0 0 9999px rgba(6,8,14,0.78);
-  border: 2px solid var(--accent);
+  position: fixed; z-index: 10001; border-radius: 12px;
+  box-shadow: 0 0 0 9999px rgba(5,8,18,0.82), 0 0 0 4px var(--tour-blue-dim), 0 0 30px rgba(90,164,255,0.35);
+  border: 2px solid var(--tour-blue);
   transition: top 0.35s cubic-bezier(0.4,0,0.2,1), left 0.35s cubic-bezier(0.4,0,0.2,1),
               width 0.35s cubic-bezier(0.4,0,0.2,1), height 0.35s cubic-bezier(0.4,0,0.2,1);
   pointer-events: none;
+  animation: tourGlowPulse 2.4s ease-in-out infinite;
+}
+@keyframes tourGlowPulse {
+  0%, 100% { box-shadow: 0 0 0 9999px rgba(5,8,18,0.82), 0 0 0 4px var(--tour-blue-dim), 0 0 30px rgba(90,164,255,0.35); }
+  50%      { box-shadow: 0 0 0 9999px rgba(5,8,18,0.82), 0 0 0 7px rgba(90,164,255,0.22), 0 0 42px rgba(90,164,255,0.55); }
 }
 .tour-card {
-  position: fixed; z-index: 10002; max-width: 300px;
-  background: var(--panel2); border: 1px solid var(--border2); border-radius: 12px;
-  padding: 1.1rem 1.25rem; box-shadow: 0 20px 60px rgba(0,0,0,0.55);
+  position: fixed; z-index: 10002; max-width: 310px;
+  background: linear-gradient(165deg, #101a30 0%, #0b1424 100%);
+  border: 1px solid var(--tour-blue-border);
+  border-radius: 14px;
+  padding: 1.2rem 1.35rem;
+  box-shadow: 0 24px 70px rgba(0,0,0,0.6), 0 0 36px rgba(90,164,255,0.16);
   animation: tourPop 0.25s cubic-bezier(0.34,1.4,0.64,1) both;
   transition: top 0.35s cubic-bezier(0.4,0,0.2,1), left 0.35s cubic-bezier(0.4,0,0.2,1);
+  overflow: hidden;
 }
+.tour-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, var(--tour-blue), var(--tour-blue2), var(--tour-blue));
+  background-size: 200% 100%;
+  animation: tourShimmer 3s linear infinite;
+}
+@keyframes tourShimmer { 0% { background-position: 0% 0; } 100% { background-position: 200% 0; } }
 @keyframes tourPop { from { opacity:0; transform: scale(0.92) translateY(6px); } to { opacity:1; transform: scale(1) translateY(0); } }
-.tour-step-count { font-family:'JetBrains Mono',monospace; font-size:0.6rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-dim); margin-bottom:0.5rem; }
-.tour-title { font-family:'Instrument Serif',serif; font-style:italic; font-size:1.15rem; color:var(--text); margin-bottom:0.4rem; }
-.tour-desc { font-size:0.8rem; color:var(--text-muted); line-height:1.55; margin-bottom:1rem; }
+.tour-progress-track { background: rgba(255,255,255,0.08); border-radius: 99px; height: 4px; overflow: hidden; margin-bottom: 0.75rem; }
+.tour-progress-fill  { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--tour-blue), var(--tour-blue2)); transition: width 0.3s ease; }
+.tour-step-count { font-family:'JetBrains Mono',monospace; font-size:0.6rem; letter-spacing:0.14em; text-transform:uppercase; color: var(--tour-blue-soft); margin-bottom:0.5rem; display:flex; align-items:center; gap:0.4em; }
+.tour-title { font-family:'Instrument Serif',serif; font-style:italic; font-size:1.18rem; color:#f3f7ff; margin-bottom:0.4rem; }
+.tour-desc { font-size:0.8rem; color:#adbdd9; line-height:1.55; margin-bottom:1rem; }
 .tour-actions { display:flex; align-items:center; justify-content:space-between; gap:0.5rem; }
-.tour-skip { background:transparent; border:none; color:var(--text-dim); font-size:0.72rem; cursor:pointer; font-family:'Space Grotesk',sans-serif; padding:0.3rem 0; }
-.tour-skip:hover { color:var(--danger); }
+.tour-skip { background:transparent; border:none; color:#6f83a8; font-size:0.72rem; cursor:pointer; font-family:'Space Grotesk',sans-serif; padding:0.3rem 0; transition: color 0.15s; }
+.tour-skip:hover { color:#fca5a5; }
 .tour-nav-btns { display:flex; gap:0.5rem; }
+.tour-btn {
+  border: none; border-radius: 7px; font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em;
+  padding: 0.45rem 0.95rem; cursor: pointer; transition: all 0.15s;
+  display: inline-flex; align-items: center; gap: 0.4em; white-space: nowrap;
+}
+.tour-btn-primary { background: linear-gradient(135deg, var(--tour-blue), var(--tour-blue2)); color: #07101f; box-shadow: 0 4px 14px rgba(90,164,255,0.3); }
+.tour-btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 6px 18px rgba(90,164,255,0.45); }
+.tour-btn-secondary { background: rgba(255,255,255,0.05); border: 1px solid rgba(90,164,255,0.3); color: #c3d3f2; }
+.tour-btn-secondary:hover { border-color: var(--tour-blue); color: #fff; background: rgba(90,164,255,0.1); }
 @media (max-width:480px) { .tour-card { max-width: calc(100vw - 2rem); } }
 
   @media (max-width: 480px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
@@ -747,6 +891,11 @@
   </style>
 </head>
 <body>
+
+<div id="pageLoader">
+  <div class="loader-spinner"></div>
+  <span class="loader-label">Loading your dashboard…</span>
+</div>
 
 <!-- ═══ BANNER WRAPPER ═══ -->
 <div class="banner-wrapper" id="bannerWrapper">
@@ -852,8 +1001,10 @@
       <span class="nav-badge" id="inquiryBadge" style="display:none">0</span>
     </div>
 
+    <!-- AFTER: -->
     <div class="nav-section caretaker-hidden">Account</div>
-    <div class="nav-item caretaker-hidden" data-tour="paymentSetup" onclick="openModal('modal-pay-setup')"><span class="icon"></span> Payment Setup</div>
+    <div class="nav-item caretaker-hidden" data-tour="paymentSetup" onclick="openModal('modal-pay-setup')"><span class="icon" id="navIcon_paymentSetup"></span> Payment Setup</div>
+    <div class="nav-item caretaker-hidden" data-tour="referral" onclick="openModal('modal-referral')"><span class="icon" id="navIcon_referral"></span> Refer &amp; Earn</div>
   </nav>
 
     <div class="sub-status-card caretaker-hidden" id="commissionCard" onclick="openModal('modal-commission')" title="Click to view commission owed">
@@ -878,6 +1029,8 @@
     </div>
 
     
+
+    <button class="btn-tour" onclick="startTourManually()" id="takeTourBtn"></button>
 
     <div class="theme-switcher">
       <span class="theme-label">Theme</span>
@@ -1509,6 +1662,45 @@
 </div>
 
 
+<!-- ─── REFER & EARN ─── -->
+<div class="modal-overlay" id="modal-referral">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header">
+      <div class="modal-title" id="referralModalTitle"></div>
+      <button class="modal-close" onclick="closeModal('modal-referral')" id="referralCloseBtn"></button>
+    </div>
+
+    <p style="font-size:0.85rem;color:var(--text-muted);line-height:1.7;margin-bottom:1.25rem" id="referralIntroCopy">
+      Know another landlord who'd benefit from Affordable Rentals? Refer <strong style="color:var(--text)" id="referralRequiredInline">5</strong> landlords
+      and get your next month <strong style="color:var(--text)">commission-free.</strong>
+    </p>
+
+    <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:0.85rem 1rem;margin-bottom:1rem">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:0.6rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin-bottom:0.5rem">Your Referral Link</div>
+      <div style="display:flex;gap:0.5rem">
+        <input type="text" id="referralLinkInput" readonly style="margin:0;font-family:'JetBrains Mono',monospace;font-size:0.72rem">
+        <button class="btn btn-secondary btn-sm" onclick="copyReferralLink()" id="referralCopyBtn" style="flex-shrink:0"></button>
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-full" onclick="shareReferralWhatsApp()" id="referralWhatsAppBtn" style="margin-bottom:1rem"></button>
+
+    <!-- Progress bar: filled/labelled by renderReferralProgress() in dashboard.js -->
+    <div style="margin-bottom:0.5rem;display:flex;justify-content:space-between;align-items:baseline">
+      <div style="font-size:0.78rem;color:var(--text)" id="referralProgressLabel">You've referred 0 / 5 landlords.</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:0.68rem;color:var(--text-dim)" id="referralProgressPercent">0%</div>
+    </div>
+    <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:999px;height:10px;overflow:hidden;margin-bottom:0.5rem">
+      <div id="referralProgressBar" style="height:100%;width:0%;background:var(--accent);border-radius:999px;transition:width 0.4s ease"></div>
+    </div>
+    <div style="font-size:0.72rem;color:var(--text-dim);margin-bottom:1rem" id="referralProgressRemaining"></div>
+
+    <!-- Reward state panel — content swapped between "not yet earned" / "scheduled" /
+         "active" / "consumed" by renderReferralProgress() in dashboard.js -->
+    <div id="referralRewardPanel" style="border-top:1px solid var(--border);padding-top:0.85rem;font-size:0.72rem;color:var(--text-dim);line-height:1.7"></div>
+  </div>
+</div>
+
 <!-- ─── PAYMENT SETUP — 3-panel system ─── -->
 <div class="modal-overlay" id="modal-pay-setup">
   <div class="modal">
@@ -1630,8 +1822,12 @@
   <button class="btn btn-secondary btn-sm" id="genModeAdvBtn" onclick="setGenMode('advanced')" style="flex:1">Per-Floor</button>
   <button class="btn btn-secondary btn-sm" id="genModeExtendBtn" onclick="setGenMode('extend')" style="flex:1">Extend Group</button>
 </div>
+    <div id="genBuildingNameWrap" style="display:none;margin-bottom:1rem">
+      <label class="pay-setup-label">Building Name <span style="opacity:0.6;font-weight:400">(applies to every floor below)</span></label>
+      <input type="text" id="genBuildingName" placeholder="e.g. Sunrise Tower" style="margin-bottom:0">
+    </div>
 
-    <div id="genGroupsWrap"></div>
+  <div id="genGroupsWrap"></div>
      
 <div id="genExtendWrap" style="display:none;margin-bottom:1rem">
   <label class="pay-setup-label">Which group?</label>
@@ -1651,9 +1847,10 @@
         <span>Live Preview</span>
         <span id="genPreviewCount" style="color:var(--accent)"></span>
       </div>
-      <div id="genPreviewBox" style="font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--text-muted);max-height:160px;overflow-y:auto;line-height:1.8">
-        Fill in the fields above to see a preview
-      </div>
+        <div id="genPreviewBox" style="font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--text-muted);max-height:160px;overflow-y:auto;line-height:1.8">
+          Fill in the fields above to see a preview
+        </div>
+      <div id="genConflictWarning" style="display:none"></div>
     </div>
 
     <button class="btn btn-primary btn-full" id="genSubmitBtn" onclick="submitGenerateHouses()">Generate Units</button>
@@ -1929,6 +2126,7 @@
   // Sidebar footer
   set('maintenanceRowLabel', `${ICON('maintenance',14)} Maintenance Mode`);
   set('sessionRowLabel', `${ICON('clock',14)} Session`);
+  set('takeTourBtn', `${ICON('sparkle',14)} Take a Tour`);
   set('logoutBtn', `${ICON('logout',14)} Sign Out`);
 
   // Topbar
@@ -2053,12 +2251,22 @@
   set('onboardingSetupBtn', `${ICON('settings',14)} Setup Payments`);
   set('onboardingContactBtn', `${ICON('mail',14)} Contact Support`);
 
+
+
   set('paySetupModalTitle', `${ICON('settings',16)} M-Pesa Payment Setup`);
   set('paySetupCloseBtn', ICON('close', 16));
   set('paySetupRequestOtpBtn', `${ICON('mail',14)} Send OTP to Edit Credentials`);
   set('paySetupOtpSentMsg', `${ICON('mail',14)} An OTP has been sent to your registered email. Enter it below to proceed with updating credentials.`);
   set('paySetupSecureIcon', ICON('lock', 14));
   set('savePaySetupBtn', `${ICON('lock',14)} Save Credentials Securely`);
+
+    // Referral modal
+  set('navIcon_paymentSetup', ICON('settings', 16));
+  set('navIcon_referral', ICON('sparkle', 16));
+  set('referralModalTitle', `${ICON('sparkle',16)} Refer & Earn`);
+  set('referralCloseBtn', ICON('close', 16));
+  set('referralCopyBtn', `${ICON('lock',12)} Copy`);
+  set('referralWhatsAppBtn', `${ICON('messages',14)} Share on WhatsApp`);
 
   set('addPropertyModalTitle', `${ICON('properties',16)} Add New Property`);
   set('addPropertyCloseBtn', ICON('close', 16));
@@ -2240,6 +2448,7 @@ async function checkAccountSuspension() {
 
 
 function openModal(id) {
+  if (typeof window.isTourActive === 'function' && window.isTourActive()) return;
   if (id === 'modal-commission') { openCommissionModal(); return; }
   if (id === 'modal-pay-setup') {
     if (typeof openPaySetupModal === 'function') { openPaySetupModal(); return; }
@@ -2262,7 +2471,15 @@ function closeModal(id) {
   if (id === 'modal-pay-setup') {
     if (typeof _resetPaySetupState === 'function') _resetPaySetupState();
   }
+
+  setTimeout(() => {
+  if (!document.querySelector('.modal-overlay.open') && typeof maybeStartTour === 'function' && !window.__AUTH_INVALID__) {
+    maybeStartTour();
+  }
+}, 0);
 }
+
+
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
   overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(overlay.id); });
 });
@@ -2405,6 +2622,7 @@ async function loadRecentActivity() {
 }
 
 // ── Window load init ──
+// AFTER:
 window.addEventListener('load', () => {
   if (window.__AUTH_INVALID__) return;
   _startAdminTypers();
@@ -2414,12 +2632,13 @@ window.addEventListener('load', () => {
     setTimeout(checkAccountSuspension, 800);
     setInterval(loadCommissionStatus, 5 * 60 * 1000);
     setInterval(checkAccountSuspension, 5 * 60 * 1000);
+    // Give onboarding/suspension checks and the tour a clear runway first
+    setTimeout(maybeShowReferralModal, 4000);
   }
-
   setTimeout(loadRecentActivity, 1500);
   setInterval(loadRecentActivity, 2 * 60 * 1000);
 
-  setTimeout(() => maybeStartTour(), 1500);
+  _arTourReady(1700).then(() => maybeStartTour());
 });
 </script>
 
@@ -2451,6 +2670,7 @@ const TOUR_STEPS = [
   { sel: '[data-tour="activity"]',     title: 'Activity Log',    desc: 'A running record of everything that happens on this property — tenants, payments, repairs.' },
   { sel: '[data-tour="caretakers"]',   title: 'Caretakers',      desc: 'Add caretaker accounts with scoped permissions across your properties.' },
   { sel: '[data-tour="paymentSetup"]', title: 'Payment Setup',   desc: 'Configure M-Pesa Paybill or Till details so tenants can pay rent directly.' },
+  { sel: '[data-tour="referral"]',     title: 'Refer & Earn',    desc: 'Invite other landlords — refer enough of them and unlock a commission-free month.' },
   { sel: '[data-tour="notifBell"]',    title: 'Notifications',   desc: 'Unread messages, new repair requests and inquiries all surface here.' }
 ];
 
@@ -2469,6 +2689,20 @@ function _tourUserId() {
 }
 
 function _tourStorageKey() { return `tourSeen_${_tourUserId()}`; }
+
+// Exposed for other scripts (script.js's maybeShowReferralModal, currently)
+// to check before opening anything unprompted. The tour is NOT a
+// `.modal-overlay` — it's a separate spotlight/catcher overlay — so the
+// existing "don't stack modals" checks elsewhere never noticed it. Without
+// this, the auto-popup Refer & Earn modal could open on top of a
+// still-running tour: the tour's own z-index sits above the modal, but the
+// modal's dark, blurred backdrop still renders behind it, obscuring
+// whichever sidebar item the tour is trying to spotlight — and the tour's
+// full-viewport click-catcher then blocks any click on the modal underneath
+// it too, so neither surface is actually usable.
+window.isTourActive = function () {
+    return !!(_tourEls && _tourEls.catcher);
+};
 
 function maybeStartTour(attemptsLeft = 15) {
   if (window.__AUTH_INVALID__) return;
@@ -2490,6 +2724,32 @@ function maybeStartTour(attemptsLeft = 15) {
     return el && el.offsetParent !== null;
   });
   if (!usableSteps.length) return;
+
+  _startTour(usableSteps);
+}
+
+// Manually re-launch the tour on demand (the sidebar "Take a Tour" button).
+// Unlike maybeStartTour(), this ignores the tourSeen_<userId> flag entirely —
+// it's an explicit request, not the automatic first-login walkthrough — so
+// it never overwrites or clears that flag either. Closes any open modal or
+// notification dropdown first so the tour has a clean stage to work with.
+function startTourManually() {
+  if (window.__AUTH_INVALID__) return;
+  if (_tourEls && _tourEls.catcher) return; // tour already running — no-op
+
+  document.querySelectorAll('.modal-overlay.open').forEach(m => closeModal(m.id));
+  if (typeof closeNotifDropdown === 'function') closeNotifDropdown();
+  if (typeof closePropertyMenu === 'function') closePropertyMenu();
+
+  const usableSteps = TOUR_STEPS.filter(s => {
+    const el = document.querySelector(s.sel);
+    return el && el.offsetParent !== null;
+  });
+
+  if (!usableSteps.length) {
+    if (typeof showToast === 'function') showToast('Nothing to show right now — try again from the dashboard', 'warn');
+    return;
+  }
 
   _startTour(usableSteps);
 }
@@ -2573,15 +2833,17 @@ function _renderTourStep() {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         _positionTourAt(step);
+        const pct = Math.round(((_tourIndex + 1) / steps.length) * 100);
         _tourEls.card.innerHTML = `
-          <div class="tour-step-count">Step ${_tourIndex + 1} of ${steps.length}</div>
+          <div class="tour-progress-track"><div class="tour-progress-fill" style="width:${pct}%"></div></div>
+          <div class="tour-step-count">${ICON('sparkle',11)} Step ${_tourIndex + 1} of ${steps.length}</div>
           <div class="tour-title">${step.title}</div>
           <div class="tour-desc">${step.desc}</div>
           <div class="tour-actions">
             <button class="tour-skip" onclick="endTour()">Skip tour</button>
             <div class="tour-nav-btns">
-              ${_tourIndex > 0 ? `<button class="btn btn-secondary btn-sm" onclick="_tourBack()">← Back</button>` : ''}
-              <button class="btn btn-primary btn-sm" onclick="_tourNext()">${_tourIndex === steps.length - 1 ? `${ICON('check',14)} Done` : 'Next →'}</button>
+              ${_tourIndex > 0 ? `<button class="tour-btn tour-btn-secondary" onclick="_tourBack()">← Back</button>` : ''}
+              <button class="tour-btn tour-btn-primary" onclick="_tourNext()">${_tourIndex === steps.length - 1 ? `${ICON('check',14)} Done` : 'Next →'}</button>
             </div>
           </div>`;
       });
@@ -2643,6 +2905,9 @@ function endTour() {
       if (_tourWasSidebarOpen) openSidebar(); else closeSidebar();
     }
   }
+if (!window.__AUTH_INVALID__ && typeof maybeShowReferralModal === 'function') {
+  maybeShowReferralModal();
+}
 }
 </script>
 
@@ -2663,5 +2928,14 @@ function endTour() {
 <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("service-worker.js").catch(err => {
+          console.error("Service Worker registration failed:", err);
+        });
+      });
+    }
+  </script>
 </body>
 </html>

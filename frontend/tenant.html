@@ -1,9 +1,56 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0b0f1a">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
   <meta charset="UTF-8">
+  <!-- Tour readiness gate: the product tour waits for full load, fonts, the page loader,
+       finished API requests and a stable layout before it measures anything. -->
+  <script>
+  (function () {
+    var net = window.__arNet = { pending: 0, last: performance.now() };
+    var nativeFetch = window.fetch;
+    if (typeof nativeFetch === 'function') {
+      window.fetch = function () {
+        net.pending++;
+        var p = nativeFetch.apply(this, arguments);
+        var done = function () { net.pending = Math.max(0, net.pending - 1); net.last = performance.now(); };
+        p.then(done, done);
+        return p;
+      };
+    }
+    var ready = null;
+    window._arTourReady = function (minAfterLoad) {
+      if (ready) return ready;
+      ready = new Promise(function (resolve) {
+        var loaded = new Promise(function (r) {
+          if (document.readyState === 'complete') r(); else window.addEventListener('load', function () { r(); }, { once: true });
+        });
+        var fonts = (document.fonts && document.fonts.ready) ? document.fonts.ready.catch(function () {}) : Promise.resolve();
+        var cap = performance.now() + 15000;          // never block the tour forever
+        Promise.all([loaded, fonts]).then(function () {
+          var loadedAt = performance.now(), lastKey = '', stable = 0;
+          (function tick() {
+            var now = performance.now();
+            var loader = document.getElementById('pageLoader');
+            var busy = net.pending > 0 || (now - net.last) < 600 ||
+                       (now - loadedAt) < (minAfterLoad || 0) ||
+                       (loader && !loader.classList.contains('hide'));
+            var key = document.documentElement.scrollHeight + '|' + document.getElementsByTagName('*').length;
+            if (!busy && key === lastKey) stable++; else stable = 0;
+            lastKey = key;
+            if (stable >= 15 || now > cap) return resolve();
+            requestAnimationFrame(tick);
+          })();
+        });
+      });
+      return ready;
+    };
+  })();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" type="image/svg+xml" href="./public/favicon.svg">
+  <link rel="icon" type="image/svg+xml" href="./public/affordablerentalsLogo.png">
   <title>My Dashboard — Affordable Rentals</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
@@ -63,6 +110,33 @@
     --header-bg:rgba(15,10,5,0.94); --nav-bg:rgba(15,10,5,0.98);
   }
 
+  /* ═══ PAGE LOADER ═══ */
+#pageLoader {
+  position: fixed; inset: 0; z-index: 5000;
+  background: var(--bg);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; transition: opacity .3s ease;
+}
+#pageLoader.hide { opacity: 0; pointer-events: none; }
+.loader-spinner {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 3px solid var(--border2); border-top-color: var(--accent);
+  animation: loaderSpin .8s linear infinite;
+}
+@keyframes loaderSpin { to { transform: rotate(360deg); } }
+.loader-label {
+  font-family: 'JetBrains Mono', monospace; font-size: .68rem;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--text-dim);
+}
+
+/* ═══ PLATFORM-WIDE MAINTENANCE OVERLAY — same pattern as dashboard.html ═══ */
+.platform-maint-overlay { display: none; position: fixed; inset: 0; z-index: 450; background: rgba(0,0,0,0.92); backdrop-filter: blur(8px); align-items: center; justify-content: center; }
+.platform-maint-overlay.show { display: flex; }
+.platform-maint-box   { background: var(--panel); border: 1px solid rgba(224,187,100,0.3); border-radius: 16px; padding: 3rem 2.5rem; text-align: center; max-width: 440px; width: 92vw; box-shadow: 0 0 60px rgba(224,187,100,0.15); }
+.platform-maint-icon  { margin-bottom: 1rem; display:flex; justify-content:center; color: var(--amber); }
+.platform-maint-title { font-family: 'DM Serif Display', serif; font-style: italic; font-size: 1.6rem; color: var(--amber); margin-bottom: 0.75rem; }
+.platform-maint-desc  { font-size: 0.85rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 1.75rem; }
+
   /* ══════════════════════════════════════
      RESET
   ══════════════════════════════════════ */
@@ -114,45 +188,41 @@
   }
 
   /* ══════════════════════════════════════
-     HEADER — fixed-lane layout
+     HEADER — flexbox layout
      ┌─────────────────────┬────────────┐
      │ avatar  name        │ pill  btn  │
      │         typer line  │            │
      └─────────────────────┴────────────┘
-     .header-right is position:absolute,
-     pinned to the right edge.
-     .header-identity gets a padding-right
-     equal to .header-right's reserved width
-     so the two lanes NEVER overlap.
-
-     Mobile  right-lane  ≈ 100px  (pill + icon-btn)
-     ≥480px  right-lane  ≈ 170px  (pill + "Sign Out")
-     ≥768px  right-lane  ≈ 210px  (badge + pill + "Sign Out")
+     .header-identity is the flexible lane (min-width:0 so its
+     text can truncate); .header-right is a natural-width flex
+     item pinned to the end. Nothing here depends on matching
+     pixel widths between two separate rules, so it can never
+     desync at any viewport size or content length.
   ══════════════════════════════════════ */
   header {
     position: sticky; top: 0; z-index: 100;
-    /* sticky creates a containing block, so position:absolute on
-       .header-right anchors correctly inside this element */
     background: var(--header-bg);
     backdrop-filter: blur(20px);
     border-bottom: 1px solid var(--border);
-    display: block;          /* NOT flex — we manage lanes manually */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
     height: 58px;
     padding: 0 1rem;
     flex-shrink: 0;
     transition: background 0.3s, border-color 0.3s;
   }
 
-  /* Left lane — avatar + name + typer.
-     padding-right keeps it clear of the right lane.
-     These values must match the right lane widths below. */
+  /* Left lane — avatar + name + typer. min-width:0 lets flex
+     children truncate instead of overflowing the header. */
   .header-identity {
     display: flex;
     align-items: center;
     height: 58px;
-    /* mobile: reserve 104px for right lane (pill ~60 + btn ~34 + gap 10) */
-    padding-right: 104px;
-    overflow: hidden;        /* clips any overflow on very narrow phones */
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
     box-sizing: border-box;
   }
 
@@ -179,17 +249,14 @@
     line-height: 1.2;
   }
 
-  /* Right lane — absolutely positioned, pinned to right edge,
-     vertically centred.  Width is explicitly set per breakpoint
-     to match the padding-right on .header-identity above. */
+  /* Right lane — a plain flex item, natural width, pinned to the
+     end by the header's justify-content:space-between. Never needs
+     to match a padding value on the other lane. */
   .header-right {
-    position: absolute;
-    top: 0; right: 1rem;
+    flex: 0 0 auto;
     height: 58px;
     display: flex; align-items: center;
     gap: 0.5rem;
-    /* mobile width = 104px matches padding-right above */
-    width: 104px;
     justify-content: flex-end;
   }
 
@@ -216,8 +283,8 @@
     border-radius: 99px;
     cursor: pointer; transition: border-color 0.2s, color 0.2s;
     white-space: nowrap; flex-shrink: 0;
-    /* mobile: icon-only sizing */
-    width: 30px; height: 30px;
+    /* mobile: icon-only sizing, kept close to a 44px touch target */
+    width: 38px; height: 38px;
     padding: 0; display: flex; align-items: center; justify-content: center;
     margin: 0;
   }
@@ -239,23 +306,19 @@
     flex-shrink: 0;
   }
 
-  /* ── ≥480px: show "Sign Out" text, badge still hidden ── */
+  /* ── ≥480px: show "Sign Out" text ── */
   @media (min-width: 480px) {
-    .header-identity  { padding-right: 160px; }
-    .header-right     { width: 160px; }
     .btn-logout {
       width: auto; height: auto;
-      padding: 0.35rem 0.8rem;
+      padding: 0.4rem 0.9rem;
     }
-    
-.btn-logout-icon { display: none; }
-.btn-logout .btn-logout-text { display: inline; }
+    .btn-logout-icon { display: none; }
+    .btn-logout .btn-logout-text { display: inline; }
   }
 
   /* ── ≥768px: also show property badge ── */
   @media (min-width: 768px) {
-    .header-identity  { padding-right: 290px; }
-    .header-right     { width: 290px; gap: 0.65rem; }
+    .header-right { gap: 0.65rem; }
     #headerPropertyBadge { display: inline-block; }
   }
 
@@ -349,6 +412,29 @@
   .theme-dot[data-theme="blue"]   { background: #1e40af; }
   .theme-dot[data-theme="orange"] { background: #ea580c; }
 
+  /* ── TAKE A TOUR button — deliberately bluish/gradient so it visually
+       matches the restyled spotlight tour it launches, independent of
+       whichever accent theme (dark/light/blue/orange) is active. ── */
+  .btn-tour {
+    width: 100%;
+    background: linear-gradient(135deg, rgba(90,164,255,0.16), rgba(143,139,255,0.16));
+    border: 1px solid rgba(90,164,255,0.4);
+    color: #7db8ff;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem; font-weight: 600; letter-spacing: 0.05em;
+    padding: 0.62rem 1.2rem; border-radius: 10px; cursor: pointer;
+    transition: all 0.15s cubic-bezier(0.4,0,0.2,1);
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.4em;
+    margin-top: 0.1rem;
+  }
+  .btn-tour:hover {
+    background: linear-gradient(135deg, rgba(90,164,255,0.28), rgba(143,139,255,0.28));
+    border-color: rgba(90,164,255,0.7);
+    color: #a9d1ff;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(90,164,255,0.2);
+  }
+
   /* ══════════════════════════════════════
      CONTENT AREA
   ══════════════════════════════════════ */
@@ -357,7 +443,8 @@
     max-width: 800px; margin: 0 auto; width: 100%;
     min-width: 0;
   }
-  @media (min-width: 768px) { .content-area { padding: 1.75rem 1.75rem 2rem; } }
+  @media (min-width: 768px)  { .content-area { padding: 1.75rem 1.75rem 2rem; } }
+  @media (min-width: 1200px) { .content-area { max-width: 920px; } }
 
   /* ══════════════════════════════════════
      SECTIONS
@@ -379,7 +466,7 @@
   ══════════════════════════════════════ */
   .card {
     background: var(--panel); border: 1px solid var(--border);
-    border-radius: 12px; padding: 1.25rem;
+    border-radius: 14px; padding: 1.25rem;
     margin-bottom: 1rem; transition: border-color 0.2s, background 0.3s;
   }
   .card:hover { border-color: var(--border2); }
@@ -400,7 +487,7 @@
 
   .stat-card {
     background: var(--panel); border: 1px solid var(--border);
-    border-radius: 12px; padding: 1rem;
+    border-radius: 14px; padding: 1rem;
     transition: background 0.3s, border-color 0.3s, transform 0.2s;
   }
   .stat-card:hover { transform: translateY(-2px); border-color: var(--border2); }
@@ -434,7 +521,7 @@
   ══════════════════════════════════════ */
   input, textarea, select {
     width: 100%; background: var(--bg3); border: 1px solid var(--border);
-    border-radius: 8px; color: var(--text);
+    border-radius: 10px; color: var(--text);
     font-family: 'DM Sans', sans-serif; font-size: 0.85rem;
     padding: 0.62rem 0.9rem; margin-bottom: 0.62rem; outline: none;
     transition: border-color 0.15s, box-shadow 0.15s, background 0.3s, color 0.3s;
@@ -445,7 +532,7 @@
 
   .btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 0.4em;
-    border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif;
+    border: none; border-radius: 10px; font-family: 'DM Sans', sans-serif;
     font-size: 0.8rem; font-weight: 600; letter-spacing: 0.05em;
     padding: 0.62rem 1.2rem; cursor: pointer;
     transition: all 0.15s cubic-bezier(0.4,0,0.2,1);
@@ -532,7 +619,22 @@
   /* ══════════════════════════════════════
      TABLE
   ══════════════════════════════════════ */
-  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-wrap {
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    position: relative;
+    /* CSS-only scroll-edge cue: content fades where it's clipped, on
+       either side, and the fade disappears once you've scrolled that
+       direction all the way (no JS needed to track scroll position). */
+    background:
+      linear-gradient(to right, var(--panel) 30%, rgba(0,0,0,0)),
+      linear-gradient(to left,  var(--panel) 30%, rgba(0,0,0,0)),
+      linear-gradient(to right, rgba(0,0,0,0.16), rgba(0,0,0,0) 12px),
+      linear-gradient(to left,  rgba(0,0,0,0.16), rgba(0,0,0,0) 12px);
+    background-repeat: no-repeat;
+    background-size: 24px 100%, 24px 100%, 12px 100%, 12px 100%;
+    background-position: left, right, left, right;
+    background-attachment: local, local, scroll, scroll;
+  }
   table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
   th { text-align:left; padding:0.5rem 0.7rem; font-family:'DM Mono',monospace; font-size:0.56rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--text-dim); border-bottom:1px solid var(--border); font-weight:400; }
   td { padding:0.6rem 0.7rem; border-bottom:1px solid var(--border); color:var(--text-muted); }
@@ -679,38 +781,90 @@
   ::-webkit-scrollbar-thumb { background:var(--border2);border-radius:2px; }
   ::selection { background:var(--accent-dim);color:var(--text); }
 
-  /* ═══ SPOTLIGHT TOUR ═══ */
+  /* ═══ SPOTLIGHT TOUR — bluish, stylised ═══ */
+:root {
+  --tour-blue:        #5aa4ff;
+  --tour-blue2:       #8f8bff;
+  --tour-blue-soft:   #7db8ff;
+  --tour-blue-dim:    rgba(90,164,255,0.14);
+  --tour-blue-border: rgba(90,164,255,0.4);
+}
 .tour-catcher { position: fixed; inset: 0; z-index: 10000; background: transparent; }
 .tour-spotlight {
   position: fixed; z-index: 10001; border-radius: 10px;
-  box-shadow: 0 0 0 9999px rgba(6,8,14,0.78);
-  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 9999px rgba(5,8,18,0.82), 0 0 0 4px var(--tour-blue-dim), 0 0 30px rgba(90,164,255,0.35);
+  border: 2px solid var(--tour-blue);
   transition: top 0.35s cubic-bezier(0.4,0,0.2,1), left 0.35s cubic-bezier(0.4,0,0.2,1),
               width 0.35s cubic-bezier(0.4,0,0.2,1), height 0.35s cubic-bezier(0.4,0,0.2,1);
   pointer-events: none;
+  animation: tourGlowPulse 2.4s ease-in-out infinite;
+}
+@keyframes tourGlowPulse {
+  0%, 100% { box-shadow: 0 0 0 9999px rgba(5,8,18,0.82), 0 0 0 4px var(--tour-blue-dim), 0 0 30px rgba(90,164,255,0.35); }
+  50%      { box-shadow: 0 0 0 9999px rgba(5,8,18,0.82), 0 0 0 7px rgba(90,164,255,0.22), 0 0 42px rgba(90,164,255,0.55); }
 }
 .tour-card {
-  position: fixed; z-index: 10002; max-width: 290px;
-  background: var(--panel2); border: 1px solid var(--border2); border-radius: 12px;
-  padding: 1.1rem 1.25rem; box-shadow: 0 20px 60px rgba(0,0,0,0.55);
+  position: fixed; z-index: 10002; max-width: 300px;
+  background: linear-gradient(165deg, #101a30 0%, #0b1424 100%);
+  border: 1px solid var(--tour-blue-border);
+  border-radius: 14px;
+  padding: 1.15rem 1.3rem;
+  box-shadow: 0 24px 70px rgba(0,0,0,0.6), 0 0 36px rgba(90,164,255,0.16);
   animation: tourPop 0.25s cubic-bezier(0.34,1.4,0.64,1) both;
   transition: top 0.35s cubic-bezier(0.4,0,0.2,1), left 0.35s cubic-bezier(0.4,0,0.2,1);
+  overflow: hidden;
 }
+.tour-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, var(--tour-blue), var(--tour-blue2), var(--tour-blue));
+  background-size: 200% 100%;
+  animation: tourShimmer 3s linear infinite;
+}
+@keyframes tourShimmer { 0% { background-position: 0% 0; } 100% { background-position: 200% 0; } }
 @keyframes tourPop { from { opacity:0; transform: scale(0.92) translateY(6px); } to { opacity:1; transform: scale(1) translateY(0); } }
-.tour-step-count { font-family:'DM Mono',monospace; font-size:0.58rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-dim); margin-bottom:0.5rem; }
-.tour-title { font-family:'DM Serif Display',serif; font-style:italic; font-size:1.1rem; color:var(--text); margin-bottom:0.4rem; }
-.tour-desc { font-size:0.78rem; color:var(--text-muted); line-height:1.55; margin-bottom:1rem; }
+.tour-progress-track { background: rgba(255,255,255,0.08); border-radius: 99px; height: 4px; overflow: hidden; margin-bottom: 0.7rem; }
+.tour-progress-fill  { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--tour-blue), var(--tour-blue2)); transition: width 0.3s ease; }
+.tour-step-count { font-family:'DM Mono',monospace; font-size:0.58rem; letter-spacing:0.12em; text-transform:uppercase; color: var(--tour-blue-soft); margin-bottom:0.5rem; display:flex; align-items:center; gap:0.4em; }
+.tour-title { font-family:'DM Serif Display',serif; font-style:italic; font-size:1.08rem; color:#f3f7ff; margin-bottom:0.4rem; }
+.tour-desc { font-size:0.78rem; color:#adbdd9; line-height:1.55; margin-bottom:1rem; }
 .tour-actions { display:flex; align-items:center; justify-content:space-between; gap:0.5rem; }
-.tour-skip { background:transparent; border:none; color:var(--text-dim); font-size:0.7rem; cursor:pointer; font-family:'DM Sans',sans-serif; padding:0.3rem 0; }
-.tour-skip:hover { color:var(--red); }
+.tour-skip { background:transparent; border:none; color:#6f83a8; font-size:0.7rem; cursor:pointer; font-family:'DM Sans',sans-serif; padding:0.3rem 0; transition: color 0.15s; }
+.tour-skip:hover { color:#fca5a5; }
 .tour-nav-btns { display:flex; gap:0.5rem; }
-.tour-nav-btns .btn { width: auto; margin: 0; }
+.tour-btn {
+  border: none; border-radius: 7px; font-family: 'DM Sans', sans-serif;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.03em;
+  padding: 0.42rem 0.85rem; cursor: pointer; transition: all 0.15s;
+  display: inline-flex; align-items: center; gap: 0.35em; white-space: nowrap;
+}
+.tour-btn-primary { background: linear-gradient(135deg, var(--tour-blue), var(--tour-blue2)); color: #07101f; box-shadow: 0 4px 14px rgba(90,164,255,0.3); }
+.tour-btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 6px 18px rgba(90,164,255,0.45); }
+.tour-btn-secondary { background: rgba(255,255,255,0.05); border: 1px solid rgba(90,164,255,0.3); color: #c3d3f2; }
+.tour-btn-secondary:hover { border-color: var(--tour-blue); color: #fff; background: rgba(90,164,255,0.1); }
 @media (max-width:480px) { .tour-card { max-width: calc(100vw - 2rem); } }
   </style>
 </head>
 
 <body>
 
+<div id="pageLoader">
+  <div class="loader-spinner"></div>
+  <span class="loader-label">Loading your dashboard…</span>
+</div>
+
+<!-- ═══ PLATFORM-WIDE MAINTENANCE OVERLAY ═══
+     Static, always in the DOM — toggled via .show, same pattern as
+     dashboard.html's #platformMaintenanceOverlay. Also covers the
+     landlord's own per-property maintenance switch (title differs). -->
+<div class="platform-maint-overlay" id="platformMaintenanceOverlay">
+  <div class="platform-maint-box">
+    <span class="platform-maint-icon" id="platformMaintIconWrap"></span>
+    <div class="platform-maint-title" data-maint-title>Under Maintenance</div>
+    <div class="platform-maint-desc" id="platformMaintenanceDesc">The system is currently under maintenance. Please check back later.</div>
+    <button class="btn btn-primary" onclick="window.location.reload()" style="margin-bottom:0.6rem" id="platformMaintReloadBtn"></button>
+    <button class="btn btn-secondary" onclick="logout()" id="platformMaintLogoutBtn"></button>
+  </div>
+</div>
 <!-- ═══ HEADER ═══ -->
 <header>
   <div class="header-identity">
@@ -779,6 +933,7 @@
         <div class="theme-dot"        data-theme="blue"   onclick="setTheme('blue')"   title="Blue"></div>
         <div class="theme-dot"        data-theme="orange" onclick="setTheme('orange')" title="Orange"></div>
       </div>
+      <button class="btn-tour" onclick="startTourManually()" id="takeTourBtnSidebar"></button>
     </div>
   </aside>
 
@@ -1084,6 +1239,7 @@
           <div class="theme-dot" data-theme="orange" onclick="setTheme('orange')" title="Orange" style="width:24px;height:24px"></div>
           <span style="font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--text-dim)" id="currentThemeLabel">dark</span>
         </div>
+        <button class="btn-tour" onclick="startTourManually()" id="takeTourBtn" style="margin-top:0.85rem"></button>
       </div>
 
       <!-- Change password — with eye toggles + strength/match injected by JS -->
@@ -1230,6 +1386,15 @@ function togglePwEye(inputId, btn) {
     // Sign out
     set('btnLogoutIcon', ICON('logout', 14));
     set('settingsSignOutBtn', `${ICON('logout',14)} Sign Out`);
+
+    // Take a Tour (sidebar footer + Settings > Appearance)
+    set('takeTourBtnSidebar', `${ICON('sparkle',14)} Take a Tour`);
+    set('takeTourBtn', `${ICON('sparkle',14)} Take a Tour`);
+
+    // Platform maintenance overlay
+    set('platformMaintIconWrap', ICON('maintenance', 44));
+    set('platformMaintReloadBtn', `${ICON('refresh',14)} Check Again`);
+    set('platformMaintLogoutBtn', `${ICON('logout',14)} Sign Out`);
   } catch (err) {
     console.error('wireStaticIcons error:', err);
   }
@@ -1317,6 +1482,24 @@ function maybeStartTour(attemptsLeft = 15) {
   _startTour(usableSteps);
 }
 
+// Manually re-launch the tour on demand (the "Take a Tour" button in the
+// desktop sidebar footer and in Settings → Appearance). Unlike
+// maybeStartTour(), this ignores the tourSeen_<userId> flag entirely — it's
+// an explicit request, not the automatic first-login walkthrough — so it
+// never overwrites or clears that flag either.
+function startTourManually() {
+  if (_tourActive) return; // already running — no-op
+  if (document.getElementById('maintenanceScreen')) return;
+
+  const usableSteps = _tourUsableSteps();
+  if (!usableSteps.length) {
+    showToast('Nothing to show right now — try again from Home', 'warn');
+    return;
+  }
+
+  _startTour(usableSteps);
+}
+
 function _startTour(steps) {
   _tourActive = true;
   _tourIndex  = 0;
@@ -1372,15 +1555,17 @@ function _renderTourStep() {
   el.scrollIntoView({ block: 'nearest', behavior: 'auto' });
 
   const isLast = _tourIndex === steps.length - 1;
+  const pct    = Math.round(((_tourIndex + 1) / steps.length) * 100);
   _tourEls.card.innerHTML = `
-    <div class="tour-step-count">Step ${_tourIndex + 1} of ${steps.length}</div>
+    <div class="tour-progress-track"><div class="tour-progress-fill" style="width:${pct}%"></div></div>
+    <div class="tour-step-count">${_tourIcon('sparkle',11)} Step ${_tourIndex + 1} of ${steps.length}</div>
     <div class="tour-title">${step.title}</div>
     <div class="tour-desc">${step.desc}</div>
     <div class="tour-actions">
       <button class="tour-skip" onclick="endTour()">Skip tour</button>
       <div class="tour-nav-btns">
-        ${_tourIndex > 0 ? `<button class="btn btn-secondary btn-sm" onclick="_tourBack()">← Back</button>` : ''}
-        <button class="btn btn-primary btn-sm" onclick="_tourNext()">${isLast ? `${_tourIcon('check',14)} Done` : 'Next →'}</button>
+        ${_tourIndex > 0 ? `<button class="tour-btn tour-btn-secondary" onclick="_tourBack()">← Back</button>` : ''}
+        <button class="tour-btn tour-btn-primary" onclick="_tourNext()">${isLast ? `${_tourIcon('check',14)} Done` : 'Next →'}</button>
       </div>
     </div>`;
 
@@ -1402,8 +1587,8 @@ function _positionTourAt(el) {
   _tourEls.spotlight.style.height = `${rect.height + pad * 2}px`;
 
   // Measured, not assumed — the card is taller than 180px in practice.
-  const cardW = _tourEls.card.offsetWidth  || 290;
-  const cardH = _tourEls.card.offsetHeight || 180;
+  const cardW = _tourEls.card.offsetWidth  || 300;
+  const cardH = _tourEls.card.offsetHeight || 190;
   const gap   = 14;
   const vw    = window.innerWidth;
   const vh    = window.innerHeight;
@@ -1457,7 +1642,7 @@ function endTour() {
 // ── THE MISSING PIECE ──────────────────────────────────
 // Nothing was ever calling maybeStartTour(), so the tour never ran.
 // Small delay lets the maintenance check and loadProfile() settle first.
-function _bootTour() { setTimeout(() => maybeStartTour(), 900); }
+function _bootTour() { _arTourReady().then(() => maybeStartTour()); }
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', _bootTour);
@@ -1543,5 +1728,14 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("service-worker.js").catch(err => {
+          console.error("Service Worker registration failed:", err);
+        });
+      });
+    }
+  </script>
 </body>
 </html>

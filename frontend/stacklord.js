@@ -113,17 +113,30 @@ function closeSidebar() {
 // PLATFORM MAINTENANCE — pre-login check
 // ═══════════════════════════════════════
 
+// ═══════════════════════════════════════
+// PLATFORM MAINTENANCE — pre-login check
+// ═══════════════════════════════════════
+//
+// FIX: this used to toggle a full-screen #maintenanceLock overlay that sat
+// ON TOP OF the login form (higher z-index, opaque background, no
+// pointer-events:none) — so when maintenance was on, the master-key input
+// and "Access Console" button were still in the DOM but completely
+// unreachable. The stacklord had no way to log in to turn maintenance back
+// off. Now this just toggles an inline notice INSIDE the login box, so the
+// form stays visible and clickable at all times.
 async function checkPlatformStatusForLockScreen() {
     try {
-        const res  = await fetch(`${API}/platform-status`);
-        const data = await res.json();
-        const lock = document.getElementById('maintenanceLock');
+        const res    = await fetch(`${API}/platform-status`);
+        const data   = await res.json();
+        const notice = document.getElementById('loginMaintNotice');
+        if (!notice) return;
+
         if (data.maintenanceMode) {
             document.getElementById('maintenanceLockDesc').textContent =
                 data.message || 'Affordable Rentals is temporarily down for maintenance.';
-            lock.classList.add('show');
+            notice.style.display = 'flex';
         } else {
-            lock.classList.remove('show');
+            notice.style.display = 'none';
         }
     } catch (err) {
         console.error('platform-status check failed:', err.message);
@@ -156,7 +169,9 @@ async function verifyKey(key) {
             return;
         }
 
-        document.getElementById('maintenanceLock').classList.remove('show');
+        // Successful login — hide the whole login screen (the inline
+        // maintenance notice, if visible, goes with it; no separate
+        // overlay to manage anymore).
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('mainApp').style.display     = 'block';
 
@@ -205,7 +220,7 @@ function showSection(name) {
         if (n.getAttribute('onclick')?.includes(`'${name}'`)) n.classList.add('active');
     });
 
-    const titles = {
+   const titles = {
         overview:            'Platform Overview',
         landlords:           'All Landlords',
         'landlord-detail':   'Landlord Detail',
@@ -213,6 +228,7 @@ function showSection(name) {
         inquiries:           'Public Inquiries',
         commission:          'Commission',
         'commission-payments': 'Commission Payment Log',
+        referral:            'Referral Program',
         system:              'Platform Controls'
     };
     document.getElementById('topbarTitle').textContent = titles[name] || name;
@@ -223,6 +239,7 @@ function showSection(name) {
     if (name === 'inquiries')            loadInquiries(1);
     if (name === 'commission')           loadCommissionSection();
     if (name === 'commission-payments')  loadSubPayments(1);
+    if (name === 'referral')             loadReferralSettings();
     if (name === 'system')               loadSystemSection();
 
     closeSidebar();
@@ -567,11 +584,14 @@ function _renderPropertyDrilldown(properties) {
     el.innerHTML = properties.map(p => `
         <div class="prop-drill-item">
             <div class="prop-drill-name">${escHtml(p.name)}${p.location ? ` — <span style="display:inline-flex;align-items:center;gap:3px">${ICON('pin',11)} ${escHtml(p.location)}</span>` : ''}</div>
-            <div class="prop-drill-pills">
+            <div class="prop-drill-pills" style="align-items:center">
                 <span class="pill ${p.paymentConfigured ? 'pill-green' : 'pill-yellow'}" style="display:inline-flex;align-items:center;gap:3px">${p.paymentConfigured ? `${ICON('payments',10)} M-Pesa set` : `${ICON('warning',10)} No M-Pesa`}</span>
                 <span class="pill ${p.isListed ? 'pill-cyan' : ''}" ${!p.isListed ? 'style="background:rgba(74,85,104,0.15);color:var(--text-dim);border:1px solid var(--border);display:inline-flex;align-items:center;gap:3px"' : 'style="display:inline-flex;align-items:center;gap:3px"'}>${p.isListed ? `${ICON('houses',10)} Listed` : 'Not listed'}</span>
                 ${p.isListed ? `<span class="pill ${p.isApproved ? 'pill-green' : 'pill-yellow'}" style="display:inline-flex;align-items:center;gap:3px">${p.isApproved ? `${ICON('checkCircle',10)} Approved` : `${ICON('hourglass',10)} Pending`}</span>` : ''}
                 <span class="pill ${p.hasLocation ? 'pill-green' : 'pill-yellow'}" style="display:inline-flex;align-items:center;gap:3px">${ICON('pin',10)} ${p.hasLocation ? 'Pinned' : 'Not pinned'}</span>
+                <button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="openCommissionSummaryModal('${p._id}', '${escHtml(p.name)}')">
+                    <span data-icon-inline>${ICON('cash',12)}</span> View Commission
+                </button>
             </div>
         </div>`).join('');
 }
@@ -893,6 +913,132 @@ async function markCommissionPaid(propertyId, month) {
         console.error('markCommissionPaid error:', err.message);
     }
 }
+
+// ═══════════════════════════════════════
+// COMMISSION SUMMARY LOOKUP (per property/month)
+// ═══════════════════════════════════════
+
+function openCommissionSummaryModal(propertyId, propertyName) {
+    document.getElementById('commSummaryPropertyId').value = propertyId;
+    document.getElementById('commSummaryPropName').innerHTML =
+        `<span style="display:inline-flex;align-items:center;gap:4px">${ICON('properties',11)} ${escHtml(propertyName)}</span>`;
+
+    const monthInput = document.getElementById('commSummaryMonth');
+    if (monthInput) monthInput.value = currentMonthLabel();
+
+    document.getElementById('commSummaryResult').innerHTML =
+        '<div class="empty-state" style="padding:1.5rem 1rem">Enter a month and click Check</div>';
+
+    openModal('modal-commission-summary');
+    checkCommissionSummary();
+}
+
+async function checkCommissionSummary() {
+    const propertyId = document.getElementById('commSummaryPropertyId').value;
+    const month       = document.getElementById('commSummaryMonth').value.trim();
+    const el          = document.getElementById('commSummaryResult');
+
+    if (!propertyId) { showToast('No property selected', 'error'); return; }
+    if (!month)       { showToast('Enter a month', 'warn'); return; }
+
+    el.innerHTML = '<div class="empty-state">Loading…</div>';
+
+    try {
+        const res  = await stacklordFetch(`/stacklord/commission/summary/${propertyId}/${encodeURIComponent(month)}`);
+        const data = await res.json();
+        if (!res.ok) { el.innerHTML = `<div class="empty-state">${escHtml(data.message || 'Could not load summary')}</div>`; return; }
+
+        el.innerHTML = `
+            <div class="outstanding-item">
+                <div class="outstanding-prop-row" style="border-top:none;padding-top:0">
+                    <span>Month</span><span class="td-mono">${escHtml(data.month)}</span>
+                </div>
+                <div class="outstanding-prop-row">
+                    <span>Commission Rate</span><span class="td-mono" style="color:var(--accent)">${data.percentage}%</span>
+                </div>
+                <div class="outstanding-prop-row">
+                    <span>Total Collected</span><span class="td-mono">${formatKsh(data.totalCollected)}</span>
+                </div>
+                <div class="outstanding-prop-row">
+                    <span>Amount Due</span><span class="td-mono" style="color:var(--amber);font-weight:700">${formatKsh(data.amountDue)}</span>
+                </div>
+                <div class="outstanding-prop-row">
+                    <span>Status</span>
+                    <span>${data.alreadyPaid
+                        ? `<span class="pill pill-green" style="display:inline-flex;align-items:center;gap:3px">${ICON('checkCircle',10)} Paid${data.paidAt ? ' · ' + formatDate(data.paidAt) : ''}</span>`
+                        : data.amountDue > 0
+                        ? `<span class="pill pill-yellow" style="display:inline-flex;align-items:center;gap:3px">${ICON('warning',10)} Unpaid</span>`
+                        : `<span class="pill" style="background:rgba(74,85,104,0.15);color:var(--text-dim);border:1px solid var(--border)">Nothing due</span>`}</span>
+                </div>
+                ${(!data.alreadyPaid && data.amountDue > 0) ? `
+                <button class="btn btn-success btn-full" style="margin-top:0.75rem" onclick="markCommissionPaid('${propertyId}', '${escHtml(data.month)}'); closeModal('modal-commission-summary')">
+                    <span data-icon-inline>${ICON('checkCircle',13)}</span> Mark This Paid
+                </button>` : ''}
+            </div>`;
+
+    } catch (err) {
+        el.innerHTML = '<div class="empty-state">Network error</div>';
+        console.error('checkCommissionSummary error:', err.message);
+    }
+}
+
+
+// ═══════════════════════════════════════
+// REFERRAL PROGRAM SETTINGS
+// ═══════════════════════════════════════
+
+async function loadReferralSettings() {
+    try {
+        const res  = await stacklordFetch('/stacklord/referral-settings');
+        const data = await res.json();
+        if (!res.ok) { showToast('Failed to load referral settings', 'error'); return; }
+
+        const countEl = document.getElementById('referralRequiredCount');
+        if (countEl) countEl.value = data.referralRequiredCount ?? 5;
+
+        const rules = data.referralQualificationRules || {};
+        const setupEl   = document.getElementById('ruleSetupCompleted');
+        const paymentEl = document.getElementById('ruleFirstPayment');
+        if (setupEl)   setupEl.checked   = !!rules.propertySetupCompleted;
+        if (paymentEl) paymentEl.checked = !!rules.firstPaymentProcessed;
+
+    } catch (err) {
+        showToast('Network error', 'error');
+        console.error('loadReferralSettings error:', err.message);
+    }
+}
+
+async function saveReferralSettings() {
+    const requiredCount = parseInt(document.getElementById('referralRequiredCount')?.value, 10);
+    if (!Number.isInteger(requiredCount) || requiredCount < 1) {
+        showToast('Required count must be a whole number of at least 1', 'error');
+        return;
+    }
+
+    const referralQualificationRules = {
+        propertySetupCompleted: !!document.getElementById('ruleSetupCompleted')?.checked,
+        firstPaymentProcessed:  !!document.getElementById('ruleFirstPayment')?.checked
+    };
+
+    if (!confirm(`Save referral settings?\n\nRequired qualified referrals: ${requiredCount}\n\nThis only affects future qualification checks — existing referrals and rewards are untouched.`)) return;
+
+    try {
+        const res  = await stacklordFetch('/stacklord/referral-settings', {
+            method: 'PUT',
+            body:   JSON.stringify({ referralRequiredCount: requiredCount, referralQualificationRules })
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.message || 'Failed to save', 'error'); return; }
+
+        showToast(data.message || 'Referral settings saved', 'success');
+        loadReferralSettings();
+
+    } catch (err) {
+        showToast('Network error', 'error');
+        console.error('saveReferralSettings error:', err.message);
+    }
+}
+
 
 
 // ═══════════════════════════════════════

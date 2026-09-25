@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0b0f1a">
+  <script>(function(){var t=null;try{t=localStorage.getItem('ar-public-theme');}catch(e){}if(t!=='light'&&t!=='dark'){try{t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}catch(e){t='dark';}}document.documentElement.setAttribute('data-theme',t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='light'?'#f5f1e6':'#0b0f1a');})();</script>
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/png" href="./public/affordablerentalsLogo.png">
@@ -9,7 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
     /* ── THEME TOKENS — navy / gold ── */
-    :root {
+    :root, :root[data-theme="dark"] {
       --bg: #0b0f1a;
       --card: rgba(18,22,34,.62);
       --text: #f7f2e4;
@@ -31,8 +35,7 @@
       --font-s: 'DM Sans', sans-serif;
       --font-m: 'Space Mono', monospace;
     }
-    @media (prefers-color-scheme: light) {
-      :root {
+:root[data-theme="light"] {
         --bg: #f5f1e6;
         --card: rgba(255,253,247,.6);
         --text: #17140c;
@@ -51,7 +54,6 @@
         --overlay-b: rgba(247,239,220,.2);
         --img-filter: blur(3px) brightness(.75) sepia(.08);
       }
-    }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; }
@@ -71,6 +73,59 @@
       outline: 2px solid var(--primary);
       outline-offset: 2px;
       border-radius: 4px;
+    }
+
+    /* ═══════════ PAGE LOADER ═══════════
+       Full-page overlay shown from first paint until the auth-check
+       redirect has had a chance to run and the Explore Properties
+       strip's first fetch has resolved (success or failure — it
+       never blocks indefinitely on a slow network). */
+    #pageLoader {
+      position: fixed; inset: 0; z-index: 2000;
+      background: var(--bg);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 14px;
+      transition: opacity .3s ease;
+    }
+    #pageLoader.hide { opacity: 0; pointer-events: none; }
+    .loader-spinner {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      border: 3px solid var(--border2);
+      border-top-color: var(--primary);
+      animation: loaderSpin .8s linear infinite;
+    }
+    @keyframes loaderSpin { to { transform: rotate(360deg); } }
+    .loader-label {
+      font-family: var(--font-m); font-size: .68rem;
+      letter-spacing: .12em; text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    /* Inline loading placeholder shown inside the Explore grid
+       while the first properties fetch is in flight. */
+    .explore-skel-card {
+      height: 118px; border-radius: 14px;
+      background: linear-gradient(100deg, rgba(228,199,122,.06) 8%, rgba(228,199,122,.14) 18%, rgba(228,199,122,.06) 33%);
+      background-size: 200% 100%;
+      animation: skelShimmer 1.4s ease-in-out infinite;
+      border: 1px solid var(--border);
+    }
+    @keyframes skelShimmer {
+      0% { background-position: 150% 0; }
+      100% { background-position: -50% 0; }
+    }
+
+    /* Small inline spinner used inside submit buttons while a
+       request is in flight (setLoading() in auth.js toggles this). */
+    .btn-spinner {
+      display: inline-block; width: 13px; height: 13px;
+      border-radius: 50%;
+      border: 2px solid rgba(25,19,7,.35);
+      border-top-color: #191307;
+      animation: loaderSpin .7s linear infinite;
+      vertical-align: -2px;
+      margin-right: 6px;
     }
 
     .bg { position: fixed; inset: 0; z-index: -2; }
@@ -309,7 +364,7 @@
       cursor: pointer; text-align: left;
       transition: all .2s ease;
     }
-    @media (prefers-color-scheme: light) { .role-btn { background: rgba(0,0,0,.04); } }
+:where(:root[data-theme="light"]) .role-btn { background: rgba(0,0,0,.04); }
     .role-btn.active {
       background: linear-gradient(135deg, rgba(224,187,100,.16), rgba(185,134,46,.1));
       border-color: var(--primary);
@@ -411,6 +466,7 @@
       transition: opacity .2s, transform .15s;
       box-shadow: 0 4px 20px rgba(185,134,46,.35);
       margin-top: 2px;
+      display: flex; align-items: center; justify-content: center;
     }
     .submit-btn::after {
       content: '';
@@ -422,7 +478,7 @@
     .submit-btn:hover::after { left: 100%; }
     .submit-btn:hover { opacity: .92; transform: translateY(-1px); }
     .submit-btn:active { transform: translateY(1px); }
-    .submit-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+    .submit-btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
 
     .divider { display: flex; align-items: center; gap: 10px; margin: 16px 0 13px; }
     .divider-line { flex: 1; height: 1px; background: var(--border); }
@@ -463,7 +519,7 @@
       border: 1px solid var(--border);
       border-radius: 12px; padding: 3px;
     }
-    @media (prefers-color-scheme: light) { .tabs { background: rgba(0,0,0,.05); } }
+:where(:root[data-theme="light"]) .tabs { background: rgba(0,0,0,.05); }
     .tab-btn {
       flex: 1; background: none; border: none;
       color: var(--muted); cursor: pointer;
@@ -496,19 +552,6 @@
     #toast.error  { border-color: rgba(240,165,165,.4); color: var(--error); }
     #toast.success{ border-color: rgba(159,217,168,.4); color: var(--success); }
 
-    .site-footer {
-      text-align: center; padding: .7rem 1rem 1.6rem;
-    }
-    .site-footer p {
-      font-family: var(--font-m); font-size: .54rem;
-      letter-spacing: .1em; color: rgba(247,242,228,.28); line-height: 2;
-    }
-    @media (prefers-color-scheme: light) {
-      .site-footer p { color: rgba(23,20,12,.32); }
-    }
-    .site-footer a { color: rgba(247,242,228,.38); text-decoration: none; transition: color .2s; }
-    .site-footer a:hover { color: var(--primary); }
-    .site-footer-sep { margin: 0 .5rem; opacity: .35; }
 
     @media (max-width: 860px) {
       .card { width: 100%; max-width: 440px; }
@@ -521,13 +564,20 @@
       .explore-grid { grid-template-columns: repeat(2, 1fr); }
     }
   </style>
+  <link rel="stylesheet" href="public.css">
 </head>
 <body>
+
+  <!-- ═══════════ PAGE LOADER ═══════════ -->
+  <div id="pageLoader">
+    <div class="loader-spinner"></div>
+    <span class="loader-label">Loading Affordable Rentals…</span>
+  </div>
 
   <!--
     BACKGROUND SLIDESHOW
     Only 2 photos, crossfading on a slow, even 5-minute interval
-    (see script below: BG_INTERVAL = 5 * 60 * 1000).
+    (see auth.js: BG_INTERVAL = 5 * 60 * 1000).
   -->
   <div class="bg" id="bgEl">
     <img class="active" src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=1400&q=80" alt="">
@@ -556,11 +606,14 @@
       </div>
 
       <div class="explore-grid" id="exploreGrid">
-        <div class="explore-loading">Loading properties…</div>
+        <div class="explore-skel-card"></div>
+        <div class="explore-skel-card"></div>
+        <div class="explore-skel-card"></div>
+        <div class="explore-skel-card"></div>
       </div>
 
       <div class="explore-footer">
-        <a href="listings.html" class="explore-cta">Explore All Properties <span class="explore-arrow">→</span></a>
+        <a href="listings.html" class="explore-cta">Explore All Properties <span class="explore-arrow ar-i" data-icon="arrowRight" data-icon-size="14"></span></a>
       </div>
     </div>
   </section>
@@ -572,15 +625,15 @@
       <a href="index.html" class="logo">
         <div class="logo-icon">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="4 16 96 82" width="100%" height="100%" role="img" aria-label="Affordable Rentals">
-  <g id="logo-mark">
-    <path d="M 18,62 L 18,92 L 32,92 L 32,62 Z" fill="#191307" />
-    <path d="M 24,42 L 24,28 L 32,28 L 32,36 Z" fill="#191307" />
-    <path d="M 10,60 L 52,22 L 82,48 L 74,57 L 52,38 L 22,65 Z" fill="#191307" />
-    <path d="M 14,88 C 30,88 62,72 82,38 L 72,36 L 98,22 L 96,50 L 87,42 C 70,72 40,96 14,88 Z" fill="#191307" fill-opacity="0.82" />
-    <path d="M 68,72 L 82,92 L 68,92 L 58,78 Z" fill="#191307" fill-opacity="0.82" />
-    <path d="M 52,54 A 4.5,4.5 0 1,0 52,63 L 50,71 L 54,71 L 52,63 Z" fill="#e0bb64" />
-  </g>
-</svg>
+            <g id="logo-mark">
+              <path d="M 18,62 L 18,92 L 32,92 L 32,62 Z" fill="#191307" />
+              <path d="M 24,42 L 24,28 L 32,28 L 32,36 Z" fill="#191307" />
+              <path d="M 10,60 L 52,22 L 82,48 L 74,57 L 52,38 L 22,65 Z" fill="#191307" />
+              <path d="M 14,88 C 30,88 62,72 82,38 L 72,36 L 98,22 L 96,50 L 87,42 C 70,72 40,96 14,88 Z" fill="#191307" fill-opacity="0.82" />
+              <path d="M 68,72 L 82,92 L 68,92 L 58,78 Z" fill="#191307" fill-opacity="0.82" />
+              <path d="M 52,54 A 4.5,4.5 0 1,0 52,63 L 50,71 L 54,71 L 52,63 Z" fill="#e0bb64" />
+            </g>
+          </svg>
         </div>
         <span class="logo-name">Affordable Rentals</span>
       </a>
@@ -654,6 +707,13 @@
           <span id="iconTrialNote" style="flex-shrink:0"></span>
           <span style="font-family:var(--font-s);font-size:.72rem;color:var(--muted);line-height:1.5">
             <strong>14-day free trial</strong> — no payment required to get started. Configure M-Pesa after your first login.
+          </span>
+        </div>
+
+        <div class="trial-note-top" id="referralNote" style="display:none">
+          <span id="iconReferralNote" style="flex-shrink:0"></span>
+          <span style="font-family:var(--font-s);font-size:.72rem;color:var(--muted);line-height:1.5">
+            <strong>Referred by <span id="referralByName">a fellow landlord</span></strong> — thanks for joining Affordable Rentals!
           </span>
         </div>
 
@@ -735,23 +795,29 @@
 
   </div><!-- /container -->
 
-  <footer class="site-footer">
-    <p>
-      © 2026 Affordable Rentals. All rights reserved.
-      <span class="site-footer-sep">·</span>
-      <a href="terms.html">Terms</a>
-      <span class="site-footer-sep">·</span>
-      <a href="privacy.html">Privacy</a>
-      <span class="site-footer-sep">·</span>
-      <a href="listings.html">Browse Properties</a>
-    </p>
-  </footer>
+  <div class="ar-theme-float" data-theme-toggle></div>
 
-  <!-- icons.js must load before any inline script calls ICON() -->
+  <footer class="ar-footer">
+  <div class="ar-footer-inner">
+    <nav class="ar-footer-links" aria-label="Footer">
+      <a href="index.html">Home</a>
+      <a href="listings.html">Browse Properties</a>
+      <a href="terms.html">Terms</a>
+      <a href="privacy.html">Privacy</a>
+    </nav>
+    <p class="ar-footer-copy">&copy; 2026 Affordable Rentals &middot; All rights reserved &middot; Built with <span class="ar-i" data-icon="heart" data-icon-size="10"></span> in Kenya</p>
+  </div>
+</footer>
+
+  <!-- icons.js and config.js must load before auth.js: auth.js calls
+       ICON() and reads window.API -->
   <script src="icons.js"></script>
+<script src="public.js"></script>
   <script src="config.js" onerror="void 0"></script>
 
-  <!-- Wire the static emoji spots to the shared ICON() set -->
+  <!-- Wire the static emoji spots to the shared ICON() set. This stays
+       inline (rather than in auth.js) because it only touches markup
+       IDs unique to this page's header/hints and runs exactly once. -->
   <script>
   (function wireStaticIcons() {
     const set = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
@@ -760,434 +826,25 @@
       set('iconRoleLandlord', ICON('properties', 13));
       set('iconTenantHint',   ICON('info', 14));
       set('iconTrialNote',    ICON('celebrate', 14));
+      set('iconReferralNote', ICON('sparkle', 14));
     } catch (err) {
       console.error('wireStaticIcons error:', err);
     }
   })();
   </script>
 
+  <!-- All auth, tab/role-picker, explore-strip, and page-loader logic
+       lives in auth.js — see that file for details. -->
+  <script src="auth.js"></script>
+
   <script>
-    // ── Background slideshow: 2 photos, even 5-minute rotation ──
-    const BG_INTERVAL = 5 * 60 * 1000; // 5 minutes
-    const bgImgs = document.querySelectorAll('.bg img');
-    let bgIdx = 0;
-    setInterval(() => {
-      bgImgs[bgIdx].classList.remove('active');
-      bgIdx = (bgIdx + 1) % bgImgs.length;
-      bgImgs[bgIdx].classList.add('active');
-    }, BG_INTERVAL);
-
-    const phrases = [
-      'Pay your rent securely online.',
-      'Track every payment receipt.',
-      'Message your landlord directly.',
-      'Manage your properties with ease.',
-      'View outstanding arrears at a glance.',
-      'Receive instant PDF receipts by email.',
-      'Stay informed with announcements.',
-      'Monitor tenant balances in real-time.',
-    ];
-    let phraseIdx = 0, charIdx = 0, deleting = false;
-    const twEl = document.getElementById('typewriterEl');
-    function typeStep() {
-      const phrase = phrases[phraseIdx];
-      if (!deleting) {
-        charIdx++;
-        twEl.textContent = phrase.slice(0, charIdx);
-        if (charIdx === phrase.length) { deleting = true; setTimeout(typeStep, 2000); return; }
-        setTimeout(typeStep, 48 + Math.random() * 28);
-      } else {
-        charIdx--;
-        twEl.textContent = phrase.slice(0, charIdx);
-        if (charIdx === 0) {
-          deleting = false;
-          phraseIdx = (phraseIdx + 1) % phrases.length;
-          setTimeout(typeStep, 420); return;
-        }
-        setTimeout(typeStep, 22 + Math.random() * 14);
-      }
-    }
-    setTimeout(typeStep, 900);
-
-    // ── Role picker drives which tab is active ──
-    function pickRole(role) {
-      document.getElementById('roleTenant').classList.toggle('active', role === 'tenant');
-      document.getElementById('roleLandlord').classList.toggle('active', role === 'landlord');
-      // Tenants always sign in (no self-registration); landlords can do either,
-      // default them to Create Account since that's the only new-user path.
-      switchTab(role === 'landlord' ? 'register' : 'login');
-    }
-
-    function switchTab(tab) {
-      document.getElementById('tabLogin').classList.toggle('active',    tab === 'login');
-      document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
-      document.getElementById('panelLogin').classList.toggle('active',    tab === 'login');
-      document.getElementById('panelRegister').classList.toggle('active', tab === 'register');
-      const hint = document.getElementById('tenantHint');
-      if (hint) hint.style.display = tab === 'login' ? 'flex' : 'none';
-      // Keep role picker in sync if user clicked the tabs directly instead
-      if (tab === 'register') {
-        document.getElementById('roleTenant').classList.remove('active');
-        document.getElementById('roleLandlord').classList.add('active');
-      }
-    }
-
-    function toggleRegisterBtn() {
-      const btn     = document.getElementById('registerBtn');
-      const checked = document.getElementById('regTerms')?.checked;
-      if (btn) btn.disabled = !checked;
-    }
-
-    function toggleEye(inputId, iconId) {
-      const inp     = document.getElementById(inputId);
-      const showing = inp.type === 'text';
-      inp.type = showing ? 'password' : 'text';
-      document.getElementById(iconId).innerHTML = showing
-        ? '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'
-        : '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>';
-    }
-
-    document.addEventListener('keydown', function(e) {
-      if (e.key !== 'Enter') return;
-      // Don't hijack Enter when the user is inside the location search box
-      if (e.target && e.target.id === 'locationSearch') return;
-      if (document.getElementById('panelLogin').classList.contains('active')) submitLogin();
-      else submitRegister();
-    });
-
-    document.addEventListener('DOMContentLoaded', function() {
-      const tab = new URLSearchParams(window.location.search).get('tab');
-      if (tab === 'register') pickRole('landlord');
-    });
-
-    function showToast(msg, type = '') {
-      const t = document.getElementById('toast');
-      if (!t) return;
-      t.textContent = msg;
-      t.className   = 'show ' + type;
-      clearTimeout(t._timer);
-      t._timer = setTimeout(() => { t.className = ''; }, 3500);
-    }
-
-    function setLoading(btnId, on, defaultText) {
-      const btn = document.getElementById(btnId);
-      if (!btn) return;
-      btn.disabled    = on;
-      btn.textContent = on ? 'Please wait…' : defaultText;
-    }
-
-    function getUserFromToken(token) {
-      try {
-        if (!token) return null;
-        return JSON.parse(atob(token.split('.')[1]));
-      } catch { return null; }
-    }
-
-      function dashboardFor(role) {
-      if (role === 'landlord' || role === 'caretaker') return 'dashboard.html';
-      return 'tenant.html';
-    }
-
-    function storeActiveProperty(properties) {
-      if (!Array.isArray(properties) || !properties.length) return;
-      const first = properties[0];
-      localStorage.setItem('activePropertyId',   first._id  || first.id);
-      localStorage.setItem('activePropertyName', first.name || 'Property');
-    }
-
-    function checkAuthOnLoad() {
-      const token = localStorage.getItem('token');
-      const user  = getUserFromToken(token);
-      if (user && !user.mustChangePassword) {
-        window.location.href = dashboardFor(user.role);
-      }
-    }
-
-    async function submitLogin() {
-      const email    = (document.getElementById('loginEmail')?.value    || '').trim();
-      const password = (document.getElementById('loginPassword')?.value || '');
-
-      if (!email)    { showToast('Email is required.', 'error'); return; }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        showToast('Please enter a valid email address.', 'error'); return;
-      }
-      if (!password) { showToast('Password is required.', 'error'); return; }
-
-      setLoading('loginBtn', true, 'Sign In');
-
-      try {
-        const res  = await fetch(`${window.API}/login`, {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ email, password }),
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("service-worker.js").catch(err => {
+          console.error("Service Worker registration failed:", err);
         });
-        const data = await res.json();
-
-        if (!res.ok) {
-          showToast(data.message || 'Login failed. Please try again.', 'error');
-          setLoading('loginBtn', false, 'Sign In'); return;
-        }
-
-        const token = data.token;
-        if (!token) {
-          showToast('No token received from server.', 'error');
-          setLoading('loginBtn', false, 'Sign In'); return;
-        }
-
-        const user = getUserFromToken(token);
-        if (!user) {
-          showToast('Invalid token received.', 'error');
-          setLoading('loginBtn', false, 'Sign In'); return;
-        }
-
-        if (user.mustChangePassword) {
-          localStorage.setItem('token', token);
-          localStorage.setItem('user', JSON.stringify(user));
-          showToast('Please set a new password to continue.', '');
-          setTimeout(() => { window.location.href = 'change-password.html'; }, 900);
-          return;
-        }
-
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(user));
-
-        if (user.role === 'landlord') {
-          localStorage.setItem('onboardingComplete', data.onboardingComplete ? 'true' : 'false');
-          localStorage.setItem('paymentConfigured',  data.paymentConfigured  ? 'true' : 'false');
-          if (Array.isArray(data.properties) && data.properties.length) {
-            storeActiveProperty(data.properties);
-          }
-        }
-
-        if (user.role === 'caretaker') {
-          localStorage.setItem('caretakerLandlordName', data.landlord?.name || '');
-          localStorage.setItem('caretakerPermissions',  JSON.stringify(data.permissions || {}));
-          if (Array.isArray(data.properties) && data.properties.length) {
-            storeActiveProperty(data.properties);
-          }
-        }
-
-        showToast('Welcome back! Redirecting…', 'success');
-        setTimeout(() => { window.location.href = dashboardFor(user.role); }, 900);
-
-      } catch (err) {
-        console.error('Login error:', err);
-        showToast('Cannot reach server. Are you connected to the internet?', 'error');
-        setLoading('loginBtn', false, 'Sign In');
-      }
-    }
-
-    async function submitRegister() {
-      const name             = (document.getElementById('regName')?.value         || '').trim();
-      const email            = (document.getElementById('regEmail')?.value        || '').trim();
-      const phone            = (document.getElementById('regPhone')?.value        || '').trim();
-      const propertyName     = (document.getElementById('regPropertyName')?.value || '').trim();
-      const propertyLocation = (document.getElementById('regLocation')?.value     || '').trim();
-      const password         = (document.getElementById('regPassword')?.value     || '');
-      const confirm          = (document.getElementById('regConfirm')?.value      || '');
-
-      if (!name)             { showToast('Full name is required.',          'error'); return; }
-      if (!email)            { showToast('Email is required.',              'error'); return; }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                               showToast('Please enter a valid email address.', 'error'); return; }
-      if (!phone)            { showToast('Phone number is required.',       'error'); return; }
-      if (!propertyName)     { showToast('Property name is required.',      'error'); return; }
-      if (!propertyLocation) { showToast('Property location is required.',  'error'); return; }
-      if (!password)         { showToast('Password is required.',           'error'); return; }
-      if (password.length < 6) { showToast('Password must be at least 6 characters.', 'error'); return; }
-      if (password !== confirm) { showToast('Passwords do not match.',      'error'); return; }
-      if (!document.getElementById('regTerms')?.checked) {
-        showToast('Please agree to the Terms of Service and Privacy Policy.', 'error'); return;
-      }
-
-      setLoading('registerBtn', true, 'Create Landlord Account');
-
-      try {
-        const res  = await fetch(`${window.API}/landlord/register`, {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({
-            name, email, phone, propertyName, propertyLocation, password,
-            termsAccepted: document.getElementById('regTerms')?.checked === true
-          }),
-        });
-        const data = await res.json();
-
-        if (!res.ok) {
-          showToast(data.message || 'Registration failed. Please try again.', 'error');
-          setLoading('registerBtn', false, 'Create Landlord Account'); return;
-        }
-
-        const token = data.token;
-        if (!token) {
-          showToast('No token received from server.', 'error');
-          setLoading('registerBtn', false, 'Create Landlord Account'); return;
-        }
-
-        const user = getUserFromToken(token);
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(user));
-        localStorage.setItem('onboardingComplete', 'false');
-        localStorage.setItem('paymentConfigured',  'false');
-
-        if (data.property) {
-          localStorage.setItem('activePropertyId',   data.property.id   || data.property._id);
-          localStorage.setItem('activePropertyName', data.property.name || propertyName);
-        }
-
-        showToast('Account created! Setting up your dashboard…', 'success');
-        setTimeout(() => { window.location.href = dashboardFor(user.role); }, 1000);
-
-      } catch (err) {
-        console.error('Register error:', err);
-        showToast('Cannot reach server. Is your backend running?', 'error');
-        setLoading('registerBtn', false, 'Create Landlord Account');
-      }
-    }
-
-    // ═══════════════════════════════════════════════════════
-    // EXPLORE STRIP — rotating property grid + location search
-    // ═══════════════════════════════════════════════════════
-
-    let _properties     = [];
-    let _locationIndex  = [];
-    let _exploreOffset  = 0;
-    let _exploreTimer   = null;
-    const EXPLORE_SLOTS = 4;
-    const EXPLORE_INTERVAL = 6000;
-
-    function escapeHtml(str) {
-      const d = document.createElement('div');
-      d.textContent = str == null ? '' : String(str);
-      return d.innerHTML;
-    }
-
-    async function initExplore() {
-      const grid = document.getElementById('exploreGrid');
-      if (!grid || !window.API) { renderExploreEmpty(); return; }
-      try {
-        const res = await fetch(`${window.API}/public/listings`);
-        if (!res.ok) throw new Error(res.status);
-        _properties = await res.json();
-      } catch (err) {
-        console.warn('Explore fetch failed:', err.message);
-        _properties = [];
-      }
-      if (!_properties.length) { renderExploreEmpty(); return; }
-
-      renderExploreGrid();
-      buildLocationIndex();
-
-      if (_properties.length > EXPLORE_SLOTS) {
-        _exploreTimer = setInterval(() => {
-          _exploreOffset = (_exploreOffset + EXPLORE_SLOTS) % _properties.length;
-          renderExploreGrid();
-        }, EXPLORE_INTERVAL);
-      }
-
-      // Refresh data quietly every 30s (vacancy counts / new listings)
-      setInterval(async () => {
-        try {
-          const res = await fetch(`${window.API}/public/listings`);
-          if (!res.ok) return;
-          _properties = await res.json();
-          buildLocationIndex();
-        } catch {}
-      }, 30000);
-    }
-
-    function renderExploreEmpty() {
-      const grid = document.getElementById('exploreGrid');
-      if (grid) grid.innerHTML = `<div class="explore-empty">${ICON('properties', 22)}No properties listed yet. Check back soon.</div>`;
-    }
-
-    function renderExploreGrid() {
-      const grid = document.getElementById('exploreGrid');
-      if (!grid) return;
-      const count = Math.min(EXPLORE_SLOTS, _properties.length);
-      const slice = [];
-      for (let i = 0; i < count; i++) {
-        slice.push(_properties[(_exploreOffset + i) % _properties.length]);
-      }
-      grid.innerHTML = slice.map(p => {
-        const hasPhoto = Array.isArray(p.photos) && p.photos.length > 0;
-        const style = hasPhoto ? ` style="background-image:url('${p.photos[0]}')"` : '';
-        const cls   = hasPhoto ? '' : ' no-photo';
-        return `
-          <a class="explore-card" href="listings.html">
-            <div class="explore-card-photo${cls}"${style}></div>
-            <div class="explore-card-overlay">
-              <div class="explore-card-name">${escapeHtml(p.name || '—')}</div>
-              <div class="explore-card-loc">${ICON('pin', 9)} ${escapeHtml(p.location || '—')}</div>
-            </div>
-          </a>`;
-      }).join('');
-    }
-
-    // ── Location search ──
-    function buildLocationIndex() {
-      const counts = {};
-      _properties.forEach(p => {
-        const loc = (p.location || '').trim();
-        if (!loc) return;
-        counts[loc] = (counts[loc] || 0) + 1;
-      });
-      _locationIndex = Object.entries(counts)
-        .map(([location, count]) => ({ location, count }))
-        .sort((a, b) => b.count - a.count);
-    }
-
-    function renderLocationDropdown(items) {
-      const dd = document.getElementById('locationDropdown');
-      if (!dd) return;
-      if (!items.length) {
-        dd.innerHTML = '<div class="location-dropdown-empty">No matching locations.</div>';
-        return;
-      }
-      dd.innerHTML = items.slice(0, 8).map(it => `
-        <div class="location-dropdown-item" role="button" tabindex="0"
-             onclick="goToLocation('${encodeURIComponent(it.location)}')"
-             onkeydown="if(event.key==='Enter')goToLocation('${encodeURIComponent(it.location)}')">
-          <span>${escapeHtml(it.location)}</span>
-          <span class="location-dropdown-count">${it.count} ${it.count === 1 ? 'property' : 'properties'}</span>
-        </div>`).join('');
-    }
-
-    function goToLocation(encodedLoc) {
-      window.location.href = `listings.html?location=${encodedLoc}`;
-    }
-
-    function setupLocationSearch() {
-      const input = document.getElementById('locationSearch');
-      const dd    = document.getElementById('locationDropdown');
-      if (!input || !dd) return;
-
-      input.addEventListener('focus', () => {
-        renderLocationDropdown(_locationIndex);
-        dd.classList.add('show');
-      });
-      input.addEventListener('input', () => {
-        const q = input.value.trim().toLowerCase();
-        const filtered = q
-          ? _locationIndex.filter(it => it.location.toLowerCase().includes(q))
-          : _locationIndex;
-        renderLocationDropdown(filtered);
-        dd.classList.add('show');
-      });
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') { dd.classList.remove('show'); input.blur(); }
-      });
-      document.addEventListener('click', (e) => {
-        if (!dd.contains(e.target) && e.target !== input) dd.classList.remove('show');
       });
     }
-
-    window.addEventListener('load', () => {
-      checkAuthOnLoad();
-      initExplore();
-      setupLocationSearch();
-    });
   </script>
-
 </body>
 </html>

@@ -122,7 +122,7 @@ async function geocodeAndSaveProperty(propertyId, opts = {}) {
                 geocodedAt:       now
             }
         },
-        { new: true, runValidators: true }
+        { returnDocument: 'after', runValidators: true }
     );
 
     return updated;

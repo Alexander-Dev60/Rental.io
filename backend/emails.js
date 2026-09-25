@@ -14,17 +14,36 @@
 //    sendMpesaConfirmationEmail({ tenant, house, payment, mpesaCode, newTotalPaid, newBalance, newStatus, pdfBuffer })
 //    sendSubscriptionRenewalEmail({ landlord, plan, newExpiry, mpesaCode })
 //    sendListingApprovalEmail({ landlord, property, approved, baseUrl })
+//    emailIcon(name, size, color, style)   — <img> tag for a hosted icon PNG
 // ═══════════════════════════════════════════════════════
 
 const { Resend } = require('resend');
+const { EMAIL_ICON_PATHS, EMAIL_ICON_COLORS } = require('./email-icon-paths');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // ── Verified custom domain sender ──
-const FROM = 'Affordable Rentals 🏠 <support@affordablerentals.site>';
+const FROM = 'Affordable Rentals <support@affordablerentals.site>';
 
 // ── Dashboard URL ──
 const DASHBOARD_URL = process.env.BASE_URL || 'http://localhost:3000';
+
+// ── Where the generated icon PNGs are hosted (see generate-email-icons.js) ──
+// Fixed on purpose (not BASE_URL) so emails sent from localhost still show icons.
+const EMAIL_ICON_BASE = 'https://affordablerentals.site/email-icons';
+
+// ── Helper: icon <img> tag ──
+// Email clients strip inline <svg>, so icons are hosted PNGs. Decorative only,
+// hence the empty alt. `name` must exist in EMAIL_ICON_PATHS and `color` in
+// EMAIL_ICON_COLORS (email-icon-paths.js) — those are exactly the files the
+// generator produces as <name>-<color>.png.
+function emailIcon(name, size = 16, color = 'blue', style = '') {
+    if (!EMAIL_ICON_PATHS[name] || !EMAIL_ICON_COLORS[color]) {
+        console.warn(`emailIcon: unknown icon/color "${name}" / "${color}"`);
+        return '';
+    }
+    return `<img src="${EMAIL_ICON_BASE}/${name}-${color}.png" width="${size}" height="${size}" alt="" style="display:inline-block;vertical-align:middle;border:0;outline:none;text-decoration:none;${style}">`;
+}
 
 // ── Helper: ordinal suffix (1st, 2nd, 3rd...) ──
 function ordinal(n) {
@@ -54,7 +73,7 @@ async function sendWelcomeEmail({ name, email }) {
     const { error } = await resend.emails.send({
         from:    FROM,
         to:      email,
-        subject: `Welcome to Affordable Rentals, ${name.split(' ')[0]}! 🎉`,
+        subject: `Welcome to Affordable Rentals, ${name.split(' ')[0]}!`,
         html: `
         <!DOCTYPE html>
         <html>
@@ -66,13 +85,13 @@ async function sendWelcomeEmail({ name, email }) {
           <div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
 
             <div style="background:linear-gradient(135deg,#1d4ed8,#0ea5e9);padding:40px 32px;text-align:center">
-              <div style="font-size:48px;margin-bottom:12px">🏠</div>
+              <div style="font-size:48px;margin-bottom:12px">${emailIcon('home', 48, 'white')}</div>
               <h1 style="color:#ffffff;margin:0;font-size:26px;font-weight:700;letter-spacing:-0.5px">Welcome to Affordable Rentals</h1>
               <p style="color:#bae6fd;margin:8px 0 0;font-size:14px">Your home, managed well.</p>
             </div>
 
             <div style="padding:36px 32px">
-              <p style="color:#1e293b;font-size:16px;margin:0 0 16px">Hi <strong>${name.split(' ')[0]}</strong> 👋,</p>
+              <p style="color:#1e293b;font-size:16px;margin:0 0 16px">Hi <strong>${name.split(' ')[0]}</strong>,</p>
               <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">
                 Your tenant account has been successfully created on <strong>Affordable Rentals</strong>.
                 You can now log in to your dashboard to view your house details,
@@ -134,7 +153,7 @@ async function sendLandlordWelcomeEmail({ name, email, propertyName, propertyLoc
     const { error } = await resend.emails.send({
         from:    FROM,
         to:      email,
-        subject: `🏢 Welcome aboard, ${firstName} — your property is ready`,
+        subject: `Welcome aboard, ${firstName} — your property is ready`,
         html: `
         <!DOCTYPE html>
         <html>
@@ -147,7 +166,7 @@ async function sendLandlordWelcomeEmail({ name, email, propertyName, propertyLoc
 
             <!-- Header -->
             <div style="background:linear-gradient(135deg,#0f172a,#1e3a5f);padding:40px 32px;text-align:center">
-              <div style="font-size:52px;margin-bottom:12px">🏢</div>
+              <div style="font-size:52px;margin-bottom:12px">${emailIcon('properties', 52, 'white')}</div>
               <h1 style="color:#ffffff;margin:0;font-size:26px;font-weight:700;letter-spacing:-0.5px">
                 Welcome to Affordable Rentals
               </h1>
@@ -159,7 +178,7 @@ async function sendLandlordWelcomeEmail({ name, email, propertyName, propertyLoc
             <!-- Body -->
             <div style="padding:36px 32px">
               <p style="color:#1e293b;font-size:16px;margin:0 0 16px">
-                Hi <strong>${firstName}</strong> 👋,
+                Hi <strong>${firstName}</strong>,
               </p>
               <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">
                 Your landlord account and first property have been created successfully.
@@ -174,31 +193,31 @@ async function sendLandlordWelcomeEmail({ name, email, propertyName, propertyLoc
                 </p>
                 <table style="width:100%;border-collapse:collapse">
                   <tr>
-                    <td style="padding:7px 0;vertical-align:top;width:28px;color:#1d4ed8;font-size:15px">🏡</td>
+                    <td style="padding:7px 0;vertical-align:top;width:28px;color:#1d4ed8;font-size:15px">${emailIcon('houses', 16, 'blue')}</td>
                     <td style="padding:7px 0;color:#334155;font-size:13px;line-height:1.5">
                       <strong>Add your houses</strong> — set names and monthly rent amounts
                     </td>
                   </tr>
                   <tr>
-                    <td style="padding:7px 0;vertical-align:top;color:#1d4ed8;font-size:15px">👥</td>
+                    <td style="padding:7px 0;vertical-align:top;color:#1d4ed8;font-size:15px">${emailIcon('tenants', 16, 'blue')}</td>
                     <td style="padding:7px 0;color:#334155;font-size:13px;line-height:1.5">
                       <strong>Add tenants</strong> — they'll receive a welcome email with login details
                     </td>
                   </tr>
                   <tr>
-                    <td style="padding:7px 0;vertical-align:top;color:#1d4ed8;font-size:15px">⚙️</td>
+                    <td style="padding:7px 0;vertical-align:top;color:#1d4ed8;font-size:15px">${emailIcon('settings', 16, 'blue')}</td>
                     <td style="padding:7px 0;color:#334155;font-size:13px;line-height:1.5">
                       <strong>Configure M-Pesa</strong> — so tenants can pay rent directly from their dashboard
                     </td>
                   </tr>
                   <tr>
-                    <td style="padding:7px 0;vertical-align:top;color:#1d4ed8;font-size:15px">📢</td>
+                    <td style="padding:7px 0;vertical-align:top;color:#1d4ed8;font-size:15px">${emailIcon('announcements', 16, 'blue')}</td>
                     <td style="padding:7px 0;color:#334155;font-size:13px;line-height:1.5">
                       <strong>Post announcements and rules</strong> — visible to all tenants instantly
                     </td>
                   </tr>
                   <tr>
-                    <td style="padding:7px 0;vertical-align:top;color:#1d4ed8;font-size:15px">🏷️</td>
+                    <td style="padding:7px 0;vertical-align:top;color:#1d4ed8;font-size:15px">${emailIcon('globe', 16, 'blue')}</td>
                     <td style="padding:7px 0;color:#334155;font-size:13px;line-height:1.5">
                       <strong>List your property publicly</strong> — attract prospective tenants from the listings page
                     </td>
@@ -225,7 +244,7 @@ async function sendLandlordWelcomeEmail({ name, email, propertyName, propertyLoc
                     <td style="color:#94a3b8;font-size:13px;padding:5px 0">Trial Period</td>
                     <td style="text-align:right">
                       <span style="background:#dbeafe;color:#1d4ed8;font-size:11px;font-weight:600;padding:2px 10px;border-radius:99px">
-                        14 days free ✓
+                        14 days free ${emailIcon('check', 11, 'blue')}
                       </span>
                     </td>
                   </tr>
@@ -275,13 +294,13 @@ async function sendTenantWelcomeEmail({ name, email, tempPassword, propertyName,
           <div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
 
             <div style="background:linear-gradient(135deg,#1d4ed8,#0ea5e9);padding:40px 32px;text-align:center">
-              <div style="font-size:48px;margin-bottom:12px">🏠</div>
+              <div style="font-size:48px;margin-bottom:12px">${emailIcon('home', 48, 'white')}</div>
               <h1 style="color:#ffffff;margin:0;font-size:24px;font-weight:700;letter-spacing:-0.5px">You've been added to ${propertyName}</h1>
               <p style="color:#bae6fd;margin:8px 0 0;font-size:13px">Managed by ${landlordName} · Affordable Rentals</p>
             </div>
 
             <div style="padding:36px 32px">
-              <p style="color:#1e293b;font-size:16px;margin:0 0 16px">Hi <strong>${firstName}</strong> 👋,</p>
+              <p style="color:#1e293b;font-size:16px;margin:0 0 16px">Hi <strong>${firstName}</strong>,</p>
               <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">
                 <strong>${landlordName}</strong> has added you as a tenant at <strong>${propertyName}</strong>
                 on <strong>Affordable Rentals</strong>. Your existing account is now linked to this property —
@@ -309,10 +328,10 @@ async function sendTenantWelcomeEmail({ name, email, tempPassword, propertyName,
               <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:20px 24px;margin-bottom:28px">
                 <p style="color:#64748b;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;margin:0 0 12px;font-weight:600">WITH YOUR ACCOUNT YOU CAN</p>
                 <table style="width:100%;border-collapse:collapse">
-                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">💳</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">Pay rent via M-Pesa directly from your dashboard</td></tr>
-                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">🧾</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">Download payment receipts anytime</td></tr>
-                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">💬</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">Message your landlord directly</td></tr>
-                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">📋</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">View house rules and announcements</td></tr>
+                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">${emailIcon('payments', 16, 'blue')}</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">Pay rent via M-Pesa directly from your dashboard</td></tr>
+                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">${emailIcon('receipts', 16, 'blue')}</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">Download payment receipts anytime</td></tr>
+                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">${emailIcon('messages', 16, 'blue')}</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">Message your landlord directly</td></tr>
+                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">${emailIcon('rules', 16, 'blue')}</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">View house rules and announcements</td></tr>
                 </table>
               </div>
 
@@ -342,13 +361,13 @@ async function sendTenantWelcomeEmail({ name, email, tempPassword, propertyName,
           <div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
 
             <div style="background:linear-gradient(135deg,#1d4ed8,#0ea5e9);padding:40px 32px;text-align:center">
-              <div style="font-size:48px;margin-bottom:12px">🏠</div>
+              <div style="font-size:48px;margin-bottom:12px">${emailIcon('home', 48, 'white')}</div>
               <h1 style="color:#ffffff;margin:0;font-size:24px;font-weight:700;letter-spacing:-0.5px">Welcome to ${propertyName}</h1>
               <p style="color:#bae6fd;margin:8px 0 0;font-size:13px">Managed by ${landlordName} · Affordable Rentals</p>
             </div>
 
             <div style="padding:36px 32px">
-              <p style="color:#1e293b;font-size:16px;margin:0 0 16px">Hi <strong>${firstName}</strong> 👋,</p>
+              <p style="color:#1e293b;font-size:16px;margin:0 0 16px">Hi <strong>${firstName}</strong>,</p>
               <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">
                 Your landlord, <strong>${landlordName}</strong>, has created a tenant account for you on
                 <strong>Affordable Rentals</strong>. Use the temporary password below to log in,
@@ -374,7 +393,7 @@ async function sendTenantWelcomeEmail({ name, email, tempPassword, propertyName,
               </div>
 
               <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:14px 18px;margin-bottom:24px">
-                <p style="color:#92400e;font-size:13px;margin:0;font-weight:600">⚠️ Important</p>
+                <p style="color:#92400e;font-size:13px;margin:0;font-weight:600">${emailIcon('warning', 14, 'amber')} Important</p>
                 <p style="color:#78350f;font-size:13px;line-height:1.6;margin:6px 0 0">
                   You will be required to change this temporary password immediately after your first login.
                   Choose a strong password that only you know.
@@ -384,10 +403,10 @@ async function sendTenantWelcomeEmail({ name, email, tempPassword, propertyName,
               <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:20px 24px;margin-bottom:28px">
                 <p style="color:#64748b;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;margin:0 0 12px;font-weight:600">WITH YOUR ACCOUNT YOU CAN</p>
                 <table style="width:100%;border-collapse:collapse">
-                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">💳</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">Pay rent via M-Pesa directly from your dashboard</td></tr>
-                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">🧾</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">Download payment receipts anytime</td></tr>
-                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">💬</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">Message your landlord directly</td></tr>
-                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">📋</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">View house rules and announcements</td></tr>
+                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">${emailIcon('payments', 16, 'blue')}</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">Pay rent via M-Pesa directly from your dashboard</td></tr>
+                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">${emailIcon('receipts', 16, 'blue')}</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">Download payment receipts anytime</td></tr>
+                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">${emailIcon('messages', 16, 'blue')}</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">Message your landlord directly</td></tr>
+                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">${emailIcon('rules', 16, 'blue')}</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">View house rules and announcements</td></tr>
                 </table>
               </div>
 
@@ -413,8 +432,8 @@ async function sendTenantWelcomeEmail({ name, email, tempPassword, propertyName,
         from:    FROM,
         to:      email,
         subject: isReturning
-            ? `🏠 You've been added to ${propertyName}`
-            : `🏠 You've been added to ${propertyName} — Login Details Inside`,
+            ? `You've been added to ${propertyName}`
+            : `You've been added to ${propertyName} — Login Details Inside`,
         html: isReturning ? returningHtml : newTenantHtml
     });
 
@@ -435,7 +454,7 @@ async function sendCaretakerWelcomeEmail({ name, email, tempPassword, landlordNa
     const { error } = await resend.emails.send({
         from:    FROM,
         to:      email,
-        subject: `🔧 You've been added as a caretaker — Login Details Inside`,
+        subject: `You've been added as a caretaker — Login Details Inside`,
         html: `
         <!DOCTYPE html>
         <html>
@@ -444,13 +463,13 @@ async function sendCaretakerWelcomeEmail({ name, email, tempPassword, landlordNa
           <div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
 
             <div style="background:linear-gradient(135deg,#0f172a,#1e3a5f);padding:40px 32px;text-align:center">
-              <div style="font-size:48px;margin-bottom:12px">🔧</div>
+              <div style="font-size:48px;margin-bottom:12px">${emailIcon('wrench', 48, 'white')}</div>
               <h1 style="color:#ffffff;margin:0;font-size:24px;font-weight:700;letter-spacing:-0.5px">You've been added as a caretaker</h1>
               <p style="color:#7dd3fc;margin:8px 0 0;font-size:13px">Working with ${landlordName} · Affordable Rentals</p>
             </div>
 
             <div style="padding:36px 32px">
-              <p style="color:#1e293b;font-size:16px;margin:0 0 16px">Hi <strong>${firstName}</strong> 👋,</p>
+              <p style="color:#1e293b;font-size:16px;margin:0 0 16px">Hi <strong>${firstName}</strong>,</p>
               <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">
                 <strong>${landlordName}</strong> has given you caretaker access on <strong>Affordable Rentals</strong>
                 to help manage day-to-day operations for their assigned properties. Use the temporary password
@@ -476,7 +495,7 @@ async function sendCaretakerWelcomeEmail({ name, email, tempPassword, landlordNa
               </div>
 
               <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:14px 18px;margin-bottom:24px">
-                <p style="color:#92400e;font-size:13px;margin:0;font-weight:600">⚠️ Important</p>
+                <p style="color:#92400e;font-size:13px;margin:0;font-weight:600">${emailIcon('warning', 14, 'amber')} Important</p>
                 <p style="color:#78350f;font-size:13px;line-height:1.6;margin:6px 0 0">
                   You will be required to change this temporary password immediately after your first login.
                   Choose a strong password that only you know.
@@ -486,10 +505,10 @@ async function sendCaretakerWelcomeEmail({ name, email, tempPassword, landlordNa
               <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:20px 24px;margin-bottom:28px">
                 <p style="color:#64748b;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;margin:0 0 12px;font-weight:600">WITH YOUR ACCOUNT YOU CAN</p>
                 <table style="width:100%;border-collapse:collapse">
-                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">🔧</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">View and update repair requests for your assigned properties</td></tr>
-                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">👥</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">View tenants and occupancy across your assigned properties</td></tr>
-                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">💬</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">Message tenants directly, where permitted</td></tr>
-                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">💳</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">Record cash or manual rent payments, where permitted</td></tr>
+                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">${emailIcon('wrench', 16, 'blue')}</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">View and update repair requests for your assigned properties</td></tr>
+                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">${emailIcon('tenants', 16, 'blue')}</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">View tenants and occupancy across your assigned properties</td></tr>
+                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">${emailIcon('messages', 16, 'blue')}</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">Message tenants directly, where permitted</td></tr>
+                  <tr><td style="color:#475569;font-size:13px;padding:5px 0">${emailIcon('payments', 16, 'blue')}</td><td style="color:#475569;font-size:13px;padding:5px 0 5px 8px">Record cash or manual rent payments, where permitted</td></tr>
                 </table>
               </div>
 
@@ -528,8 +547,8 @@ async function sendRentReminder({ name, email, house, rent, month, dueDate, arre
         from:    FROM,
         to:      email,
         subject: isOverdue
-            ? `⚠️ Rent Overdue — ${month} | ${house}`
-            : `🔔 Rent Reminder — ${month} | ${house}`,
+            ? `Rent Overdue — ${month} | ${house}`
+            : `Rent Reminder — ${month} | ${house}`,
         html: `
         <!DOCTYPE html>
         <html>
@@ -538,7 +557,7 @@ async function sendRentReminder({ name, email, house, rent, month, dueDate, arre
           <div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
 
             <div style="background:${isOverdue ? 'linear-gradient(135deg,#dc2626,#b91c1c)' : 'linear-gradient(135deg,#d97706,#b45309)'};padding:36px 32px;text-align:center">
-              <div style="font-size:44px;margin-bottom:10px">${isOverdue ? '⚠️' : '🔔'}</div>
+              <div style="font-size:44px;margin-bottom:10px">${emailIcon(isOverdue ? 'warning' : 'bell', 44, 'white')}</div>
               <h1 style="color:#ffffff;margin:0;font-size:22px;font-weight:700">${isOverdue ? 'Rent Overdue' : 'Rent Due Soon'}</h1>
               <p style="color:${isOverdue ? '#fca5a5' : '#fde68a'};margin:8px 0 0;font-size:13px">${month}</p>
             </div>
@@ -610,7 +629,7 @@ async function sendMoveOutEmail({ name, email, house, moveOutDate }) {
     const { error } = await resend.emails.send({
         from:    FROM,
         to:      email,
-        subject: `Goodbye ${name.split(' ')[0]} — Move-out Confirmed 🏠`,
+        subject: `Goodbye ${name.split(' ')[0]} — Move-out Confirmed`,
         html: `
         <!DOCTYPE html>
         <html>
@@ -619,7 +638,7 @@ async function sendMoveOutEmail({ name, email, house, moveOutDate }) {
           <div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
 
             <div style="background:linear-gradient(135deg,#0f172a,#1e293b);padding:40px 32px;text-align:center">
-              <div style="font-size:48px;margin-bottom:12px">🚪</div>
+              <div style="font-size:48px;margin-bottom:12px">${emailIcon('door', 48, 'white')}</div>
               <h1 style="color:#ffffff;margin:0;font-size:24px;font-weight:700">Goodbye, ${name.split(' ')[0]}</h1>
               <p style="color:#94a3b8;margin:8px 0 0;font-size:13px">We hope to see you again someday.</p>
             </div>
@@ -651,7 +670,7 @@ async function sendMoveOutEmail({ name, email, house, moveOutDate }) {
                   <tr>
                     <td style="color:#94a3b8;font-size:13px;padding:6px 0">Status</td>
                     <td style="text-align:right">
-                      <span style="background:#dcfce7;color:#16a34a;font-size:11px;font-weight:600;padding:2px 10px;border-radius:99px">Moved Out ✓</span>
+                      <span style="background:#dcfce7;color:#16a34a;font-size:11px;font-weight:600;padding:2px 10px;border-radius:99px">Moved Out ${emailIcon('check', 11, 'green')}</span>
                     </td>
                   </tr>
                 </table>
@@ -670,7 +689,7 @@ async function sendMoveOutEmail({ name, email, house, moveOutDate }) {
               </p>
             </div>
 
-            ${_footer('Take care out there 🌟')}
+            ${_footer('Take care out there')}
           </div>
         </body>
         </html>`
@@ -689,7 +708,7 @@ async function sendPasswordResetEmail({ name, email, code }) {
     const { error } = await resend.emails.send({
         from:    FROM,
         to:      email,
-        subject: `🔑 Your Password Reset Code — Affordable Rentals`,
+        subject: `Your Password Reset Code — Affordable Rentals`,
         html: `
         <!DOCTYPE html>
         <html>
@@ -698,7 +717,7 @@ async function sendPasswordResetEmail({ name, email, code }) {
           <div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
 
             <div style="background:linear-gradient(135deg,#1d4ed8,#0ea5e9);padding:40px 32px;text-align:center">
-              <div style="font-size:48px;margin-bottom:12px">🔑</div>
+              <div style="font-size:48px;margin-bottom:12px">${emailIcon('key', 48, 'white')}</div>
               <h1 style="color:#ffffff;margin:0;font-size:24px;font-weight:700">Password Reset</h1>
               <p style="color:#bae6fd;margin:8px 0 0;font-size:13px">Use the code below to reset your password</p>
             </div>
@@ -726,7 +745,7 @@ async function sendPasswordResetEmail({ name, email, code }) {
               </div>
 
               <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:16px 20px;margin-bottom:20px">
-                <p style="color:#991b1b;font-size:12px;line-height:1.6;margin:0;font-weight:600">🛡️ Security Notice</p>
+                <p style="color:#991b1b;font-size:12px;line-height:1.6;margin:0;font-weight:600">${emailIcon('shield', 14, 'red')} Security Notice</p>
                 <p style="color:#b91c1c;font-size:12px;line-height:1.6;margin:8px 0 0">
                   If you did not request a password reset, please ignore this email. Never share this code with anyone.
                 </p>
@@ -761,7 +780,7 @@ async function sendPaymentOtpEmail({ name, email, code }) {
     const { error } = await resend.emails.send({
         from:    FROM,
         to:      email,
-        subject: `🔐 M-Pesa Credentials OTP — ${code}`,
+        subject: `M-Pesa Credentials OTP — ${code}`,
         html: `
         <!DOCTYPE html>
         <html>
@@ -771,7 +790,7 @@ async function sendPaymentOtpEmail({ name, email, code }) {
 
             <!-- Header -->
             <div style="background:linear-gradient(135deg,#065f46,#047857);padding:40px 32px;text-align:center">
-              <div style="font-size:48px;margin-bottom:12px">🔐</div>
+              <div style="font-size:48px;margin-bottom:12px">${emailIcon('lock', 48, 'white')}</div>
               <h1 style="color:#ffffff;margin:0;font-size:24px;font-weight:700">M-Pesa Credentials Update</h1>
               <p style="color:#a7f3d0;margin:8px 0 0;font-size:13px">One-time verification code</p>
             </div>
@@ -799,7 +818,7 @@ async function sendPaymentOtpEmail({ name, email, code }) {
 
               <!-- Security warning -->
               <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:16px 20px;margin-bottom:24px">
-                <p style="color:#991b1b;font-size:12px;font-weight:600;margin:0">🛡️ Security Notice</p>
+                <p style="color:#991b1b;font-size:12px;font-weight:600;margin:0">${emailIcon('shield', 14, 'red')} Security Notice</p>
                 <p style="color:#b91c1c;font-size:12px;line-height:1.6;margin:8px 0 0">
                   Your M-Pesa credentials are encrypted with AES-256 and stored securely.
                   If you did not request this change, please contact support immediately —
@@ -855,17 +874,17 @@ async function sendRentReceiptEmail({
     pdfBuffer     // Buffer — attached as PDF receipt
 }) {
     const statusColor = newStatus === 'paid' ? '#16a34a' : '#d97706';
-    const statusLabel = newStatus === 'paid' ? 'Fully Paid ✓' : 'Partial Payment';
+    const statusLabel = newStatus === 'paid' ? `Fully Paid ${emailIcon('check', 11, 'green')}` : 'Partial Payment';
     const statusBg    = newStatus === 'paid' ? '#dcfce7' : '#fef3c7';
 
     const { error } = await resend.emails.send({
         from:    FROM,
         to:      tenant.email,
-        subject: `${newStatus === 'paid' ? '✅' : '🔔'} Rent Receipt — ${month} | ${house.name}`,
+        subject: `Rent Receipt — ${month} | ${house.name}`,
         html: `
         <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:560px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
           <div style="background:linear-gradient(135deg,#1d4ed8,#0ea5e9);padding:32px;text-align:center">
-            <div style="font-size:40px;margin-bottom:8px">🧾</div>
+            <div style="font-size:40px;margin-bottom:8px">${emailIcon('receipts', 40, 'white')}</div>
             <h1 style="color:#fff;margin:0;font-size:22px;font-weight:700">Payment Received</h1>
             <p style="color:#bae6fd;margin:6px 0 0;font-size:13px">${month}</p>
           </div>
@@ -888,7 +907,7 @@ async function sendRentReceiptEmail({
             </div>
             ${newBalance > 0 ? `
             <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:14px 18px;margin-bottom:20px">
-              <p style="color:#92400e;font-size:13px;margin:0">⚠️ You still have a balance of <strong>Ksh ${Number(newBalance).toLocaleString()}</strong> for ${month}. Please pay before your due date.</p>
+              <p style="color:#92400e;font-size:13px;margin:0">${emailIcon('warning', 14, 'amber')} You still have a balance of <strong>Ksh ${Number(newBalance).toLocaleString()}</strong> for ${month}. Please pay before your due date.</p>
             </div>` : ''}
             <p style="color:#94a3b8;font-size:12px;margin:0">PDF receipt is attached. Contact us at <a href="mailto:support@affordablerentals.site" style="color:#1d4ed8">support@affordablerentals.site</a> for queries.</p>
           </div>
@@ -919,18 +938,18 @@ async function sendMpesaConfirmationEmail({
     newStatus
 }) {
     const statusColor = newStatus === 'paid' ? '#16a34a' : '#d97706';
-    const statusLabel = newStatus === 'paid' ? 'Fully Paid ✓' : 'Partial Payment';
+    const statusLabel = newStatus === 'paid' ? `Fully Paid ${emailIcon('check', 11, 'green')}` : 'Partial Payment';
     const statusBg    = newStatus === 'paid' ? '#dcfce7' : '#fef3c7';
     const houseName   = house?.name || '—';
 
     const { error } = await resend.emails.send({
         from:    FROM,
         to:      tenant.email,
-        subject: `${newStatus === 'paid' ? '✅' : '🔔'} M-Pesa Payment Confirmed — ${payment.month}`,
+        subject: `M-Pesa Payment Confirmed — ${payment.month}`,
         html: `
         <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:560px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
           <div style="background:linear-gradient(135deg,#16a34a,#15803d);padding:32px;text-align:center">
-            <div style="font-size:40px;margin-bottom:8px">✅</div>
+            <div style="font-size:40px;margin-bottom:8px">${emailIcon('checkCircle', 40, 'white')}</div>
             <h1 style="color:#fff;margin:0;font-size:22px;font-weight:700">Payment Confirmed</h1>
             <p style="color:#bbf7d0;margin:6px 0 0;font-size:13px">${payment.month}</p>
           </div>
@@ -950,7 +969,7 @@ async function sendMpesaConfirmationEmail({
             </div>
             ${newBalance > 0 ? `
             <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:14px 18px;margin-bottom:20px">
-              <p style="color:#92400e;font-size:13px;margin:0">⚠️ Balance remaining: <strong>Ksh ${Number(newBalance).toLocaleString()}</strong>. Please pay before your due date.</p>
+              <p style="color:#92400e;font-size:13px;margin:0">${emailIcon('warning', 14, 'amber')} Balance remaining: <strong>Ksh ${Number(newBalance).toLocaleString()}</strong>. Please pay before your due date.</p>
             </div>` : ''}
             <p style="color:#94a3b8;font-size:12px;margin:0">Keep this as your receipt. Contact <a href="mailto:support@affordablerentals.site" style="color:#16a34a">support@affordablerentals.site</a> for queries.</p>
           </div>
@@ -971,11 +990,11 @@ async function sendSubscriptionRenewalEmail({ landlord, plan, newExpiry, mpesaCo
     const { error } = await resend.emails.send({
         from:    FROM,
         to:      landlord.email,
-        subject: `✅ Subscription Renewed — ${plan.name} Plan`,
+        subject: `Subscription Renewed — ${plan.name} Plan`,
         html: `
         <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:560px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
           <div style="background:linear-gradient(135deg,#1d4ed8,#0ea5e9);padding:32px;text-align:center">
-            <div style="font-size:40px;margin-bottom:8px">🎉</div>
+            <div style="font-size:40px;margin-bottom:8px">${emailIcon('checkCircle', 40, 'white')}</div>
             <h1 style="color:#fff;margin:0;font-size:22px;font-weight:700">Subscription Renewed!</h1>
             <p style="color:#bae6fd;margin:6px 0 0;font-size:13px">${plan.name} Plan</p>
           </div>
@@ -1014,7 +1033,7 @@ async function sendListingApprovalEmail({ landlord, property, approved, baseUrl 
     const approvedHtml = `
         <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:520px;margin:40px auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
           <div style="background:linear-gradient(135deg,#16a34a,#15803d);padding:28px;text-align:center">
-            <div style="font-size:36px;margin-bottom:8px">🏡</div>
+            <div style="font-size:36px;margin-bottom:8px">${emailIcon('houses', 36, 'white')}</div>
             <h1 style="color:#fff;margin:0;font-size:20px">Your listing is live!</h1>
           </div>
           <div style="padding:28px">
@@ -1045,8 +1064,8 @@ async function sendListingApprovalEmail({ landlord, property, approved, baseUrl 
         from:    FROM,
         to:      landlord.email,
         subject: approved
-            ? `✅ Your listing is live — ${property.name}`
-            : `⚠️ Listing paused — ${property.name}`,
+            ? `Your listing is live — ${property.name}`
+            : `Listing paused — ${property.name}`,
         html: approved ? approvedHtml : revokedHtml
     });
 
@@ -1057,9 +1076,9 @@ async function sendCommissionDueEmail({ name, email, property, month, amountDue 
     const { Resend } = require('resend');
     const resend = new Resend(process.env.RESEND_API_KEY);
     await resend.emails.send({
-        from:    'Affordable Rentals 🏠 <support@affordablerentals.site>',
+        from:    'Affordable Rentals <support@affordablerentals.site>',
         to:      email,
-        subject: `💸 Commission due for ${property} — ${month}`,
+        subject: `Commission due for ${property} — ${month}`,
         html: `
         <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:520px;margin:40px auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
           <div style="background:#161c2b;padding:26px 30px;text-align:center">
@@ -1087,9 +1106,9 @@ async function sendPropertySuspendedEmail({ name, email, property, months, total
     const { Resend } = require('resend');
     const resend = new Resend(process.env.RESEND_API_KEY);
     await resend.emails.send({
-        from:    'Affordable Rentals 🏠 <support@affordablerentals.site>',
+        from:    'Affordable Rentals <support@affordablerentals.site>',
         to:      email,
-        subject: `🚫 ${property} suspended — unpaid commission`,
+        subject: `${property} suspended — unpaid commission`,
         html: `
         <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:520px;margin:40px auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
           <div style="background:#2a1a0a;padding:26px 30px;text-align:center">
@@ -1134,6 +1153,7 @@ module.exports = {
     sendSubscriptionRenewalEmail,
     sendCommissionDueEmail,
     sendPropertySuspendedEmail,
-    sendListingApprovalEmail
+    sendListingApprovalEmail,
+    emailIcon
 
 };

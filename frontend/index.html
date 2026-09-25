@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0b0f1a">
+  <script>(function(){var t=null;try{t=localStorage.getItem('ar-public-theme');}catch(e){}if(t!=='light'&&t!=='dark'){try{t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}catch(e){t='dark';}}document.documentElement.setAttribute('data-theme',t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='light'?'#f5f1e6':'#0b0f1a');})();</script>
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/png" href="./public/affordablerentalsLogo.png">
@@ -11,7 +15,7 @@
   /* ══════════════════════════════════════════
      THEME TOKENS — system adaptive
   ══════════════════════════════════════════ */
-    :root {
+    :root, :root[data-theme="dark"] {
     --bg: #0b0f1a;
     --card: rgba(255,255,255,.08);
     --card-solid: rgba(11,15,26,.97);
@@ -37,9 +41,12 @@
     --font-m: 'Space Mono', monospace;
     --ease: cubic-bezier(.4,0,.2,1);
     --spring: cubic-bezier(.34,1.56,.64,1);
+    --tour-blue: #5b9bd5;
+    --tour-blue-lt: #8ec4ef;
+    --tour-blue-dim: rgba(91,155,213,.14);
+    --tour-blue-border: rgba(91,155,213,.35);
   }
-    @media (prefers-color-scheme: light) {
-    :root {
+:root[data-theme="light"] {
       --bg: #f5f1e6;
       --card: rgba(255,255,255,.62);
       --card-solid: rgba(245,241,230,.98);
@@ -60,8 +67,11 @@
       --overlay-a: rgba(247,239,220,.62);
       --overlay-b: rgba(247,239,220,.18);
       --img-filter: blur(4px) brightness(.72) sepia(.06);
+      --tour-blue: #2f6fa8;
+      --tour-blue-lt: #4a86bd;
+      --tour-blue-dim: rgba(47,111,168,.1);
+      --tour-blue-border: rgba(47,111,168,.28);
     }
-  }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
@@ -433,7 +443,54 @@
     .live-stats-strip { gap: 1.2rem; }
     .contact-form { padding: 20px; }
   }
+
+  /* ══════════════════════════════════════════
+     PRODUCT TOUR — blue accent layer
+  ══════════════════════════════════════════ */
+  .tour-mask { position: fixed; background: rgba(6,10,18,.72); z-index: 10050; pointer-events: auto; }
+  .tour-ring { position: fixed; z-index: 10051; border: 2px solid var(--tour-blue); border-radius: 14px; box-shadow: 0 0 0 4px var(--tour-blue-dim), 0 0 30px rgba(91,165,213,.4); pointer-events: none; transition: top .3s var(--ease), left .3s var(--ease), width .3s var(--ease), height .3s var(--ease); }
+
+  .tour-card { position: fixed; z-index: 10060; width: 320px; max-width: calc(100vw - 24px); background: var(--card-solid); border: 1px solid var(--tour-blue-border); border-radius: 18px; padding: 22px 24px; box-shadow: 0 20px 60px rgba(0,0,0,.5); backdrop-filter: blur(24px) saturate(1.4); -webkit-backdrop-filter: blur(24px) saturate(1.4); font-family: var(--font-s); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .25s ease; }
+  .tour-card.visible { opacity: 1; visibility: visible; pointer-events: auto; }
+  .tour-card::before { content: ''; position: absolute; top: 0; left: 14%; right: 14%; height: 1px; background: linear-gradient(90deg, transparent, var(--tour-blue-lt), transparent); opacity: .6; }
+  .tour-eyebrow { font-family: var(--font-m); font-size: .56rem; letter-spacing: .16em; text-transform: uppercase; color: var(--tour-blue-lt); margin-bottom: 8px; }
+  .tour-title { font-family: var(--font-d); font-style: italic; font-size: 1.22rem; font-weight: 400; color: var(--text); margin-bottom: 8px; line-height: 1.25; }
+  .tour-body { font-size: .83rem; color: var(--muted); line-height: 1.7; margin-bottom: 18px; }
+  .tour-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .tour-dots { display: flex; gap: 5px; }
+  .tour-dot { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.18); transition: all .25s; }
+  .tour-dot.active { width: 16px; border-radius: 3px; background: var(--tour-blue); }
+  .tour-btns { display: flex; align-items: center; gap: 8px; }
+  .tour-btn { font-family: var(--font-s); font-size: .76rem; font-weight: 600; padding: 8px 14px; border-radius: 9px; cursor: pointer; border: 1px solid transparent; transition: all .2s; }
+  .tour-btn-primary { background: linear-gradient(135deg, var(--tour-blue), var(--tour-blue-lt)); color: #0b1520; }
+  .tour-btn-primary:hover { opacity: .9; transform: translateY(-1px); }
+  .tour-btn-ghost { background: transparent; border-color: var(--border2); color: var(--muted); }
+  .tour-btn-ghost:hover { color: var(--text); border-color: var(--tour-blue); }
+  .tour-skip { display: flex; align-items: center; justify-content: center; position: absolute; top: 12px; right: 14px; background: none; border: none; color: var(--muted2); font-size: 1.1rem; cursor: pointer; line-height: 1; padding: 6px; }
+  .tour-skip:hover { color: var(--text); }
+
+  .tour-role-modal { position: fixed; inset: 0; z-index: 10055; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(6,10,18,.72); }
+  .tour-role-card { position: relative; max-width: 420px; width: 100%; background: var(--card-solid); border: 1px solid var(--tour-blue-border); border-radius: 20px; padding: 32px 28px; box-shadow: 0 24px 70px rgba(0,0,0,.55); backdrop-filter: blur(24px) saturate(1.4); -webkit-backdrop-filter: blur(24px) saturate(1.4); text-align: center; }
+  .tour-role-title { font-family: var(--font-d); font-style: italic; font-size: 1.6rem; font-weight: 400; color: var(--text); margin-bottom: 8px; }
+  .tour-role-sub { font-size: .84rem; color: var(--muted); margin-bottom: 22px; line-height: 1.7; }
+  .tour-role-btns { display: flex; flex-direction: column; gap: 10px; }
+  .tour-role-btn { font-family: var(--font-s); font-size: .88rem; font-weight: 600; padding: 13px; border-radius: 11px; cursor: pointer; border: 1px solid var(--tour-blue-border); background: var(--tour-blue-dim); color: var(--text); transition: all .2s; }
+  .tour-role-btn:hover { border-color: var(--tour-blue); background: rgba(91,155,213,.22); transform: translateY(-1px); }
+  .tour-role-later { margin-top: 16px; display: inline-block; font-family: var(--font-m); font-size: .6rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted2); background: none; border: none; cursor: pointer; }
+  .tour-role-later:hover { color: var(--text); }
+
+  .tour-fab { position: fixed; right: 20px; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); z-index: 500; display: inline-flex; align-items: center; gap: 7px; background: linear-gradient(135deg, var(--tour-blue), var(--tour-blue-lt)); color: #0b1520; font-family: var(--font-s); font-size: .78rem; font-weight: 700; padding: 11px 18px; border-radius: 99px; border: none; cursor: pointer; box-shadow: 0 8px 26px rgba(91,155,213,.4); transition: transform .2s, box-shadow .2s, opacity .2s; }
+  .tour-fab:hover { transform: translateY(-2px); box-shadow: 0 12px 34px rgba(91,155,213,.5); }
+  .tour-fab.hidden { display: none; }
+
+  @media (max-width: 520px) {
+    .tour-card { width: calc(100vw - 24px); padding: 18px 20px; }
+    .tour-title { font-size: 1.1rem; }
+    .tour-fab { padding: 10px 14px; font-size: .72rem; }
+    .tour-role-card { padding: 26px 20px; }
+  }
   </style>
+  <link rel="stylesheet" href="public.css">
 </head>
 <body>
 
@@ -475,21 +532,22 @@
   </ul>
   <div class="nav-cta">
     <a href="auth.html" class="btn-ghost">Tenant Login</a>
-    <a href="auth.html?tab=register" class="btn-nav-primary">For Landlords →</a>
+    <a href="auth.html?tab=register" class="btn-nav-primary">For Landlords <span class="ar-i" data-icon="arrowRight" data-icon-size="13"></span></a>
   </div>
+  <span data-theme-toggle></span>
   <button class="hamburger" onclick="toggleMenu()" aria-label="Menu">
     <span></span><span></span><span></span>
   </button>
 </nav>
 
 <div class="mobile-menu" id="mobileMenu">
-  <a href="listings.html" class="mm-landlord" onclick="toggleMenu()">Browse Properties →</a>
+  <a href="listings.html" class="mm-landlord" onclick="toggleMenu()">Browse Properties <span class="ar-i" data-icon="arrowRight" data-icon-size="13"></span></a>
   <a href="#features" onclick="toggleMenu()">Features</a>
   <a href="#how"      onclick="toggleMenu()">How it Works</a>
   <a href="#faq"      onclick="toggleMenu()">FAQ</a>
   <a href="#contact"  onclick="toggleMenu()">Contact</a>
-  <a href="auth.html"              class="mm-tenant"   onclick="toggleMenu()">Tenant Login →</a>
-  <a href="auth.html?tab=register" class="mm-landlord" onclick="toggleMenu()">Landlord Sign Up →</a>
+  <a href="auth.html"              class="mm-tenant"   onclick="toggleMenu()">Tenant Login <span class="ar-i" data-icon="arrowRight" data-icon-size="13"></span></a>
+  <a href="auth.html?tab=register" class="mm-landlord" onclick="toggleMenu()">Landlord Sign Up <span class="ar-i" data-icon="arrowRight" data-icon-size="13"></span></a>
 </div>
 
 <!-- HERO -->
@@ -505,11 +563,11 @@
       <p class="hero-sub">The all-in-one rental platform for Kenyan landlords. Collect rent via M-Pesa, manage tenants, automate receipts, and list your properties for free.</p>
       <div class="hero-btns">
         <a href="auth.html?tab=register" class="btn-primary"><span data-icon="flash" data-icon-size="15"></span> Get Started Free</a>
-        <a href="listings.html"           class="btn-secondary">Browse Properties ↓</a>
+        <a href="listings.html"           class="btn-secondary">Browse Properties <span class="ar-i" data-icon="arrowDown" data-icon-size="13"></span></a>
       </div>
       <div class="hero-tenant-link">
         <span class="hero-tenant-text">Tenant?</span>
-        <a href="auth.html" class="hero-tenant-btn">Sign in to your dashboard →</a>
+        <a href="auth.html" class="hero-tenant-btn">Sign in to your dashboard <span class="ar-i" data-icon="arrowRight" data-icon-size="13"></span></a>
       </div>
     </div>
         <div class="hero-right">
@@ -621,7 +679,7 @@
           <li><span class="feat-dot"></span>Announcements &amp; house rules</li>
           <li><span class="feat-dot"></span>Automated rent reminders (cron)</li>
         </ul>
-        <a href="auth.html?tab=register" class="btn-trial">Get Started Free →</a>
+        <a href="auth.html?tab=register" class="btn-trial">Get Started Free <span class="ar-i" data-icon="arrowRight" data-icon-size="13"></span></a>
         <p class="trial-after-note">A small commission is deducted automatically from rent collected each month — never a flat fee, never charged on rent you haven't received.</p>
       </div>
     </div>
@@ -638,7 +696,7 @@
     </div>
     <div class="testimonials-grid">
       <div class="testimonial-card reveal reveal-delay-1">
-        <div class="stars">★★★★★</div>
+        <div class="stars"><span class="ar-stars"><span class="ar-i" data-icon="star" data-icon-size="13"></span><span class="ar-i" data-icon="star" data-icon-size="13"></span><span class="ar-i" data-icon="star" data-icon-size="13"></span><span class="ar-i" data-icon="star" data-icon-size="13"></span><span class="ar-i" data-icon="star" data-icon-size="13"></span></span></div>
         <div class="quote-mark">"</div>
         <div class="testimonial-text">Paying rent used to be a whole ordeal. Now I open the app, tap pay, and the receipt is in my inbox within seconds.</div>
         <div class="testimonial-author">
@@ -647,7 +705,7 @@
         </div>
       </div>
       <div class="testimonial-card reveal reveal-delay-2">
-        <div class="stars">★★★★★</div>
+        <div class="stars"><span class="ar-stars"><span class="ar-i" data-icon="star" data-icon-size="13"></span><span class="ar-i" data-icon="star" data-icon-size="13"></span><span class="ar-i" data-icon="star" data-icon-size="13"></span><span class="ar-i" data-icon="star" data-icon-size="13"></span><span class="ar-i" data-icon="star" data-icon-size="13"></span></span></div>
         <div class="quote-mark">"</div>
         <div class="testimonial-text">I manage 12 units across two properties. Affordable Rentals replaced three spreadsheets and a notebook. I can see who has paid at a glance.</div>
         <div class="testimonial-author">
@@ -656,7 +714,7 @@
         </div>
       </div>
       <div class="testimonial-card reveal reveal-delay-3">
-        <div class="stars">★★★★★</div>
+        <div class="stars"><span class="ar-stars"><span class="ar-i" data-icon="star" data-icon-size="13"></span><span class="ar-i" data-icon="star" data-icon-size="13"></span><span class="ar-i" data-icon="star" data-icon-size="13"></span><span class="ar-i" data-icon="star" data-icon-size="13"></span><span class="ar-i" data-icon="star" data-icon-size="13"></span></span></div>
         <div class="quote-mark">"</div>
         <div class="testimonial-text">The messaging feature is a game changer. I reported a plumbing issue and my landlord responded within the hour.</div>
         <div class="testimonial-author">
@@ -721,7 +779,7 @@
           <div class="trial-check"><div class="trial-check-icon"><span data-icon="check" data-icon-size="11"></span></div><span>Read announcements and house rules</span></div>
           <div class="trial-check"><div class="trial-check-icon"><span data-icon="check" data-icon-size="11"></span></div><span>No subscription fee — ever</span></div>
         </div>
-        <a href="auth.html" class="btn-secondary" style="display:inline-flex;margin-top:22px">Tenant Sign In →</a>
+        <a href="auth.html" class="btn-secondary" style="display:inline-flex;margin-top:22px">Tenant Sign In <span class="ar-i" data-icon="arrowRight" data-icon-size="13"></span></a>
       </div>
     </div>
   </div>
@@ -766,7 +824,7 @@
         <div class="form-field"><label>Your Name</label><input type="text" id="contactName" placeholder="Alexander Bosire"></div>
         <div class="form-field"><label>Email Address</label><input type="email" id="contactEmail" placeholder="you@example.com"></div>
         <div class="form-field"><label>Message</label><textarea id="contactMsg" rows="4" placeholder="How can we help you?"></textarea></div>
-        <button class="btn-send" id="sendBtn" onclick="sendContact()">Send Message →</button>
+        <button class="btn-send" id="sendBtn" onclick="sendContact()">Send Message <span class="ar-i" data-icon="arrowRight" data-icon-size="14"></span></button>
         <div id="contactResult"></div>
       </div>
     </div>
@@ -781,7 +839,7 @@
       <p class="cta-sub">No signup fee. No monthly cost. Register your property and start collecting rent via M-Pesa today.</p>
       <div class="cta-btns">
         <a href="auth.html?tab=register" class="btn-primary"><span data-icon="flash" data-icon-size="15"></span> Get Started Free</a>
-        <a href="listings.html"           class="btn-secondary">Browse Properties →</a>
+        <a href="listings.html"           class="btn-secondary">Browse Properties <span class="ar-i" data-icon="arrowRight" data-icon-size="13"></span></a>
       </div>
       <p class="cta-note">Tenants never pay a platform fee · M-Pesa payments only · Commission only on rent collected</p>
     </div>
@@ -789,7 +847,7 @@
 </section>
 
 <!-- FOOTER -->
-<footer>
+<footer class="ar-footer ar-footer--wide">
   <div class="footer-wrap">
     <div class="footer-top">
       <div class="footer-brand">
@@ -810,7 +868,7 @@
         </a>
         <p>A modern rental management platform built for Kenyan landlords and tenants. Collect rent via M-Pesa, manage properties, and communicate — all in one place.</p>
       </div>
-      <div><div class="footer-col-title">Platform</div><ul class="footer-links"><li><a href="listings.html">Browse Properties</a></li><li><a href="#features">Features</a></li><li><a href="#how">How it Works</a></li><li><a href="#faq">FAQ</a></li><li><a href="index.html">Login</a></li></ul></div>
+      <div><div class="footer-col-title">Platform</div><ul class="footer-links"><li><a href="listings.html">Browse Properties</a></li><li><a href="#features">Features</a></li><li><a href="#how">How it Works</a></li><li><a href="#faq">FAQ</a></li><li><a href="auth.html">Login</a></li></ul></div>
       <div><div class="footer-col-title">Legal</div><ul class="footer-links"><li><a href="terms.html">Terms &amp; Conditions</a></li><li><a href="privacy.html">Privacy Policy</a></li></ul></div>
       <div><div class="footer-col-title">Developer</div><ul class="footer-links"><li><a href="https://github.com/Alexander-Dev60" target="_blank" rel="noopener">GitHub</a></li><li><a href="mailto:alexanderbosire60@gmail.com">Email Support</a></li><li><a href="https://wa.me/254702276609" target="_blank" rel="noopener">WhatsApp</a></li></ul></div>
     </div>
@@ -827,6 +885,7 @@
 
 <!-- icons.js must load before any script calls ICON() -->
 <script src="icons.js"></script>
+<script src="public.js"></script>
 <script src="config.js" onerror="void 0"></script>
 
 <!-- Wire every [data-icon] placeholder to the shared ICON() set -->
@@ -971,6 +1030,10 @@
     strip.style.display = 'flex';
   }
 
+  // Lets the product tour know the first listings request has settled and the panel has rendered
+  let _arSettle;
+  window.__arListingsReady = new Promise(function (r) { _arSettle = r; });
+
   async function load() {
     try {
       const res = await fetch(`${API_BASE}/public/listings`);
@@ -986,6 +1049,7 @@
       start();
       updateStatsStrip();
     } catch { /* silent — panel just stays quiet, no error state shown */ }
+    finally { if (_arSettle) { _arSettle(); _arSettle = null; } }
   }
 
   const panel = document.getElementById('livePanel');
@@ -1029,9 +1093,369 @@ async function sendContact(){
     result.style.color='var(--success)';result.innerHTML=ICON('checkCircle',12)+' Opening WhatsApp to send your message…';
   }finally{
     document.getElementById('contactName').value='';document.getElementById('contactEmail').value='';document.getElementById('contactMsg').value='';
-    btn.disabled=false;btn.textContent='Send Message →';setTimeout(()=>{result.textContent='';},5000);
+    btn.disabled=false;btn.innerHTML='Send Message '+ICON('arrowRight',14);setTimeout(()=>{result.textContent='';},5000);
   }
 }
 </script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("service-worker.js").catch(err => {
+          console.error("Service Worker registration failed:", err);
+        });
+      });
+    }
+  </script>
+
+  <!-- PRODUCT TOUR -->
+  <script>
+  (function(){
+    var STORAGE_KEY = 'ar_tour_seen';
+    var steps = [], stepIndex = 0, active = false;
+    var maskEls = [], ring = null, card = null, fab = null;
+    var preparing = false, runId = 0, lastKey = '', ro = null;
+
+    var landlordSteps = [
+      { selector: '.hero-btns .btn-primary', eyebrow: 'Step 1 of 6', title: 'Start free', body: 'Create your landlord account in under two minutes \u2014 no card required.' },
+      { selector: '#livePanel', eyebrow: 'Step 2 of 6', title: 'Your listings, live', body: 'Add a vacant unit and it appears here automatically for prospective tenants to browse.' },
+      { selector: '.trial-card', eyebrow: 'Step 3 of 6', title: 'Simple pricing', body: 'No signup fee, no monthly cost \u2014 a small commission is deducted only from rent you actually collect.' },
+      { selector: '#features .features-grid', eyebrow: 'Step 4 of 6', title: 'Everything included', body: 'M-Pesa collection, PDF receipts, tenant messaging and arrears tracking \u2014 all included from day one.' },
+      { selector: '#how .steps-wrap', eyebrow: 'Step 5 of 6', title: 'Up and running fast', body: 'Register, add your properties and tenants, then start collecting rent via M-Pesa.' },
+      { selector: '#contact .contact-form', eyebrow: 'Step 6 of 6', title: 'We\u2019re here to help', body: 'Questions along the way? Send us a message \u2014 we usually reply within a day.' }
+    ];
+
+    var tenantSteps = [
+      { selector: '.hero-tenant-link', eyebrow: 'Step 1 of 5', title: 'Already a tenant?', body: 'If your landlord has set up your account, sign in here to pay rent and message them directly.' },
+      { selector: 'nav .nav-hi', mobileSelector: '.hamburger', eyebrow: 'Step 2 of 5', title: 'Browse available homes', body: 'Search vacant properties by location \u2014 no account needed.', mobileBody: 'Tap the menu icon, then \u201cBrowse Properties\u201d to search vacant homes \u2014 no account needed.' },
+      { selector: '#tenants .tenant-pathway', eyebrow: 'Step 3 of 5', title: 'How access works', body: 'Your landlord creates your account and emails you login details \u2014 you just set your password.' },
+      { selector: '#faq', eyebrow: 'Step 4 of 5', title: 'Got questions?', body: 'Payments, password resets, data safety \u2014 the common ones are answered here.' },
+      { selector: '#contact .contact-form', eyebrow: 'Step 5 of 5', title: 'Need a hand?', body: 'Send us a message any time \u2014 we typically respond within 24 hours.' }
+    ];
+
+    function isVisible(el){
+      if (!el) return false;
+      var r = el.getBoundingClientRect();
+      return !!el.offsetParent && r.width > 0 && r.height > 0;
+    }
+
+    function resolveTarget(step){
+      var el = step.selector ? document.querySelector(step.selector) : null;
+      if (el && isVisible(el)) return { el: el, body: step.body };
+      if (step.mobileSelector) {
+        var mel = document.querySelector(step.mobileSelector);
+        if (mel && isVisible(mel)) return { el: mel, body: step.mobileBody || step.body };
+      }
+      return { el: null, body: step.body };
+    }
+
+    function closeMobileMenuIfOpen(){
+      var m = document.getElementById('mobileMenu');
+      if (m) m.classList.remove('open');
+    }
+
+    function markSeen(){ try { localStorage.setItem(STORAGE_KEY, '1'); } catch(e){} }
+
+    function buildStaticEls(){
+      fab = document.createElement('button');
+      fab.type = 'button';
+      fab.className = 'tour-fab';
+      fab.textContent = 'Take a tour';
+      fab.addEventListener('click', openRoleModal);
+      fab.classList.add('hidden'); // shown only once the page is fully ready (see whenPageReady)
+      document.body.appendChild(fab);
+
+      for (var i = 0; i < 4; i++) {
+        var d = document.createElement('div');
+        d.className = 'tour-mask';
+        d.style.display = 'none';
+        document.body.appendChild(d);
+        maskEls.push(d);
+      }
+
+      ring = document.createElement('div');
+      ring.className = 'tour-ring';
+      ring.style.display = 'none';
+      document.body.appendChild(ring);
+
+      card = document.createElement('div');
+      card.className = 'tour-card';
+      card.innerHTML =
+        '<button class="tour-skip" type="button" aria-label="Close tour">' + ICON('close', 14) + '</button>' +
+        '<div class="tour-eyebrow"></div>' +
+        '<div class="tour-title"></div>' +
+        '<div class="tour-body"></div>' +
+        '<div class="tour-footer"><div class="tour-dots"></div><div class="tour-btns">' +
+        '<button class="tour-btn tour-btn-ghost" type="button" data-act="back">Back</button>' +
+        '<button class="tour-btn tour-btn-primary" type="button" data-act="next">Next</button>' +
+        '</div></div>';
+      document.body.appendChild(card);
+
+      card.querySelector('.tour-skip').addEventListener('click', endTour);
+      card.querySelector('[data-act="back"]').addEventListener('click', prevStep);
+      card.querySelector('[data-act="next"]').addEventListener('click', nextStep);
+    }
+
+    function openRoleModal(){
+      closeMobileMenuIfOpen();
+      var existing = document.querySelector('.tour-role-modal');
+      if (existing) existing.remove();
+
+      var modal = document.createElement('div');
+      modal.className = 'tour-role-modal';
+      modal.innerHTML =
+        '<div class="tour-role-card">' +
+        '<button class="tour-skip" type="button" aria-label="Close">' + ICON('close', 14) + '</button>' +
+        '<div class="tour-role-title">Welcome!</div>' +
+        '<div class="tour-role-sub">A quick tour \u2014 who are you here as?</div>' +
+        '<div class="tour-role-btns">' +
+        '<button class="tour-role-btn" type="button" data-role="landlord">I\u2019m a Landlord</button>' +
+        '<button class="tour-role-btn" type="button" data-role="tenant">I\u2019m a Tenant</button>' +
+        '</div>' +
+        '<button class="tour-role-later" type="button">Maybe later</button>' +
+        '</div>';
+      document.body.appendChild(modal);
+
+      modal.querySelector('.tour-skip').addEventListener('click', function(){ modal.remove(); markSeen(); });
+      modal.querySelector('.tour-role-later').addEventListener('click', function(){ modal.remove(); markSeen(); });
+      var roleBtns = modal.querySelectorAll('.tour-role-btn');
+      for (var i = 0; i < roleBtns.length; i++) {
+        roleBtns[i].addEventListener('click', function(e){
+          var role = e.currentTarget.getAttribute('data-role');
+          modal.remove();
+          startTour(role === 'landlord' ? landlordSteps : tenantSteps);
+        });
+      }
+    }
+
+    function onReposition(){ if (active) position(); }
+
+    function startTour(list){
+      steps = list; stepIndex = 0; active = true;
+      if (!fab) buildStaticEls();
+      fab.classList.add('hidden');
+      window.addEventListener('resize', onReposition);
+      window.addEventListener('scroll', onReposition, true);
+      showStep(0);
+    }
+
+    function showStep(i){
+      if (i < 0 || i >= steps.length) { endTour(); return; }
+      stepIndex = i;
+      var step = steps[i];
+      var resolved = resolveTarget(step);
+
+      card.querySelector('.tour-eyebrow').textContent = step.eyebrow || '';
+      card.querySelector('.tour-title').textContent = step.title || '';
+      card.querySelector('.tour-body').textContent = resolved.body || '';
+      card.querySelector('[data-act="back"]').style.visibility = (i === 0) ? 'hidden' : 'visible';
+      card.querySelector('[data-act="next"]').textContent = (i === steps.length - 1) ? 'Finish' : 'Next';
+
+      var dotsWrap = card.querySelector('.tour-dots');
+      var dotsHtml = '';
+      for (var d = 0; d < steps.length; d++) dotsHtml += '<span class="tour-dot' + (d === i ? ' active' : '') + '"></span>';
+      dotsWrap.innerHTML = dotsHtml;
+
+      if (!resolved.el) { nextStep(); return; }
+
+      card.classList.remove('visible');
+      var token = ++runId;
+      var target = resolved.el;
+      preparing = true; lastKey = '';
+      unwatchLayout();
+      dimAll();
+      prepareTarget(target).then(function(){
+        if (!active || token !== runId) return;
+        preparing = false;
+        position();
+        watchLayout(target);
+      });
+    }
+
+    // ---- readiness: the tour only measures a target once it is final ----
+    var readyPromise = null;
+
+    function waitForLayoutStable(){
+      return new Promise(function(resolve){
+        var t0 = performance.now(), last = '', stable = 0;
+        (function tick(){
+          var lp = document.getElementById('livePanel');
+          var key = [
+            document.documentElement.scrollHeight,
+            Math.round(document.body.getBoundingClientRect().height),
+            lp ? Math.round(lp.getBoundingClientRect().height) : 0
+          ].join('|');
+          if (key === last) stable++; else { stable = 0; last = key; }
+          if (stable >= 12 || performance.now() - t0 > 3000) return resolve();
+          requestAnimationFrame(tick);
+        })();
+      });
+    }
+
+    // window load + web fonts + first live-listings request settled + layout stopped moving
+    function whenPageReady(){
+      if (readyPromise) return readyPromise;
+      var loaded = new Promise(function(res){
+        if (document.readyState === 'complete') res();
+        else window.addEventListener('load', function(){ res(); }, { once: true });
+      });
+      var fonts = (document.fonts && document.fonts.ready) ? document.fonts.ready.catch(function(){}) : Promise.resolve();
+      var listings = window.__arListingsReady || Promise.resolve();
+      var cap = new Promise(function(res){ setTimeout(res, 12000); }); // never block the tour forever if the API is asleep
+      readyPromise = Promise.race([Promise.all([loaded, fonts, listings]), cap]).then(waitForLayoutStable);
+      return readyPromise;
+    }
+
+    function revealAncestors(el){
+      for (var n = el; n && n !== document.body; n = n.parentElement) {
+        if (n.classList && n.classList.contains('reveal') && !n.classList.contains('visible')) n.classList.add('visible');
+      }
+    }
+
+    // scroll-in animations (.reveal) must have finished, otherwise the rect is mid-transition
+    function revealSettled(el){
+      for (var n = el; n && n !== document.body; n = n.parentElement) {
+        if (n.classList && n.classList.contains('reveal')) {
+          var cs = getComputedStyle(n);
+          if (parseFloat(cs.opacity) < 0.99) return false;
+          if (cs.transform !== 'none' && cs.transform !== 'matrix(1, 0, 0, 1, 0, 0)') return false;
+        }
+      }
+      return true;
+    }
+
+    function prepareTarget(el){
+      revealAncestors(el);
+      return new Promise(function(resolve){
+        var t0 = performance.now(), last = '', stable = 0, scrolled = false;
+        function tick(){
+          if (!active) return resolve();
+          if (!scrolled) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); scrolled = true; }
+          var r = el.getBoundingClientRect();
+          var key = [r.top, r.left, r.width, r.height, window.scrollY, document.documentElement.scrollHeight]
+            .map(function(v){ return Math.round(v * 2); }).join('|');
+          if (key === last && revealSettled(el)) stable++; else stable = 0;
+          last = key;
+          if (stable >= 10 || performance.now() - t0 > 2500) return resolve();
+          requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+      });
+    }
+
+    function dimAll(){
+      if (ring) ring.style.display = 'none';
+      for (var i = 0; i < maskEls.length; i++) maskEls[i].style.display = (i === 0) ? 'block' : 'none';
+      var m = maskEls[0];
+      m.style.top = '0px'; m.style.left = '0px'; m.style.width = '100%'; m.style.height = '100%';
+    }
+
+    // late layout changes (data arriving, fonts, images) re-fit the ring instead of leaving it stale
+    function watchLayout(el){
+      unwatchLayout();
+      if (typeof ResizeObserver === 'undefined') return;
+      var first = true, queued = false;
+      ro = new ResizeObserver(function(){
+        if (first) { first = false; return; }
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(function(){
+          queued = false;
+          if (!active || preparing) return;
+          var r = el.getBoundingClientRect();
+          if (r.bottom < 0 || r.top > window.innerHeight) {
+            var token = ++runId;
+            preparing = true; lastKey = '';
+            dimAll();
+            prepareTarget(el).then(function(){
+              if (!active || token !== runId) return;
+              preparing = false; position();
+            });
+          } else {
+            position();
+          }
+        });
+      });
+      ro.observe(document.body);
+      ro.observe(el);
+    }
+    function unwatchLayout(){ if (ro) { ro.disconnect(); ro = null; } }
+
+    function clamp(v, min, max){ return Math.max(min, Math.min(v, Math.max(min, max))); }
+
+    function position(){
+      if (!active || preparing) return;
+      var resolved = resolveTarget(steps[stepIndex]);
+      var el = resolved.el;
+      if (!el) return;
+
+      var r = el.getBoundingClientRect();
+      var P = 8;
+      var vw = window.innerWidth, vh = window.innerHeight;
+
+      var key = [r.top, r.left, r.width, r.height, vw, vh].map(function(v){ return Math.round(v); }).join('|');
+      if (key === lastKey && card.classList.contains('visible')) return;
+      lastKey = key;
+
+      for (var i = 0; i < maskEls.length; i++) maskEls[i].style.display = 'block';
+      maskEls[0].style.top = '0px'; maskEls[0].style.left = '0px'; maskEls[0].style.width = '100%'; maskEls[0].style.height = Math.max(0, r.top - P) + 'px';
+      maskEls[1].style.top = (r.bottom + P) + 'px'; maskEls[1].style.left = '0px'; maskEls[1].style.width = '100%'; maskEls[1].style.height = Math.max(0, vh - (r.bottom + P)) + 'px';
+      maskEls[2].style.top = (r.top - P) + 'px'; maskEls[2].style.left = '0px'; maskEls[2].style.width = Math.max(0, r.left - P) + 'px'; maskEls[2].style.height = (r.height + 2 * P) + 'px';
+      maskEls[3].style.top = (r.top - P) + 'px'; maskEls[3].style.left = (r.right + P) + 'px'; maskEls[3].style.width = Math.max(0, vw - (r.right + P)) + 'px'; maskEls[3].style.height = (r.height + 2 * P) + 'px';
+
+      ring.style.display = 'block';
+      ring.style.left = (r.left - P) + 'px';
+      ring.style.top = (r.top - P) + 'px';
+      ring.style.width = (r.width + 2 * P) + 'px';
+      ring.style.height = (r.height + 2 * P) + 'px';
+
+      card.classList.remove('visible');
+      requestAnimationFrame(function(){
+        var cw = card.offsetWidth, ch = card.offsetHeight;
+        var spaceBelow = vh - r.bottom, spaceAbove = r.top, spaceRight = vw - r.right, spaceLeft = r.left;
+        var left, top;
+        if (spaceBelow > ch + 24) { top = r.bottom + 18; left = clamp(r.left, 12, vw - cw - 12); }
+        else if (spaceAbove > ch + 24) { top = r.top - ch - 18; left = clamp(r.left, 12, vw - cw - 12); }
+        else if (spaceRight > cw + 24) { left = r.right + 18; top = clamp(r.top, 12, vh - ch - 12); }
+        else if (spaceLeft > cw + 24) { left = r.left - cw - 18; top = clamp(r.top, 12, vh - ch - 12); }
+        else { left = (vw - cw) / 2; top = (vh - ch) / 2; }
+        card.style.left = left + 'px';
+        card.style.top = top + 'px';
+        requestAnimationFrame(function(){ card.classList.add('visible'); });
+      });
+    }
+
+    function nextStep(){ showStep(stepIndex + 1); }
+    function prevStep(){ if (stepIndex > 0) showStep(stepIndex - 1); }
+
+    function endTour(){
+      active = false; preparing = false; runId++;
+      unwatchLayout();
+      for (var i = 0; i < maskEls.length; i++) maskEls[i].style.display = 'none';
+      if (ring) ring.style.display = 'none';
+      if (card) card.classList.remove('visible');
+      window.removeEventListener('resize', onReposition);
+      window.removeEventListener('scroll', onReposition, true);
+      if (fab) fab.classList.remove('hidden');
+      markSeen();
+    }
+
+    document.addEventListener('keydown', function(e){ if (active && e.key === 'Escape') endTour(); });
+
+    function init(){
+      buildStaticEls();
+      var seen = false;
+      try { seen = localStorage.getItem(STORAGE_KEY) === '1'; } catch(e){}
+      // wait for the page to be fully loaded and rendered before the tour appears
+      whenPageReady().then(function(){
+        if (active) return;
+        if (fab) fab.classList.remove('hidden');
+        if (!seen) openRoleModal();
+      });
+    }
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
+  })();
+  </script>
 </body>
 </html>

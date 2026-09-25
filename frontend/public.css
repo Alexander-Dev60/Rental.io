@@ -1,0 +1,183 @@
+/* ==========================================================================
+   public.css — shared styles for the PUBLIC pages only
+   (index, listings, auth, forgot-password, change-password, terms, privacy).
+   Dashboards (dashboard / tenant / stacklord) do NOT load this file.
+   Theme is driven by <html data-theme="dark|light"> (see public.js).
+   ========================================================================== */
+
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  /* theme toggle */
+  --ar-t-bg: rgba(255,255,255,.05);
+  --ar-t-bg-hover: rgba(224,187,100,.14);
+  --ar-t-border: rgba(228,199,122,.3);
+  --ar-t-icon: #e0bb64;
+  /* footer band: deeper ink than the page, gold hairline */
+  --ar-f-bg: linear-gradient(180deg, #0a0e19 0%, #05080f 100%);
+  --ar-f-line: rgba(224,187,100,.34);
+  --ar-f-divider: rgba(224,187,100,.16);
+  --ar-f-text: #b4ae9b;
+  --ar-f-title: #e0bb64;
+  --ar-f-link: #ece6d2;
+  --ar-f-link-hover: #f0d28a;
+  --ar-f-accent: #e0bb64;
+  --ar-f-chip-bg: rgba(224,187,100,.07);
+  --ar-f-chip-border: rgba(224,187,100,.26);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --ar-t-bg: rgba(255,255,255,.55);
+  --ar-t-bg-hover: rgba(169,120,31,.12);
+  --ar-t-border: rgba(122,87,20,.3);
+  --ar-t-icon: #8a6212;
+  /* footer band: warm sand, a shade deeper than the page */
+  --ar-f-bg: linear-gradient(180deg, #ebe0c4 0%, #e1d4b1 100%);
+  --ar-f-line: rgba(122,87,20,.38);
+  --ar-f-divider: rgba(122,87,20,.2);
+  --ar-f-text: #574e33;
+  --ar-f-title: #6b4c0f;
+  --ar-f-link: #3a2f12;
+  --ar-f-link-hover: #7a5714;
+  --ar-f-accent: #a9781f;
+  --ar-f-chip-bg: rgba(122,87,20,.08);
+  --ar-f-chip-border: rgba(122,87,20,.3);
+}
+
+/* ---------- inline icon helper (used in place of emoji / glyphs) ---------- */
+.ar-i { display: inline-flex; align-items: center; vertical-align: -.16em; line-height: 0; }
+.ar-i .ico, .ar-i svg { display: block; }
+.ar-stars { display: inline-flex; gap: 2px; }
+.ar-stars .ico, .ar-stars svg { fill: currentColor; }
+
+/* ---------- theme toggle ---------- */
+[data-theme-toggle] { display: inline-flex; align-items: center; flex-shrink: 0; }
+.ar-theme-toggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; padding: 0; margin: 0;
+  border-radius: 9px; border: 1px solid var(--ar-t-border);
+  background: var(--ar-t-bg); color: var(--ar-t-icon);
+  cursor: pointer; flex-shrink: 0; line-height: 0;
+  transition: background .2s ease, border-color .2s ease, transform .15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.ar-theme-toggle:hover { background: var(--ar-t-bg-hover); border-color: var(--ar-t-icon); }
+.ar-theme-toggle:active { transform: scale(.94); }
+.ar-theme-toggle:focus-visible { outline: 2px solid var(--ar-t-icon); outline-offset: 2px; }
+.ar-theme-toggle .ar-t-sun, .ar-theme-toggle .ar-t-moon { display: none; }
+.ar-theme-toggle .ico { display: block; }
+/* dark active -> offer the sun; light active -> offer the moon */
+:root:not([data-theme="light"]) .ar-theme-toggle .ar-t-sun { display: inline-flex; }
+:root[data-theme="light"] .ar-theme-toggle .ar-t-moon { display: inline-flex; }
+
+/* floating variant for card-only pages (auth, forgot / change password) */
+.ar-theme-float {
+  position: fixed; z-index: 900;
+  top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right));
+}
+@media (max-width: 480px) {
+  .ar-theme-float { top: max(8px, env(safe-area-inset-top)); right: max(8px, env(safe-area-inset-right)); }
+  .ar-theme-float .ar-theme-toggle { width: 32px; height: 32px; }
+}
+/* right-hand nav group on privacy / terms */
+.ar-nav-right { display: flex; align-items: center; gap: 14px; }
+/* index nav: keep toggle beside the hamburger on small screens */
+@media (max-width: 960px) {
+  nav > [data-theme-toggle] { margin-left: auto; margin-right: 10px; }
+}
+
+/* ---------- shared footer ---------- */
+.ar-footer {
+  position: relative; z-index: 1; overflow: hidden;
+  background: var(--ar-f-bg);
+  border-top: 1px solid var(--ar-f-line);
+  padding: 26px 1.5rem calc(26px + env(safe-area-inset-bottom, 0px));
+  text-align: center;
+  font-family: var(--font-s, 'DM Sans', sans-serif);
+}
+.ar-footer::before {
+  content: ''; position: absolute; top: 0; left: 12%; right: 12%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--ar-f-accent), transparent);
+  opacity: .6; pointer-events: none;
+}
+.ar-footer-inner {
+  max-width: 1100px; margin: 0 auto;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+}
+.ar-footer-links {
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+  gap: 2px 0;
+}
+.ar-footer-links a {
+  position: relative; display: inline-block;
+  padding: 8px 15px;
+  font-size: .82rem; font-weight: 500; letter-spacing: .02em;
+  color: var(--ar-f-link); text-decoration: none;
+  transition: color .2s ease;
+}
+.ar-footer-links a::after {
+  content: ''; position: absolute; left: 15px; right: 15px; bottom: 4px; height: 1px;
+  background: var(--ar-f-accent);
+  transform: scaleX(0); transform-origin: left center;
+  transition: transform .25s ease;
+}
+.ar-footer-links a + a::before {
+  content: ''; position: absolute; left: 0; top: 50%;
+  width: 3px; height: 3px; border-radius: 50%;
+  background: var(--ar-f-accent); opacity: .6;
+  transform: translate(-50%, -50%);
+}
+.ar-footer-links a:hover, .ar-footer-links a:focus-visible { color: var(--ar-f-link-hover); }
+.ar-footer-links a:hover::after, .ar-footer-links a:focus-visible::after { transform: scaleX(1); }
+.ar-footer-links a:focus-visible { outline: 2px solid var(--ar-f-accent); outline-offset: -2px; border-radius: 6px; }
+.ar-footer-copy {
+  font-family: var(--font-m, 'Space Mono', monospace);
+  font-size: .62rem; letter-spacing: .08em; line-height: 1.7;
+  color: var(--ar-f-text);
+}
+.ar-footer-copy .ar-i { color: var(--ar-f-accent); }
+.ar-footer-chip {
+  display: inline-block; margin-left: 8px; padding: 1px 8px;
+  border: 1px solid var(--ar-f-chip-border); background: var(--ar-f-chip-bg);
+  border-radius: 99px; color: var(--ar-f-accent);
+}
+@media (max-width: 520px) {
+  .ar-footer-links a { padding: 8px 11px; font-size: .8rem; }
+  .ar-footer-links a::after { left: 11px; right: 11px; }
+  .ar-footer-chip { display: block; margin: 6px auto 0; width: fit-content; }
+}
+
+/* wide variant — index.html's four-column footer (layout stays in the page) */
+.ar-footer--wide { padding: 3rem 2rem 2rem; text-align: left; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.ar-footer--wide .footer-top { border-bottom-color: var(--ar-f-divider); }
+.ar-footer--wide .footer-brand p,
+.ar-footer--wide .footer-copy { color: var(--ar-f-text); }
+.ar-footer--wide .footer-col-title { color: var(--ar-f-title); opacity: 1; font-weight: 700; }
+.ar-footer--wide .footer-copy .ico { color: var(--ar-f-accent); }
+.ar-footer--wide .footer-links a {
+  position: relative; display: inline-block; padding: 2px 0;
+  color: var(--ar-f-link); font-weight: 500; letter-spacing: .01em;
+}
+.ar-footer--wide .footer-links a::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+  background: var(--ar-f-accent); transform: scaleX(0); transform-origin: left center;
+  transition: transform .25s ease;
+}
+.ar-footer--wide .footer-links a:hover, .ar-footer--wide .footer-links a:focus-visible { color: var(--ar-f-link-hover); }
+.ar-footer--wide .footer-links a:hover::after, .ar-footer--wide .footer-links a:focus-visible::after { transform: scaleX(1); }
+.ar-footer--wide .footer-links a:focus-visible { outline: 2px solid var(--ar-f-accent); outline-offset: 3px; border-radius: 4px; }
+.ar-footer--wide .social-btn { background: var(--ar-f-chip-bg); border-color: var(--ar-f-chip-border); color: var(--ar-f-link); }
+.ar-footer--wide .social-btn:hover { border-color: var(--ar-f-accent); color: var(--ar-f-link-hover); }
+@media (max-width: 700px) { .ar-footer--wide { padding: 2.5rem 1.25rem 1.75rem; } }
+
+/* compact fixed footer for the card-only pages (forgot / change password) */
+.ar-footer--fixed { position: fixed; left: 0; right: 0; bottom: 0; z-index: 2; padding: 4px 1rem calc(4px + env(safe-area-inset-bottom, 0px)); }
+.ar-footer--fixed .ar-footer-inner { gap: 0; }
+.ar-footer--fixed .ar-footer-links a { padding: 6px 12px; font-size: .76rem; }
+.ar-footer--fixed .ar-footer-links a::after { bottom: 2px; left: 12px; right: 12px; }
+.ar-footer--fixed .ar-footer-copy { display: none; }
+@media (min-height: 700px) { .ar-footer--fixed .ar-footer-copy { display: block; padding-bottom: 4px; } }
+
+/* toast icon (forgot / change password) */
+.toast-ico { display: inline-flex; vertical-align: -3px; margin-right: 8px; line-height: 0; }

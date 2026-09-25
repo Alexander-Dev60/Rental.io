@@ -11,7 +11,7 @@ const ALLOWED_ORIGINS = [
     //'http://localhost:5500',
     
     //'http://127.0.0.1:5503',
-     //'http://127.0.0.1:5502',
+    //'http://127.0.0.1:5502',
 ];
 
 app.use(cors({
@@ -57,7 +57,8 @@ const {
         sendSubscriptionRenewalEmail,
         sendPropertySuspendedEmail,
         sendListingApprovalEmail,
-        sendCommissionDueEmail
+        sendCommissionDueEmail,
+        emailIcon
 } = require('./emails');
 
 // ── Models ──
@@ -74,6 +75,7 @@ const Property            = require('./models/Property');
 const PlatformSettings    = require('./models/PlatformSettings');
 const CommissionPayment      = require('./models/CommissionPayment');
 const CommissionRateHistory  = require('./models/CommissionRateHistory');
+const ReferralReward         = require('./models/ReferralReward');
 const HouseGroup = require('./models/HouseGroup');
 
 const { geocodeAndSaveProperty } = require('./utils/geocode');
@@ -251,9 +253,203 @@ async function computeCommissionForProperty(propertyId, month) {
 
     // Safaricom requires a whole-number STK amount — round up so a
     // fractional commission (e.g. 1234.50) never gets sent raw.
-    const amountDue = Math.ceil(totalCollected * percentage / 100);
+    let amountDue = Math.ceil(totalCollected * percentage / 100);
+    let waived    = false;
 
-    return { totalCollected, percentage, amountDue };
+    // ── Referral reward waiver ──
+    // A landlord's reward is granted once, against them (not any one
+    // property), and waives commission across their WHOLE portfolio for the
+    // reward month — so we key the lookup off the property's landlord, not
+    // the property itself. Because this is the one function every commission
+    // read AND charge path calls, doing the override here means the summary
+    // endpoint, the STK-push endpoint, and the overdue-check job all agree
+    // automatically — nothing downstream needs its own "is this waived" logic.
+    const property = await Property.findById(propertyId).select('landlord').lean();
+    if (property?.landlord) {
+        const reward = await ReferralReward.findOne({ landlord: property.landlord, month }).select('_id').lean();
+        if (reward) {
+            amountDue = 0;
+            waived    = true;
+        }
+    }
+
+    return { totalCollected, percentage, amountDue, waived };
+}
+
+// ── Public referral codes ──
+// Deliberately opaque and separate from the landlord's own _id — see the
+// referralCode field comment in User.js for why. Excludes visually
+// ambiguous characters (0/O, 1/I/L) since these end up read aloud or typed
+// in manually off a phone screen.
+const REFERRAL_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
+function generateReferralCode(name) {
+    const lettersOnly = (name || '').replace(/[^a-zA-Z]/g, '');
+    const prefix = lettersOnly.slice(0, 4) || 'REF';
+    const prefixCased = prefix.charAt(0).toUpperCase() + prefix.slice(1).toLowerCase();
+
+    let suffix = '';
+    for (let i = 0; i < 5; i++) {
+        suffix += REFERRAL_CODE_ALPHABET[crypto.randomInt(REFERRAL_CODE_ALPHABET.length)];
+    }
+    return `${prefixCased}${suffix}`; // e.g. "Alex4X9QT"
+}
+
+// Lazy fetch-or-create, same pattern as getPlatformSettings(). Called from
+// GET /landlord/referrals so every landlord — including ones who existed
+// before this feature shipped — gets a code the first time they open the
+// Refer & Earn modal, with no migration script needed.
+//
+// Two distinct failure modes, handled differently:
+//  - E11000 on the write = a DIFFERENT landlord already holds this exact
+//    random code (astronomically unlikely, but real) → generate a fresh
+//    code and retry.
+//  - matchedCount === 0 = THIS SAME landlord already got a code from a
+//    concurrent request (e.g. two tabs open at once) between our read and
+//    our write → don't generate a second, orphaned code; just read back and
+//    return whichever one actually won.
+// The `{ referralCode: { $exists: false } }` guard in the filter is what
+// makes the write atomic and race-safe: only one concurrent call for the
+// same landlord can ever match it and succeed.
+async function getOrCreateReferralCode(landlordId) {
+    const existing = await User.findById(landlordId).select('name referralCode');
+    if (existing.referralCode) return existing.referralCode;
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+        const code = generateReferralCode(existing.name);
+        try {
+            const result = await User.updateOne(
+                { _id: landlordId, referralCode: { $exists: false } },
+                { referralCode: code }
+            );
+            if (result.matchedCount === 1) return code;
+
+            // Someone else already assigned this landlord a code in the
+            // meantime — use it instead of racing further.
+            const winner = await User.findById(landlordId).select('referralCode');
+            if (winner.referralCode) return winner.referralCode;
+            // else: exceedingly unlikely (would mean the field got unset
+            // between our two reads) — fall through and try again.
+        } catch (err) {
+            if (err.code !== 11000) throw err; // a different landlord holds this code — retry with a new one
+        }
+    }
+    throw new Error('Could not generate a unique referral code — please try again');
+}
+
+// ── Referral status is DERIVED, never stored — see ReferralReward.js header
+//    note for why. 'scheduled' = reward earned but its month hasn't started
+//    yet; 'active' = currently in its commission-free month; 'consumed' =
+//    the month has closed. ──
+function getReferralRewardStatus(reward) {
+    const now = Date.now();
+    if (now < new Date(reward.periodStart).getTime()) return 'scheduled';
+    if (now <= new Date(reward.periodEnd).getTime())  return 'active';
+    return 'consumed';
+}
+
+// ── Referral qualification check — call this from any event that could
+//    flip a referred landlord's qualification criteria to true. Safe to
+//    call redundantly/concurrently: it's a no-op once referralQualifiedAt is
+//    set, and the atomic findOneAndUpdate guard below means two triggers
+//    firing at once can't both "win" the transition or double-grant a reward.
+async function checkReferralQualification(referredLandlordId) {
+    try {
+        const landlord = await User.findById(referredLandlordId).select('role referredBy referralQualifiedAt');
+        if (!landlord || landlord.role !== 'landlord' || !landlord.referredBy || landlord.referralQualifiedAt) {
+            return; // not a referred landlord, or already qualified — nothing to do
+        }
+
+        const settings = await getPlatformSettings();
+        const rules = settings.referralQualificationRules || {
+            newLandlord: true, propertySetupCompleted: true, firstPaymentProcessed: true
+        };
+
+        // "New landlord" is inherently satisfied by reaching this point at
+        // all — referredBy is only ever set once, at registration, so there's
+        // nothing further to check for that rule.
+
+        if (rules.propertySetupCompleted) {
+            const setupDone = await Property.exists({ landlord: referredLandlordId, paymentConfigured: true });
+            if (!setupDone) return;
+        }
+
+        if (rules.firstPaymentProcessed) {
+            const paid = await Payment.exists({ landlord: referredLandlordId, status: { $in: ['paid', 'partial'] } });
+            if (!paid) return;
+        }
+
+        // Atomic claim of the qualification transition.
+        const claimed = await User.findOneAndUpdate(
+            { _id: referredLandlordId, referralQualifiedAt: null },
+            { referralQualifiedAt: new Date() }
+        );
+        if (!claimed) return; // another concurrent trigger already claimed it
+
+        logActivity({
+            landlord: landlord.referredBy,
+            action:   'referral.qualified',
+            message:  `A landlord you referred is now a qualified referral 🎉`,
+            meta:     { referredLandlordId }
+        });
+
+        await maybeGrantReferralReward(landlord.referredBy);
+
+    } catch (err) {
+        console.error('checkReferralQualification error:', err.message);
+    }
+}
+
+// ── Grants the ONE lifetime referral reward, if this landlord has just
+//    crossed the required qualified-referral count and doesn't already have
+//    one. The real enforcement of "only ever 1, no matter how many you
+//    refer" is the unique index on ReferralReward.landlord (see that model's
+//    header note) — the existence check below is just a fast, cheap
+//    short-circuit to avoid unnecessary work, not the source of truth. ──
+async function maybeGrantReferralReward(referrerId) {
+    const existing = await ReferralReward.findOne({ landlord: referrerId }).select('_id').lean();
+    if (existing) return;
+
+    const settings = await getPlatformSettings();
+    const required  = settings.referralRequiredCount || 5;
+
+    const qualified = await User.find({ referredBy: referrerId, referralQualifiedAt: { $ne: null } })
+        .select('_id')
+        .sort({ referralQualifiedAt: 1 }) // earliest-qualified first — this is the credited set if there are more than `required`
+        .limit(required)
+        .lean();
+
+    if (qualified.length < required) return;
+
+    const monthLabel  = getMonthLabel(1); // always a full, upcoming calendar month — never the partial current one
+    const monthDate   = new Date(monthLabel);
+    const periodStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1, 0, 0, 0, 0);
+    const periodEnd   = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    try {
+        const reward = await ReferralReward.create({
+            landlord:             referrerId,
+            qualifyingReferrals:  qualified.map(q => q._id),
+            requiredCountAtGrant: required,
+            month:                monthLabel,
+            periodStart,
+            periodEnd
+        });
+
+        logActivity({
+            landlord: referrerId,
+            action:   'referral.reward_earned',
+            message:  `🎉 Referral reward unlocked — commission-free for ${monthLabel}`,
+            meta:     { rewardId: reward._id, month: monthLabel, qualifyingReferrals: reward.qualifyingReferrals }
+        });
+
+    } catch (err) {
+        // E11000 = duplicate key on the unique `landlord` index — a concurrent
+        // call already granted the (one and only) reward. Not an error.
+        if (err.code !== 11000) {
+            console.error('maybeGrantReferralReward error:', err.message);
+        }
+    }
 }
 
 // ── Finds every closed month, for a given property, where commission is
@@ -739,6 +935,27 @@ app.get('/platform-status', async (req, res) => {
 // AUTH
 // ═══════════════════════════════════════
 
+// ── Public: resolve a referral code to a display name ──
+// No auth — called from auth.html the moment a ?ref= link is opened, so the
+// register form can show "Referred by <name>" instead of the raw code.
+// Returns first name only; never the landlord's email, id, or full profile.
+app.get('/public/referral-info/:code', async (req, res) => {
+    try {
+        const code = sanitize(req.params.code || '', 40);
+        if (!code) return res.status(400).json({ message: 'Referral code required' });
+
+        const landlord = await User.findOne({ referralCode: code, role: 'landlord' }).select('name');
+        if (!landlord) return res.status(404).json({ message: 'Invalid referral code' });
+
+        res.json({ name: (landlord.name || '').split(' ')[0] || 'a fellow landlord' });
+
+    } catch (err) {
+        console.error('GET /public/referral-info error:', err.message);
+        res.status(500).json({ message: 'Failed to resolve referral code' });
+    }
+});
+
+// AFTER:
 app.post('/landlord/register', async (req, res) => {
     try {
         // FIX Bug 22: sanitize all inputs
@@ -749,6 +966,17 @@ app.post('/landlord/register', async (req, res) => {
         const propertyName     = sanitize(req.body.propertyName || '');
         const propertyLocation = sanitize(req.body.propertyLocation || '');
 
+        // Referral attribution — an opaque referralCode passed via ?ref= on
+        // the signup link (never the landlord's own _id — see the
+        // referralCode field comment in User.js for why). Validated as a
+        // real, existing landlord; silently ignored (never blocks signup)
+        // if missing or bogus.
+        let referredBy = null;
+        const refParam = sanitize(req.body.ref || '', 40);
+        if (refParam) {
+            const refLandlord = await User.findOne({ referralCode: refParam, role: 'landlord' }).select('_id');
+            if (refLandlord) referredBy = refLandlord._id;
+        }
         // FIX: server-side terms gate — the frontend checkbox is a UX nicety,
         // not a guarantee. Anyone hitting this endpoint directly (curl/Postman/
         // a modified client) could otherwise register without ever agreeing to
@@ -777,6 +1005,7 @@ app.post('/landlord/register', async (req, res) => {
 
         // FIX (plans → commission migration): no more trial/plan assignment —
         // registration just creates the landlord with default accountStatus 'active'.
+        // AFTER:
         const landlord = await User.create({
             name,
             email,
@@ -789,8 +1018,18 @@ app.post('/landlord/register', async (req, res) => {
             paymentConfigured:  false,
             // FIX: durable proof of consent — when, and against which terms version
             termsAcceptedAt:    new Date(),
-            termsVersion:       process.env.TERMS_VERSION || '1.0'
+            termsVersion:       process.env.TERMS_VERSION || '1.0',
+            ...(referredBy && { referredBy })
         });
+
+        if (referredBy) {
+            logActivity({
+                landlord: referredBy,
+                action:   'referral.signup',
+                message:  `${name} signed up using your referral link`,
+                meta:     { referredLandlordId: landlord._id }
+            });
+        }
 
         await Settings.create({ landlord: landlord._id });
 
@@ -1109,6 +1348,7 @@ app.post('/reset-password', authMiddleware, landlordOnly, async (req, res) => {
 });
 
 
+
 // ═══════════════════════════════════════
 // FORGOT PASSWORD (3-step OTP flow)
 // ═══════════════════════════════════════
@@ -1314,6 +1554,68 @@ app.post('/landlord/complete-onboarding', authMiddleware, landlordOnly, async (r
     }
 });
 
+
+// ── Referral program: this landlord's link + who they've referred so far.
+// "active" here means the referred landlord has at least one property with
+// paymentConfigured — a real signal of engagement, not just an empty account.
+app.get('/landlord/referrals', authMiddleware, landlordOnly, async (req, res) => {
+    try {
+        const referred = await User.find({ referredBy: req.user.id, role: 'landlord' })
+            .select('name createdAt referralQualifiedAt')
+            .sort({ createdAt: -1 });
+
+        // Kept for backward compatibility with anything already reading
+        // "active" — it means the same thing it always did (payment
+        // credentials configured), and is NOT the same thing as "qualified"
+        // (which also requires a first processed payment, per the current
+        // referral rules).
+        const referredIds = referred.map(r => r._id);
+        const activeIds = referredIds.length
+            ? (await Property.find({ landlord: { $in: referredIds }, paymentConfigured: true }).distinct('landlord'))
+            : [];
+        const activeSet = new Set(activeIds.map(String));
+
+        const settings      = await getPlatformSettings();
+        const requiredCount = settings.referralRequiredCount || 5;
+        const qualifiedCount = referred.filter(r => !!r.referralQualifiedAt).length;
+
+        const rewardDoc = await ReferralReward.findOne({ landlord: req.user.id }).lean();
+        const reward = rewardDoc ? {
+            status:      getReferralRewardStatus(rewardDoc),
+            month:       rewardDoc.month,
+            periodStart: rewardDoc.periodStart,
+            periodEnd:   rewardDoc.periodEnd,
+            earnedAt:    rewardDoc.earnedAt
+        } : null;
+
+        const referralCode = await getOrCreateReferralCode(req.user.id);
+
+        res.json({
+            landlordId: req.user.id,
+            referralCode,
+            totalReferred:  referred.length,
+            activeReferred: activeSet.size,
+            requiredCount,
+            qualifiedCount,
+            // Reward is a lifetime one-shot — once it's been earned, the
+            // progress bar has nothing left to track even if more referrals
+            // come in, so we cap this at 100% rather than showing >100%.
+            progressPercent: reward ? 100 : Math.min(100, Math.round((qualifiedCount / requiredCount) * 100)),
+            reward,
+            referrals: referred.map(r => ({
+                name:       r.name,
+                joinedAt:   r.createdAt,
+                active:     activeSet.has(String(r._id)),
+                qualified:  !!r.referralQualifiedAt,
+                qualifiedAt: r.referralQualifiedAt || null
+            }))
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
 // FIX: rate-limit payment-credential OTP requests to 3 per 24-hour window
 function checkPayOtpRateLimit(landlordId) {
 const now    = Date.now();
@@ -1420,6 +1722,10 @@ try {
                     paymentConfigured:  true,
                     onboardingComplete: true
                 });
+
+                // Fire-and-forget — never let a referral check delay the response.
+                checkReferralQualification(req.user.id)
+                    .catch(err => console.error('Referral qualification check failed:', err.message));
 
             res.json({
                 message:           'Payment credentials saved securely ✅',
@@ -1829,7 +2135,24 @@ app.post('/tenants/create', authMiddleware, landlordOrCaretaker, checkAccountSta
             });
         }
 
-    let house = null;
+        // FIX (account hijack): look up any existing User for this email
+        // BEFORE creating the Tenant document, so a blocked request never
+        // leaves an orphaned Tenant record with no linked User.
+        //
+        // Only a 'tenant' role account (or no account at all) is eligible
+        // for the "returning tenant" merge path below. If this email
+        // belongs to a landlord, caretaker, or any other role, merging
+        // would silently overwrite that account's landlordId/tenantId and
+        // hijack it into this landlord's tenant roster — which is exactly
+        // the bug this guard closes.
+        const existingUser = await User.findOne({ email });
+        if (existingUser && existingUser.role !== 'tenant') {
+            return res.status(400).json({
+                message: 'This email is already registered to a different type of account and cannot be used for a tenant.'
+            });
+        }
+
+        let house = null;
         if (houseId) {
             house = await House.findOne({ _id: houseId, property: propertyId, landlord: landlordScope });
             if (!house)                      return res.status(404).json({ message: 'House not found' });
@@ -1854,8 +2177,6 @@ app.post('/tenants/create', authMiddleware, landlordOrCaretaker, checkAccountSta
 
         let isReturning = false;
         let userId;
-
-        const existingUser = await User.findOne({ email });
 
         if (existingUser) {
             existingUser.landlordId = req.user.id;
@@ -1899,7 +2220,7 @@ app.post('/tenants/create', authMiddleware, landlordOrCaretaker, checkAccountSta
             status:   'active'
         });
 
-                if (isReturning) {
+        if (isReturning) {
             sendTenantWelcomeEmail({
                 name, 
                 email, 
@@ -2431,12 +2752,28 @@ app.post('/houses/generate-preview', authMiddleware, landlordOnly, async (req, r
         const names = generateHouseNames(req.body.config || {});
         const seen  = new Set();
         const dupes = names.filter(n => seen.has(n) || !seen.add(n));
- 
+
+        let conflicts = [];
+        const propertyId = req.body.propertyId || null;
+        if (propertyId) {
+            const property = await Property.findOne({ _id: propertyId, landlord: req.user.id });
+            if (property) {
+                const existing = await House.find({ property: propertyId, name: { $in: names } })
+                    .select('name group')
+                    .populate('group', 'label prefix');
+                conflicts = existing.map(h => ({
+                    name:       h.name,
+                    groupLabel: h.group?.label || h.group?.prefix || 'Ungrouped'
+                }));
+            }
+        }
+
         res.json({
             names,
             count: names.length,
             hasDuplicatesInBatch: dupes.length > 0,
-            duplicates: [...new Set(dupes)]
+            duplicates: [...new Set(dupes)],
+            conflicts
         });
     } catch (err) {
         res.status(400).json({ message: err.message });
@@ -2448,16 +2785,27 @@ app.post('/houses/generate', authMiddleware, landlordOnly, checkAccountStatus, c
     try {
         const propertyId = req.body.propertyId || null;
         const rent       = Number(req.body.rent);
- 
+
         if (!propertyId)        return res.status(400).json({ message: 'propertyId is required' });
         if (!rent || rent <= 0) return res.status(400).json({ message: 'A valid rent amount is required' });
- 
+
         const property = await Property.findOne({ _id: propertyId, landlord: req.user.id });
         if (!property) return res.status(404).json({ message: 'Property not found' });
- 
+
         const floors = Array.isArray(req.body.config?.floors) ? req.body.config.floors : [];
         if (!floors.length) return res.status(400).json({ message: 'At least one naming group is required' });
- 
+
+        // ── Every group must have its own identity, independent of its prefix.
+        //    This is what lets two groups both use "Room" without becoming
+        //    indistinguishable in the UI later. ──
+        for (const floor of floors) {
+            if (!sanitize(floor.label || '', 60)) {
+                return res.status(400).json({
+                    message: 'Each group needs a name (e.g. "Sunrise Tower" or "Annex Block") before generating houses.'
+                });
+            }
+        }
+
         // Build name/seq pairs per floor first, so we can validate the whole
         // batch (duplicates, size limits) before creating anything.
         let allPairs = [];
@@ -2471,42 +2819,70 @@ app.post('/houses/generate', authMiddleware, landlordOnly, checkAccountStatus, c
         } catch (err) {
             return res.status(400).json({ message: err.message });
         }
- 
+
         if (!allPairs.length)      return res.status(400).json({ message: 'Configuration produced no unit names — check counts' });
         if (allPairs.length > 500) return res.status(400).json({ message: 'Cannot generate more than 500 units in one request' });
- 
+
         const allNames = allPairs.map(p => p.name);
         if (new Set(allNames).size !== allNames.length) {
             return res.status(400).json({ message: 'Configuration produces duplicate names within the batch — adjust prefixes or start numbers' });
         }
- 
-        const existing = await House.find({ property: propertyId, name: { $in: allNames } }).select('name');
+
+        // ── Conflict check now resolves which GROUP already owns each
+        //    colliding name, so the frontend can say "belongs to Sunrise
+        //    Tower" instead of just listing bare names. ──
+        const existing = await House.find({ property: propertyId, name: { $in: allNames } })
+            .select('name group')
+            .populate('group', 'label prefix');
         if (existing.length) {
-            const sample = existing.slice(0, 5).map(h => h.name).join(', ');
+            const conflicts = existing.slice(0, 20).map(h => ({
+                name:       h.name,
+                groupLabel: h.group?.label || h.group?.prefix || 'Ungrouped'
+            }));
             return res.status(400).json({
-                message: `${existing.length} name(s) already exist in this property: ${sample}${existing.length > 5 ? '…' : ''}`
+                message:        `${existing.length} name(s) already exist in this property`,
+                conflicts,
+                totalConflicts: existing.length
             });
         }
- 
+
+        // ── Non-blocking: detect and log prefix reuse against groups that
+        //    already existed before this request, for later audit trail. ──
+        const existingGroupsForReuseCheck = await HouseGroup.find({ property: propertyId }).select('label prefix');
+        const reuseNotices = [];
+        for (const floor of floors) {
+            const prefixTrim = (typeof floor.prefix === 'string' ? floor.prefix : '').trim().toLowerCase();
+            if (!prefixTrim) continue;
+            const match = existingGroupsForReuseCheck.find(g => (g.prefix || '').trim().toLowerCase() === prefixTrim);
+            if (match) {
+                reuseNotices.push({
+                    newLabel:       floor.label,
+                    prefix:         floor.prefix,
+                    existingGroupId: match._id,
+                    existingLabel:  match.label
+                });
+            }
+        }
+
         // Each floor/group in the request becomes its own HouseGroup document,
         // so it can be extended later and gets its own color.
         const existingGroupCount = await HouseGroup.countDocuments({ property: propertyId });
         let colorCursor = existingGroupCount;
- 
+
         const createdHouses = [];
         for (const { floor, pairs } of perFloorPairs) {
             if (!pairs.length) continue;
- 
+
             const group = await HouseGroup.create({
                 landlord:   req.user.id,
                 property:   propertyId,
-                label:      sanitize(floor.label || floor.prefix || '', 60),
+                label:      sanitize(floor.label || '', 60),
                 prefix:     typeof floor.prefix === 'string' ? floor.prefix : '',
                 padWidth:   Number.isFinite(Number(floor.padWidth)) ? Number(floor.padWidth) : 0,
-                colorIndex: colorCursor % 8   // 8 = length of the frontend color palette
+                colorIndex: colorCursor % 8
             });
             colorCursor++;
- 
+
             const docs = pairs.map(p => ({
                 name: p.name, rent, landlord: req.user.id, property: propertyId,
                 group: group._id, groupSeq: p.seq
@@ -2514,16 +2890,25 @@ app.post('/houses/generate', authMiddleware, landlordOnly, checkAccountStatus, c
             const created = await House.insertMany(docs);
             createdHouses.push(...created);
         }
- 
+
         logActivity({
             landlord: req.user.id, property: propertyId,
             action:  'houses.bulk_generated',
             message: `${createdHouses.length} units generated for ${property.name}`,
             meta:    { count: createdHouses.length }
         });
- 
+
+        reuseNotices.forEach(n => {
+            logActivity({
+                landlord: req.user.id, property: propertyId,
+                action:  'houses.prefix_reused',
+                message: `Prefix "${n.prefix}" used in new group "${n.newLabel}" is also used by existing group "${n.existingLabel}" in ${property.name} — check numbering doesn't overlap`,
+                meta:    { prefix: n.prefix, newGroupLabel: n.newLabel, existingGroupId: n.existingGroupId, existingGroupLabel: n.existingLabel }
+            });
+        });
+
         res.status(201).json({ message: `${createdHouses.length} unit(s) created ✅`, count: createdHouses.length, houses: createdHouses });
- 
+
     } catch (err) {
         console.error('generate houses error:', err.message);
         res.status(500).json({ message: err.message });
@@ -2604,10 +2989,19 @@ app.post('/houses/extend-group', authMiddleware, landlordOnly, checkAccountStatu
         }
  
         const names    = pairs.map(p => p.name);
-        const existing = await House.find({ property: propertyId, name: { $in: names } }).select('name');
+        const existing = await House.find({ property: propertyId, name: { $in: names } })
+            .select('name group')
+            .populate('group', 'label prefix');
         if (existing.length) {
-            const sample = existing.slice(0, 5).map(h => h.name).join(', ');
-            return res.status(400).json({ message: `${existing.length} name(s) already exist: ${sample}${existing.length > 5 ? '…' : ''}` });
+            const conflicts = existing.slice(0, 20).map(h => ({
+                name:       h.name,
+                groupLabel: h.group?.label || h.group?.prefix || 'Ungrouped'
+            }));
+            return res.status(400).json({
+                message:        `${existing.length} name(s) already exist`,
+                conflicts,
+                totalConflicts: existing.length
+            });
         }
  
         const docs = pairs.map(p => ({
@@ -2745,6 +3139,10 @@ app.post('/payments', authMiddleware, landlordOrCaretaker, checkAccountStatus, a
             note,
             datePaid:   new Date()
         });
+
+        // Fire-and-forget — never let a referral check delay the response.
+        checkReferralQualification(landlordScope)
+            .catch(err => console.error('Referral qualification check failed:', err.message));
 
         // Generate PDF receipt
         const doc     = new PDFDocument();
@@ -3670,6 +4068,10 @@ app.post('/callback/:secret', async (req, res) => {
 
             console.log(`✅ M-Pesa confirmed: ${mpesaCode} | ${payment.month} | ${newStatus}`);
 
+            // Fire-and-forget — a webhook callback must never be slowed down or fail on this.
+            checkReferralQualification(payment.landlord)
+                .catch(err => console.error('Referral qualification check failed:', err.message));
+
             if (payment.tenant?.email) {
             sendMpesaConfirmationEmail({
                 tenant:       payment.tenant,
@@ -4003,7 +4405,7 @@ app.get('/commission/summary/:propertyId/:month', authMiddleware, landlordOnly, 
         const property = await Property.findOne({ _id: req.params.propertyId, landlord: req.user.id });
         if (!property) return res.status(404).json({ message: 'Property not found' });
 
-        const { totalCollected, percentage, amountDue } = await computeCommissionForProperty(property._id, req.params.month);
+        const { totalCollected, percentage, amountDue, waived } = await computeCommissionForProperty(property._id, req.params.month);
 
         const alreadyPaid = await CommissionPayment.findOne({
             property: property._id,
@@ -4016,6 +4418,7 @@ app.get('/commission/summary/:propertyId/:month', authMiddleware, landlordOnly, 
             totalCollected,
             percentage,
             amountDue,
+            waived: !!waived,
             alreadyPaid: !!alreadyPaid,
             paidAt:      alreadyPaid?.paidAt || null
         });
@@ -4045,8 +4448,11 @@ app.post('/commission/pay', authMiddleware, landlordOnly, async (req, res) => {
         }
 
         // Always recompute server-side — never trust a client-supplied amount.
-        const { totalCollected, percentage, amountDue } = await computeCommissionForProperty(property._id, month);
+        const { totalCollected, percentage, amountDue, waived } = await computeCommissionForProperty(property._id, month);
 
+        if (waived) {
+            return res.status(400).json({ message: `Your referral reward covers commission for ${month} — nothing to pay 🎉`, waived: true });
+        }
         if (amountDue <= 0) {
             return res.status(400).json({ message: `Nothing owed for ${month} — no commission due.` });
         }
@@ -4666,6 +5072,54 @@ app.get('/stacklord/commission-rate-history', stacklordAuth, async (req, res) =>
     try {
         const history = await CommissionRateHistory.find().sort({ changedAt: -1 }).limit(50).lean();
         res.json({ history });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ── Stacklord: view/edit the referral-reward program ──
+// NOTE: editing these settings only affects FUTURE qualification checks and
+// FUTURE rewards. It never touches a User.referralQualifiedAt already set,
+// or a ReferralReward already granted — those are immutable snapshots by
+// design (see checkReferralQualification / ReferralReward.js).
+app.get('/stacklord/referral-settings', stacklordAuth, async (req, res) => {
+    try {
+        const settings = await getPlatformSettings();
+        res.json({
+            referralRequiredCount:       settings.referralRequiredCount || 5,
+            referralRewardDurationMonths: settings.referralRewardDurationMonths || 1,
+            referralQualificationRules:  settings.referralQualificationRules || {
+                newLandlord: true, propertySetupCompleted: true, firstPaymentProcessed: true
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.put('/stacklord/referral-settings', stacklordAuth, async (req, res) => {
+    try {
+        const requiredCount = Number(req.body.referralRequiredCount);
+        if (!Number.isInteger(requiredCount) || requiredCount < 1) {
+            return res.status(400).json({ message: 'referralRequiredCount must be a whole number of at least 1' });
+        }
+
+        const rules = req.body.referralQualificationRules || {};
+        const normalizedRules = {
+            newLandlord:            true, // registration source is always required — not a real toggle
+            propertySetupCompleted: !!rules.propertySetupCompleted,
+            firstPaymentProcessed:  !!rules.firstPaymentProcessed
+        };
+
+        let settings = await PlatformSettings.findOne();
+        if (!settings) settings = new PlatformSettings({ commissionPercentage: 0 });
+
+        settings.referralRequiredCount        = requiredCount;
+        settings.referralRewardDurationMonths = 1; // only one reward duration is supported today — kept explicit for when that changes
+        settings.referralQualificationRules   = normalizedRules;
+        await settings.save();
+
+        res.json({ message: 'Referral settings saved ✅', settings });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -5508,13 +5962,13 @@ app.post('/public/inquiries', async (req, res) => {
                 const { Resend } = require('resend');
                 const resend = new Resend(process.env.RESEND_API_KEY);
                 await resend.emails.send({
-                    from:    'Affordable Rentals 🏠 <support@affordablerentals.site>',
+                    from:    'Affordable Rentals <support@affordablerentals.site>',
                     to:      landlord.email,
-                    subject: `📩 New Inquiry — ${property.name}`,
+                    subject: `New Inquiry — ${property.name}`,
                     html: `
                     <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:560px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
                       <div style="background:linear-gradient(135deg,#1d4ed8,#0ea5e9);padding:28px 32px;text-align:center">
-                        <div style="font-size:36px;margin-bottom:8px">📩</div>
+                        <div style="font-size:36px;margin-bottom:8px">${emailIcon('mail', 36, 'white')}</div>
                         <h1 style="color:#fff;margin:0;font-size:20px;font-weight:700">New Property Inquiry</h1>
                         <p style="color:#bae6fd;margin:6px 0 0;font-size:13px">${property.name}${property.location ? ' · ' + property.location : ''}</p>
                       </div>
@@ -5532,8 +5986,8 @@ app.post('/public/inquiries', async (req, res) => {
                           </table>
                         </div>
                         <div style="display:flex;gap:12px;flex-wrap:wrap">
-                          <a href="tel:${phone}" style="display:inline-block;background:#1d4ed8;color:#fff;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600">📞 Call Now</a>
-                          <a href="https://wa.me/${phone.replace(/[^0-9]/g,'').replace(/^0/,'254')}?text=${encodeURIComponent(`Hi ${name}, I'm ${landlord.name} from ${property.name}. Thanks for your inquiry!`)}" style="display:inline-block;background:#25d366;color:#fff;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600">💬 WhatsApp</a>
+                          <a href="tel:${phone}" style="display:inline-block;background:#1d4ed8;color:#fff;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600">${emailIcon('phone', 14, 'white')} Call Now</a>
+                          <a href="https://wa.me/${phone.replace(/[^0-9]/g,'').replace(/^0/,'254')}?text=${encodeURIComponent(`Hi ${name}, I'm ${landlord.name} from ${property.name}. Thanks for your inquiry!`)}" style="display:inline-block;background:#25d366;color:#fff;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600">${emailIcon('messages', 14, 'white')} WhatsApp</a>
                         </div>
                       </div>
                       <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:14px 32px;text-align:center">

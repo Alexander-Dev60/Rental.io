@@ -26,6 +26,43 @@ const platformSettingsSchema = new mongoose.Schema({
         max:      100
     },
 
+    // ═══════════════════════════════════════════════════════════════════════
+// models/PlatformSettings.js — NOT included in your upload, so I couldn't
+// edit it directly. Add the fields below into the existing schema
+// definition (alongside commissionPercentage, platformMaintenanceMode,
+// etc.) — everything else in that file stays exactly as it is.
+// ═══════════════════════════════════════════════════════════════════════
+
+// Inside your existing `new mongoose.Schema({ ... })` block, add:
+
+    referralRequiredCount: {
+        type:    Number,
+        default: 5
+    },
+
+    // Only 1 is supported by the current app.js logic (see
+    // /stacklord/referral-settings PUT handler) — kept as its own field so
+    // multi-month rewards can be added later without a schema migration.
+    referralRewardDurationMonths: {
+        type:    Number,
+        default: 1
+    },
+
+    referralQualificationRules: {
+        newLandlord:            { type: Boolean, default: true },
+        propertySetupCompleted: { type: Boolean, default: true },
+        firstPaymentProcessed:  { type: Boolean, default: true }
+    },
+
+// ═══════════════════════════════════════════════════════════════════════
+// That's it — no other changes needed. getPlatformSettings() in app.js
+// already falls back to sensible defaults (5 / 1 / all-rules-on) via `||`
+// if these fields are momentarily absent on an old document, so this is
+// safe to deploy without a manual data migration; existing PlatformSettings
+// documents will just pick up the schema defaults the next time they're
+// loaded and re-saved.
+// ═══════════════════════════════════════════════════════════════════════
+
     platformMaintenanceMode:    { type: Boolean, default: false },
     platformMaintenanceMessage: { type: String,  default: '' },
     autoApproveListings:        { type: Boolean, default: false },

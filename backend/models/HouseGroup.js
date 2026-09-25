@@ -14,7 +14,12 @@ const mongoose = require('mongoose');
 const houseGroupSchema = new mongoose.Schema({
     landlord:   { type: mongoose.Schema.Types.ObjectId, ref: 'User',     required: true },
     property:   { type: mongoose.Schema.Types.ObjectId, ref: 'Property', required: true },
-    label:      { type: String, default: '' },   // e.g. "Ground Floor", "Block A" — shown in UI
+    label: {
+        type:      String,
+        trim:      true,
+        required:  [true, 'A group label is required'],
+        minlength: [1, 'A group label is required']
+    },  // e.g. "Ground Floor", "Block A" — shown in UI
     prefix:     { type: String, default: '' },    // e.g. "A", "1"
     padWidth:   { type: Number, default: 0 },     // zero-padding width used for this group's numbers
     colorIndex: { type: Number, default: 0 }      // cycles through the frontend's color palette

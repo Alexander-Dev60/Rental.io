@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0b0f1a">
+  <script>(function(){var t=null;try{t=localStorage.getItem('ar-public-theme');}catch(e){}if(t!=='light'&&t!=='dark'){try{t=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}catch(e){t='dark';}}document.documentElement.setAttribute('data-theme',t);var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',t==='light'?'#f5f1e6':'#0b0f1a');})();</script>
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/png" href="./public/affordablerentalsLogo.png">
@@ -11,7 +15,7 @@
   /* ══════════════════════════════
      THEME TOKENS — system adaptive
   ══════════════════════════════ */
-    :root {
+    :root, :root[data-theme="dark"] {
     --bg: #0b0f1a;
     --card: rgba(255,255,255,.08);
     --card-solid: rgba(11,15,26,.97);
@@ -34,8 +38,7 @@
     --font-m: 'Space Mono', monospace;
     --ease: cubic-bezier(.4,0,.2,1);
   }
-    @media (prefers-color-scheme: light) {
-    :root {
+:root[data-theme="light"] {
       --bg: #f5f1e6;
       --card: rgba(255,255,255,.62);
       --card-solid: rgba(245,241,230,.98);
@@ -54,7 +57,6 @@
       --overlay-b: rgba(247,239,220,.18);
       --img-filter: blur(4px) brightness(.72) sepia(.06);
     }
-  }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
@@ -225,20 +227,8 @@
   }
   .highlight-box [data-icon] { color: var(--primary); flex-shrink: 0; margin-top: 2px; }
 
-  /* FOOTER */
-  .doc-footer {
-    position: relative; z-index: 1;
-    background: var(--card); backdrop-filter: blur(22px);
-    border-top: 1px solid var(--border2);
-    padding: 22px 2rem; text-align: center;
-    font-family: var(--font-m); font-size: .58rem;
-    color: var(--muted2); letter-spacing: .08em; line-height: 2.2;
-  }
-  .doc-footer a { color: var(--muted); text-decoration: none; transition: color .2s; }
-  .doc-footer a:hover { color: var(--primary); }
-  .footer-sep { margin: 0 8px; opacity: .3; }
-  .doc-footer p .ico { color: var(--gold); vertical-align: -1px; }
   </style>
+  <link rel="stylesheet" href="public.css">
 </head>
 <body>
 
@@ -276,7 +266,10 @@
     </div>
     <span class="nav-logo-name">Affordable Rentals</span>
   </a>
-  <a href="index.html" class="nav-back">← Back to Home</a>
+  <div class="ar-nav-right">
+    <a href="index.html" class="nav-back"><span class="ar-i" data-icon="arrowLeft" data-icon-size="12"></span> Back to Home</a>
+    <span data-theme-toggle></span>
+  </div>
 </nav>
 
 <!-- HERO -->
@@ -449,21 +442,21 @@
 </div>
 
 <!-- FOOTER -->
-<div class="doc-footer">
-  <p>© 2026 Affordable Rentals · All rights reserved · Built with <span data-icon="heart" data-icon-size="9"></span> in Kenya</p>
-  <p>
-    <a href="privacy.html">Privacy Policy</a>
-    <span class="footer-sep">·</span>
-    <a href="index.html">Home</a>
-    <span class="footer-sep">·</span>
-    <a href="auth.html">Login</a>
-    <span class="footer-sep">·</span>
-    <a href="listings.html">Browse Properties</a>
-  </p>
-</div>
+<footer class="ar-footer">
+  <div class="ar-footer-inner">
+    <nav class="ar-footer-links" aria-label="Footer">
+      <a href="index.html">Home</a>
+      <a href="listings.html">Browse Properties</a>
+      <a href="auth.html">Login</a>
+      <a href="privacy.html">Privacy Policy</a>
+    </nav>
+    <p class="ar-footer-copy">&copy; 2026 Affordable Rentals &middot; All rights reserved &middot; Built with <span class="ar-i" data-icon="heart" data-icon-size="10"></span> in Kenya</p>
+  </div>
+</footer>
 
 <!-- icons.js must load before wireIcons() runs -->
 <script src="icons.js"></script>
+<script src="public.js"></script>
 <script>
 (function wireIcons() {
   try {
@@ -484,5 +477,14 @@
   setInterval(() => { imgs[i].classList.remove('active'); i = (i+1)%imgs.length; imgs[i].classList.add('active'); }, BG_INTERVAL);
 })();
 </script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("service-worker.js").catch(err => {
+          console.error("Service Worker registration failed:", err);
+        });
+      });
+    }
+  </script>
 </body>
 </html>

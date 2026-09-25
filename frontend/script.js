@@ -70,14 +70,14 @@ function isCaretaker() {
     return document.documentElement.getAttribute('data-caretaker') === 'true';
 }
 
-function getCaretakerPermissions() {
+/*function getCaretakerPermissions() {
     try {
         const raw = localStorage.getItem('caretakerPermissions');
         return raw ? JSON.parse(raw) : null;
     } catch {
         return null;
     }
-}
+}*/
 
 // Returns true if the action is allowed. If not, shows a toast and returns
 // false — call this as an early-return guard at the top of any action
@@ -232,6 +232,13 @@ async function checkPlatformMaintenance() {
         console.error('checkPlatformMaintenance error:', err.message);
         return false; // fail open — don't block the dashboard on a network hiccup
     }
+}
+
+function hidePageLoader() {
+    const el = document.getElementById('pageLoader');
+    if (!el) return;
+    el.classList.add('hide');
+    setTimeout(() => el.remove(), 300);
 }
 
 function showPlatformMaintenanceOverlay(message) {
@@ -1054,6 +1061,77 @@ function _pollCommission(propertyId, month) {
         } catch (err) { console.error('Commission poll error:', err.message); }
     }, 3000);
 }
+
+
+// ═══════════════════════════════════════════════════════
+//  REFERRAL PROGRAM
+// ═══════════════════════════════════════════════════════
+
+const REFERRAL_PROMPT_COOLDOWN_DAYS = 14;
+
+function _referralPromptKey() {
+    return `referralPromptLastShown_${getPropertyId() ? 'x' : 'x'}`; // one key per browser is fine — not per property
+}
+
+async function maybeShowReferralModal() {
+    if (IS_CARETAKER) return;
+    if (document.querySelector('.modal-overlay.open')) return; // never stack on top of onboarding/others
+    // The spotlight tour isn't a `.modal-overlay`, so the check above never
+    // catches it — check separately via the flag dashboard.html exposes.
+    // No retry here: if this is a first-ever login the tour is running for
+    // the FIRST and only time (it's gated behind a one-time "seen" flag), so
+    // simply skipping this call is enough — the very next login will call
+    // this again with the tour no longer running, and show normally.
+    if (typeof window.isTourActive === 'function' && window.isTourActive()) return;
+    if (localStorage.getItem('onboardingComplete') === 'false') return; // let onboarding finish first
+    if (localStorage.getItem('accountStatus') === 'suspended') return;
+
+    const key  = 'referralPromptLastShown';
+    const last = Number(localStorage.getItem(key) || 0);
+    const cooldownMs = REFERRAL_PROMPT_COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
+    if (Date.now() - last < cooldownMs) return;
+
+    localStorage.setItem(key, String(Date.now()));
+    await loadReferralData();
+    openModal('modal-referral');
+}
+
+async function loadReferralData() {
+    try {
+        const res  = await fetch(`${API}/landlord/referrals`, { headers: authHeaders() });
+        const data = await res.json();
+        if (!res.ok) return;
+
+        const link = `${window.location.origin}/auth.html?ref=${data.referralCode}`;
+        const linkInput = document.getElementById('referralLinkInput');
+        if (linkInput) linkInput.value = link;
+
+        // Rendering lives in dashboard.js (renderReferralProgress) — this
+        // function only fetches, per this file's fetch/render split.
+        renderReferralProgress(data);
+
+    } catch (err) {
+        console.error('loadReferralData error:', err.message);
+    }
+}
+
+function copyReferralLink() {
+    const input = document.getElementById('referralLinkInput');
+    if (!input || !input.value) return;
+    navigator.clipboard.writeText(input.value)
+        .then(() => showToast('Referral link copied ', 'success'))
+        .catch(() => { input.select(); showToast('Select and copy the link above', 'warn'); });
+}
+
+function shareReferralWhatsApp() {
+    const link = document.getElementById('referralLinkInput')?.value;
+    if (!link) return;
+    const text = encodeURIComponent(
+        `I've been using Affordable Rentals to manage my rental property — it's free, and handles M-Pesa payments, tenants and everything else in one place. Join with my link — refer enough landlords and you get a commission-free month: ${link}`
+    );
+    window.open(`https://wa.me/?text=${text}`, '_blank', 'noopener');
+}
+
 
 // ═══════════════════════════════════════════════════════
 //  DANGER CONFIRM MODAL
@@ -3117,7 +3195,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (window.__AUTH_INVALID__) return;
 
     const underMaintenance = await checkPlatformMaintenance();
-    if (underMaintenance) return;
+    if (underMaintenance) { hidePageLoader(); return; }
 
     const saved = localStorage.getItem('admin-theme') || 'dark';
     setTheme(saved);
@@ -3155,6 +3233,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     applyCaretakerPermissionUI();
 
     loadDashboard();
+    hidePageLoader();
 });
 // ═══════════════════════════════════════
 // POLLING

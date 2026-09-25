@@ -1,11 +1,87 @@
 // ═══════════════════════════════════════════════════════
-//  auth.js — Authentication + Discovery Slideshow
-//  Handles: login, landlord registration,
-//           forced password change (tenant first login),
-//           public property discovery panel
+//  auth.js — Authentication + Explore Strip + Page Loader
+//
+//  This file is the single source of truth for auth.html's
+//  behaviour. It replaces the old inline <script> blocks that
+//  used to live directly in auth.html, and supersedes the
+//  previous standalone auth.js, which still referenced a
+//  "discovery panel" (#discoveryPanel, #discPhoto, #discSlide...)
+//  that no longer exists in the current markup — that dead code
+//  has been dropped. The "Explore Properties" strip at the top
+//  of auth.html is the current replacement and is the version
+//  kept here.
 // ═══════════════════════════════════════════════════════
 
 const API = window.API;
+
+// ── Referral capture ──
+// If this page was opened via a referral link (?ref=<code> — see
+// getOrCreateReferralCode() in app.js for where the code comes from), stash
+// it the moment the page loads. sessionStorage (not localStorage) is
+// deliberate: it should survive switching between the Login/Register tabs
+// and a page refresh in this same visit, but not linger indefinitely and
+// silently attribute some unrelated signup days later on the same device.
+(function captureReferralCode() {
+    const ref = new URLSearchParams(window.location.search).get('ref');
+    if (ref) sessionStorage.setItem('referralCode', ref.trim());
+})();
+
+
+// ── Referral banner ──
+// Shows a small "you were referred by X" note on the register panel once
+// captureReferralCode() (above) has stashed a code. Best-effort: if the
+// lookup fails or the code is invalid, the banner still shows with its
+// generic fallback text rather than being hidden or left blank — a landlord
+// who came in via a referral link should always see they were credited.
+async function showReferralBanner() {
+    const ref = sessionStorage.getItem('referralCode');
+    if (!ref) return;
+
+    const note = document.getElementById('referralNote');
+    if (!note) return;
+
+    note.style.display = 'flex';
+
+    try {
+        const res = await fetch(`${API}/public/referral-info/${encodeURIComponent(ref)}`);
+        if (!res.ok) return; // keep the generic fallback text
+        const data = await res.json();
+        const nameEl = document.getElementById('referralByName');
+        if (nameEl && data.name) nameEl.textContent = data.name;
+    } catch (err) {
+        console.warn('Referral lookup failed:', err.message);
+        // Banner already shown with fallback text — nothing more to do
+    }
+}
+
+
+// ═══════════════════════════════════════
+// PAGE LOADER
+// ═══════════════════════════════════════
+//
+// A full-page overlay shown from first paint until the page has
+// enough data to be useful: the auth-check redirect has had a
+// chance to run, AND the Explore Properties strip has resolved
+// (success or failure — we never block forever on a slow/failed
+// fetch). Markup for #pageLoader is expected in auth.html.
+
+let _loaderExploreDone = false;
+let _loaderMinTimeDone = false;
+
+function _tryHidePageLoader() {
+    if (!_loaderExploreDone || !_loaderMinTimeDone) return;
+    const el = document.getElementById('pageLoader');
+    if (!el) return;
+    el.classList.add('hide');
+    setTimeout(() => el.remove(), 300);
+}
+
+function initPageLoader() {
+    // Small minimum display time so the loader never just flashes
+    // and disappears on a fast connection — avoids a jarring blink.
+    setTimeout(() => { _loaderMinTimeDone = true; _tryHidePageLoader(); }, 350);
+}
+
 
 // ── Decode JWT payload safely ──
 function getUserFromToken(token) {
@@ -44,12 +120,16 @@ function showToast(msg, type = '') {
     t._timer = setTimeout(() => { t.className = ''; }, 3500);
 }
 
-// ── Loading state ──
+// ── Loading state (buttons) ──
+// Shows a small inline spinner (see .btn-spinner in auth.html) instead of
+// just swapping text, so the pending state is visible even at a glance.
 function setLoading(btnId, on, defaultText) {
     const btn = document.getElementById(btnId);
     if (!btn) return;
-    btn.disabled    = on;
-    btn.textContent = on ? 'Please wait…' : defaultText;
+    btn.disabled  = on;
+    btn.innerHTML = on
+        ? '<span class="btn-spinner"></span>Please wait…'
+        : defaultText;
 }
 
 // ── Store active property in localStorage ──
@@ -58,6 +138,106 @@ function storeActiveProperty(properties) {
     const first = properties[0];
     localStorage.setItem('activePropertyId',   first._id  || first.id);
     localStorage.setItem('activePropertyName', first.name || 'Property');
+}
+
+
+// ═══════════════════════════════════════
+// BACKGROUND SLIDESHOW
+// ═══════════════════════════════════════
+
+function initBgSlideshow() {
+    const BG_INTERVAL = 5 * 60 * 1000; // 5 minutes
+    const bgImgs = document.querySelectorAll('.bg img');
+    if (!bgImgs.length) return;
+    let bgIdx = 0;
+    setInterval(() => {
+        bgImgs[bgIdx].classList.remove('active');
+        bgIdx = (bgIdx + 1) % bgImgs.length;
+        bgImgs[bgIdx].classList.add('active');
+    }, BG_INTERVAL);
+}
+
+
+// ═══════════════════════════════════════
+// HERO TYPEWRITER
+// ═══════════════════════════════════════
+
+function initHeroTypewriter() {
+    const phrases = [
+        'Pay your rent securely online.',
+        'Track every payment receipt.',
+        'Message your landlord directly.',
+        'Manage your properties with ease.',
+        'View outstanding arrears at a glance.',
+        'Receive instant PDF receipts by email.',
+        'Stay informed with announcements.',
+        'Monitor tenant balances in real-time.',
+    ];
+    let phraseIdx = 0, charIdx = 0, deleting = false;
+    const twEl = document.getElementById('typewriterEl');
+    if (!twEl) return;
+
+    function typeStep() {
+        const phrase = phrases[phraseIdx];
+        if (!deleting) {
+            charIdx++;
+            twEl.textContent = phrase.slice(0, charIdx);
+            if (charIdx === phrase.length) { deleting = true; setTimeout(typeStep, 2000); return; }
+            setTimeout(typeStep, 48 + Math.random() * 28);
+        } else {
+            charIdx--;
+            twEl.textContent = phrase.slice(0, charIdx);
+            if (charIdx === 0) {
+                deleting = false;
+                phraseIdx = (phraseIdx + 1) % phrases.length;
+                setTimeout(typeStep, 420); return;
+            }
+            setTimeout(typeStep, 22 + Math.random() * 14);
+        }
+    }
+    setTimeout(typeStep, 900);
+}
+
+
+// ═══════════════════════════════════════
+// ROLE PICKER / TABS / PASSWORD EYE TOGGLES
+// ═══════════════════════════════════════
+
+// Tenants always sign in (no self-registration); landlords can do either,
+// default them to Create Account since that's the only new-user path.
+function pickRole(role) {
+    document.getElementById('roleTenant').classList.toggle('active', role === 'tenant');
+    document.getElementById('roleLandlord').classList.toggle('active', role === 'landlord');
+    switchTab(role === 'landlord' ? 'register' : 'login');
+}
+
+function switchTab(tab) {
+    document.getElementById('tabLogin').classList.toggle('active',    tab === 'login');
+    document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
+    document.getElementById('panelLogin').classList.toggle('active',    tab === 'login');
+    document.getElementById('panelRegister').classList.toggle('active', tab === 'register');
+    const hint = document.getElementById('tenantHint');
+    if (hint) hint.style.display = tab === 'login' ? 'flex' : 'none';
+    // Keep role picker in sync if user clicked the tabs directly instead
+    if (tab === 'register') {
+        document.getElementById('roleTenant').classList.remove('active');
+        document.getElementById('roleLandlord').classList.add('active');
+    }
+}
+
+function toggleRegisterBtn() {
+    const btn     = document.getElementById('registerBtn');
+    const checked = document.getElementById('regTerms')?.checked;
+    if (btn) btn.disabled = !checked;
+}
+
+function toggleEye(inputId, iconId) {
+    const inp     = document.getElementById(inputId);
+    const showing = inp.type === 'text';
+    inp.type = showing ? 'password' : 'text';
+    document.getElementById(iconId).innerHTML = showing
+        ? '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'
+        : '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>';
 }
 
 
@@ -87,25 +267,21 @@ async function submitLogin() {
 
         if (!res.ok) {
             showToast(data.message || 'Login failed. Please try again.', 'error');
-            setLoading('loginBtn', false, 'Sign In');
-            return;
+            setLoading('loginBtn', false, 'Sign In'); return;
         }
 
         const token = data.token;
         if (!token) {
             showToast('No token received from server.', 'error');
-            setLoading('loginBtn', false, 'Sign In');
-            return;
+            setLoading('loginBtn', false, 'Sign In'); return;
         }
 
         const user = getUserFromToken(token);
         if (!user) {
             showToast('Invalid token received.', 'error');
-            setLoading('loginBtn', false, 'Sign In');
-            return;
+            setLoading('loginBtn', false, 'Sign In'); return;
         }
 
-        // ── Tenant: forced password change on first login ──
         if (user.mustChangePassword) {
             localStorage.setItem('token', token);
             localStorage.setItem('user', JSON.stringify(user));
@@ -125,9 +301,6 @@ async function submitLogin() {
             }
         }
 
-        // ── Caretaker: stash their assigned properties, employer name, and
-        // permission flags so dashboard.js can restrict the UI without a
-        // second round-trip on page load. ──
         if (user.role === 'caretaker') {
             localStorage.setItem('caretakerLandlordName', data.landlord?.name || '');
             localStorage.setItem('caretakerPermissions',  JSON.stringify(data.permissions || {}));
@@ -168,35 +341,44 @@ async function submitRegister() {
     if (!propertyName)     { showToast('Property name is required.',      'error'); return; }
     if (!propertyLocation) { showToast('Property location is required.',  'error'); return; }
     if (!password)         { showToast('Password is required.',           'error'); return; }
-    if (password.length < 6) {
-                             showToast('Password must be at least 6 characters.', 'error'); return; }
+    if (password.length < 6) { showToast('Password must be at least 6 characters.', 'error'); return; }
     if (password !== confirm) { showToast('Passwords do not match.',      'error'); return; }
+    if (!document.getElementById('regTerms')?.checked) {
+        showToast('Please agree to the Terms of Service and Privacy Policy.', 'error'); return;
+    }
 
     setLoading('registerBtn', true, 'Create Landlord Account');
+
+    // Referral attribution — carried through from ?ref=<code> on the link
+    // that brought them here (see auth.html's inline capture-on-load script,
+    // just below). Silently omitted if absent; the backend already treats a
+    // missing/invalid code as "no referral" without blocking signup.
+    const ref = sessionStorage.getItem('referralCode') || '';
 
     try {
         const res  = await fetch(`${API}/landlord/register`, {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ name, email, phone, propertyName, propertyLocation, password }),
+            body:    JSON.stringify({
+                name, email, phone, propertyName, propertyLocation, password,
+                ...(ref && { ref }),
+                termsAccepted: document.getElementById('regTerms')?.checked === true
+            }),
         });
         const data = await res.json();
 
         if (!res.ok) {
             showToast(data.message || 'Registration failed. Please try again.', 'error');
-            setLoading('registerBtn', false, 'Create Landlord Account');
-            return;
+            setLoading('registerBtn', false, 'Create Landlord Account'); return;
         }
 
         const token = data.token;
         if (!token) {
             showToast('No token received from server.', 'error');
-            setLoading('registerBtn', false, 'Create Landlord Account');
-            return;
+            setLoading('registerBtn', false, 'Create Landlord Account'); return;
         }
 
         const user = getUserFromToken(token);
-
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(user));
         localStorage.setItem('onboardingComplete', 'false');
@@ -207,8 +389,10 @@ async function submitRegister() {
             localStorage.setItem('activePropertyName', data.property.name || propertyName);
         }
 
+        sessionStorage.removeItem('referralCode');
+
         showToast('Account created! Setting up your dashboard…', 'success');
-        setTimeout(() => { window.location.href = 'index.html'; }, 1000);
+        setTimeout(() => { window.location.href = dashboardFor(user.role); }, 1000);
 
     } catch (err) {
         console.error('Register error:', err);
@@ -219,228 +403,159 @@ async function submitRegister() {
 
 
 // ═══════════════════════════════════════════════════════
-// DISCOVERY PANEL — live property slideshow
+// EXPLORE STRIP — rotating property grid + location search
 // ═══════════════════════════════════════════════════════
 
-let _discListings   = [];
-let _discCurrent    = 0;
-let _discTimer      = null;
-let _discPaused     = false;
-const DISC_INTERVAL = 5500; // ms per slide
+let _properties     = [];
+let _locationIndex  = [];
+let _exploreOffset  = 0;
+let _exploreTimer   = null;
+const EXPLORE_SLOTS = 4;
+const EXPLORE_INTERVAL = 6000;
 
-async function initDiscovery() {
-    // Only run if the panel exists and the API is reachable
-    const panel = document.getElementById('discoveryPanel');
-    if (!panel || !window.API) {
-        _showDiscLoader(false);
-        return;
-    }
+function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str == null ? '' : String(str);
+    return d.innerHTML;
+}
 
+async function initExplore() {
+    const grid = document.getElementById('exploreGrid');
+    if (!grid || !window.API) { renderExploreEmpty(); _loaderExploreDone = true; _tryHidePageLoader(); return; }
     try {
         const res = await fetch(`${window.API}/public/listings`);
-        if (!res.ok) throw new Error(`${res.status}`);
-        _discListings = await res.json();
+        if (!res.ok) throw new Error(res.status);
+        _properties = await res.json();
     } catch (err) {
-        console.warn('Discovery fetch failed:', err.message);
-        _discListings = [];
+        console.warn('Explore fetch failed:', err.message);
+        _properties = [];
     }
 
-    if (!_discListings.length) {
-        _showDiscEmpty();
-        return;
+    _loaderExploreDone = true;
+    _tryHidePageLoader();
+
+    if (!_properties.length) { renderExploreEmpty(); return; }
+
+    renderExploreGrid();
+    buildLocationIndex();
+
+    if (_properties.length > EXPLORE_SLOTS) {
+        _exploreTimer = setInterval(() => {
+            _exploreOffset = (_exploreOffset + EXPLORE_SLOTS) % _properties.length;
+            renderExploreGrid();
+        }, EXPLORE_INTERVAL);
     }
 
-    // Update listing count badge in header
-    const countEl = document.getElementById('discCount');
-    if (countEl) {
-        countEl.textContent   = _discListings.length;
-        countEl.style.display = 'inline-flex';
-    }
-
-    // Render first slide and start rotation
-    _discRenderSlide(0);
-    _discRenderDots();
-    _discStart();
-
-    // Pause / resume on hover
-    panel.addEventListener('mouseenter', () => { _discPaused = true; });
-    panel.addEventListener('mouseleave', () => { _discPaused = false; });
-
-    // Poll every 30 s to refresh vacancy counts without restarting slideshow
+    // Refresh data quietly every 30s (vacancy counts / new listings)
     setInterval(async () => {
         try {
             const res = await fetch(`${window.API}/public/listings`);
             if (!res.ok) return;
-            const fresh = await res.json();
-            _discListings = fresh;
-            // Silently re-render current slide so counts update in place
-            _discRenderSlide(_discCurrent, /* silent */ true);
+            _properties = await res.json();
+            buildLocationIndex();
         } catch {}
     }, 30000);
 }
 
-
-// ── Render one slide ──
-// silent = true skips the entrance animation (used for poll updates)
-function _discRenderSlide(idx, silent) {
-    const listing = _discListings[idx];
-    if (!listing) return;
-
-    _discCurrent = idx;
-
-    const photoEl   = document.getElementById('discPhoto');
-    const initialEl = document.getElementById('discInitial');
-    const counterEl = document.getElementById('discCounter');
-    const overlayEl = document.getElementById('discOverlay');
-    const locEl     = document.getElementById('discLocationText');
-    const nameEl    = document.getElementById('discName');
-    const vacantEl  = document.getElementById('discVacant');
-    const rentEl    = document.getElementById('discRent');
-    const descEl    = document.getElementById('discDesc');
-
-    // ── Photo ──
-    if (listing.photos?.length) {
-        photoEl.style.backgroundImage = `url('${listing.photos[0]}')`;
-        photoEl.classList.remove('disc-no-photo');
-        if (initialEl) initialEl.textContent = '';
-    } else {
-        photoEl.style.backgroundImage = '';
-        photoEl.classList.add('disc-no-photo');
-        if (initialEl) initialEl.textContent = (listing.name || '?')[0].toUpperCase();
-    }
-
-    // ── Location + name ──
-    if (locEl)  locEl.textContent  = listing.location || '—';
-    if (nameEl) nameEl.textContent = listing.name     || '—';
-
-    // ── Vacancy chip ──
-    if (vacantEl) {
-        vacantEl.classList.remove('disc-chip-full');
-        if (listing.vacantCount > 0) {
-            vacantEl.textContent   = listing.vacantCount === 1
-                ? '1 unit available'
-                : `${listing.vacantCount} units available`;
-            vacantEl.style.display = 'inline-flex';
-        } else {
-            vacantEl.textContent   = 'Fully occupied';
-            vacantEl.style.display = 'inline-flex';
-            vacantEl.classList.add('disc-chip-full');
-        }
-    }
-
-    // ── Rent range chip ──
-    if (rentEl) {
-        if (listing.rentRange) {
-            const mn = Number(listing.rentRange.min).toLocaleString();
-            const mx = Number(listing.rentRange.max).toLocaleString();
-            rentEl.textContent   = mn === mx ? `Ksh ${mn}` : `Ksh ${mn} – ${mx}`;
-            rentEl.style.display = 'inline-flex';
-        } else {
-            rentEl.style.display = 'none';
-        }
-    }
-
-    // ── Description ──
-    if (descEl) {
-        descEl.textContent = listing.description && listing.description.trim()
-            ? listing.description
-            : 'Contact the landlord for more details about this property.';
-    }
-
-    // ── Counter "2 / 5" ──
-    if (counterEl) {
-        counterEl.textContent   = `${idx + 1} / ${_discListings.length}`;
-        counterEl.style.display = _discListings.length > 1 ? 'block' : 'none';
-    }
-
-    // ── Show overlay (hidden until first slide renders) ──
-    if (overlayEl) overlayEl.style.display = 'block';
-
-    // ── Animate slide content in ──
-    if (!silent) {
-        const slideEl = document.getElementById('discSlide');
-        if (slideEl) {
-            slideEl.classList.remove('disc-slide-in');
-            void slideEl.offsetWidth; // force reflow so animation retriggers
-            slideEl.classList.add('disc-slide-in');
-        }
-    }
-
-    // ── Update dot indicators ──
-    document.querySelectorAll('.disc-dot').forEach((dot, i) => {
-        dot.classList.toggle('active', i === idx);
-    });
-
-    // ── Restart progress bar (skip on silent poll updates) ──
-    if (!silent) _discProgress();
+function renderExploreEmpty() {
+    const grid = document.getElementById('exploreGrid');
+    if (grid) grid.innerHTML = `<div class="explore-empty">${ICON('properties', 22)}No properties listed yet. Check back soon.</div>`;
 }
 
+function renderExploreGrid() {
+    const grid = document.getElementById('exploreGrid');
+    if (!grid) return;
+    const count = Math.min(EXPLORE_SLOTS, _properties.length);
+    const slice = [];
+    for (let i = 0; i < count; i++) {
+        slice.push(_properties[(_exploreOffset + i) % _properties.length]);
+    }
+    grid.innerHTML = slice.map(p => {
+        const hasPhoto = Array.isArray(p.photos) && p.photos.length > 0;
+        const style = hasPhoto ? ` style="background-image:url('${p.photos[0]}')"` : '';
+        const cls   = hasPhoto ? '' : ' no-photo';
+        return `
+          <a class="explore-card" href="listings.html">
+            <div class="explore-card-photo${cls}"${style}></div>
+            <div class="explore-card-overlay">
+              <div class="explore-card-name">${escapeHtml(p.name || '—')}</div>
+              <div class="explore-card-loc">${ICON('pin', 9)} ${escapeHtml(p.location || '—')}</div>
+            </div>
+          </a>`;
+    }).join('');
+}
 
-// ── Render dot nav ──
-function _discRenderDots() {
-    const container = document.getElementById('discDots');
-    if (!container || _discListings.length <= 1) {
-        if (container) container.style.display = 'none';
+// ── Location search ──
+function buildLocationIndex() {
+    const counts = {};
+    _properties.forEach(p => {
+        const loc = (p.location || '').trim();
+        if (!loc) return;
+        counts[loc] = (counts[loc] || 0) + 1;
+    });
+    _locationIndex = Object.entries(counts)
+        .map(([location, count]) => ({ location, count }))
+        .sort((a, b) => b.count - a.count);
+}
+
+function renderLocationDropdown(items) {
+    const dd = document.getElementById('locationDropdown');
+    if (!dd) return;
+    if (!items.length) {
+        dd.innerHTML = '<div class="location-dropdown-empty">No matching locations.</div>';
         return;
     }
-    container.innerHTML = _discListings
-        .map((_, i) => `<span class="disc-dot${i === 0 ? ' active' : ''}" onclick="discGoTo(${i})"></span>`)
-        .join('');
+    dd.innerHTML = items.slice(0, 8).map(it => `
+        <div class="location-dropdown-item" role="button" tabindex="0"
+             onclick="goToLocation('${encodeURIComponent(it.location)}')"
+             onkeydown="if(event.key==='Enter')goToLocation('${encodeURIComponent(it.location)}')">
+          <span>${escapeHtml(it.location)}</span>
+          <span class="location-dropdown-count">${it.count} ${it.count === 1 ? 'property' : 'properties'}</span>
+        </div>`).join('');
+}
+
+function goToLocation(encodedLoc) {
+    window.location.href = `listings.html?location=${encodedLoc}`;
+}
+
+function setupLocationSearch() {
+    const input = document.getElementById('locationSearch');
+    const dd    = document.getElementById('locationDropdown');
+    if (!input || !dd) return;
+
+    input.addEventListener('focus', () => {
+        renderLocationDropdown(_locationIndex);
+        dd.classList.add('show');
+    });
+    input.addEventListener('input', () => {
+        const q = input.value.trim().toLowerCase();
+        const filtered = q
+            ? _locationIndex.filter(it => it.location.toLowerCase().includes(q))
+            : _locationIndex;
+        renderLocationDropdown(filtered);
+        dd.classList.add('show');
+    });
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') { dd.classList.remove('show'); input.blur(); }
+    });
+    document.addEventListener('click', (e) => {
+        if (!dd.contains(e.target) && e.target !== input) dd.classList.remove('show');
+    });
 }
 
 
-// ── Public: go to specific slide (called from dot onclick) ──
-function discGoTo(idx) {
-    _discStop();
-    _discRenderSlide(idx);
-    _discStart();
-}
+// ═══════════════════════════════════════
+// GLOBAL KEYDOWN — Enter submits the active form
+// ═══════════════════════════════════════
 
-
-// ── Slideshow timer ──
-function _discStart() {
-    _discStop();
-    if (_discListings.length <= 1) return; // no rotation needed for single listing
-    _discTimer = setInterval(() => {
-        if (!_discPaused) {
-            const next = (_discCurrent + 1) % _discListings.length;
-            _discRenderSlide(next);
-        }
-    }, DISC_INTERVAL);
-}
-
-function _discStop() {
-    if (_discTimer) { clearInterval(_discTimer); _discTimer = null; }
-}
-
-
-// ── Gold progress bar ──
-function _discProgress() {
-    const fill = document.getElementById('discProgressFill');
-    if (!fill) return;
-    // Reset instantly, then animate to 100% over the interval duration
-    fill.style.transition = 'none';
-    fill.style.width      = '0%';
-    fill.getBoundingClientRect(); // force reflow
-    fill.style.transition = `width ${DISC_INTERVAL}ms linear`;
-    fill.style.width      = '100%';
-}
-
-
-// ── Show loader / hide it ──
-function _showDiscLoader(visible) {
-    const el = document.getElementById('discLoader');
-    if (el) el.style.display = visible ? 'flex' : 'none';
-}
-
-
-// ── Empty state ──
-function _showDiscEmpty() {
-    _showDiscLoader(false);
-    const emptyEl = document.getElementById('discEmpty');
-    if (emptyEl) emptyEl.style.display = 'flex';
-    const descEl = document.getElementById('discDesc');
-    if (descEl) descEl.textContent = 'No properties are listed yet. Check back soon.';
+function setupEnterToSubmit() {
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        // Don't hijack Enter when the user is inside the location search box
+        if (e.target && e.target.id === 'locationSearch') return;
+        if (document.getElementById('panelLogin')?.classList.contains('active')) submitLogin();
+        else submitRegister();
+    });
 }
 
 
@@ -448,7 +563,24 @@ function _showDiscEmpty() {
 // INIT
 // ═══════════════════════════════════════
 
+document.addEventListener('DOMContentLoaded', function () {
+    const params = new URLSearchParams(window.location.search);
+    const tab    = params.get('tab');
+    const ref    = params.get('ref');
+
+    // A referral code only ever applies to landlord self-registration, so
+    // treat it the same as ?tab=register — jump straight to Create Account
+    // instead of making a referred landlord click through manually.
+    if (tab === 'register' || ref) pickRole('landlord');
+});
+
 window.addEventListener('load', () => {
+    initPageLoader();
     checkAuthOnLoad();
-    initDiscovery();
+    initBgSlideshow();
+    initHeroTypewriter();
+    initExplore();
+    setupLocationSearch();
+    setupEnterToSubmit();
+    showReferralBanner();
 });

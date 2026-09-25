@@ -1,9 +1,12 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0b0f1a">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" type="image/svg+xml" href="./public/favicon.svg">
+  <link rel="icon" type="image/svg+xml" href="./public/affordablerentalsLogo.png">
   <title>Stacklord Console</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
@@ -98,18 +101,21 @@
   /* ══════════════════════════════
      PLATFORM MAINTENANCE LOCK SCREEN
   ══════════════════════════════ */
-  #maintenanceLock {
-    display: none; position: fixed; inset: 0; z-index: 2000;
-    background: var(--bg); align-items: center; justify-content: center;
-    padding: 1.5rem; text-align: center;
-  }
-  #maintenanceLock.show { display: flex; }
-  .maint-lock-box { max-width: 460px; }
-  .maint-lock-icon { display: flex; justify-content: center; margin-bottom: 1rem; color: var(--amber); }
-  .maint-lock-title { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.7rem; color: var(--amber); margin-bottom: 0.75rem; }
-  .maint-lock-desc { font-size: 0.85rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 1.25rem; }
-  .maint-lock-note { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--text-dim); }
-
+ /* ══════════════════════════════
+   LOGIN SCREEN — inline maintenance notice
+   (replaces the old full-screen #maintenanceLock overlay,
+   which sat on top of the login form and blocked it entirely)
+══════════════════════════════ */
+#loginMaintNotice {
+  display: flex; align-items: flex-start; gap: 0.65rem;
+  background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.3);
+  border-radius: 8px; padding: 0.75rem 0.9rem;
+  margin-bottom: 1.25rem; text-align: left;
+}
+.login-maint-icon { color: var(--amber); flex-shrink: 0; margin-top: 1px; }
+.login-maint-title { font-size: 0.78rem; font-weight: 700; color: var(--amber); margin-bottom: 0.25rem; }
+.login-maint-desc { font-size: 0.74rem; color: var(--text-muted); line-height: 1.55; margin-bottom: 0.35rem; }
+.login-maint-note { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: var(--text-dim); letter-spacing: 0.02em; }
   /* ══════════════════════════════
      SIDEBAR OVERLAY (mobile)
   ══════════════════════════════ */
@@ -634,16 +640,6 @@
 </head>
 <body>
 
-<!-- ═══ PLATFORM MAINTENANCE LOCK (shown if platform is down and not yet authenticated as stacklord) ═══ -->
-<div id="maintenanceLock">
-  <div class="maint-lock-box">
-    <span class="maint-lock-icon" data-icon="wrench" data-icon-size="48"></span>
-    <div class="maint-lock-title">Platform Under Maintenance</div>
-    <div class="maint-lock-desc" id="maintenanceLockDesc">Affordable Rentals is temporarily down for maintenance.</div>
-    <div class="maint-lock-note">The Stacklord console remains reachable — log in below to manage the platform.</div>
-  </div>
-</div>
-
 <!-- ═══ LOGIN ═══ -->
 <div id="loginScreen">
   <div class="login-box">
@@ -652,6 +648,17 @@
       <div class="login-title">Stacklord</div>
       <div class="login-sub">// super admin console</div>
     </div>
+
+    <!-- Platform maintenance notice — inline, never covers the form below it -->
+    <div id="loginMaintNotice" style="display:none">
+      <span class="login-maint-icon" data-icon="wrench" data-icon-size="18"></span>
+      <div>
+        <div class="login-maint-title">Platform under maintenance</div>
+        <div class="login-maint-desc" id="maintenanceLockDesc">Affordable Rentals is temporarily down for maintenance.</div>
+        <div class="login-maint-note">The Stacklord console stays reachable — log in below to manage the platform.</div>
+      </div>
+    </div>
+
     <div class="login-field">
       <input type="password" id="masterKey" placeholder="Enter master key…" onkeydown="if(event.key==='Enter') login()">
     </div>
@@ -696,6 +703,11 @@
     </div>
     <div class="nav-item" onclick="showSection('commission-payments')">
       <span class="icon" data-icon="payments" data-icon-size="15"></span> Payment Log
+    </div>
+
+    <div class="nav-section">Growth</div>
+    <div class="nav-item" onclick="showSection('referral')">
+      <span class="icon" data-icon="sparkle" data-icon-size="15"></span> Referral Program
     </div>
 
     <div class="nav-section">System</div>
@@ -1035,6 +1047,71 @@
     </div>
   </div>
 
+
+    <!-- ─── REFERRAL PROGRAM ─── -->
+  <div class="section" id="sec-referral">
+    <div class="section-header">
+      <div class="section-title">Referral Program</div>
+      <button class="btn btn-secondary btn-sm" onclick="loadReferralSettings()">↻ Refresh</button>
+    </div>
+    <div class="section-desc">
+      Controls when a referred landlord becomes "qualified" and how many qualified referrals earn the referrer a
+      commission-free month. Changes here only affect <strong>future</strong> qualification checks — they never
+      retroactively alter a referral that already qualified or a reward already granted.
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span data-icon="sparkle" data-icon-size="13"></span> Required Qualified Referrals</div>
+        <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:1rem;line-height:1.6">
+          How many qualified referrals a landlord needs before their reward is granted.
+        </p>
+        <input type="number" id="referralRequiredCount" placeholder="e.g. 5" min="1" step="1">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--text-dim);margin-bottom:1rem">
+          Reward duration: <strong style="color:var(--text-muted)">1 month</strong> (fixed — not currently configurable)
+        </div>
+        <button class="btn btn-primary btn-full" onclick="saveReferralSettings()"><span data-icon="save" data-icon-size="13"></span> Save Settings</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span data-icon="checkCircle" data-icon-size="13"></span> Qualification Rules</div>
+        <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:1rem;line-height:1.6">
+          A referred landlord must satisfy every rule checked below before they count toward the required total.
+        </p>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-row-label">New landlord (registered via link)</div>
+            <div class="toggle-row-sub">Always required — inherent to how a referral is created</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" checked disabled>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-row-label">Property setup completed</div>
+            <div class="toggle-row-sub">Referred landlord must configure M-Pesa on at least one property</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="ruleSetupCompleted">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row" style="margin-bottom:0">
+          <div>
+            <div class="toggle-row-label">First payment processed</div>
+            <div class="toggle-row-sub">Referred landlord must record at least one paid/partial rent payment</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="ruleFirstPayment">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ─── SYSTEM / PLATFORM CONTROLS ─── -->
   <div class="section" id="sec-system">
     <div class="section-header">
@@ -1096,6 +1173,24 @@
   </div>
 </div>
 
+<!-- Commission Summary Lookup (per property/month) -->
+<div class="modal-overlay" id="modal-commission-summary">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title"><span data-icon="cash" data-icon-size="17"></span> Commission Summary</div>
+      <button class="modal-close" onclick="closeModal('modal-commission-summary')" aria-label="Close">✕</button>
+    </div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--accent);margin-bottom:0.85rem" id="commSummaryPropName"></div>
+
+    <input type="text" id="commSummaryMonth" placeholder="Month (e.g. May 2026)" onkeydown="if(event.key==='Enter') checkCommissionSummary()">
+    <button class="btn btn-secondary btn-full" onclick="checkCommissionSummary()" style="margin-bottom:1rem">Check</button>
+
+    <div id="commSummaryResult"><div class="empty-state" style="padding:1.5rem 1rem">Enter a month and click Check</div></div>
+
+    <input type="hidden" id="commSummaryPropertyId">
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <!-- icons.js must load before wireIcons() and stacklord.js run -->
@@ -1115,5 +1210,14 @@
 </script>
 <script src="config.js" onerror="void 0"></script>
 <script src="stacklord.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("service-worker.js").catch(err => {
+          console.error("Service Worker registration failed:", err);
+        });
+      });
+    }
+  </script>
 </body>
 </html>

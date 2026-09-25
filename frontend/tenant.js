@@ -162,43 +162,98 @@ function logout() {
 
 
 // ═══════════════════════════════════════════════════════
-// MAINTENANCE CHECK
+// MAINTENANCE CHECK  (landlord-level + platform-wide)
 // ═══════════════════════════════════════════════════════
 
-async function checkMaintenance() {
+// ── Independent of any fetch wrapping: poll the public, allowlisted
+//    /platform-status endpoint. Cheap, works mid-outage, and guarantees
+//    the modal appears within ~15s of the stacklord flipping the switch. ──
+
+
+// AFTER:
+// (removed — checkMaintenance() below, polled once at init then every 20s,
+//  is the single source of truth now, matching dashboard.html's cadence)
+
+// Side-effect-free: returns the current maintenance state without touching the UI.
+// Platform-wide (stacklord) takes priority over the landlord's own switch.
+async function _fetchMaintenanceState() {
+    // 1. Platform-wide kill switch — public, allowlisted, works even mid-outage
     try {
-        const res  = await fetch(`${API}/maintenance`, { headers: authHeaders() });
-        const data = await res.json();
-        if (data.maintenanceMode) {
-            showMaintenanceScreen(data.maintenanceMessage);
-            return true;
+        const r = await fetch(`${API}/platform-status`);
+        const d = await r.json();
+        if (d && d.maintenanceMode) {
+            return { on: true, platform: true, message: d.message };
         }
-        return false;
-    } catch { return false; }
+    } catch { /* fall through to landlord check */ }
+
+    // 2. Per-landlord maintenance
+    try {
+        const res = await fetch(`${API}/maintenance`, { headers: authHeaders() });
+        const d   = await res.json();
+        if (d && d.maintenanceMode) {
+            return { on: true, platform: false, message: d.maintenanceMessage };
+        }
+    } catch { /* network error → treat as not under maintenance */ }
+
+    return { on: false };
 }
 
-function showMaintenanceScreen(message) {
-    document.querySelector('header').style.display      = 'none';
-    document.querySelector('.page-body').style.display  = 'none';
-    document.querySelector('.bottom-nav').style.display = 'none';
-
-    const screen = document.createElement('div');
-    screen.id = 'maintenanceScreen';
-    screen.style.cssText = `
-        position:fixed;inset:0;background:var(--bg);
-        display:flex;flex-direction:column;align-items:center;
-        justify-content:center;text-align:center;padding:2rem;z-index:99999;
-    `;
-    screen.innerHTML = `
-        <div style="max-width:400px;background:var(--panel);border:1px solid var(--border2);border-radius:16px;padding:2.5rem 2rem;box-shadow:0 24px 80px rgba(0,0,0,0.5)">
-            <div style="display:flex;justify-content:center;margin-bottom:1rem;color:var(--accent)">${ICON('maintenance',44)}</div>
-            <div style="font-family:'DM Serif Display',serif;font-style:italic;font-size:1.6rem;color:var(--text);margin-bottom:0.75rem">Under Maintenance</div>
-            <p style="font-size:0.85rem;color:var(--text-muted);line-height:1.7;margin-bottom:1.5rem">${message || 'The system is currently under maintenance. Please check back later.'}</p>
-            <button onclick="window.location.reload()" style="background:var(--accent);border:none;border-radius:8px;color:#191307;font-size:0.82rem;font-weight:600;padding:0.65rem 1.5rem;cursor:pointer;width:100%;margin-bottom:0.5rem">↻ Check Again</button>
-            <button onclick="logout()" style="background:transparent;border:1px solid var(--border2);border-radius:8px;color:var(--text-muted);font-size:0.75rem;padding:0.55rem 1.5rem;cursor:pointer;width:100%">Sign Out</button>
-        </div>`;
-    document.body.appendChild(screen);
+async function checkMaintenance() {
+    const s = await _fetchMaintenanceState();
+    if (s.on) showMaintenanceScreen(s.message, { platform: s.platform });
+    return s.on;
 }
+
+
+    const toastEl = document.getElementById('toast');
+    if (toastEl) toastEl.className = '';
+
+// AFTER:
+// Static overlay, toggled via .show — same pattern as dashboard.html's
+// showPlatformMaintenanceOverlay(). No DOM creation/teardown, nothing else
+// on the page is hidden (the overlay's own opacity + z-index cover it),
+// and there's no auto-reload: like the landlord dashboard, recovery is a
+// manual "Check Again" click once the person sees the state has changed.
+function showMaintenanceScreen(message, { platform = false } = {}) {
+    const overlay = document.getElementById('platformMaintenanceOverlay');
+    if (!overlay) return;
+
+    const title = platform ? 'Platform Maintenance' : 'Under Maintenance';
+    const fallback = platform
+        ? 'Affordable Rentals is temporarily down for maintenance. Please check back shortly.'
+        : 'The system is currently under maintenance. Please check back later.';
+
+    const titleEl = overlay.querySelector('[data-maint-title]');
+    const descEl  = document.getElementById('platformMaintenanceDesc');
+    // textContent, not innerHTML — the message is admin/landlord-supplied text
+    if (titleEl) titleEl.textContent = title;
+    if (descEl)  descEl.textContent  = message || fallback;
+
+    overlay.classList.add('show');
+}
+
+// ── Global interceptor: any request that comes back 503 + PLATFORM_MAINTENANCE
+//    (badge polling, token refresh, payments, etc.) raises the modal immediately,
+//    so a tenant already inside the dashboard sees it without a reload. ──
+(function installPlatformMaintenanceInterceptor() {
+    const nativeFetch = window.fetch;
+    if (typeof nativeFetch !== 'function' || nativeFetch.__arMaintWrapped) return;
+
+    const wrapped = async function (...args) {
+        const res = await nativeFetch.apply(this, args);
+        if (res.status === 503) {
+            try {
+                const body = await res.clone().json();
+                if (body && body.code === 'PLATFORM_MAINTENANCE') {
+                    showMaintenanceScreen(body.message, { platform: true });
+                }
+            } catch { /* not JSON, or already consumed — ignore */ }
+        }
+        return res;
+    };
+    wrapped.__arMaintWrapped = true;
+    window.fetch = wrapped;
+})();
 
 
 // ═══════════════════════════════════════════════════════
@@ -260,6 +315,7 @@ function applyAvatar(name) {
 
 let _toastTimer;
 function showToast(msg, type = '') {
+    if (document.getElementById('platformMaintenanceOverlay')?.classList.contains('show')) return;
     const t = document.getElementById('toast');
     if (!t) return;
     t.textContent = msg;
@@ -1363,28 +1419,33 @@ async function changePassword() {
     }
 }
 
+function hidePageLoader() {
+    const el = document.getElementById('pageLoader');
+    if (!el) return;
+    el.classList.add('hide');
+    setTimeout(() => el.remove(), 300);
+}
+
 
 // ═══════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════
 
+
 window.addEventListener('DOMContentLoaded', async () => {
     const underMaintenance = await checkMaintenance();
-    if (underMaintenance) return;
+    if (underMaintenance) { hidePageLoader(); return; }
 
     initPasswordStrength();
 
     await loadProfile();
     await checkUnreadBadge();
+    hidePageLoader();
 
-    setTimeout(() => maybeStartTour(), 1200);
+    (window._arTourReady ? window._arTourReady() : Promise.resolve()).then(() => maybeStartTour());
 
-    setInterval(async () => {
-        const still = await checkMaintenance();
-        if (still && !document.getElementById('maintenanceScreen')) {
-            showMaintenanceScreen();
-        }
-    }, 2 * 60 * 1000);
+    // Same cadence as dashboard.html's checkPlatformMaintenance poll
+    setInterval(checkMaintenance, 20 * 1000);
 });
 
 // ── Polling intervals ──

@@ -203,11 +203,14 @@
                 });
 
                 if (!res.ok) {
-                    // Token was already dead, or account got suspended mid-session — can't extend.
-                    this._logout();
-                    return;
+                    // 401/403 = token dead or account suspended → must log out.
+                    // Anything else (503 maintenance, 500, etc.) is transient — keep the session.
+                    if (res.status === 401 || res.status === 403) {
+                        this._logout();
+                    }
+                    return;   // finally{} re-enables the button
                 }
-
+                
                 const data = await res.json();
                 this._setToken(data.token);
                 this._hideModal();
