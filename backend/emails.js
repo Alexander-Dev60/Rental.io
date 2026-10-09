@@ -6,15 +6,25 @@
 //    sendWelcomeEmail({ name, email })
 //    sendLandlordWelcomeEmail({ name, email, propertyName, propertyLocation })
 //    sendTenantWelcomeEmail({ name, email, tempPassword, propertyName, landlordName, isReturning })
-//    sendRentReminder({ name, email, house, rent, month, dueDate, arrears })
+//    sendCaretakerWelcomeEmail({ name, email, tempPassword, landlordName })
+//    sendRentReminder({ name, email, house, rent, month, dueDate, arrears, cycle, periodRange, dueDateText, extensionCharge })
 //    sendMoveOutEmail({ name, email, house, moveOutDate })
 //    sendPasswordResetEmail({ name, email, code })
 //    sendPaymentOtpEmail({ name, email, code })
-//    sendRentReceiptEmail({ tenant, house, month, amount, rent, newTotalPaid, newBalance, newStatus, paymentId })
-//    sendMpesaConfirmationEmail({ tenant, house, payment, mpesaCode, newTotalPaid, newBalance, newStatus, pdfBuffer })
-//    sendSubscriptionRenewalEmail({ landlord, plan, newExpiry, mpesaCode })
+//    sendRentReceiptEmail({ tenant, house, month, amount, rent, newTotalPaid, newBalance, newStatus, paymentId, pdfBuffer, cycle, periodRange, extensionCharge })
+//    sendMpesaConfirmationEmail({ tenant, house, payment, mpesaCode, newTotalPaid, newBalance, newStatus, cycle, periodRange, extensionCharge })
+//    sendHoldingFeeEmail({ name, email, house, propertyName, kind, cycle, feeAmount, startDate, returnDate })
+//    sendHolidayReturnEmail({ name, email, house, propertyName, cycle, startDate, returnDate, daysAway, feeAmount, accrued, balance })
+
+//    sendCommissionDueEmail({ name, email, property, month, amountDue })
+//    sendPropertySuspendedEmail({ name, email, property, months, totalOwed })
 //    sendListingApprovalEmail({ landlord, property, approved, baseUrl })
 //    emailIcon(name, size, color, style)   — <img> tag for a hosted icon PNG
+//
+//  Rent is billed either MONTHLY (a rent cycle that starts the day the tenant is housed, labelled by the
+//  month it starts in, e.g. "October 2026") or per SEMESTER (labelled by its range, e.g. "Sep 2025 – Jan 2026").
+//  The rent emails take an optional `cycle` ('monthly' | 'semester') so the wording matches; older callers
+//  that do not pass it still get the right wording because a range-style label is recognised as a semester.
 // ═══════════════════════════════════════════════════════
 
 const { Resend } = require('resend');
@@ -50,6 +60,80 @@ function ordinal(n) {
     const s = ['th', 'st', 'nd', 'rd'];
     const v = n % 100;
     return s[(v - 20) % 10] || s[v] || s[0];
+}
+
+// ── Helpers: rent-period wording ──
+// 'semester' | 'monthly'. An explicit `cycle` wins; otherwise a range-style label ("Sep 2025 – Jan 2026")
+// means semester.
+function _cycleOf(cycle, label) {
+    if (cycle === 'semester' || cycle === 'monthly') return cycle;
+    return /\d{4}\s*[–-]\s*[A-Za-z]{3,9}\s+\d{4}/.test(String(label || '')) ? 'semester' : 'monthly';
+}
+
+// Escapes text that a landlord or tenant typed (names, house names) before it goes into HTML
+function _esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// Plain text for email SUBJECT lines (subjects are not HTML, so no escaping — just strip line breaks)
+function _subj(s) {
+    return String(s == null ? '' : s).replace(/[\r\n]+/g, ' ').trim();
+}
+
+// "Your house" box for the tenant welcome emails. Inserted just above the login button; returns the html
+// untouched when no house was chosen while creating the tenant.
+function _withHouseBlock(html, houseName, billingCycle) {
+    if (!houseName) return html;
+    const semester = String(billingCycle || '').toLowerCase() === 'semester';
+    const note = semester
+        ? 'Rent for this house is billed <strong>per semester</strong>. Your dashboard shows the semester dates, the amount and the due date.'
+        : 'Rent for this house is billed <strong>monthly</strong>. Your rent cycle starts the day you are housed, and each cycle\'s rent falls due on the day it ends (a cycle that starts on the 10th is due on the 10th of the next month). Your dashboard shows the exact dates.';
+    const block = `
+              <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:18px 22px;margin-bottom:28px">
+                <p style="color:#64748b;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;margin:0 0 10px;font-weight:600">YOUR HOUSE</p>
+                <table style="width:100%;border-collapse:collapse">
+                  <tr>
+                    <td style="color:#94a3b8;font-size:13px;padding:5px 0">House</td>
+                    <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${_esc(houseName)}</td>
+                  </tr>
+                  <tr>
+                    <td style="color:#94a3b8;font-size:13px;padding:5px 0">Rent billing</td>
+                    <td style="text-align:right"><span style="background:#dbeafe;color:#1d4ed8;font-size:11px;font-weight:600;padding:2px 10px;border-radius:99px">${semester ? 'Per semester' : 'Monthly'}</span></td>
+                  </tr>
+                </table>
+                <p style="color:#475569;font-size:12px;line-height:1.6;margin:10px 0 0">${note}</p>
+              </div>
+
+              `;
+    const marker = '<div style="text-align:center;margin-bottom:28px">';   // the login-button wrapper
+    return html.includes(marker) ? html.replace(marker, () => block + marker) : html;
+}
+
+// "Ksh 12,000"
+function _ksh(n) {
+    return `Ksh ${Number(n || 0).toLocaleString()}`;
+}
+
+// "10 Oct 2026"
+function _fmtDate(d) {
+    if (!d) return '—';
+    const x = new Date(d);
+    if (isNaN(x.getTime())) return '—';
+    return x.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+// "October 2026" + "10 Oct – 10 Nov 2026" → label with the dates underneath (table cell content)
+function _periodCell(label, range) {
+    return range
+        ? `${label}<br><span style="color:#94a3b8;font-size:11px;font-weight:400">${range}</span>`
+        : `${label}`;
+}
+
+// Wording that depends on the billing cycle
+function _words(cycle) {
+    return cycle === 'semester'
+        ? { rentName: 'Semester Rent', periodRow: 'Semester',  subjectRent: 'Semester rent' }
+        : { rentName: 'Monthly Rent',  periodRow: 'Rent Period', subjectRent: 'Rent' };
 }
 
 // ── Shared footer snippet ──
@@ -182,7 +266,7 @@ async function sendLandlordWelcomeEmail({ name, email, propertyName, propertyLoc
               </p>
               <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">
                 Your landlord account and first property have been created successfully.
-                You're on a <strong style="color:#1d4ed8">14-day free trial</strong> — no payment needed yet.
+                There is <strong style="color:#1d4ed8">no subscription</strong> — the platform charges a commission on the rent you collect, shown in your dashboard's Commission panel.
                 Here's everything you can start doing right now:
               </p>
 
@@ -195,7 +279,7 @@ async function sendLandlordWelcomeEmail({ name, email, propertyName, propertyLoc
                   <tr>
                     <td style="padding:7px 0;vertical-align:top;width:28px;color:#1d4ed8;font-size:15px">${emailIcon('houses', 16, 'blue')}</td>
                     <td style="padding:7px 0;color:#334155;font-size:13px;line-height:1.5">
-                      <strong>Add your houses</strong> — set names and monthly rent amounts
+                      <strong>Add your houses</strong> — set names and rent, billed monthly or per semester
                     </td>
                   </tr>
                   <tr>
@@ -241,10 +325,10 @@ async function sendLandlordWelcomeEmail({ name, email, propertyName, propertyLoc
                     <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${propertyLocation}</td>
                   </tr>` : ''}
                   <tr>
-                    <td style="color:#94a3b8;font-size:13px;padding:5px 0">Trial Period</td>
+                    <td style="color:#94a3b8;font-size:13px;padding:5px 0">Pricing</td>
                     <td style="text-align:right">
                       <span style="background:#dbeafe;color:#1d4ed8;font-size:11px;font-weight:600;padding:2px 10px;border-radius:99px">
-                        14 days free ${emailIcon('check', 11, 'blue')}
+                        No subscription ${emailIcon('check', 11, 'blue')}
                       </span>
                     </td>
                   </tr>
@@ -282,8 +366,9 @@ async function sendLandlordWelcomeEmail({ name, email, propertyName, propertyLoc
 //    Sent when a landlord creates a tenant account.
 //    Includes temporary password + forced change notice.
 // ═══════════════════════════════════════════════════════
+//    sendTenantWelcomeEmail({ name, email, tempPassword, propertyName, landlordName, isReturning, houseName, billingCycle })
 
-async function sendTenantWelcomeEmail({ name, email, tempPassword, propertyName, landlordName, isReturning = false }) {
+async function sendTenantWelcomeEmail({ name, email, tempPassword, propertyName, landlordName, isReturning = false, houseName, billingCycle }) {  
     const firstName = name.split(' ')[0];
 
     const returningHtml = `
@@ -306,6 +391,11 @@ async function sendTenantWelcomeEmail({ name, email, tempPassword, propertyName,
                 on <strong>Affordable Rentals</strong>. Your existing account is now linked to this property —
                 just log in with your current password.
               </p>
+              <p style="color:#92400e;background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;font-size:12px;line-height:1.6;margin:0 0 24px">
+                Don't recognise ${_esc(landlordName)} or ${_esc(propertyName)}? Contact
+                <a href="mailto:support@affordablerentals.site" style="color:#92400e;font-weight:600">support@affordablerentals.site</a>
+                and we will look into it.
+              </p>
 
               <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:24px;margin-bottom:24px">
                 <p style="color:#0369a1;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;margin:0 0 16px;font-weight:600">YOUR ACCOUNT</p>
@@ -316,7 +406,7 @@ async function sendTenantWelcomeEmail({ name, email, tempPassword, propertyName,
                   </tr>
                   <tr>
                     <td style="color:#64748b;font-size:13px;padding:8px 0">Password</td>
-                    <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">Your existing password</td>
+                    <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">Your existing password<br><a href="${DASHBOARD_URL}/forgot-password.html" style="color:#1d4ed8;font-size:12px;font-weight:500;text-decoration:none">Forgotten it? Reset it →</a></td>
                   </tr>
                   <tr>
                     <td style="color:#64748b;font-size:13px;padding:8px 0">Property</td>
@@ -434,7 +524,7 @@ async function sendTenantWelcomeEmail({ name, email, tempPassword, propertyName,
         subject: isReturning
             ? `You've been added to ${propertyName}`
             : `You've been added to ${propertyName} — Login Details Inside`,
-        html: isReturning ? returningHtml : newTenantHtml
+        html: _withHouseBlock(isReturning ? returningHtml : newTenantHtml, houseName, billingCycle)
     });
 
     if (error) throw new Error(`Tenant welcome email failed: ${error.message}`);
@@ -538,17 +628,35 @@ async function sendCaretakerWelcomeEmail({ name, email, tempPassword, landlordNa
 
 // ═══════════════════════════════════════════════════════
 // 4. RENT REMINDER EMAIL
+//    Works for monthly rent cycles AND semester periods.
+//      month         the period label ("October 2026" or "Sep 2025 – Jan 2026")
+//      cycle         'monthly' | 'semester' (optional — a range-style label is treated as semester)
+//      periodRange   the dates of the period, e.g. "10 Oct – 10 Nov 2026" (optional)
+//      dueDateText   when it falls due, as text, e.g. "10 Nov 2026" (rent cycles that start the day a
+//                    tenant is housed fall due on a real date)
+//      dueDate       LEGACY day of the month (e.g. 5 → "5th of October 2026"), used when dueDateText is absent
+//      extensionCharge  extension charge already included in `rent` (semester stays that were extended)
 // ═══════════════════════════════════════════════════════
+//      balance       part of the rent still unpaid (shown only on a "due soon" reminder with a partial payment)
 
-async function sendRentReminder({ name, email, house, rent, month, dueDate, arrears }) {
+async function sendRentReminder({ name, email, house, rent, month, dueDate, arrears, balance, cycle, periodRange, dueDateText, extensionCharge }) {
     const isOverdue = arrears > 0;
+    const kind      = _cycleOf(cycle, month);
+    const w         = _words(kind);
+    const period    = periodRange ? `${month} (${periodRange})` : month;
+    const ext       = Number(extensionCharge || 0);
+
+    // When the rent falls due, as text — a real date for new rent cycles, "5th of October 2026" for legacy ones
+    const dueText = dueDateText
+        ? dueDateText
+        : (Number(dueDate) > 0 ? `${dueDate}${ordinal(Number(dueDate))} of ${month}` : '');
 
     const { error } = await resend.emails.send({
         from:    FROM,
         to:      email,
         subject: isOverdue
-            ? `Rent Overdue — ${month} | ${house}`
-            : `Rent Reminder — ${month} | ${house}`,
+            ? `${w.subjectRent} Overdue — ${month} | ${house}`
+            : `${w.subjectRent} Reminder — ${month} | ${house}`,
         html: `
         <!DOCTYPE html>
         <html>
@@ -558,7 +666,7 @@ async function sendRentReminder({ name, email, house, rent, month, dueDate, arre
 
             <div style="background:${isOverdue ? 'linear-gradient(135deg,#dc2626,#b91c1c)' : 'linear-gradient(135deg,#d97706,#b45309)'};padding:36px 32px;text-align:center">
               <div style="font-size:44px;margin-bottom:10px">${emailIcon(isOverdue ? 'warning' : 'bell', 44, 'white')}</div>
-              <h1 style="color:#ffffff;margin:0;font-size:22px;font-weight:700">${isOverdue ? 'Rent Overdue' : 'Rent Due Soon'}</h1>
+              <h1 style="color:#ffffff;margin:0;font-size:22px;font-weight:700">${isOverdue ? (kind === 'semester' ? 'Semester Rent Overdue' : 'Rent Overdue') : (kind === 'semester' ? 'Semester Rent Due Soon' : 'Rent Due Soon')}</h1>
               <p style="color:${isOverdue ? '#fca5a5' : '#fde68a'};margin:8px 0 0;font-size:13px">${month}</p>
             </div>
 
@@ -566,8 +674,8 @@ async function sendRentReminder({ name, email, house, rent, month, dueDate, arre
               <p style="color:#1e293b;font-size:16px;margin:0 0 16px">Hi <strong>${name.split(' ')[0]}</strong>,</p>
               <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">
                 ${isOverdue
-                    ? `Your rent for <strong>${month}</strong> is <strong style="color:#dc2626">overdue</strong>. Please make your payment as soon as possible.`
-                    : `Your rent for <strong>${month}</strong> is due on the <strong>${dueDate}${ordinal(dueDate)}</strong>. Please ensure payment is made on time.`
+                    ? `Your ${kind === 'semester' ? 'semester ' : ''}rent for <strong>${period}</strong> is <strong style="color:#dc2626">overdue</strong>. Please make your payment as soon as possible.`
+                    : `Your ${kind === 'semester' ? 'semester ' : ''}rent for <strong>${period}</strong> is due${dueText ? ` on <strong>${dueText}</strong>` : ' soon'}. Please ensure payment is made on time.${(!isOverdue && Number(balance) > 0 && Number(balance) < Number(rent)) ? ` Your remaining balance is <strong>${_ksh(balance)}</strong>.` : ''}`
                 }
               </p>
 
@@ -579,22 +687,28 @@ async function sendRentReminder({ name, email, house, rent, month, dueDate, arre
                     <td style="color:#1c1917;font-size:13px;font-weight:600;text-align:right">${house}</td>
                   </tr>
                   <tr>
-                    <td style="color:#78716c;font-size:13px;padding:6px 0">Month</td>
-                    <td style="color:#1c1917;font-size:13px;font-weight:600;text-align:right">${month}</td>
+                    <td style="color:#78716c;font-size:13px;padding:6px 0;vertical-align:top">${w.periodRow}</td>
+                    <td style="color:#1c1917;font-size:13px;font-weight:600;text-align:right">${_periodCell(month, periodRange)}</td>
                   </tr>
                   <tr>
-                    <td style="color:#78716c;font-size:13px;padding:6px 0">Rent Amount</td>
-                    <td style="color:#1c1917;font-size:15px;font-weight:700;text-align:right">Ksh ${Number(rent).toLocaleString()}</td>
+                    <td style="color:#78716c;font-size:13px;padding:6px 0">${w.rentName}</td>
+                    <td style="color:#1c1917;font-size:15px;font-weight:700;text-align:right">${_ksh(rent)}</td>
                   </tr>
+                  ${ext > 0 ? `
+                  <tr>
+                    <td style="color:#78716c;font-size:12px;padding:0 0 6px">…includes extended-stay charge</td>
+                    <td style="color:#78716c;font-size:12px;text-align:right;padding:0 0 6px">${_ksh(ext)}</td>
+                  </tr>` : ''}
                   ${isOverdue ? `
                   <tr>
                     <td style="color:#dc2626;font-size:13px;padding:6px 0">Amount Owed</td>
-                    <td style="color:#dc2626;font-size:15px;font-weight:700;text-align:right">Ksh ${Number(arrears).toLocaleString()}</td>
-                  </tr>` : `
+                    <td style="color:#dc2626;font-size:15px;font-weight:700;text-align:right">${_ksh(arrears)}</td>
+                  </tr>` : ''}
+                  ${dueText ? `
                   <tr>
                     <td style="color:#78716c;font-size:13px;padding:6px 0">Due Date</td>
-                    <td style="color:#1c1917;font-size:13px;font-weight:600;text-align:right">${dueDate}${ordinal(dueDate)} of ${month}</td>
-                  </tr>`}
+                    <td style="color:#1c1917;font-size:13px;font-weight:600;text-align:right">${dueText}</td>
+                  </tr>` : ''}
                 </table>
               </div>
 
@@ -859,6 +973,11 @@ async function sendPaymentOtpEmail({ name, email, code }) {
 // 8. RENT RECEIPT EMAIL  (extracted from POST /payments)
 //    Accepts a pre-built pdfBuffer so server.js only calls
 //    this once — no inline Resend code left in the route.
+//    Works for monthly rent cycles AND semester periods:
+//      month            the period label
+//      cycle            'monthly' | 'semester' (optional — a range-style label is treated as semester)
+//      periodRange      dates of the period (optional)
+//      extensionCharge  extension charge included in `rent` (optional) — shown as its own line
 // ═══════════════════════════════════════════════════════
 
 async function sendRentReceiptEmail({
@@ -871,11 +990,18 @@ async function sendRentReceiptEmail({
     newBalance,
     newStatus,
     paymentId,
-    pdfBuffer     // Buffer — attached as PDF receipt
+    pdfBuffer,    // Buffer — attached as PDF receipt
+    cycle,
+    periodRange,
+    extensionCharge
 }) {
     const statusColor = newStatus === 'paid' ? '#16a34a' : '#d97706';
     const statusLabel = newStatus === 'paid' ? `Fully Paid ${emailIcon('check', 11, 'green')}` : 'Partial Payment';
     const statusBg    = newStatus === 'paid' ? '#dcfce7' : '#fef3c7';
+    const kind        = _cycleOf(cycle, month);
+    const w           = _words(kind);
+    const ext         = Number(extensionCharge || 0);
+    const base        = Math.max(0, Number(rent || 0) - ext);
 
     const { error } = await resend.emails.send({
         from:    FROM,
@@ -891,23 +1017,27 @@ async function sendRentReceiptEmail({
           <div style="padding:32px">
             <p style="color:#1e293b;font-size:15px;margin:0 0 16px">Hi <strong>${tenant.name.split(' ')[0]}</strong>,</p>
             <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">
-              Your payment of <strong>Ksh ${Number(amount).toLocaleString()}</strong> for <strong>${month}</strong> has been recorded successfully.
+              Your payment of <strong>${_ksh(amount)}</strong> for <strong>${month}</strong>${periodRange ? ` (${periodRange})` : ''} has been recorded successfully.
             </p>
             <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:20px 24px;margin-bottom:24px">
               <p style="color:#64748b;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;margin:0 0 12px;font-weight:600">PAYMENT BREAKDOWN</p>
               <table style="width:100%;border-collapse:collapse">
                 <tr><td style="color:#64748b;font-size:13px;padding:6px 0">House</td>             <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${house.name}</td></tr>
-                <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Month</td>             <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${month}</td></tr>
-                <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Monthly Rent</td>      <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">Ksh ${Number(rent).toLocaleString()}</td></tr>
-                <tr><td style="color:#64748b;font-size:13px;padding:6px 0">This Payment</td>      <td style="color:#1d4ed8;font-size:15px;font-weight:700;text-align:right">Ksh ${Number(amount).toLocaleString()}</td></tr>
-                <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Total Paid</td>        <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">Ksh ${Number(newTotalPaid).toLocaleString()}</td></tr>
-                <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Balance Remaining</td> <td style="color:${newBalance > 0 ? '#d97706' : '#16a34a'};font-size:13px;font-weight:700;text-align:right">Ksh ${Number(newBalance).toLocaleString()}</td></tr>
+                <tr><td style="color:#64748b;font-size:13px;padding:6px 0;vertical-align:top">${w.periodRow}</td> <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${_periodCell(month, periodRange)}</td></tr>
+                ${ext > 0 ? `
+                <tr><td style="color:#64748b;font-size:13px;padding:6px 0">${w.rentName}</td>      <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${_ksh(base)}</td></tr>
+                <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Extended-stay charge</td> <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${_ksh(ext)}</td></tr>
+                <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Total Due</td>          <td style="color:#1e293b;font-size:13px;font-weight:700;text-align:right">${_ksh(rent)}</td></tr>` : `
+                <tr><td style="color:#64748b;font-size:13px;padding:6px 0">${w.rentName}</td>      <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${_ksh(rent)}</td></tr>`}
+                <tr><td style="color:#64748b;font-size:13px;padding:6px 0">This Payment</td>      <td style="color:#1d4ed8;font-size:15px;font-weight:700;text-align:right">${_ksh(amount)}</td></tr>
+                <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Total Paid</td>        <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${_ksh(newTotalPaid)}</td></tr>
+                <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Balance Remaining</td> <td style="color:${newBalance > 0 ? '#d97706' : '#16a34a'};font-size:13px;font-weight:700;text-align:right">${_ksh(newBalance)}</td></tr>
                 <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Status</td>            <td style="text-align:right"><span style="background:${statusBg};color:${statusColor};font-size:11px;font-weight:600;padding:2px 10px;border-radius:99px">${statusLabel}</span></td></tr>
               </table>
             </div>
             ${newBalance > 0 ? `
             <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:14px 18px;margin-bottom:20px">
-              <p style="color:#92400e;font-size:13px;margin:0">${emailIcon('warning', 14, 'amber')} You still have a balance of <strong>Ksh ${Number(newBalance).toLocaleString()}</strong> for ${month}. Please pay before your due date.</p>
+              <p style="color:#92400e;font-size:13px;margin:0">${emailIcon('warning', 14, 'amber')} You still have a balance of <strong>${_ksh(newBalance)}</strong> for ${month}. Please pay before your due date.</p>
             </div>` : ''}
             <p style="color:#94a3b8;font-size:12px;margin:0">PDF receipt is attached. Contact us at <a href="mailto:support@affordablerentals.site" style="color:#1d4ed8">support@affordablerentals.site</a> for queries.</p>
           </div>
@@ -926,6 +1056,7 @@ async function sendRentReceiptEmail({
 // ═══════════════════════════════════════════════════════
 // 9. M-PESA CONFIRMATION EMAIL  (extracted from /callback)
 //    Sent after Safaricom confirms an STK push payment.
+//    `cycle` / `periodRange` / `extensionCharge` are optional, as in the receipt email.
 // ═══════════════════════════════════════════════════════
 
 async function sendMpesaConfirmationEmail({
@@ -935,12 +1066,18 @@ async function sendMpesaConfirmationEmail({
     mpesaCode,
     newTotalPaid,
     newBalance,
-    newStatus
+    newStatus,
+    cycle,
+    periodRange,
+    extensionCharge
 }) {
     const statusColor = newStatus === 'paid' ? '#16a34a' : '#d97706';
     const statusLabel = newStatus === 'paid' ? `Fully Paid ${emailIcon('check', 11, 'green')}` : 'Partial Payment';
     const statusBg    = newStatus === 'paid' ? '#dcfce7' : '#fef3c7';
     const houseName   = house?.name || '—';
+    const kind        = _cycleOf(cycle || payment.billingCycle, payment.month);
+    const w           = _words(kind);
+    const ext         = Number(extensionCharge || 0);
 
     const { error } = await resend.emails.send({
         from:    FROM,
@@ -955,21 +1092,22 @@ async function sendMpesaConfirmationEmail({
           </div>
           <div style="padding:32px">
             <p style="color:#1e293b;font-size:15px;margin:0 0 16px">Hi <strong>${tenant.name.split(' ')[0]}</strong>,</p>
-            <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">Your M-Pesa payment has been received and confirmed.</p>
+            <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">Your M-Pesa payment for <strong>${payment.month}</strong>${periodRange ? ` (${periodRange})` : ''} has been received and confirmed.</p>
             <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:20px 24px;margin-bottom:24px">
               <table style="width:100%;border-collapse:collapse">
                 <tr><td style="color:#64748b;font-size:13px;padding:6px 0">House</td>        <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${houseName}</td></tr>
-                <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Month</td>        <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${payment.month}</td></tr>
-                <tr><td style="color:#64748b;font-size:13px;padding:6px 0">This Payment</td> <td style="color:#16a34a;font-size:15px;font-weight:700;text-align:right">Ksh ${Number(payment.amount).toLocaleString()}</td></tr>
-                <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Total Paid</td>   <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">Ksh ${Number(newTotalPaid).toLocaleString()}</td></tr>
-                <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Balance</td>      <td style="color:${newBalance > 0 ? '#d97706' : '#16a34a'};font-size:13px;font-weight:700;text-align:right">Ksh ${Number(newBalance).toLocaleString()}</td></tr>
+                <tr><td style="color:#64748b;font-size:13px;padding:6px 0;vertical-align:top">${w.periodRow}</td> <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${_periodCell(payment.month, periodRange)}</td></tr>
+                ${ext > 0 ? `<tr><td style="color:#64748b;font-size:13px;padding:6px 0">Includes extended-stay charge</td> <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${_ksh(ext)}</td></tr>` : ''}
+                <tr><td style="color:#64748b;font-size:13px;padding:6px 0">This Payment</td> <td style="color:#16a34a;font-size:15px;font-weight:700;text-align:right">${_ksh(payment.amount)}</td></tr>
+                <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Total Paid</td>   <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${_ksh(newTotalPaid)}</td></tr>
+                <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Balance</td>      <td style="color:${newBalance > 0 ? '#d97706' : '#16a34a'};font-size:13px;font-weight:700;text-align:right">${_ksh(newBalance)}</td></tr>
                 <tr><td style="color:#64748b;font-size:13px;padding:6px 0">M-Pesa Code</td>  <td style="color:#1e293b;font-size:13px;font-weight:700;text-align:right;font-family:monospace">${mpesaCode}</td></tr>
                 <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Status</td>       <td style="text-align:right"><span style="background:${statusBg};color:${statusColor};font-size:11px;font-weight:600;padding:2px 10px;border-radius:99px">${statusLabel}</span></td></tr>
               </table>
             </div>
             ${newBalance > 0 ? `
             <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:14px 18px;margin-bottom:20px">
-              <p style="color:#92400e;font-size:13px;margin:0">${emailIcon('warning', 14, 'amber')} Balance remaining: <strong>Ksh ${Number(newBalance).toLocaleString()}</strong>. Please pay before your due date.</p>
+              <p style="color:#92400e;font-size:13px;margin:0">${emailIcon('warning', 14, 'amber')} Balance remaining: <strong>${_ksh(newBalance)}</strong>. Please pay before your due date.</p>
             </div>` : ''}
             <p style="color:#94a3b8;font-size:12px;margin:0">Keep this as your receipt. Contact <a href="mailto:support@affordablerentals.site" style="color:#16a34a">support@affordablerentals.site</a> for queries.</p>
           </div>
@@ -982,43 +1120,6 @@ async function sendMpesaConfirmationEmail({
 }
 
 
-// ═══════════════════════════════════════════════════════
-// 10. SUBSCRIPTION RENEWAL EMAIL  (extracted from /subscription-callback)
-// ═══════════════════════════════════════════════════════
-
-async function sendSubscriptionRenewalEmail({ landlord, plan, newExpiry, mpesaCode }) {
-    const { error } = await resend.emails.send({
-        from:    FROM,
-        to:      landlord.email,
-        subject: `Subscription Renewed — ${plan.name} Plan`,
-        html: `
-        <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:560px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
-          <div style="background:linear-gradient(135deg,#1d4ed8,#0ea5e9);padding:32px;text-align:center">
-            <div style="font-size:40px;margin-bottom:8px">${emailIcon('checkCircle', 40, 'white')}</div>
-            <h1 style="color:#fff;margin:0;font-size:22px;font-weight:700">Subscription Renewed!</h1>
-            <p style="color:#bae6fd;margin:6px 0 0;font-size:13px">${plan.name} Plan</p>
-          </div>
-          <div style="padding:32px">
-            <p style="color:#1e293b;font-size:15px;margin:0 0 16px">Hi <strong>${landlord.name.split(' ')[0]}</strong>,</p>
-            <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">Your subscription has been renewed. You have full access to your dashboard.</p>
-            <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:20px 24px;margin-bottom:24px">
-              <table style="width:100%;border-collapse:collapse">
-                <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Plan</td>         <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${plan.name}</td></tr>
-                <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Amount Paid</td>  <td style="color:#1d4ed8;font-size:15px;font-weight:700;text-align:right">Ksh ${Number(plan.price).toLocaleString()}</td></tr>
-                <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Duration</td>     <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${plan.durationDays} days</td></tr>
-                <tr><td style="color:#64748b;font-size:13px;padding:6px 0">Valid Until</td>  <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${new Date(newExpiry).toDateString()}</td></tr>
-                <tr><td style="color:#64748b;font-size:13px;padding:6px 0">M-Pesa Code</td> <td style="color:#1e293b;font-size:13px;font-weight:700;text-align:right;font-family:monospace">${mpesaCode}</td></tr>
-              </table>
-            </div>
-            <p style="color:#94a3b8;font-size:12px;margin:0">Contact <a href="mailto:support@affordablerentals.site" style="color:#1d4ed8">support@affordablerentals.site</a> for any queries.</p>
-          </div>
-          ${_footer(`© ${new Date().getFullYear()} Affordable Rentals`)}
-        </div>`
-    });
-
-    if (error) throw new Error(`Subscription renewal email failed: ${error.message}`);
-    console.log(`📧 Subscription renewal email sent to ${landlord.email}`);
-}
 
 
 // ═══════════════════════════════════════════════════════
@@ -1072,6 +1173,229 @@ async function sendListingApprovalEmail({ landlord, property, approved, baseUrl 
     if (error) throw new Error(`Listing approval email failed: ${error.message}`);
     console.log(`📧 Listing ${approved ? 'approval' : 'revocation'} email sent to ${landlord.email}`);
 }
+
+
+// ═══════════════════════════════════════════════════════
+// 12. HOLIDAY HOLDING-FEE EMAIL
+//     Sent when the landlord sets (or waives) the holding fee for a tenant who is away —
+//     a holiday the landlord recorded, or the break between two semesters.
+//       kind        'holiday' | 'between_semesters'
+//       cycle       'monthly' | 'semester'
+//       feeAmount   Ksh per month (0 = no fee)
+//       startDate / returnDate   Date | ISO string  (returnDate = expected return, or the day the next semester starts)
+// ═══════════════════════════════════════════════════════
+
+async function sendHoldingFeeEmail({ name, email, house: houseRaw, propertyName: propRaw, kind = 'holiday', cycle = 'semester', feeAmount, startDate, returnDate }) {
+    const firstName = _esc(name.split(' ')[0]);
+    const house = _esc(houseRaw), propertyName = _esc(propRaw);
+    const fee       = Number(feeAmount || 0);
+    const perDay    = Math.ceil(fee / 30);
+    const isGap     = kind === 'between_semesters';
+    const days      = (startDate && returnDate)
+        ? Math.max(0, Math.round((new Date(returnDate) - new Date(startDate)) / 86400000)) : 0;
+    const estimate  = Math.ceil((fee / 30) * days);
+
+    const title   = isGap
+        ? (fee > 0 ? 'Holding fee for the break between semesters' : 'No holding fee for the break between semesters')
+        : (fee > 0 ? 'Holiday holding fee set' : 'Holiday — no holding fee');
+    const resumes = isGap
+        ? `Your rent is paused for the break and resumes by itself when your next semester starts on <strong>${_fmtDate(returnDate)}</strong>.`
+        : (cycle === 'monthly'
+            ? `The rent for the cycle that is already running stays due. Cycles that would start while you are away are paused, and your monthly rent cycle starts again on the day you are back.`
+            : `Rent for any semester that starts while you are away is paused. A semester that has already started stays due as normal.`);
+
+    const { error } = await resend.emails.send({
+        from:    FROM,
+        to:      email,
+        subject: `${title}${propRaw ? ` — ${_subj(propRaw)}` : ''}`,
+        html: `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+        <body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif">
+          <div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+
+            <div style="background:linear-gradient(135deg,#d97706,#b45309);padding:36px 32px;text-align:center">
+              <div style="font-size:44px;margin-bottom:10px">${emailIcon('door', 44, 'white')}</div>
+              <h1 style="color:#ffffff;margin:0;font-size:22px;font-weight:700">${title}</h1>
+              <p style="color:#fde68a;margin:8px 0 0;font-size:13px">${house || ''}${propertyName ? ` · ${propertyName}` : ''}</p>
+            </div>
+
+            <div style="padding:36px 32px">
+              <p style="color:#1e293b;font-size:16px;margin:0 0 16px">Hi <strong>${firstName}</strong>,</p>
+              <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">
+                ${fee > 0
+                    ? `Your landlord has set a holding fee of <strong>${_ksh(fee)} per month</strong> to keep ${house || 'your room'} reserved ${isGap ? 'during the break between semesters' : 'while you are away'}.`
+                    : `Your landlord has confirmed there is <strong>no holding fee</strong> ${isGap ? 'for the break between semesters' : 'while you are away'}. ${house || 'Your room'} stays yours.`}
+              </p>
+
+              <div style="background:#fefce8;border:1px solid #fde68a;border-radius:10px;padding:20px 24px;margin-bottom:24px">
+                <p style="color:#92400e;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;margin:0 0 12px;font-weight:600">${isGap ? 'THE BREAK' : 'YOUR HOLIDAY'}</p>
+                <table style="width:100%;border-collapse:collapse">
+                  <tr>
+                    <td style="color:#78716c;font-size:13px;padding:6px 0">House</td>
+                    <td style="color:#1c1917;font-size:13px;font-weight:600;text-align:right">${house || '—'}</td>
+                  </tr>
+                  <tr>
+                    <td style="color:#78716c;font-size:13px;padding:6px 0">${isGap ? 'Break starts' : 'Away from'}</td>
+                    <td style="color:#1c1917;font-size:13px;font-weight:600;text-align:right">${_fmtDate(startDate)}</td>
+                  </tr>
+                  <tr>
+                    <td style="color:#78716c;font-size:13px;padding:6px 0">${isGap ? 'Next semester starts' : 'Expected back'}</td>
+                    <td style="color:#1c1917;font-size:13px;font-weight:600;text-align:right">${_fmtDate(returnDate)}</td>
+                  </tr>
+                  ${days > 0 ? `
+                  <tr>
+                    <td style="color:#78716c;font-size:13px;padding:6px 0">Length</td>
+                    <td style="color:#1c1917;font-size:13px;font-weight:600;text-align:right">${days} day${days === 1 ? '' : 's'}</td>
+                  </tr>` : ''}
+                  <tr>
+                    <td style="color:#78716c;font-size:13px;padding:6px 0">Holding fee</td>
+                    <td style="color:#1c1917;font-size:15px;font-weight:700;text-align:right">${fee > 0 ? `${_ksh(fee)} / month` : 'None'}</td>
+                  </tr>
+                  ${fee > 0 ? `
+                  <tr>
+                    <td style="color:#78716c;font-size:13px;padding:6px 0">Charged</td>
+                    <td style="color:#1c1917;font-size:13px;font-weight:600;text-align:right">about ${_ksh(perDay)} per day, only for days you are away</td>
+                  </tr>
+                  ${days > 0 ? `
+                  <tr>
+                    <td style="color:#78716c;font-size:13px;padding:6px 0">Estimated total</td>
+                    <td style="color:#1c1917;font-size:13px;font-weight:600;text-align:right">${_ksh(estimate)}</td>
+                  </tr>` : ''}` : ''}
+                </table>
+              </div>
+
+              <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px 20px;margin-bottom:28px">
+                <p style="color:#64748b;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;margin:0 0 10px;font-weight:600">WHAT THIS MEANS</p>
+                <p style="color:#475569;font-size:13px;line-height:1.65;margin:0">${resumes}</p>
+              </div>
+
+              <div style="text-align:center;margin-bottom:28px">
+                <a href="${DASHBOARD_URL}/tenant.html"
+                   style="display:inline-block;background:linear-gradient(135deg,#1d4ed8,#0ea5e9);color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:14px 32px;border-radius:8px;letter-spacing:0.02em">
+                  View on My Dashboard →
+                </a>
+              </div>
+
+              <p style="color:#94a3b8;font-size:12px;line-height:1.6;margin:0">
+                Questions? Message your landlord from your dashboard or email
+                <a href="mailto:support@affordablerentals.site" style="color:#1d4ed8">support@affordablerentals.site</a>.
+              </p>
+            </div>
+
+            ${_footer('You received this because your landlord recorded a holiday or a break for your tenancy.')}
+          </div>
+        </body>
+        </html>`
+    });
+
+    if (error) throw new Error(`Holding fee email failed: ${error.message}`);
+    console.log(`📧 Holding fee email sent to ${email}`);
+}
+
+
+// ═══════════════════════════════════════════════════════
+// 13. HOLIDAY RETURN EMAIL
+//     Sent when the landlord records that the tenant is back.
+//       accrued   holding fee charged for the days away      balance   part of it still unpaid
+// ═══════════════════════════════════════════════════════
+
+async function sendHolidayReturnEmail({ name, email, house: houseRaw, propertyName: propRaw, cycle = 'semester', startDate, returnDate, daysAway, feeAmount, accrued, balance }) {
+    const firstName = _esc(name.split(' ')[0]);
+    const house = _esc(houseRaw), propertyName = _esc(propRaw);
+    const fee       = Number(feeAmount || 0);
+    const charged   = Number(accrued || 0);
+    const owing     = Number(balance || 0);
+    const days      = Number.isFinite(Number(daysAway)) ? Number(daysAway)
+        : (startDate && returnDate ? Math.max(0, Math.round((new Date(returnDate) - new Date(startDate)) / 86400000)) : 0);
+    const resumes   = cycle === 'monthly'
+        ? `Your monthly rent cycle starts again from <strong>${_fmtDate(returnDate)}</strong>.`
+        : `Your semester rent resumes from <strong>${_fmtDate(returnDate)}</strong>.`;
+
+    const { error } = await resend.emails.send({
+        from:    FROM,
+        to:      email,
+        subject: `Welcome back — ${_subj(houseRaw) || 'your room'}${propRaw ? ` | ${_subj(propRaw)}` : ''}`,
+        html: `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+        <body style="margin:0;padding:0;background:#f1f5f9;font-family:'Segoe UI',Arial,sans-serif">
+          <div style="max-width:560px;margin:40px auto;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+
+            <div style="background:linear-gradient(135deg,#16a34a,#15803d);padding:36px 32px;text-align:center">
+              <div style="font-size:44px;margin-bottom:10px">${emailIcon('home', 44, 'white')}</div>
+              <h1 style="color:#ffffff;margin:0;font-size:22px;font-weight:700">Welcome back</h1>
+              <p style="color:#bbf7d0;margin:8px 0 0;font-size:13px">${house || ''}${propertyName ? ` · ${propertyName}` : ''}</p>
+            </div>
+
+            <div style="padding:36px 32px">
+              <p style="color:#1e293b;font-size:16px;margin:0 0 16px">Hi <strong>${firstName}</strong>,</p>
+              <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">
+                Your landlord has recorded that you are back. ${resumes}
+              </p>
+
+              <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:20px 24px;margin-bottom:24px">
+                <p style="color:#166534;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;margin:0 0 12px;font-weight:600">YOUR TIME AWAY</p>
+                <table style="width:100%;border-collapse:collapse">
+                  <tr>
+                    <td style="color:#64748b;font-size:13px;padding:6px 0">Away from</td>
+                    <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${_fmtDate(startDate)}</td>
+                  </tr>
+                  <tr>
+                    <td style="color:#64748b;font-size:13px;padding:6px 0">Back on</td>
+                    <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${_fmtDate(returnDate)}</td>
+                  </tr>
+                  <tr>
+                    <td style="color:#64748b;font-size:13px;padding:6px 0">Days away</td>
+                    <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${days}</td>
+                  </tr>
+                  <tr>
+                    <td style="color:#64748b;font-size:13px;padding:6px 0">Holding fee</td>
+                    <td style="color:#1e293b;font-size:13px;font-weight:600;text-align:right">${fee > 0 ? `${_ksh(fee)} / month` : 'None'}</td>
+                  </tr>
+                  ${fee > 0 ? `
+                  <tr>
+                    <td style="color:#64748b;font-size:13px;padding:6px 0">Fee for your time away</td>
+                    <td style="color:#1e293b;font-size:15px;font-weight:700;text-align:right">${_ksh(charged)}</td>
+                  </tr>
+                  <tr>
+                    <td style="color:#64748b;font-size:13px;padding:6px 0">Still unpaid</td>
+                    <td style="color:${owing > 0 ? '#d97706' : '#16a34a'};font-size:13px;font-weight:700;text-align:right">${_ksh(owing)}</td>
+                  </tr>` : ''}
+                </table>
+              </div>
+
+              ${owing > 0 ? `
+              <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:14px 18px;margin-bottom:24px">
+                <p style="color:#92400e;font-size:13px;margin:0">${emailIcon('warning', 14, 'amber')} Your holding fee balance of <strong>${_ksh(owing)}</strong> can be settled with your landlord.</p>
+              </div>` : ''}
+
+              <div style="text-align:center;margin-bottom:28px">
+                <a href="${DASHBOARD_URL}/tenant.html"
+                   style="display:inline-block;background:linear-gradient(135deg,#1d4ed8,#0ea5e9);color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:14px 32px;border-radius:8px;letter-spacing:0.02em">
+                  View on My Dashboard →
+                </a>
+              </div>
+
+              <p style="color:#94a3b8;font-size:12px;line-height:1.6;margin:0">
+                Questions? Message your landlord from your dashboard or email
+                <a href="mailto:support@affordablerentals.site" style="color:#1d4ed8">support@affordablerentals.site</a>.
+              </p>
+            </div>
+
+            ${_footer('You received this because your landlord recorded your return.')}
+          </div>
+        </body>
+        </html>`
+    });
+
+    if (error) throw new Error(`Holiday return email failed: ${error.message}`);
+    console.log(`📧 Holiday return email sent to ${email}`);
+}
+
+
 async function sendCommissionDueEmail({ name, email, property, month, amountDue }) {
     const { Resend } = require('resend');
     const resend = new Resend(process.env.RESEND_API_KEY);
@@ -1150,7 +1474,8 @@ module.exports = {
     sendPaymentOtpEmail,
     sendRentReceiptEmail,
     sendMpesaConfirmationEmail,
-    sendSubscriptionRenewalEmail,
+    sendHoldingFeeEmail,
+    sendHolidayReturnEmail,
     sendCommissionDueEmail,
     sendPropertySuspendedEmail,
     sendListingApprovalEmail,

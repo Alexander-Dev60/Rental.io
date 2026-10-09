@@ -30,9 +30,10 @@ const paymentSchema = new mongoose.Schema({
     },
 
     house: {
-        type:     mongoose.Schema.Types.ObjectId,
-        ref:      'House',
-        required: true
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'House',
+        required: false,   // was: required: true — deposits can precede assignment
+        default: null
     },
 
     amount: {
@@ -41,6 +42,30 @@ const paymentSchema = new mongoose.Schema({
         min:      [1, 'Payment amount must be greater than 0']
     },
 
+    
+    category: {
+        type: String,
+        enum: ['rent', 'deposit', 'refund', 'holiday_hold'],
+        required: true
+    },
+
+    // Distinguishes a mid-semester rent refund from the existing deposit
+    // refund flow. No default — stays undefined on every existing record
+    // and on every deposit refund, so income/commission netting (which
+    // filters on refundContext: 'rent') can never accidentally net out a
+    // deposit refund. Only /payments/rent-refund ever sets this.
+    refundContext: {
+        type: String,
+        enum: ['deposit', 'rent']
+    },
+
+        // Set only on holiday holding-fee payments
+    hold: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref:  'HolidayHold',
+        default: null
+    },
+    
     month: {
         type:     String,
         required: true
@@ -60,6 +85,12 @@ const paymentSchema = new mongoose.Schema({
         type:     Number,
         required: true
     },
+
+    billingCycle: {
+            type: String,
+            enum: ['monthly', 'semester'],
+            default: 'monthly'
+        },
 
     status: {
         type:    String,

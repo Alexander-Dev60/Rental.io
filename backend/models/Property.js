@@ -23,6 +23,20 @@ const geoSchema = new mongoose.Schema({
     }
 }, { _id: false });
 
+
+// One entry per semester in the academic year (2–3). Day fields give the
+// landlord real-calendar control; endDay null = "last day of the end month".
+const semesterEntrySchema = new mongoose.Schema({
+    label:      { type: String, trim: true, default: '' },
+    startMonth: { type: Number, min: 1, max: 12, required: true },
+    startDay:   { type: Number, min: 1, max: 31, default: 1 },
+    endMonth:   { type: Number, min: 1, max: 12, required: true },
+    endDay:     { type: Number, min: 1, max: 31, default: null },
+    rentAmount: { type: Number, min: 0, default: null },   // null = use the property's default semester rent
+    dueDay:     { type: Number, min: 1, max: 28, default: null } // null = use the property default
+}, { _id: false });
+
+
 const propertySchema = new mongoose.Schema({
 
     landlord: {
@@ -35,6 +49,38 @@ const propertySchema = new mongoose.Schema({
         type:     String,
         required: true,
         trim:     true
+    },
+    semesterRule: {
+        enabled: { type: Boolean, default: false },
+        // startMonth/endMonth mirror Semester 1 (legacy readers keep working)
+        startMonth: { type: Number, min: 1, max: 12, default: 1 },
+        endMonth: { type: Number, min: 1, max: 12, default: 6 },
+        // DEFAULT rent per semester; any semester may override it
+        rentAmount: { type: Number, min: 0, default: 0 },
+        dueDay: { type: Number, min: 1, max: 28, default: 5 },
+        // Holiday holding fee per month (pro-rated per day while a tenant is away)
+        holdingFee: { type: Number, min: 0, default: 0 },
+        // What happens when a semester ends and the next one has not started yet:
+        //   ask  = the landlord is asked to pick a holding-fee option for every tenant (default)
+        //   auto = the default holding fee is applied automatically
+        //   none = no holding fee is charged during the gap
+        gapPolicy: { type: String, enum: ['ask', 'auto', 'none'], default: 'ask' },
+        semesters: {
+            type: [semesterEntrySchema],
+            default: [],
+            validate: { validator: arr => arr.length <= 3, message: 'An academic year can have at most 3 semesters' }
+        },
+        expiryDate: { type: Date, default: null }
+    },
+    // Default holiday holding fee for MONTHLY tenants (Ksh per month, pro-rated per day while away).
+    // Semester tenants use semesterRule.holdingFee.
+    monthlyHoldingFee: { type: Number, min: 0, default: 0 },
+    depositPolicy: {
+        requireDepositBeforeAssignment: { type: Boolean, default: true },
+        depositAmount: { type: Number, min: 0, default: 0 }
+        // landlordOverrideAllowed REMOVED — no override, ever.
+        // minimumDepositPercent REMOVED — deposit is now a fixed Ksh amount
+        // the landlord sets, exactly like semesterRule.rentAmount.
     },
 
     location: {
@@ -131,7 +177,14 @@ const propertySchema = new mongoose.Schema({
         default: false
     },
 
-    paymentLastUpdated: { type: Date, default: null }
+    paymentLastUpdated: { type: Date, default: null },
+
+    // Running credit from commission that turns out to have been overpaid
+    // because a rent refund landed after that month's commission was
+    // already settled. Applied as a discount the next time commission for
+    // ANY month on this property is computed — see
+    // computeCommissionForProperty() and reconcileCommissionOverpayment().
+    commissionCreditBalance: { type: Number, default: 0, min: 0 }
 
 }, { timestamps: true });
 

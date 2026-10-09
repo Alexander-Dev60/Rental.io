@@ -75,11 +75,23 @@ const commissionPaymentSchema = new mongoose.Schema({
     },
     note: { type: String, default: null },
 
+    // Credit consumed to reduce THIS charge, snapshotted at push/mark-paid
+    // time so the displayed and charged amounts never drift. Only actually
+    // deducted from the property's live commissionCreditBalance once this
+    // record is confirmed paid (see the STK callback and manual mark-paid
+    // routes) — never here at creation time.
+    creditApplied: { type: Number, default: 0 },
+
+    // Cumulative credit THIS paid record has generated for the property
+    // because a later rent refund reduced what it should have owed.
+    // reconcileCommissionOverpayment() only ever grants the incremental
+    // delta above this value, so re-running it never double-credits.
+    creditGrantedForOverpayment: { type: Number, default: 0 },
+
     paidAt: {
         type: Date,
         default: null
     }
-
 }, { timestamps: true });
 
 // One landlord can retry a failed/pending commission payment for the same

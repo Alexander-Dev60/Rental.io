@@ -563,6 +563,18 @@
       .role-picker { grid-template-columns: 1fr; }
       .explore-grid { grid-template-columns: repeat(2, 1fr); }
     }
+
+    .card.invite-mode .role-picker,
+    .card.invite-mode .tabs { display: none; }
+    .invite-prop {
+      background: rgba(224,187,100,.09); border: 1px solid rgba(224,187,100,.22);
+      border-radius: 12px; padding: 12px 14px; margin-bottom: 14px;
+    }
+    .invite-prop-label { font-family: var(--font-m); font-size: .58rem; letter-spacing: .16em; text-transform: uppercase; color: var(--primary); opacity: .85; }
+    .invite-prop-name  { font-family: var(--font-d); font-style: italic; font-size: 1.25rem; color: var(--text); margin-top: 3px; }
+    .invite-prop-loc   { font-size: .72rem; color: var(--muted); margin-top: 2px; }
+    .invite-switch { display: block; text-align: center; margin-top: 12px; font-size: .72rem; color: var(--muted); background: none; border: none; cursor: pointer; width: 100%; }
+    .invite-switch:hover { color: var(--primary); }
   </style>
   <link rel="stylesheet" href="public.css">
 </head>
@@ -706,7 +718,7 @@
         <div class="trial-note-top">
           <span id="iconTrialNote" style="flex-shrink:0"></span>
           <span style="font-family:var(--font-s);font-size:.72rem;color:var(--muted);line-height:1.5">
-            <strong>14-day free trial</strong> — no payment required to get started. Configure M-Pesa after your first login.
+            <strong>Free to join.</strong> — A small commission applies only to rent you collect through the platform.
           </span>
         </div>
 
@@ -776,6 +788,43 @@
         </label>
         <button class="submit-btn" id="registerBtn" onclick="submitRegister()" disabled>Create Landlord Account</button>
       </div>
+
+    <div class="form-panel" id="panelInvite">
+      <div class="invite-prop">
+        <div class="invite-prop-label">You're joining</div>
+        <div class="invite-prop-name" id="invitePropName"></div>
+        <div class="invite-prop-loc" id="invitePropLoc"></div>
+      </div>
+      <div class="form-section-label">Create your tenant account</div>
+      <div class="field">
+        <label class="field-label" for="invName">Full name</label>
+        <input type="text" id="invName" placeholder="Jane Wanjiku" autocomplete="name">
+      </div>
+      <div class="field">
+        <label class="field-label" for="invPhone">Phone number</label>
+        <input type="tel" id="invPhone" placeholder="0712 345 678" autocomplete="tel">
+      </div>
+      <div class="field">
+        <label class="field-label" for="invEmail">Email address</label>
+        <input type="email" id="invEmail" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="field-grid">
+        <div class="field">
+          <label class="field-label" for="invPassword">Password</label>
+          <input type="password" id="invPassword" placeholder="Min. 6 characters" autocomplete="new-password">
+        </div>
+        <div class="field">
+          <label class="field-label" for="invConfirm">Confirm password</label>
+          <input type="password" id="invConfirm" placeholder="Repeat password" autocomplete="new-password">
+        </div>
+      </div>
+      <label class="terms-check">
+        <input type="checkbox" id="invTerms">
+        <span>I've read and agree to the <a href="terms.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</span>
+      </label>
+      <button class="submit-btn" id="inviteBtn" onclick="submitInviteRegister()">Create Tenant Account</button>
+      <button type="button" class="invite-switch" onclick="exitInviteMode()">Already have an account? Sign in</button>
+    </div>
 
       <div class="divider">
         <div class="divider-line"></div>

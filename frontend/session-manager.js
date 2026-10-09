@@ -16,6 +16,12 @@
    That's it — the widget handles activity listening, the modal,
    the countdown, calling /auth/refresh-token, and redirecting on
    timeout. No other wiring needed.
+
+   CHANGE (tour): while the dashboard's guided tour is on screen the person
+   is reading, not idle. The idle warning is therefore held back — and the
+   session kept alive — until the tour has finished, so the warning popup can
+   never land on top of (or be hidden by) the tour. Pages without a tour
+   (window.isTourActive undefined) behave exactly as before.
    ═══════════════════════════════════════════════════════ */
 
 (function (window) {
@@ -85,6 +91,12 @@
             localStorage.removeItem(this._config.tokenKey);
         },
 
+        // True while the dashboard's guided tour is showing (dashboard.html defines this).
+        _tourOnScreen() {
+            try { return typeof window.isTourActive === 'function' && !!window.isTourActive(); }
+            catch (e) { return false; }
+        },
+
         _bindActivityListeners() {
             const handler = () => {
                 this._lastActivityAt = Date.now();
@@ -122,9 +134,10 @@
             // Don't silently refresh someone who has actually gone idle —
             // that case is already owned by the warning-modal/logout flow.
             // This loop exists purely for users who never go idle.
+            // (Someone reading the guided tour is not idle.)
             const idleMs = this._config.idleMinutes * 60 * 1000;
             const sinceActivity = Date.now() - this._lastActivityAt;
-            if (sinceActivity >= idleMs) return false;
+            if (sinceActivity >= idleMs && !this._tourOnScreen()) return false;
 
             // Don't fight the warning modal if it's already up.
             if (this._modalEl && this._modalEl.classList.contains('sm-visible')) return false;
@@ -164,10 +177,21 @@
 
         _showWarning() {
             if (!this._getToken()) return;
+
+            // The guided tour is on screen: the person is reading it, not away.
+            // Hold the warning back, count this as activity (so the silent token
+            // refresh keeps running too) and look again a full idle period later.
+            if (this._tourOnScreen()) {
+                this._lastActivityAt = Date.now();
+                this._resetIdleTimer();
+                return;
+            }
+
             this._remainingSeconds = this._config.warningSeconds;
             this._updateCountdownText();
             this._modalEl.classList.add('sm-visible');
 
+            clearInterval(this._countdownInterval);
             this._countdownInterval = setInterval(() => {
                 this._remainingSeconds--;
                 this._updateCountdownText();

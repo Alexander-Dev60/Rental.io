@@ -530,6 +530,7 @@ function switchProperty(id, name) {
     loadRules();
     loadUnread();
     loadMaintenanceRequests();
+    if (document.getElementById('sec-invite')?.classList.contains('active')) initInvitePage();
     if (document.getElementById('sec-activity')?.classList.contains('active')) loadActivity();
 
     if (!IS_CARETAKER) {
@@ -569,40 +570,62 @@ function closePropertyMenuOutside(e) {
 }
 
 async function addProperty() {
-    const name     = document.getElementById('newPropName')?.value.trim();
+    const name = document.getElementById('newPropName')?.value.trim();
     const location = document.getElementById('newPropLocation')?.value.trim();
-    const phone    = document.getElementById('newPropPhone')?.value.trim();
+    const phone = document.getElementById('newPropPhone')?.value.trim();
 
+    const semesterRule = {
+        enabled: document.getElementById('newPropSemesterEnabled')?.value === 'true',
+        rentAmount: Number(document.getElementById('newPropSemesterRentAmount')?.value || 0),
+        dueDay: Math.min(28, Math.max(1, Number(document.getElementById('newPropSemesterDueDay')?.value) || 5)),
+        holdingFee: Math.max(0, Number(document.getElementById('newPropHoldingFee')?.value) || 0),
+        semesters: collectSemesterEditor('newPropSemestersEditor')
+    };
+
+    if (semesterRule.enabled && (!semesterRule.rentAmount || semesterRule.rentAmount <= 0)) {
+        showToast('Enter a semester rent amount before enabling semester billing', 'warn');
+        return;
+    }
+
+const depositPolicy = {
+    requireDepositBeforeAssignment: document.getElementById('newPropRequireDeposit')?.value !== 'false',
+    depositAmount: Math.max(0, Number(document.getElementById('newPropDepositAmount')?.value) || 0)
+};
     if (!name) { showToast('Property name is required', 'warn'); return; }
 
     const btn = document.querySelector('#modal-add-property .btn-primary');
     if (btn) { btn.disabled = true; btn.innerHTML = `${ICON('hourglass',14)} Creating...`; }
-    
 
     try {
-        const res  = await fetch(`${API}/properties/create`, {
-            method:  'POST',
+        const res = await fetch(`${API}/properties/create`, {
+            method: 'POST',
             headers: authHeaders(),
-            body:    JSON.stringify({ name, location: location || undefined, phone: phone || undefined })
+            body: JSON.stringify({
+                name,
+                location: location || undefined,
+                phone: phone || undefined,
+                semesterRule,
+                depositPolicy
+            })
         });
+
         const data = await res.json();
 
         if (!res.ok) {
             if (data.upgrade) showUpgradePrompt(data.message);
-            else              showToast(data.message || 'Failed to create property', 'error');
+            else showToast(data.message || 'Failed to create property', 'error');
             return;
         }
 
         showToast(`${name} created `, 'success');
         closeModal('modal-add-property');
 
-        // If the landlord dropped a pin while creating this property, save it now
         if (_newPropCoords && data.property?._id) {
             try {
                 await fetch(`${API}/properties/${data.property._id}/location`, {
-                    method:  'PUT',
+                    method: 'PUT',
                     headers: authHeaders(),
-                    body:    JSON.stringify({ lat: _newPropCoords.lat, lng: _newPropCoords.lng })
+                    body: JSON.stringify({ lat: _newPropCoords.lat, lng: _newPropCoords.lng })
                 });
             } catch (err) { console.error('Failed to save initial property location:', err); }
         }
@@ -691,6 +714,7 @@ function _initLeafletPicker(containerId, onPick, initialLatLng) {
 
 
 function initNewPropMap() {
+    initSemesterEditor('newPropSemestersEditor');
     const coordsEl     = document.getElementById('newPropCoords');
     const searchInput  = document.getElementById('newPropSearchInput');
     if (searchInput) searchInput.value = '';
@@ -974,7 +998,8 @@ async function onCommissionPropertyChange() {
         document.getElementById('commSumRate').textContent      = `${data.percentage}%`;
         document.getElementById('commSumCollected').textContent = `Ksh ${Number(data.totalCollected).toLocaleString()}`;
         document.getElementById('commSumDue').textContent       = `Ksh ${Number(data.amountDue).toLocaleString()}`;
-
+        const creditEl = document.getElementById('commSumCredit');
+        if (creditEl) creditEl.textContent = data.creditApplied > 0 ? `− Ksh ${Number(data.creditApplied).toLocaleString()}` : 'None';
     const statusEl = document.getElementById('commSumStatus');
         statusEl.innerHTML = data.alreadyPaid
             ? `<span class="pill pill-green" style="display:inline-flex;align-items:center;gap:3px">${ICON('check',10)} Paid</span>`
@@ -1075,14 +1100,13 @@ function _referralPromptKey() {
 
 async function maybeShowReferralModal() {
     if (IS_CARETAKER) return;
+    // While the tour is pending/running this prompt is queued (not dropped): PopupQueue
+    // calls this function again once the tour has finished.
+    if (window.PopupQueue && window.isTourBlocking && window.isTourBlocking()) {
+        window.PopupQueue.request('referral', maybeShowReferralModal, 2);
+        return;
+    }
     if (document.querySelector('.modal-overlay.open')) return; // never stack on top of onboarding/others
-    // The spotlight tour isn't a `.modal-overlay`, so the check above never
-    // catches it — check separately via the flag dashboard.html exposes.
-    // No retry here: if this is a first-ever login the tour is running for
-    // the FIRST and only time (it's gated behind a one-time "seen" flag), so
-    // simply skipping this call is enough — the very next login will call
-    // this again with the tour no longer running, and show normally.
-    if (typeof window.isTourActive === 'function' && window.isTourActive()) return;
     if (localStorage.getItem('onboardingComplete') === 'false') return; // let onboarding finish first
     if (localStorage.getItem('accountStatus') === 'suspended') return;
 
@@ -1236,7 +1260,15 @@ async function loadLandlordProfile() {
 function checkOnboarding() {
     const onboardingComplete = localStorage.getItem('onboardingComplete');
     if (onboardingComplete === 'false') {
-        setTimeout(() => { openModal('modal-onboarding'); }, 800);
+        // The first-run tour always goes first. PopupQueue holds this back while the tour is
+        // pending/running and releases it the moment the tour ends (or immediately if no tour).
+        const show = () => {
+            if (localStorage.getItem('onboardingComplete') === 'false') openModal('modal-onboarding');
+        };
+        setTimeout(() => {
+            if (window.PopupQueue) window.PopupQueue.request('onboarding', show, 1);
+            else show();
+        }, 800);
     }
 }
 
@@ -1709,7 +1741,6 @@ async function loadDashboard() {
     try {
         const res  = await fetch(url, { headers: authHeaders() });
         const data = await res.json();
-
         if (!res.ok) { showToast(data.message || 'Failed to load dashboard', 'error'); return; }
 
         document.getElementById('income').textContent       = data.totalIncome.toLocaleString();
@@ -1721,13 +1752,48 @@ async function loadDashboard() {
         document.getElementById('netIncome').textContent = (data.netIncome || 0).toLocaleString();
         document.getElementById('openMaintenance').textContent = data.openMaintenanceCount || 0;
 
-                if (data.landlordProfile) {
+        const breakdownEl = document.getElementById('arrearsBreakdown');
+        if (breakdownEl) {
+            breakdownEl.textContent = `Ksh ${Number(data.monthlyArrears || 0).toLocaleString()} monthly · Ksh ${Number(data.semesterArrears || 0).toLocaleString()} semester`;
+        }
+
+        const semDueCard = document.getElementById('upcomingSemDueCard');
+        if (semDueCard) {
+            if (data.upcomingSemesterDueCount > 0) {
+                semDueCard.style.display = '';
+                document.getElementById('upcomingSemDue').textContent = data.upcomingSemesterDueCount;
+            } else {
+                semDueCard.style.display = 'none';
+            }
+        }
+
+        const snapCard = document.getElementById('semesterSnapshotCard');
+        if (snapCard) {
+            if (data.semesterSnapshot) {
+                const s = data.semesterSnapshot;
+                snapCard.style.display = 'block';
+                document.getElementById('semSnapTitle').innerHTML = `${ICON('clock',14)} Semester Snapshot — ${s.periodLabel}`;
+                document.getElementById('semSnapCollectedLabel').textContent = `Ksh ${Number(s.totalCollected).toLocaleString()} collected`;
+                document.getElementById('semSnapDueLabel').textContent = `of Ksh ${Number(s.totalDue).toLocaleString()} due`;
+                const pct = s.totalDue > 0 ? Math.min(100, Math.round((s.totalCollected / s.totalDue) * 100)) : 0;
+                const bar = document.getElementById('semSnapProgressBar');
+                bar.style.width = `${pct}%`;
+                bar.className = `payment-progress-bar ${pct >= 100 ? 'paid' : 'partial'}`;
+                const dueDateStr = new Date(s.dueDateActual).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+                document.getElementById('semSnapFooter').textContent = s.daysRemaining >= 0
+                    ? `${s.tenantCount} tenant(s) · due ${dueDateStr} · ${s.daysRemaining} day(s) remaining`
+                    : `${s.tenantCount} tenant(s) · was due ${dueDateStr} · ${Math.abs(s.daysRemaining)} day(s) overdue`;
+            } else {
+                snapCard.style.display = 'none';
+            }
+        }
+
+        if (data.landlordProfile) {
             const nameEl = document.getElementById('propertyNameDisplay');
             const locEl  = document.getElementById('propertyLocationDisplay');
             const mgrEl  = document.getElementById('landlordNameDisplay');
             if (nameEl) nameEl.textContent = data.property?.name || data.landlordProfile.propertyName || 'Your Property';
             if (locEl)  locEl.innerHTML    = `${ICON('pin',12)} ${data.property?.location || data.landlordProfile.propertyLocation || '—'}`;
-
             if (mgrEl) {
                 if (isCaretaker()) {
                     const landlordName = localStorage.getItem('caretakerLandlordName') || '—';
@@ -1737,7 +1803,6 @@ async function loadDashboard() {
                 }
             }
         }
-
 
         renderCharts(data);
 
@@ -1791,6 +1856,7 @@ async function loadMovedOutTenants() {
 
         _movedOutTenants = tenants;
         renderMovedOutList(tenants);
+        loadHolidayHolds();
 
     } catch (err) {
         showToast('Failed to load moved-out tenants', 'error');
@@ -1824,7 +1890,6 @@ async function addTenant() {
     const name       = document.getElementById('newName').value.trim();
     const phone      = document.getElementById('newPhone').value.trim();
     const email      = document.getElementById('newEmail').value.trim();
-    const dueDate    = document.getElementById('newDueDate').value || 5;
     const propertyId = getPropertyId();
 
     if (!name || !phone || !email) {
@@ -1843,7 +1908,7 @@ async function addTenant() {
         const res  = await fetch(`${API}/tenants/create`, {
             method:  'POST',
             headers: authHeaders(),
-            body:    JSON.stringify({ name, phone, email, dueDate: Number(dueDate), propertyId })
+            body:    JSON.stringify({ name, phone, email, propertyId })
         });
         const data = await res.json();
 
@@ -1859,7 +1924,21 @@ async function addTenant() {
             showToast(`${name} created — welcome email sent `, 'success');
         }
 
-        ['newName', 'newPhone', 'newEmail', 'newDueDate'].forEach(id => {
+                const expectedSem = document.getElementById('newExpectedSemesters')?.value;
+        if (expectedSem && data.tenant?._id) {
+            try {
+                const r = await fetch(`${API}/tenants/${data.tenant._id}/stay`, {
+                    method: 'PUT', headers: authHeaders(),
+                    body: JSON.stringify({ expectedSemesterCount: Number(expectedSem) })
+                });
+                const d = await r.json();
+                if (!r.ok) showToast(d.message || 'Tenant created, but expected semesters were not saved', 'warn');
+            } catch (e) { console.error(e); }
+        }
+        const expEl = document.getElementById('newExpectedSemesters');
+        if (expEl) expEl.value = '';
+
+        ['newName', 'newPhone', 'newEmail'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.value = '';
         });
@@ -1941,6 +2020,71 @@ async function reactivateTenant(tenantId, houseId) {
     }
 }
 
+// ── Shared entry point for every "move out this tenant" trigger (house-card
+//    menu, tenant-row menu, Houses section's Move Out select). Checks
+//    whether the tenant is mid-semester first; every caller funnels through
+//    here so the three previously-separate handlers can't drift out of sync. ──
+async function _performTenantMoveOut(tenantId, tenantName, houseName) {
+    if (!tenantId) { showToast('Could not identify the tenant.', 'warn'); return; }
+
+    let preview = null;
+    try {
+        const res  = await fetch(`${API}/tenants/${tenantId}/semester-moveout-preview`, { headers: authHeaders() });
+        const data = await res.json();
+        if (res.ok && data.midSemester) preview = data;
+    } catch (err) {
+        console.error('semester-moveout-preview error:', err);
+        // Fall through silently — worst case the landlord just gets the
+        // plain move-out confirmation with no refund step.
+    }
+
+    if (preview) _openMoveOutRefundModal(tenantId, tenantName, houseName, preview);
+    else         _confirmPlainMoveOut(tenantId, tenantName, houseName);
+}
+
+async function _submitMoveOut(tenantId, tenantName) {
+    const res  = await fetch(`${API}/move-out/${tenantId}`, { method: 'PUT', headers: authHeaders() });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.message || data.error || 'Move out failed', 'error'); return; }
+    showToast(data.message || `${tenantName} moved out `, 'success');
+    await loadHouses();
+    await loadTenants();
+    await loadMovedOutTenants();
+}
+
+async function _confirmMoveOutWithRefund() {
+    const tenantId   = document.getElementById('moveOutRefundTenantId').value;
+    const tenantName = document.getElementById('moveOutRefundTenantName').value;
+    const amount     = Number(document.getElementById('moveOutRefundAmount').value);
+
+    if (!amount || amount <= 0) { showToast('Enter a valid refund amount', 'warn'); return; }
+
+    const btn = document.querySelector('#moveOutRefundAmountWrap .btn-primary');
+    if (btn) { btn.disabled = true; btn.innerHTML = `${ICON('hourglass',14)} Processing...`; }
+
+    try {
+        // Refund must be recorded BEFORE move-out — move-out clears the
+        // tenant's house, and the refund route needs it to compute figures.
+        const refundRes  = await fetch(`${API}/payments/rent-refund`, {
+            method: 'POST', headers: authHeaders(),
+            body: JSON.stringify({ tenantId, amount, note: 'Mid-semester move-out refund' })
+        });
+        const refundData = await refundRes.json();
+        if (!refundRes.ok) { showToast(refundData.message || 'Refund failed', 'error'); return; }
+
+        showToast(`Ksh ${amount.toLocaleString()} refund recorded`, 'success');
+        closeModal('modal-moveout-refund');
+        await _submitMoveOut(tenantId, tenantName);
+        loadRecentActivity();
+        loadDashboard();
+
+    } catch (err) {
+        showToast('Network error', 'error');
+        console.error(err);
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = `${ICON('cash',14)} Issue Refund &amp; Move Out`; }
+    }
+}
 
 // ═══════════════════════════════════════
 // HOUSES
@@ -2025,6 +2169,7 @@ async function loadHouses() {
                     h.tenantName = h.tenantName || tenant.name;
                 }
             }
+            h.onHoliday = !!(h.tenantId && _activeHoldTenantIds.has(String(h.tenantId)));
             return h;
         });
 
@@ -2039,18 +2184,25 @@ async function loadHouses() {
 }
 
 async function addHouse() {
-    const name       = document.getElementById('houseName').value.trim();
-    const rent       = document.getElementById('houseRent').value;
-    const propertyId = getPropertyId();
+    const name         = document.getElementById('houseName').value.trim();
+    const billingCycle = document.getElementById('houseBillingCycle')?.value === 'semester' ? 'semester' : 'monthly';
+    const propertyId   = getPropertyId();
 
-    if (!name || !rent) { showToast('Name and rent required', 'warn'); return; }
-    if (!propertyId)    { showToast('No active property selected', 'warn'); return; }
+    if (!name)       { showToast('House name required', 'warn'); return; }
+    if (!propertyId) { showToast('No active property selected', 'warn'); return; }
+
+    const body = { name, propertyId, billingCycle };
+    const buildingId = document.getElementById('houseBuilding')?.value;
+    if (buildingId) body.groupId = buildingId;          // optional: put the new house in a building
+    if (billingCycle === 'monthly') {
+        const rent = document.getElementById('houseRent').value;
+        if (!rent) { showToast('Rent required', 'warn'); return; }
+        body.rent = Number(rent);
+    }
 
     try {
         const res  = await fetch(`${API}/houses`, {
-            method:  'POST',
-            headers: authHeaders(),
-            body:    JSON.stringify({ name, rent: Number(rent), propertyId })
+            method: 'POST', headers: authHeaders(), body: JSON.stringify(body)
         });
         const data = await res.json();
 
@@ -2060,7 +2212,6 @@ async function addHouse() {
         document.getElementById('houseName').value = '';
         document.getElementById('houseRent').value = '';
         await loadHouses();
-
     } catch (err) {
         showToast('Network error', 'error');
         console.error(err);
@@ -2108,25 +2259,22 @@ function moveOutTenant(selectId = 'moveOutSelect') {
     if (!tenantId) { showToast('Select a tenant', 'warn'); return; }
     const tenantName = sel.options[sel.selectedIndex]?.text || 'this tenant';
 
-    openDangerModal({
-        icon:    ICON('door', 44),
-        title:   'Move Out Tenant',
-        message: `Are you sure you want to move out <strong>${tenantName}</strong>?<br><br>Their house will be marked as <strong>available</strong> and they will receive a move-out notification email. Their login and payment history are preserved.`,
-        label:   'Move Out',
-        type:    'warn',
-        
-        onConfirm: async () => {
-            const res  = await fetch(`${API}/move-out/${tenantId}`, { method: 'PUT', headers: authHeaders() });
-            const data = await res.json();
-            if (!res.ok) { showToast(data.message || data.error || 'Move out failed', 'error'); return; }
-            showToast(data.message, 'success');
-            await loadHouses();
-            await loadTenants();
-            await loadMovedOutTenants();
-        }
-    });
+    const tenant    = _allTenants.find(t => t._id === tenantId);
+    const houseName = tenant && tenant.house && typeof tenant.house === 'object' ? tenant.house.name : '';
+
+    _performTenantMoveOut(tenantId, tenantName, houseName);
 }
 
+async function loadTenantBilling(tenantId) {
+    try {
+        const res  = await fetch(`${API}/landlord/billing/${tenantId}`, { headers: authHeaders() });
+        const data = await res.json();
+        if (!res.ok) return;
+        renderTenantBillingPanel(tenantId, data.periods || []);
+    } catch (err) {
+        console.error('loadTenantBilling error:', err.message);
+    }
+}
 
 // ═══════════════════════════════════════
 // PAYMENT SUMMARY
@@ -2174,37 +2322,39 @@ async function loadPaymentSummary() {
 }
 
 async function onPayTenantChange() {
-    const tenantId     = document.getElementById('payTenantSelect').value;
-    const monthInput   = document.getElementById('month');
-    const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+    if (_paymentType === 'deposit') { _applyInlineDepositLock(); return; }
+
+    const tenantId   = document.getElementById('payTenantSelect').value;
+    const monthInput = document.getElementById('month');
 
     if (!tenantId) {
-        monthInput.value = currentMonth;
+        monthInput.readOnly = false;
+        monthInput.value    = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
         loadPaymentSummary();
         return;
     }
 
-    try {
-        const propertyId = getPropertyId();
-        let url = `${API}/arrears`;
-        if (propertyId) url += `?propertyId=${propertyId}`;
+    await _syncPeriodFieldForTenant(tenantId, 'month');
 
-        const res  = await fetch(url, { headers: authHeaders() });
-        const data = await res.json();
-
-        if (res.ok && Array.isArray(data)) {
-            const tenantArrear = data.find(a => String(a.tenantId) === String(tenantId));
-            if (tenantArrear && tenantArrear.balance > 0) {
-                monthInput.value = tenantArrear.month;
-                loadPaymentSummary();
-                return;
+    if (!monthInput.readOnly) {
+        try {
+            const propertyId = getPropertyId();
+            let url = `${API}/arrears`;
+            if (propertyId) url += `?propertyId=${propertyId}`;
+            const res  = await fetch(url, { headers: authHeaders() });
+            const data = await res.json();
+            if (res.ok && Array.isArray(data)) {
+                const tenantArrear = data.find(a => String(a.tenantId) === String(tenantId));
+                if (tenantArrear && tenantArrear.balance > 0) {
+                    monthInput.value = tenantArrear.month;
+                    loadPaymentSummary();
+                    return;
+                }
             }
-        }
-    } catch (err) {
-        console.error('onPayTenantChange arrears lookup error:', err);
+        } catch (err) { console.error('onPayTenantChange arrears lookup error:', err); }
+        monthInput.value = monthInput.dataset.cycleLabel || new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
     }
 
-    monthInput.value = currentMonth;
     loadPaymentSummary();
 }
 
@@ -2302,17 +2452,9 @@ async function downloadPDF(paymentId) {
 // ═══════════════════════════════════════
 
 async function loadArrears() {
-    const monthInput = document.getElementById('arrearsMonth');
-    const month      = monthInput ? monthInput.value.trim() : '';
     const propertyId = getPropertyId();
-
-    let url = month
-        ? `${API}/arrears/${encodeURIComponent(month)}`
-        : `${API}/arrears`;
-
-    if (propertyId) {
-        url += `${url.includes('?') ? '&' : '?'}propertyId=${propertyId}`;
-    }
+    let url = `${API}/arrears`;
+    if (propertyId) url += `?propertyId=${propertyId}`;
 
     try {
         const res  = await fetch(url, { headers: authHeaders() });
@@ -2324,7 +2466,7 @@ async function loadArrears() {
         const data = await res.json();
         if (!Array.isArray(data)) { showToast('Unexpected server response', 'error'); return; }
 
-        renderArrearsTable(data);
+        renderArrearsTable(data, { mode: 'current' });
 
         const badge = document.getElementById('arrearsBadge');
         if (badge) {
@@ -2334,6 +2476,65 @@ async function loadArrears() {
     } catch (err) {
         showToast('Failed to load arrears', 'error');
         console.error('loadArrears error:', err);
+    }
+}
+
+async function loadSemesterPeriodOptions() {
+    const propertyId = document.getElementById('arrSemesterProperty')?.value;
+    const periodSel   = document.getElementById('arrSemesterPeriod');
+    if (!propertyId || !periodSel) return;
+
+    periodSel.innerHTML = `<option value="">Loading…</option>`;
+    try {
+        const res  = await fetch(`${API}/semester-periods?propertyId=${propertyId}&count=6`, { headers: authHeaders() });
+        const data = await res.json();
+        if (!res.ok) { periodSel.innerHTML = `<option value="">Failed to load</option>`; return; }
+        if (!data.periods.length) { periodSel.innerHTML = `<option value="">Semester billing not enabled for this property</option>`; return; }
+
+        periodSel.innerHTML = data.periods.map(p =>
+            `<option value="${p.periodLabel}" ${p.isCurrent ? 'selected' : ''}>${p.periodLabel}${p.isCurrent ? ' (current)' : ''}</option>`
+        ).join('');
+
+    } catch (err) {
+        console.error('loadSemesterPeriodOptions error:', err);
+        periodSel.innerHTML = `<option value="">Network error</option>`;
+    }
+}
+
+async function loadArrearsByMonth() {
+    const monthInput = document.getElementById('arrearsMonth');
+    const month = monthInput ? monthInput.value.trim() : '';
+    if (!month) { showToast('Enter a month first', 'warn'); return; }
+
+    const propertyId = getPropertyId();
+    let url = `${API}/arrears/${encodeURIComponent(month)}`;
+    if (propertyId) url += `?propertyId=${propertyId}`;
+
+    try {
+        const res  = await fetch(url, { headers: authHeaders() });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.message || 'Failed to load arrears', 'error'); return; }
+        renderArrearsTable(data, { mode: 'month' });
+    } catch (err) {
+        showToast('Network error', 'error');
+        console.error(err);
+    }
+}
+
+async function loadArrearsBySemester() {
+    const propertyId  = document.getElementById('arrSemesterProperty')?.value;
+    const periodLabel = document.getElementById('arrSemesterPeriod')?.value;
+    if (!propertyId)  { showToast('Select a property', 'warn'); return; }
+    if (!periodLabel) { showToast('Select a semester period', 'warn'); return; }
+
+    try {
+        const res  = await fetch(`${API}/arrears/semester?propertyId=${propertyId}&periodLabel=${encodeURIComponent(periodLabel)}`, { headers: authHeaders() });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.message || 'Failed to load arrears', 'error'); return; }
+        renderArrearsTable(data, { mode: 'semester' });
+    } catch (err) {
+        showToast('Network error', 'error');
+        console.error(err);
     }
 }
 
@@ -2723,29 +2924,28 @@ async function openPayModal(tenant) {
     document.getElementById('payModalAmount').value           = '';
     document.getElementById('payModalNote').value             = '';
     document.getElementById('modalSummaryBox').style.display  = 'none';
+    if (typeof setModalPaymentType === 'function') setModalPaymentType('rent');
 
-    const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+    await _syncPeriodFieldForTenant(tenant._id, 'payModalMonth');
 
-    let prefillMonth = currentMonth;
-    try {
-        const propertyId = getPropertyId();
-        let url = `${API}/arrears`;
-        if (propertyId) url += `?propertyId=${propertyId}`;
-
-        const res  = await fetch(url, { headers: authHeaders() });
-        const data = await res.json();
-
-        if (res.ok && Array.isArray(data)) {
-            const tenantArrear = data.find(a => String(a.tenantId) === String(tenant._id));
-            if (tenantArrear && tenantArrear.balance > 0) {
-                prefillMonth = tenantArrear.month;
+    const monthInput = document.getElementById('payModalMonth');
+    if (!monthInput.readOnly) {
+        // Monthly tenants follow their own rent cycle (it starts the day they were assigned a house)
+        const currentMonth = monthInput.dataset.cycleLabel || new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+        let prefillMonth = currentMonth;
+        try {
+            const propertyId = getPropertyId();
+            let url = `${API}/arrears`;
+            if (propertyId) url += `?propertyId=${propertyId}`;
+            const res  = await fetch(url, { headers: authHeaders() });
+            const data = await res.json();
+            if (res.ok && Array.isArray(data)) {
+                const tenantArrear = data.find(a => String(a.tenantId) === String(tenant._id));
+                if (tenantArrear && tenantArrear.balance > 0) prefillMonth = tenantArrear.month;
             }
-        }
-    } catch (err) {
-        console.error('openPayModal arrears lookup error:', err);
+        } catch (err) { console.error('openPayModal arrears lookup error:', err); }
+        monthInput.value = prefillMonth;
     }
-
-    document.getElementById('payModalMonth').value = prefillMonth;
 
     openModal('modal-pay');
     loadModalSummary();
@@ -3186,6 +3386,293 @@ async function handlePhotoDelete(propertyId, photoUrl) {
     }
 }
 
+
+// ═══════════════════════════════════════
+// SEMESTER STAY — extension, expected semesters, holiday holds
+// ═══════════════════════════════════════
+
+let _activeHoldTenantIds = new Set();
+let _holidayHolds = [];
+
+async function loadHolidayHolds() {
+    try {
+        const propertyId = getPropertyId();
+        const url = propertyId ? `${API}/holiday-holds?propertyId=${propertyId}` : `${API}/holiday-holds`;
+        const res = await fetch(url, { headers: authHeaders() });
+        const data = await res.json();
+        if (!res.ok || !Array.isArray(data.holds)) return;
+
+        _holidayHolds = data.holds;
+        _activeHoldTenantIds = new Set(data.holds.filter(h => h.status === 'active').map(h => String(h.tenantId)));
+
+        if (_allHouses && _allHouses.length) {
+            _allHouses.forEach(h => { h.onHoliday = !!(h.tenantId && _activeHoldTenantIds.has(String(h.tenantId))); });
+            renderHouseGrid(_allHouses);
+            renderHouseGrid(_allHouses, 'assignHouseGrid', 'assignHouseGroupLegend');
+        }
+        renderHolidayHoldsCard(_holidayHolds);
+        loadGapDecisions();
+    } catch (err) {
+        console.error('loadHolidayHolds error:', err.message);
+    }
+}
+
+// Tenants who are between two semesters and still need a holding-fee decision (landlord / permitted caretaker).
+async function loadGapDecisions() {
+    try {
+        const propertyId = getPropertyId();
+        const url = propertyId ? `${API}/gap-decisions?propertyId=${propertyId}` : `${API}/gap-decisions`;
+        const res = await fetch(url, { headers: authHeaders() });
+        const data = await res.json();
+        if (!res.ok || !Array.isArray(data.items)) return;
+        renderGapDecisions(data);
+    } catch (err) {
+        console.error('loadGapDecisions error:', err.message);
+    }
+}
+
+async function loadTenantStay(tenantId, arrears) {
+    _profileArrearsCache[tenantId] = Number(arrears || 0);
+    try {
+        const res  = await fetch(`${API}/tenants/${tenantId}/stay-info`, { headers: authHeaders() });
+        const data = await res.json();
+        if (!res.ok) return;
+        renderTenantStayPanel(tenantId, data);
+    } catch (err) {
+        console.error('loadTenantStay error:', err.message);
+    }
+}
+
+async function _refreshAfterStayChange(tenantId) {
+    await loadTenantProfile(tenantId);
+    loadHolidayHolds();
+    loadHouses();
+    loadArrears();
+    loadDashboard();
+}
+
+async function saveExpectedSemesters(tenantId) {
+    const val = document.getElementById('stayExpectedSelect')?.value;
+    if (!val) { showToast('Choose how many semesters', 'warn'); return; }
+    try {
+        const res  = await fetch(`${API}/tenants/${tenantId}/stay`, {
+            method: 'PUT', headers: authHeaders(), body: JSON.stringify({ expectedSemesterCount: Number(val) })
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.message || 'Save failed', 'error'); return; }
+        showToast(data.message, 'success');
+        await loadTenantStay(tenantId, _profileArrearsCache[tenantId]);
+    } catch (err) { showToast('Network error', 'error'); console.error(err); }
+}
+
+async function submitExtendStay(tenantId) {
+    const newEndDate = document.getElementById('extendNewEnd')?.value;
+    if (!newEndDate) { showToast('Pick the new end date', 'warn'); return; }
+    const btn = document.getElementById('extendConfirmBtn');
+    if (btn) { btn.disabled = true; btn.innerHTML = `${ICON('hourglass',14)} Extending...`; }
+    try {
+        const res  = await fetch(`${API}/tenants/${tenantId}/extend-stay`, {
+            method: 'POST', headers: authHeaders(), body: JSON.stringify({ newEndDate })
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.message || 'Extension failed', 'error'); return; }
+        showToast(data.message, 'success');
+        closeModal('modal-extend-stay');
+        await _refreshAfterStayChange(tenantId);
+    } catch (err) { showToast('Network error', 'error'); console.error(err); }
+    finally { if (btn) { btn.disabled = false; btn.innerHTML = 'Confirm Extension'; } }
+}
+
+async function submitStartHoliday(tenantId) {
+    const startDate          = document.getElementById('holStart')?.value;
+    const expectedReturnDate = document.getElementById('holReturn')?.value;
+    const feeMode            = document.querySelector('input[name="holFeeMode"]:checked')?.value || 'default';
+    const feeAmount          = document.getElementById('holFee')?.value;
+    if (!startDate || !expectedReturnDate) { showToast('Start date and expected return date are required', 'warn'); return; }
+    if (feeMode === 'custom' && !(Number(feeAmount) > 0)) { showToast('Enter the holding fee per month, or choose "No fee"', 'warn'); return; }
+
+    const btn = document.getElementById('holConfirmBtn');
+    if (btn) { btn.disabled = true; btn.innerHTML = `${ICON('hourglass',14)} Saving...`; }
+    try {
+        const res  = await fetch(`${API}/tenants/${tenantId}/holiday`, {
+            method: 'POST', headers: authHeaders(),
+            body: JSON.stringify({ startDate, expectedReturnDate, feeMode, ...(feeMode === 'custom' && { feeAmount: Number(feeAmount) }) })
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.message || 'Could not start holiday', 'error'); return; }
+        showToast(data.message, 'success');
+        closeModal('modal-holiday-start');
+        await _refreshAfterStayChange(tenantId);
+    } catch (err) { showToast('Network error', 'error'); console.error(err); }
+    finally { if (btn) { btn.disabled = false; btn.innerHTML = 'Start Holiday'; } }
+}
+
+async function submitReturnHoliday(holdId) {
+    const returnDate = document.getElementById('holRetDate')?.value;
+    if (!returnDate) { showToast('Pick the return date', 'warn'); return; }
+    const hold = _holdRegistry[holdId];
+
+    const btn = document.getElementById('holRetConfirmBtn');
+    if (btn) { btn.disabled = true; btn.innerHTML = `${ICON('hourglass',14)} Saving...`; }
+    try {
+        const res  = await fetch(`${API}/holiday-holds/${holdId}/return`, {
+            method: 'PUT', headers: authHeaders(), body: JSON.stringify({ returnDate })
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.message || 'Could not record return', 'error'); return; }
+        showToast(data.message, 'success');
+        closeModal('modal-holiday-return');
+        if (hold) await _refreshAfterStayChange(hold.tenantId); else loadHolidayHolds();
+    } catch (err) { showToast('Network error', 'error'); console.error(err); }
+    finally { if (btn) { btn.disabled = false; btn.innerHTML = 'Confirm Return'; } }
+}
+
+async function submitHoldFee(holdId) {
+    const amount = document.getElementById('holFeeAmount')?.value;
+    const method = document.getElementById('holFeeMethod')?.value || 'cash';
+    const note   = document.getElementById('holFeeNote')?.value.trim();
+    if (!amount) { showToast('Enter an amount', 'warn'); return; }
+    const hold = _holdRegistry[holdId];
+
+    const btn = document.getElementById('holFeeConfirmBtn');
+    if (btn) { btn.disabled = true; btn.innerHTML = `${ICON('hourglass',14)} Recording...`; }
+    try {
+        const res  = await fetch(`${API}/holiday-holds/${holdId}/payments`, {
+            method: 'POST', headers: authHeaders(), body: JSON.stringify({ amount: Number(amount), method, note })
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.message || 'Could not record fee', 'error'); return; }
+        showToast(data.message, 'success');
+        closeModal('modal-holiday-fee');
+        if (hold) await _refreshAfterStayChange(hold.tenantId); else loadHolidayHolds();
+        loadRecentActivity();
+    } catch (err) { showToast('Network error', 'error'); console.error(err); }
+    finally { if (btn) { btn.disabled = false; btn.innerHTML = 'Record Fee'; } }
+}
+
+let _currentInvite = null;
+
+function _inviteUrl(code) {
+    return `${window.location.origin}/auth.html?invite=${encodeURIComponent(code)}`;
+}
+function _invitePropertyId()   { return document.getElementById('invitePropertySelect')?.value || ''; }
+function _invitePropertyName() {
+    const p = _propertiesCache.find(x => x._id === _invitePropertyId());
+    return p ? p.name : 'your property';
+}
+
+let _inviteReq = 0, _inviteBusy = false;
+
+function initInvitePage() {
+    const sel = document.getElementById('invitePropertySelect');
+    if (!sel) return;
+    const active = getPropertyId();
+    sel.innerHTML = _propertiesCache.map(p =>
+        `<option value="${p._id}" ${p._id === active ? 'selected' : ''}>${_escHtmlRef(p.name)}</option>`).join('');
+    loadInvitation();
+}
+
+async function loadInvitation() {
+    const propertyId = _invitePropertyId();
+    const body = document.getElementById('inviteBody');
+    if (!propertyId) { if (body) body.innerHTML = '<div class="empty-state">Add a property first</div>'; return; }
+    const myReq = ++_inviteReq;
+    try {
+        const res  = await fetch(`${API}/landlord/invitations?propertyId=${propertyId}`, { headers: authHeaders() });
+        const data = await res.json();
+        if (myReq !== _inviteReq) return;                 // a newer request superseded this one
+        if (!res.ok) { showToast(data.message || 'Failed to load invitation', 'error'); return; }
+        _currentInvite = data.invitation;
+        renderInvitation(data.propertyName, data.invitation);
+    } catch (err) { showToast('Network error', 'error'); console.error(err); }
+}
+
+async function generateInvitation() {
+    if (_inviteBusy) return;
+    const propertyId = _invitePropertyId();
+    if (!propertyId) return;
+    _inviteBusy = true;
+    const sel = document.getElementById('inviteExpirySelect')?.value || '90';
+    const expiresInDays = sel === 'never' ? 'never' : Number(sel);
+    try {
+        const res  = await fetch(`${API}/landlord/invitations`, {
+            method: 'POST', headers: authHeaders(), body: JSON.stringify({ propertyId, expiresInDays })
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.message || 'Could not generate link', 'error'); return; }
+        showToast(data.message, 'success');
+        await loadInvitation();
+    } catch (err) { showToast('Network error', 'error'); console.error(err); }
+    finally { _inviteBusy = false; }
+}
+
+function confirmRegenerateInvitation() {
+    openDangerModal({
+        icon: ICON('loop', 44), title: 'Generate a New Link',
+        message: 'The current link and QR code will <strong>stop working</strong>. Tenants who already registered are not affected.',
+        label: 'Generate New Link', type: 'warn', onConfirm: generateInvitation
+    });
+}
+
+function confirmRevokeInvitation() {
+    openDangerModal({
+        icon: ICON('trash', 44), title: 'Revoke Link',
+        message: 'The link and QR code will stop working. Tenants who already registered are not affected.',
+        label: 'Revoke Link', type: 'danger',
+        onConfirm: async () => {
+            const res  = await fetch(`${API}/landlord/invitations/${_invitePropertyId()}`, { method: 'DELETE', headers: authHeaders() });
+            const data = await res.json();
+            if (!res.ok) { showToast(data.message || 'Failed to revoke', 'error'); return; }
+            showToast('Link revoked', 'success');
+            await loadInvitation();
+        }
+    });
+}
+
+function copyInviteLink() {
+    const input = document.getElementById('inviteLinkInput');
+    if (!input) return;
+    navigator.clipboard.writeText(input.value)
+        .then(() => showToast('Link copied ', 'success'))
+        .catch(() => { input.select(); showToast('Select and copy the link above', 'warn'); });
+}
+
+function shareInviteWhatsApp() {
+    if (!_currentInvite) return;
+    const text = `Hello tenants,\n\nPlease use the link below to create your Affordable Rentals tenant account for ${_invitePropertyName()}:\n\n${_inviteUrl(_currentInvite.code)}\n\nThank you.`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+}
+
+// QR — same URL as the link. qrcodejs (~20 KB, no deps) is loaded only on first use.
+function _loadQrLib() {
+    return new Promise((resolve, reject) => {
+        if (window.QRCode) return resolve();
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+        s.onload = resolve; s.onerror = () => reject(new Error('QR library failed to load'));
+        document.head.appendChild(s);
+    });
+}
+
+async function showInviteQr() {
+    if (!_currentInvite) return;
+    try {
+        await _loadQrLib();
+        const box = document.getElementById('inviteQr');
+        box.innerHTML = '';
+        new QRCode(box, { text: _inviteUrl(_currentInvite.code), width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M });
+        document.getElementById('inviteQrWrap').style.display = 'block';
+    } catch (err) { showToast('Could not load the QR code. Check your connection.', 'error'); }
+}
+
+function downloadInviteQr() {
+    const canvas = document.querySelector('#inviteQr canvas');
+    if (!canvas) return;
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = `tenant-invite-${_invitePropertyName().replace(/\s+/g, '-')}.png`;
+    a.click();
+}
 
 // ═══════════════════════════════════════
 // INIT

@@ -100,4 +100,113 @@
   } catch (e) {}
 
   window.ARTheme = { get: current, set: choose };
+
+  var INSTALL_STYLE_ID = 'ar-install-styles';
+  var INSTALL_BUTTON_ID = 'ar-app-install-btn';
+
+  function ensureInstallStyles() {
+    if (document.getElementById(INSTALL_STYLE_ID)) return;
+    var style = document.createElement('style');
+    style.id = INSTALL_STYLE_ID;
+    style.textContent = `
+      .ar-install-btn {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.52rem 0.9rem;
+        border: 1px solid rgba(110, 231, 183, 0.35);
+        background: linear-gradient(135deg, rgba(16,185,129,0.14), rgba(34,197,94,0.10));
+        color: var(--text, #f8fafc);
+        border-radius: 999px;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+        white-space: nowrap;
+      }
+      .ar-install-btn:hover {
+        transform: translateY(-1px);
+        border-color: rgba(110, 231, 183, 0.6);
+        background: linear-gradient(135deg, rgba(16,185,129,0.18), rgba(34,197,94,0.12));
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function updateInstallButton() {
+    var btn = document.getElementById(INSTALL_BUTTON_ID);
+    if (!btn) return;
+
+    var isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+      !!window.navigator.standalone;
+    btn.style.display = !!window.__AR_INSTALL_PROMPT__ && !isStandalone ? 'inline-flex' : 'none';
+  }
+
+  function mountInstallButton() {
+    if (!('serviceWorker' in navigator)) return;
+    var target = document.querySelector('.header-right, .topbar-right');
+    if (!target || document.getElementById(INSTALL_BUTTON_ID)) return;
+
+    ensureInstallStyles();
+
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = INSTALL_BUTTON_ID;
+    btn.className = 'ar-install-btn';
+    btn.textContent = 'Install App';
+
+    btn.addEventListener('click', function () {
+      if (!window.__AR_INSTALL_PROMPT__) {
+        alert('Install is not available yet. You can still use the browser menu to install this app.');
+        return;
+      }
+
+      window.__AR_INSTALL_PROMPT__.prompt();
+      window.__AR_INSTALL_PROMPT__.userChoice.then(function (choiceResult) {
+        if (choiceResult.outcome === 'accepted') {
+          console.log('PWA install accepted');
+        }
+        window.__AR_INSTALL_PROMPT__ = null;
+        updateInstallButton();
+      });
+    });
+
+    target.insertBefore(btn, target.firstChild);
+    updateInstallButton();
+  }
+
+  if (/(dashboard|tenant|stacklord)\.html$/i.test(window.location.pathname)) {
+    window.__AR_EXIT_GUARD__ = true;
+    window.addEventListener('beforeunload', function (event) {
+      event.preventDefault();
+      event.returnValue = 'Are you sure you want to leave this page?';
+      return event.returnValue;
+    });
+  }
+
+  window.addEventListener('beforeinstallprompt', function (event) {
+    event.preventDefault();
+    window.__AR_INSTALL_PROMPT__ = event;
+    setTimeout(mountInstallButton, 0);
+    setTimeout(updateInstallButton, 0);
+  });
+
+  window.addEventListener('appinstalled', function () {
+    var btn = document.getElementById(INSTALL_BUTTON_ID);
+    if (btn) btn.remove();
+  });
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () {
+      setTimeout(mountInstallButton, 0);
+      setTimeout(updateInstallButton, 0);
+    });
+  } else {
+    setTimeout(mountInstallButton, 0);
+    setTimeout(updateInstallButton, 0);
+  }
 })();

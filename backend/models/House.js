@@ -34,6 +34,33 @@ const houseSchema = new mongoose.Schema({
         required: true
     },
 
+    billingCycle: {
+        type: String,
+        enum: ['monthly', 'semester'],
+        default: 'monthly'
+ },
+
+    amountDue: {
+        type: Number,
+        default: 0
+    },
+
+    depositAmount: {
+        type: Number,
+        default: 0
+    },
+
+    depositRefundable: {
+        type: Boolean,
+        default: true
+    },
+
+    depositStatus: {
+        type: String,
+        enum: ['unpaid', 'collected', 'refunded'],
+        default: 'unpaid'
+    },
+
     status: {
         type:    String,
         enum:    ['available', 'occupied'],

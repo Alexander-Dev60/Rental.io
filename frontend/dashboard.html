@@ -2,7 +2,7 @@
 <html lang="en" data-theme="dark">
 <head>
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#0b0f1a">
+  <meta name="theme-color" content="#08090b">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <!-- ═══════════════════════════════════════════════════════
        EARLY AUTH GUARD — must be the very first script in <head>.
@@ -148,41 +148,45 @@
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
   
   <style>
+ /* ═══ THEMES — exactly two: Black (data-theme="dark") and White (data-theme="light").
+        Keys stay "dark"/"light" so saved preferences keep working. ═══ */
  :root, [data-theme="dark"] {
-  --bg:#0b0f1a; --bg2:#0f131f; --bg3:#161b2a;
-  --panel:#161c2b; --panel2:#1c2233;
-  --border:rgba(228,199,122,0.08); --border2:rgba(228,199,122,0.16);
+  --bg:#08090b; --bg2:#0d0f12; --bg3:#15181d;
+  --panel:#111418; --panel2:#181c22;
+  --border:rgba(255,255,255,0.075); --border2:rgba(255,255,255,0.16);
   --accent:#e0bb64; --accent2:#c9962e; --accent-dim:rgba(224,187,100,0.10);
-  --danger:#f0a5a5; --warn:#e8a765;
-  --text:#f7f2e4; --text-dim:#8a8474; --text-muted:#a9a495;
+  --danger:#f28b82; --warn:#e8a765;
+  --text:#f5f5f6; --text-dim:#8c8f97; --text-muted:#b3b6bd;
+
+  /* glass + semantic tones (used by the grouped sidebar) */
+  --side-top:#0e1013; --side-bot:#08090b;
+  --ambient-1:rgba(106,168,255,0.10); --ambient-2:rgba(183,156,255,0.08);
+  --glass-bg:rgba(255,255,255,0.045); --glass-bg-hover:rgba(255,255,255,0.08); --glass-bg-active:rgba(255,255,255,0.115);
+  --glass-border:rgba(255,255,255,0.09);
+  --glass-shadow:0 1px 0 rgba(255,255,255,0.05) inset, 0 6px 18px rgba(0,0,0,0.35);
+  --tone-blue:#6aa8ff; --tone-green:#5fd3a0; --tone-red:#ff7b7b; --tone-amber:#f0b35a; --tone-violet:#b79cff; --tone-teal:#4fd1d9; --tone-rose:#ff8fb1;
+  color-scheme: dark;
+
   --sidebar-w: 260px;
   --sidebar-w-tablet: 208px;
   --banner-h: 0px;
   --quickbar-h: 0px;
 }
   [data-theme="light"] {
-    --bg:#f1f5f9; --bg2:#e8edf5; --bg3:#dde4f0;
-    --panel:#ffffff; --panel2:#f8fafc;
-    --border:rgba(0,0,0,0.08); --border2:rgba(0,0,0,0.15);
-    --accent:#059669; --accent2:#2563eb; --accent-dim:rgba(5,150,105,0.1);
-    --danger:#dc2626; --warn:#d97706;
-    --text:#0f172a; --text-dim:#64748b; --text-muted:#475569;
-  }
-  [data-theme="blue"] {
-    --bg:#050d1a; --bg2:#071223; --bg3:#0a1a30;
-    --panel:#0d2040; --panel2:#112548;
-    --border:rgba(59,130,246,0.15); --border2:rgba(59,130,246,0.3);
-    --accent:#60a5fa; --accent2:#a78bfa; --accent-dim:rgba(96,165,250,0.12);
-    --danger:#f87171; --warn:#fbbf24;
-    --text:#e0f0ff; --text-dim:#4a7eb5; --text-muted:#7aadda;
-  }
-  [data-theme="orange"] {
-    --bg:#0f0a05; --bg2:#180f07; --bg3:#221509;
-    --panel:#2a1a0a; --panel2:#321f0c;
-    --border:rgba(251,146,60,0.15); --border2:rgba(251,146,60,0.3);
-    --accent:#fb923c; --accent2:#fcd34d; --accent-dim:rgba(251,146,60,0.12);
-    --danger:#f87171; --warn:#fbbf24;
-    --text:#fff7ed; --text-dim:#92400e; --text-muted:#c2803a;
+    --bg:#f2f2f4; --bg2:#ffffff; --bg3:#ececef;
+    --panel:#ffffff; --panel2:#f7f7f9;
+    --border:rgba(0,0,0,0.085); --border2:rgba(0,0,0,0.18);
+    --accent:#8a5a00; --accent2:#5f3f00; --accent-dim:rgba(138,90,0,0.09);
+    --danger:#c62828; --warn:#a85a05;
+    --text:#0c0c0e; --text-dim:#6a6d75; --text-muted:#43464d;
+
+    --side-top:#fbfbfc; --side-bot:#eeeef1;
+    --ambient-1:rgba(29,95,214,0.07); --ambient-2:rgba(138,90,0,0.06);
+    --glass-bg:rgba(255,255,255,0.66); --glass-bg-hover:rgba(255,255,255,0.92); --glass-bg-active:#ffffff;
+    --glass-border:rgba(0,0,0,0.09);
+    --glass-shadow:0 1px 0 rgba(255,255,255,0.9) inset, 0 1px 2px rgba(0,0,0,0.05), 0 6px 16px rgba(0,0,0,0.05);
+    --tone-blue:#1d5fd6; --tone-green:#0d8558; --tone-red:#c62828; --tone-amber:#a85a05; --tone-violet:#6a45d1; --tone-teal:#0a7f8a; --tone-rose:#c2255c;
+    color-scheme: light;
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -282,14 +286,94 @@
 
   [data-caretaker="true"] .caretaker-hidden { display: none !important; }
 
-  .sidebar-nav { flex: 1; overflow-y: auto; padding: 0.75rem 0; min-height: 0; }
-  .nav-section { padding: 0.5rem 1.25rem 0.25rem; font-size: 0.58rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); margin-top: 0.5rem; }
-  .nav-item { display: flex; align-items: center; gap: 0.65rem; padding: 0.6rem 1.25rem; cursor: pointer; color: var(--text-muted); font-size: 0.82rem; font-weight: 500; transition: all 0.15s; border-left: 2px solid transparent; user-select: none; }
-  .nav-item:hover  { background: var(--accent-dim); color: var(--text); border-left-color: var(--border2); }
-  .nav-item.active { background: var(--accent-dim); color: var(--accent); border-left-color: var(--accent); }
-  .nav-item .icon  { width: 18px; text-align: center; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-  .nav-badge { margin-left: auto; background: var(--danger); color: #fff; font-size: 0.6rem; font-weight: 700; padding: 1px 6px; border-radius: 99px; font-family: 'JetBrains Mono', monospace; }
-  .sidebar-footer { flex-shrink: 0; padding: 0.85rem 1.25rem; padding-bottom: max(0.85rem, env(safe-area-inset-bottom)); border-top: 1px solid var(--border); background: var(--bg2); }
+  /* ═══ GROUPED GLASS NAVIGATION ═══ */
+  .sidebar { background: linear-gradient(180deg, var(--side-top), var(--side-bot)); }
+  .sidebar::before { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+    background: radial-gradient(120% 55% at 0% 0%, var(--ambient-1), transparent 62%),
+                radial-gradient(100% 50% at 100% 100%, var(--ambient-2), transparent 62%); }
+  .sidebar > * { position: relative; z-index: 1; }
+  .sidebar-nav { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 0.85rem 0.75rem; min-height: 0; display: flex; flex-direction: column; gap: 0.35rem; scrollbar-width: thin; scrollbar-color: var(--border2) transparent; overscroll-behavior: contain; }
+  .nav-group { display: block; flex-shrink: 0; }
+  .nav-group-head { width: 100%; display: flex; align-items: center; gap: 0.65rem; min-height: 40px; padding: 0.5rem 0.75rem; background: transparent; border: 1px solid transparent; border-radius: 10px; color: var(--text-muted); font-family: 'Space Grotesk', sans-serif; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; text-align: left; cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s; -webkit-tap-highlight-color: transparent; }
+  .nav-group-head:hover { background: var(--glass-bg); color: var(--text); }
+  .nav-group-head[aria-expanded="true"] { background: var(--glass-bg); border-color: var(--glass-border); color: var(--text); }
+  .nav-group-head .ng-icon { display: flex; width: 18px; justify-content: center; flex-shrink: 0; color: var(--text-dim); }
+  .nav-group-head[aria-expanded="true"] .ng-icon { color: var(--accent); }
+  .ng-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ng-count { display: none; font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; font-weight: 700; padding: 1px 6px; border-radius: 99px; color: var(--text); background: var(--glass-bg-active); border: 1px solid var(--glass-border); letter-spacing: 0; }
+  .nav-group.has-count:not(.open) .ng-count { display: inline-block; }
+  .ng-dot { display: none; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+  .nav-group.has-active:not(.open) .ng-dot { display: inline-block; }
+  .ng-chev { display: flex; flex-shrink: 0; color: var(--text-dim); transition: transform 0.25s ease; }
+  .nav-group-head[aria-expanded="true"] .ng-chev { transform: rotate(180deg); }
+  .nav-group-panel { padding: 0.4rem 0 0.25rem 0.5rem; }
+  .nav-group-panel[hidden] { display: none; }
+  .nav-group-items { display: flex; flex-direction: column; gap: 0.3rem; position: relative; }
+  .nav-pinned { padding-bottom: 0.35rem; margin-bottom: 0.1rem; border-bottom: 1px solid var(--border); }
+
+  .nav-item { --tone: var(--tone-blue); position: relative; display: flex; align-items: center; gap: 0.65rem; width: 100%; min-height: 40px; padding: 0.5rem 0.75rem; text-align: left; font-family: 'Space Grotesk', sans-serif; font-size: 0.82rem; font-weight: 500; color: var(--text-muted); background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 10px; -webkit-backdrop-filter: blur(12px) saturate(140%); backdrop-filter: blur(12px) saturate(140%); box-shadow: var(--glass-shadow); cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; transition: background 0.15s, border-color 0.15s, color 0.15s; }
+  .nav-item[data-tone="green"]  { --tone: var(--tone-green); }
+  .nav-item[data-tone="red"]    { --tone: var(--tone-red); }
+  .nav-item[data-tone="amber"]  { --tone: var(--tone-amber); }
+  .nav-item[data-tone="violet"] { --tone: var(--tone-violet); }
+  .nav-item .icon { width: 18px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--tone); }
+  .nav-item:hover { background: var(--glass-bg-hover); color: var(--text); border-color: var(--tone); }
+  .nav-item.active { background: var(--glass-bg-active); color: var(--text); font-weight: 600; border-color: var(--tone); }
+  .nav-item.active::before { content: ''; position: absolute; left: -1px; top: 22%; bottom: 22%; width: 3px; border-radius: 0 3px 3px 0; background: var(--tone); }
+  .nav-item.active .icon { filter: drop-shadow(0 0 4px var(--tone)); }
+  .nav-badge { margin-left: auto; background: var(--glass-bg-active); color: var(--tone); border: 1px solid var(--tone); font-size: 0.6rem; font-weight: 700; padding: 0 6px; line-height: 1.5; border-radius: 99px; font-family: 'JetBrains Mono', monospace; }
+  .nav-group-head:focus-visible, .nav-item:focus-visible { outline: 2px solid var(--tone-blue); outline-offset: 2px; }
+  .nav-item.orbiting { will-change: transform, opacity; }
+  @supports (color: color-mix(in srgb, red, blue)) {
+    .nav-item:hover  { border-color: color-mix(in srgb, var(--tone) 45%, var(--glass-border)); }
+    .nav-item.active { border-color: color-mix(in srgb, var(--tone) 60%, var(--glass-border)); background: linear-gradient(90deg, color-mix(in srgb, var(--tone) 13%, transparent), var(--glass-bg-active) 70%); }
+    .nav-badge { background: color-mix(in srgb, var(--tone) 18%, transparent); border-color: color-mix(in srgb, var(--tone) 50%, transparent); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .nav-group-head, .nav-item, .ng-chev { transition: none; }
+  }
+
+  /* ═══ GROUP IDENTITY ═══
+     Every nav group owns one colour (--gtone). Its header, its opened panel and the
+     item cards inside that panel all carry it, so an opened group can never be mistaken
+     for another one. Item badges keep their own meaning-based tone (Arrears stays red).
+     Purely visual — the open/close/orbit behaviour is untouched. */
+  .nav-group { --gtone: var(--tone-blue); }
+  .nav-group[data-group="properties"] { --gtone: var(--tone-teal); }
+  .nav-group[data-group="finance"], .nav-group[data-group="pay"] { --gtone: var(--tone-green); }
+  .nav-group[data-group="operations"] { --gtone: var(--tone-amber); }
+  .nav-group[data-group="records"], .nav-group[data-group="comms"] { --gtone: var(--tone-violet); }
+  .nav-group[data-group="account"] { --gtone: var(--tone-rose); }
+
+  .nav-group-head .ng-icon, .nav-group-head[aria-expanded="true"] .ng-icon { color: var(--gtone); }
+  .nav-group.has-active:not(.open) .ng-dot { background: var(--gtone); }
+  .nav-group-head[aria-expanded="true"] { border-color: var(--gtone); }
+
+  .nav-group-panel { margin: 0.4rem 0 0.25rem 0.3rem; padding: 0.5rem 0.45rem 0.5rem 0.5rem; border: 1px solid var(--glass-border); border-left: 3px solid var(--gtone); border-radius: 4px 14px 14px 4px; }
+  .nav-group-panel .nav-item { gap: 0.6rem; min-height: 42px; padding: 0.4rem 0.6rem 0.4rem 0.5rem; border-radius: 12px; overflow: hidden; overflow-wrap: anywhere; transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s; }
+  .nav-group-panel .nav-item .icon { width: 28px; height: 28px; border-radius: 9px; color: var(--gtone); background: var(--glass-bg-active); border: 1px solid var(--glass-border); }
+  .nav-group-panel .nav-item::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gtone); opacity: 0.55; }
+  .nav-group-panel .nav-item:hover { border-color: var(--gtone); }
+  .nav-group-panel .nav-item.active { border-color: var(--gtone); }
+  .nav-group-panel .nav-item.active::before { top: 0; bottom: 0; border-radius: 0; opacity: 1; }
+  .nav-group-panel .nav-item.active .icon { border-color: var(--gtone); filter: drop-shadow(0 0 4px var(--gtone)); }
+  .nav-group-panel .nav-badge { flex-shrink: 0; }
+  @media (hover: hover) { .nav-group-panel .nav-item:hover { transform: translateY(-1px); } }
+  @supports (color: color-mix(in srgb, red, blue)) {
+    .nav-group-head[aria-expanded="true"] { background: color-mix(in srgb, var(--gtone) 14%, var(--glass-bg)); border-color: color-mix(in srgb, var(--gtone) 50%, transparent); }
+    .nav-group-panel { background: color-mix(in srgb, var(--gtone) 6%, transparent); border-color: color-mix(in srgb, var(--gtone) 26%, transparent); border-left-color: var(--gtone); }
+    .nav-group-panel .nav-item:hover { border-color: color-mix(in srgb, var(--gtone) 55%, var(--glass-border)); }
+    .nav-group-panel .nav-item.active { border-color: color-mix(in srgb, var(--gtone) 65%, var(--glass-border)); background: linear-gradient(90deg, color-mix(in srgb, var(--gtone) 15%, transparent), var(--glass-bg-active) 75%); }
+    .nav-group-panel .nav-item .icon { background: color-mix(in srgb, var(--gtone) 14%, var(--glass-bg-active)); border-color: color-mix(in srgb, var(--gtone) 35%, var(--glass-border)); }
+  }
+  @media (max-width: 768px) { .nav-group-panel .nav-item { min-height: 46px; } }
+  @media (prefers-reduced-motion: reduce) { .nav-group-panel .nav-item { transition: none; } .nav-group-panel .nav-item:hover { transform: none; } }
+  .sidebar-footer { flex-shrink: 0; padding: 0.75rem 0.75rem; padding-bottom: max(0.75rem, env(safe-area-inset-bottom)); border-top: 1px solid var(--border); background: transparent; max-height: 46vh; overflow-y: auto; }
+  .sidebar-footer .sub-status-card { margin-bottom: 0.5rem; }
+  .sidebar-footer .maintenance-row { margin-bottom: 0.45rem; padding: 0.35rem 0.65rem; }
+  .sidebar-footer .btn-tour { margin-bottom: 0.5rem; }
+  .sidebar-footer .theme-switcher { margin-bottom: 0.5rem; justify-content: space-between; padding: 0.3rem 0.65rem; background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; }
+  .sidebar-footer .theme-switcher .theme-btns { display: flex; gap: 8px; }
 
   .sub-status-card { margin-bottom: 0.75rem; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 0.65rem 0.85rem; cursor: pointer; transition: border-color 0.2s; }
   .sub-status-card:hover { border-color: var(--border2); }
@@ -320,20 +404,19 @@
   .toggle-switch input:checked + .slider::before { transform: translateX(16px); }
 
   .theme-switcher { display: flex; gap: 8px; margin-bottom: 0.65rem; align-items: center; }
+  button.theme-dot { padding: 0; appearance: none; -webkit-appearance: none; }
   .theme-label { font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); margin-right: 0.25rem; }
   .theme-dot { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: border-color 0.2s, transform 0.2s; flex-shrink: 0; }
   .theme-dot:hover { transform: scale(1.2); }
   .theme-dot.active { border-color: var(--text); }
-  .theme-dot[data-theme="dark"]   { background: #1a1f2b; }
-  .theme-dot[data-theme="light"]  { background: #e2e8f0; }
-  .theme-dot[data-theme="blue"]   { background: #1e40af; }
-  .theme-dot[data-theme="orange"] { background: #ea580c; }
+  .theme-dot[data-theme="dark"]   { background: #08090b; box-shadow: 0 0 0 1px rgba(128,128,128,0.55) inset; }
+  .theme-dot[data-theme="light"]  { background: #ffffff; box-shadow: 0 0 0 1px rgba(128,128,128,0.55) inset; }
   .btn-logout { width: 100%; background: transparent; border: 1px solid var(--border2); color: var(--text-muted); font-family: 'Space Grotesk', sans-serif; font-size: 0.75rem; font-weight: 500; letter-spacing: 0.08em; padding: 0.5rem; border-radius: 6px; cursor: pointer; transition: all 0.15s; display:flex; align-items:center; justify-content:center; gap:0.5rem; }
   .btn-logout:hover { border-color: var(--danger); color: var(--danger); }
 
   /* ── TAKE A TOUR button — deliberately bluish/gradient so it visually
        matches the restyled spotlight tour it launches, independent of
-       whichever accent theme (dark/light/blue/orange) is active. ── */
+       whichever theme (black/white) is active. ── */
   .btn-tour {
     width: 100%;
     background: linear-gradient(135deg, rgba(96,165,250,0.16), rgba(129,140,248,0.16));
@@ -352,6 +435,9 @@
     transform: translateY(-1px);
     box-shadow: 0 4px 16px rgba(96,165,250,0.2);
   }
+
+  [data-theme="light"] .btn-tour { background: linear-gradient(135deg, rgba(29,95,214,0.09), rgba(106,69,209,0.09)); border-color: rgba(29,95,214,0.4); color: #1d4fb8; }
+  [data-theme="light"] .btn-tour:hover { background: linear-gradient(135deg, rgba(29,95,214,0.16), rgba(106,69,209,0.16)); border-color: rgba(29,95,214,0.7); color: #163f96; box-shadow: 0 4px 16px rgba(29,95,214,0.15); }
 
   .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 250; backdrop-filter: blur(2px); }
   .sidebar-overlay.show { display: block; }
@@ -615,6 +701,67 @@
   .payment-progress-bar { height: 100%; border-radius: 99px; transition: width 0.4s ease; }
   .payment-progress-bar.paid    { background: var(--accent); }
   .payment-progress-bar.partial { background: var(--warn); }
+  /* Stay progress reuses the payment-progress track; its colour follows how close the due/end date is */
+  .payment-progress-bar.stay-ok     { background: var(--accent); }
+  .payment-progress-bar.stay-warn   { background: var(--warn); }
+  .payment-progress-bar.stay-urgent { background: var(--danger); }
+
+
+  /* ═══ BUILDINGS (cards → houses) + APPLICATIONS ═══ */
+  .bb-root { margin-bottom: 1rem; }
+  .bb-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 0.95rem; }
+  .bb-card { --bb: var(--tone-blue); position: relative; display: flex; flex-direction: column; gap: 0.6rem; text-align: left; padding: 1.1rem 1.15rem 1rem; min-height: 168px; color: var(--text); font-family: inherit; cursor: pointer;
+    background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 14px; box-shadow: var(--glass-shadow); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease; -webkit-tap-highlight-color: transparent; overflow: hidden; }
+  .bb-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--bb); opacity: 0.9; }
+  .bb-card:hover { transform: translateY(-3px); background: var(--glass-bg-hover); border-color: var(--bb); }
+  .bb-card:focus-visible { outline: 2px solid var(--tone-blue); outline-offset: 2px; }
+  .bb-card-top { display: flex; align-items: center; gap: 0.7rem; min-width: 0; }
+  .bb-card-icon { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 11px; color: var(--bb); background: var(--glass-bg-active); border: 1px solid var(--glass-border); }
+  .bb-card-title { font-weight: 700; font-size: 1.02rem; letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bb-card-desc { font-size: 0.74rem; color: var(--text-dim); line-height: 1.4; }
+  .bb-card-stats { display: flex; flex-wrap: wrap; gap: 0.35rem 0.85rem; font-size: 0.76rem; color: var(--text-muted); }
+  .bb-card-stats b { color: var(--text); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+  .bb-st-occ b { color: var(--bb); }
+  .bb-bar { display: block; height: 5px; border-radius: 99px; background: var(--border); overflow: hidden; }
+  .bb-bar > span { display: block; height: 100%; background: var(--bb); border-radius: 99px; transition: width 0.5s ease; }
+  .bb-card-cta { margin-top: auto; display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.74rem; font-weight: 600; color: var(--bb); }
+  .bb-card-cta svg { transform: rotate(-90deg); }
+  .bb-unassigned { border-style: dashed; }
+  .bb-new { align-items: flex-start; justify-content: center; border-style: dashed; background: transparent; box-shadow: none; }
+  .bb-new .bb-card-icon { color: var(--text-dim); }
+  .bb-hint { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; margin-bottom: 0.9rem; padding: 0.8rem 1rem; font-size: 0.8rem; color: var(--text-muted); background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; }
+  .bb-hint-sub { flex-basis: 100%; font-size: 0.7rem; color: var(--text-dim); }
+  .bb-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem; margin-bottom: 0.9rem; font-size: 0.8rem; color: var(--text-dim); }
+  .bb-back { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.35rem 0.7rem; font: inherit; font-weight: 600; color: var(--text); cursor: pointer; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 8px; }
+  .bb-back svg { transform: rotate(90deg); }
+  .bb-back:hover { background: var(--glass-bg-hover); }
+  .bb-back:focus-visible { outline: 2px solid var(--tone-blue); outline-offset: 2px; }
+  .bb-sep { opacity: 0.5; }
+  .bb-crumb-cur { color: var(--text); font-weight: 700; padding-left: 0.5rem; border-left: 3px solid var(--bb, var(--accent)); }
+  .bb-tools { display: inline-flex; gap: 0.4rem; margin-left: auto; }
+  .bb-del { color: var(--danger); }
+  .bb-pick { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+  .bb-chip { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; cursor: pointer; color: var(--text-muted); background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 10px; }
+  .bb-chip.on { color: var(--text); border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-dim); }
+  .bb-swatch { background: var(--bb); border-color: transparent; }
+  .bb-swatch.on { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--bb); }
+  .bb-chip:focus-visible { outline: 2px solid var(--tone-blue); outline-offset: 2px; }
+
+  .bb-tabs { display: inline-flex; gap: 0.3rem; margin-bottom: 1rem; padding: 0.25rem; background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; }
+  .bb-tabs button { padding: 0.4rem 0.9rem; font: inherit; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); cursor: pointer; background: transparent; border: 0; border-radius: 7px; }
+  .bb-tabs button.on { color: var(--text); background: var(--glass-bg-active); box-shadow: var(--glass-shadow); }
+  .bb-app { --bb: var(--text-dim); display: flex; flex-wrap: wrap; align-items: center; gap: 0.8rem 1rem; padding: 1rem 1.1rem; margin-bottom: 0.7rem; background: var(--glass-bg); border: 1px solid var(--glass-border); border-left: 3px solid var(--bb); border-radius: 12px; }
+  .bb-app-main { flex: 1 1 280px; min-width: 0; }
+  .bb-app-title { font-size: 0.95rem; color: var(--text); }
+  .bb-arrow { color: var(--text-dim); margin: 0 0.2rem; }
+  .bb-app-meta { display: flex; flex-wrap: wrap; gap: 0.3rem 0.8rem; margin-top: 0.3rem; font-size: 0.74rem; color: var(--text-dim); }
+  .bb-pillb { padding: 0 0.5rem; border-radius: 99px; color: var(--bb); border: 1px solid var(--bb); }
+  .bb-app-note { margin-top: 0.4rem; font-size: 0.78rem; color: var(--text-muted); }
+  .bb-app-why { margin-top: 0.45rem; font-size: 0.74rem; color: var(--warn); }
+  .bb-app-actions { display: flex; gap: 0.5rem; }
+  @media (max-width: 560px) { .bb-back, .bb-tools .btn { min-height: 44px; } .bb-cards { grid-template-columns: 1fr; } .bb-tools { margin-left: 0; width: 100%; } .bb-app-actions { width: 100%; } .bb-app-actions .btn { flex: 1; min-height: 44px; } .bb-card { min-height: 150px; } }
+  @media (prefers-reduced-motion: reduce) { .bb-card, .bb-bar > span { transition: none; } .bb-card:hover { transform: none; } }
 
   .house-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.85rem; }
   .house-card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; cursor: pointer; transition: all 0.15s; position: relative; }
@@ -805,7 +952,10 @@
   50%      { box-shadow: 0 0 0 9999px rgba(5,8,18,0.82), 0 0 0 7px rgba(90,164,255,0.22), 0 0 42px rgba(90,164,255,0.55); }
 }
 .tour-card {
-  position: fixed; z-index: 10002; max-width: 310px;
+  position: fixed; z-index: 10002;
+  width: min(310px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  box-sizing: border-box;
   background: linear-gradient(165deg, #101a30 0%, #0b1424 100%);
   border: 1px solid var(--tour-blue-border);
   border-radius: 14px;
@@ -813,8 +963,10 @@
   box-shadow: 0 24px 70px rgba(0,0,0,0.6), 0 0 36px rgba(90,164,255,0.16);
   animation: tourPop 0.25s cubic-bezier(0.34,1.4,0.64,1) both;
   transition: top 0.35s cubic-bezier(0.4,0,0.2,1), left 0.35s cubic-bezier(0.4,0,0.2,1);
-  overflow: hidden;
+  overflow-x: hidden; overflow-y: auto;
+  overscroll-behavior: contain;
 }
+
 .tour-card::before {
   content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
   background: linear-gradient(90deg, var(--tour-blue), var(--tour-blue2), var(--tour-blue));
@@ -842,14 +994,18 @@
 .tour-btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 6px 18px rgba(90,164,255,0.45); }
 .tour-btn-secondary { background: rgba(255,255,255,0.05); border: 1px solid rgba(90,164,255,0.3); color: #c3d3f2; }
 .tour-btn-secondary:hover { border-color: var(--tour-blue); color: #fff; background: rgba(90,164,255,0.1); }
-@media (max-width:480px) { .tour-card { max-width: calc(100vw - 2rem); } }
 
-  @media (max-width: 480px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+.tour-actions { flex-wrap: wrap; row-gap: 0.5rem; }
+@media (max-height: 520px) { .tour-card { padding: 0.85rem 1rem; } .tour-desc { margin-bottom: 0.6rem; } }
+@media (prefers-reduced-motion: reduce) {
+  .tour-spotlight, .tour-card, .tour-card::before, .tour-progress-fill { animation: none; transition: none; }
+}
+ 
     @media (max-width: 1180px) and (min-width: 769px) {
     :root { --sidebar-w: var(--sidebar-w-tablet); }
-    .nav-item { padding: 0.55rem 0.9rem; font-size: 0.78rem; }
-    .nav-section { padding: 0.5rem 0.9rem 0.25rem; }
-    .sidebar-header, .sidebar-footer { padding-left: 0.9rem; padding-right: 0.9rem; }
+    .nav-item { font-size: 0.78rem; }
+    .sidebar-nav { padding-left: 0.6rem; padding-right: 0.6rem; }
+    .sidebar-header { padding-left: 0.9rem; padding-right: 0.9rem; }
     .topbar-main-row { padding-left: 1rem; padding-right: 1rem; }
     .section { padding: 1.15rem; }
     .msg-layout { grid-template-columns: 240px 1fr; }
@@ -860,6 +1016,8 @@
   :root { --sidebar-w: 0px; }
   .sidebar { transform: translateX(-260px); width: 260px; }
   .sidebar.open { transform: translateX(0); box-shadow: 8px 0 40px rgba(0,0,0,0.6); }
+  .nav-item, .nav-group-head { min-height: 46px; }
+  .nav-item { font-size: 0.86rem; }
   .banner-wrapper { left: 0; }
   .main { margin-left: 0; }
   .section { padding: 1rem; }
@@ -888,6 +1046,29 @@
   .admin-typer-line { display: block; height: 1.25em; overflow: hidden; white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: var(--text-dim); letter-spacing: 0.04em; line-height: 1.25em; margin-bottom: 0.65rem; user-select: none; flex-shrink: 0; }
   .typing-cursor { display: inline-block; animation: cursorBlink 0.8s step-end infinite; opacity: 0.7; margin-left: 1px; }
   @keyframes cursorBlink { 0%,100%{opacity:0.7} 50%{opacity:0} }
+
+  /* ═══ TOPBAR — small screens ═══
+     Nothing is clipped: the typewriter wraps (two lines reserved, so the bar never jumps),
+     the title may wrap, and on narrow phones the property switcher gets a line of its own
+     under the menu button + bell instead of fighting them for space. */
+  @media (max-width: 1100px) {
+    .topbar-typer { height: auto; min-height: 2.7em; line-height: 1.35; white-space: normal; overflow-wrap: anywhere; }
+  }
+  @media (max-width: 560px) {
+    .topbar-title { white-space: normal; overflow-wrap: anywhere; }
+    .topbar-main-row { padding-left: 0.85rem; padding-right: 0.85rem; }
+  }
+  @media (max-width: 420px) {
+    .topbar-row-1 { flex-wrap: wrap; row-gap: 0.5rem; }
+    .topbar-row-1-left { display: contents; }
+    .mobile-menu-btn { order: 1; }
+    .topbar-right { order: 2; margin-left: auto; }
+    .property-switcher { order: 3; flex: 1 1 100%; min-width: 0; }
+    .property-switcher-btn { width: 100%; max-width: none; }
+    .property-switcher-btn .prop-name { flex: 0 1 auto; }
+    .property-switcher-btn .prop-loc { display: block; flex: 1 1 0; min-width: 0; }
+    .property-menu { left: 0; right: 0; min-width: 0; }
+  }
   </style>
 </head>
 <body>
@@ -954,59 +1135,139 @@
 
   </div>
 
-  <nav class="sidebar-nav">
-    <div class="nav-section">Overview</div>
-    <div class="nav-item active" data-tour="dashboard" onclick="showSection('dashboard')"><span class="icon"></span> Dashboard</div>
-    <div class="nav-section">Tenants</div>
-    <div class="nav-item" data-tour="tenants" onclick="showSection('tenants')">  <span class="icon"></span> All Tenants</div>
-    <div class="nav-item" data-tour="arrears" onclick="showSection('arrears')">  <span class="icon"></span> Arrears
-      <span class="nav-badge" id="arrearsBadge" style="display:none">0</span>
+<nav class="sidebar-nav" id="sidebarNav" aria-label="Main navigation">
+    <div class="nav-pinned">
+      <button type="button" class="nav-item active" data-tone="blue" data-tour="dashboard" title="Income, arrears, occupancy and open repairs at a glance" onclick="showSection('dashboard')"><span class="icon" data-icon="dashboard"></span> Dashboard
+      </button>
     </div>
-    <div class="nav-item" data-tour="addTenant" onclick="showSection('addTenant')"><span class="icon"></span> Add Tenant</div>
-    <div class="nav-item" data-tour="assign" onclick="showSection('assign')"><span class="icon"></span> Assign House</div>
-
-    <div class="nav-section caretaker-hidden">Properties</div>
-    <div class="nav-item caretaker-hidden" data-tour="properties" onclick="showSection('properties')"><span class="icon"></span> My Properties</div>
-    <div class="nav-item caretaker-hidden" data-tour="houses" onclick="showSection('houses')">   <span class="icon"></span> Houses</div>
-
-    <div class="nav-section">Finance</div>
-    <div class="nav-item" data-tour="payments" onclick="showSection('payments')"><span class="icon"></span> Record Payment</div>
-    <div class="nav-item caretaker-hidden" data-tour="expenses" onclick="showSection('expenses')"><span class="icon"></span> Expenses</div>
-    <div class="nav-item caretaker-hidden" onclick="showSection('receipts')"><span class="icon"></span> Receipts</div>
-
-    <div class="nav-section">Repairs</div>
-   <div class="nav-item" data-tour="maintenance" onclick="showSection('maintenance')">
-  <span class="icon"></span> Repair Requests
-  <span class="nav-badge" id="maintenanceBadge" style="display:none">0</span>
-</div>
-
-    <div class="nav-section">Communication</div>
-    <div class="nav-item" data-tour="messages" onclick="showSection('messages')">
-      <span class="icon"></span> Messages
-      <span class="nav-badge" id="msgBadge" style="display:none">0</span>
+    <div class="nav-group" data-group="tenants">
+      <button type="button" class="nav-group-head" id="ng-tenants" aria-expanded="false" aria-controls="ngp-tenants">
+        <span class="ng-icon" data-icon="tenants"></span>
+        <span class="ng-label">Tenants</span>
+        <span class="ng-dot" aria-hidden="true"></span>
+        <span class="ng-count" aria-hidden="true"></span>
+        <span class="ng-chev" data-icon="chevron" aria-hidden="true"></span>
+      </button>
+      <div class="nav-group-panel" id="ngp-tenants" role="group" aria-labelledby="ng-tenants" hidden>
+        <div class="nav-group-items">
+      <button type="button" class="nav-item" data-tone="blue" data-tour="tenants" title="Every tenant, their profile and payment history" onclick="showSection('tenants')"><span class="icon" data-icon="tenants"></span> All Tenants
+      </button>
+      <button type="button" class="nav-item" data-tone="red" data-tour="arrears" title="Tenants who currently owe rent" onclick="showSection('arrears')"><span class="icon" data-icon="arrears"></span> Arrears
+        <span class="nav-badge" id="arrearsBadge" style="display:none">0</span>
+      </button>
+      <button type="button" class="nav-item" data-tone="blue" data-tour="addTenant" title="Create a tenant account and send login details" onclick="showSection('addTenant')"><span class="icon" data-icon="addTenant"></span> Add Tenant
+      </button>
+      <button type="button" class="nav-item caretaker-hidden" data-tone="blue" data-tour="invite" title="Let tenants create their own account through a link or QR code" onclick="showSection('invite')"><span class="icon" data-icon="addTenant"></span> Invite Tenants
+      </button>
+      <button type="button" class="nav-item" data-tone="blue" data-tour="assign" title="Move a tenant into a house or move them out" onclick="showSection('assign')"><span class="icon" data-icon="assign"></span> Assign House
+      </button>
+      <button type="button" class="nav-item" data-tone="amber" data-tour="applications" title="Tenants applying for an available house" onclick="showSection('applications')"><span class="icon" data-icon="houses"></span> Applications
+        <span class="nav-badge" id="applicationBadge" style="display:none">0</span>
+      </button>
+        </div>
+      </div>
     </div>
-
-    <div class="nav-item" data-tour="announcements"  onclick="showSection('announcements')"><span class="icon"></span> Announcements</div>
-    <div class="nav-item caretaker-hidden" onclick="showSection('rules')">        <span class="icon"></span> Rules   </div>
-
-    <div class="nav-section">Activity</div>
-    <div class="nav-item" data-tour="activity" onclick="showSection('activity')"><span class="icon"></span> Activity Log</div>
-
-    <div class="nav-section caretaker-hidden">Team</div>
-    <div class="nav-item caretaker-hidden" data-tour="caretakers" onclick="showSection('caretakers')"><span class="icon"></span> Caretakers</div>
-
-    <div class="nav-section caretaker-hidden">Listings</div>
-    <div class="nav-item caretaker-hidden" onclick="showSection('inquiries')">
-      <span class="icon"></span> Inquiries
-      <span class="nav-badge" id="inquiryBadge" style="display:none">0</span>
+    <div class="nav-group caretaker-hidden" data-group="properties">
+      <button type="button" class="nav-group-head" id="ng-properties" aria-expanded="false" aria-controls="ngp-properties">
+        <span class="ng-icon" data-icon="properties"></span>
+        <span class="ng-label">Properties</span>
+        <span class="ng-dot" aria-hidden="true"></span>
+        <span class="ng-count" aria-hidden="true"></span>
+        <span class="ng-chev" data-icon="chevron" aria-hidden="true"></span>
+      </button>
+      <div class="nav-group-panel" id="ngp-properties" role="group" aria-labelledby="ng-properties" hidden>
+        <div class="nav-group-items">
+      <button type="button" class="nav-item caretaker-hidden" data-tone="blue" data-tour="properties" title="Your properties, listings and map locations" onclick="showSection('properties')"><span class="icon" data-icon="properties"></span> My Properties
+      </button>
+      <button type="button" class="nav-item caretaker-hidden" data-tone="blue" data-tour="houses" title="Add houses and choose monthly or semester billing" onclick="showSection('houses')"><span class="icon" data-icon="houses"></span> Houses
+      </button>
+      <button type="button" class="nav-item caretaker-hidden" data-tone="blue" data-tour="propertyRules" title="Semester dates, holding fee and deposit policy for the active property" onclick="openActivePropertySettings()"><span class="icon" data-icon="settings"></span> Semester &amp; Deposit Rules
+      </button>
+        </div>
+      </div>
     </div>
-
-    <!-- AFTER: -->
-    <div class="nav-section caretaker-hidden">Account</div>
-    <div class="nav-item caretaker-hidden" data-tour="paymentSetup" onclick="openModal('modal-pay-setup')"><span class="icon" id="navIcon_paymentSetup"></span> Payment Setup</div>
-    <div class="nav-item caretaker-hidden" data-tour="referral" onclick="openModal('modal-referral')"><span class="icon" id="navIcon_referral"></span> Refer &amp; Earn</div>
+    <div class="nav-group" data-group="finance">
+      <button type="button" class="nav-group-head" id="ng-finance" aria-expanded="false" aria-controls="ngp-finance">
+        <span class="ng-icon" data-icon="payments"></span>
+        <span class="ng-label">Finance</span>
+        <span class="ng-dot" aria-hidden="true"></span>
+        <span class="ng-count" aria-hidden="true"></span>
+        <span class="ng-chev" data-icon="chevron" aria-hidden="true"></span>
+      </button>
+      <div class="nav-group-panel" id="ngp-finance" role="group" aria-labelledby="ng-finance" hidden>
+        <div class="nav-group-items">
+      <button type="button" class="nav-item" data-tone="green" data-tour="payments" title="Log rent, a deposit or a refund" onclick="showSection('payments')"><span class="icon" data-icon="payments"></span> Record Payment
+      </button>
+      <button type="button" class="nav-item caretaker-hidden" data-tone="amber" data-tour="expenses" title="Track property costs against income" onclick="showSection('expenses')"><span class="icon" data-icon="expenses"></span> Expenses
+      </button>
+      <button type="button" class="nav-item caretaker-hidden" data-tone="green" data-tour="receipts" title="Look up a payment and generate its receipt" onclick="showSection('receipts')"><span class="icon" data-icon="receipts"></span> Receipts
+      </button>
+        </div>
+      </div>
+    </div>
+    <div class="nav-group" data-group="operations">
+      <button type="button" class="nav-group-head" id="ng-operations" aria-expanded="false" aria-controls="ngp-operations">
+        <span class="ng-icon" data-icon="maintenance"></span>
+        <span class="ng-label">Operations</span>
+        <span class="ng-dot" aria-hidden="true"></span>
+        <span class="ng-count" aria-hidden="true"></span>
+        <span class="ng-chev" data-icon="chevron" aria-hidden="true"></span>
+      </button>
+      <div class="nav-group-panel" id="ngp-operations" role="group" aria-labelledby="ng-operations" hidden>
+        <div class="nav-group-items">
+      <button type="button" class="nav-item" data-tone="amber" data-tour="maintenance" title="Issues tenants report, from reported to completed" onclick="showSection('maintenance')"><span class="icon" data-icon="maintenance"></span> Repair Requests
+        <span class="nav-badge" id="maintenanceBadge" style="display:none">0</span>
+      </button>
+      <button type="button" class="nav-item" data-tone="violet" data-tour="messages" title="Chat with tenants" onclick="showSection('messages')"><span class="icon" data-icon="messages"></span> Messages
+        <span class="nav-badge" id="msgBadge" style="display:none">0</span>
+      </button>
+      <button type="button" class="nav-item" data-tone="violet" data-tour="announcements" title="Post a notice to every tenant on the property" onclick="showSection('announcements')"><span class="icon" data-icon="announcements"></span> Announcements
+      </button>
+      <button type="button" class="nav-item caretaker-hidden" data-tone="violet" data-tour="rules" title="House rules shown to your tenants" onclick="showSection('rules')"><span class="icon" data-icon="rules"></span> Rules
+      </button>
+        </div>
+      </div>
+    </div>
+    <div class="nav-group" data-group="records">
+      <button type="button" class="nav-group-head" id="ng-records" aria-expanded="false" aria-controls="ngp-records">
+        <span class="ng-icon" data-icon="activity"></span>
+        <span class="ng-label">Records &amp; Team</span>
+        <span class="ng-dot" aria-hidden="true"></span>
+        <span class="ng-count" aria-hidden="true"></span>
+        <span class="ng-chev" data-icon="chevron" aria-hidden="true"></span>
+      </button>
+      <div class="nav-group-panel" id="ngp-records" role="group" aria-labelledby="ng-records" hidden>
+        <div class="nav-group-items">
+      <button type="button" class="nav-item" data-tone="blue" data-tour="activity" title="A running record of tenants, payments and repairs" onclick="showSection('activity')"><span class="icon" data-icon="activity"></span> Activity Log
+      </button>
+      <button type="button" class="nav-item caretaker-hidden" data-tone="violet" data-tour="caretakers" title="Caretaker accounts and what they may do" onclick="showSection('caretakers')"><span class="icon" data-icon="hardhat"></span> Caretakers
+      </button>
+        </div>
+      </div>
+    </div>
+    <div class="nav-group caretaker-hidden" data-group="account">
+      <button type="button" class="nav-group-head" id="ng-account" aria-expanded="false" aria-controls="ngp-account">
+        <span class="ng-icon" data-icon="settings"></span>
+        <span class="ng-label">Listings &amp; Account</span>
+        <span class="ng-dot" aria-hidden="true"></span>
+        <span class="ng-count" aria-hidden="true"></span>
+        <span class="ng-chev" data-icon="chevron" aria-hidden="true"></span>
+      </button>
+      <div class="nav-group-panel" id="ngp-account" role="group" aria-labelledby="ng-account" hidden>
+        <div class="nav-group-items">
+      <button type="button" class="nav-item caretaker-hidden" data-tone="blue" data-tour="inquiries" title="People asking about your public listings" onclick="showSection('inquiries')"><span class="icon" data-icon="inquiries"></span> Inquiries
+        <span class="nav-badge" id="inquiryBadge" style="display:none">0</span>
+      </button>
+      <button type="button" class="nav-item caretaker-hidden" data-tone="blue" data-tour="paymentSetup" title="Connect your M-Pesa Paybill or Till" onclick="openModal('modal-pay-setup')"><span class="icon" id="navIcon_paymentSetup"></span> Payment Setup
+      </button>
+      <button type="button" class="nav-item caretaker-hidden" data-tone="violet" data-tour="referral" title="Invite other landlords" onclick="openModal('modal-referral')"><span class="icon" id="navIcon_referral"></span> Refer &amp; Earn
+      </button>
+        </div>
+      </div>
+    </div>
   </nav>
 
+  <div class="sidebar-footer">
     <div class="sub-status-card caretaker-hidden" id="commissionCard" onclick="openModal('modal-commission')" title="Click to view commission owed">
       <div class="sub-status-card-top">
         <span class="sub-status-label">Commission</span>
@@ -1031,18 +1292,207 @@
     
 
     <button class="btn-tour" onclick="startTourManually()" id="takeTourBtn"></button>
+    <button class="btn-tour" onclick="openHelpModal()" id="helpBtn"></button>
 
-    <div class="theme-switcher">
+    <div class="theme-switcher" role="group" aria-label="Theme">
       <span class="theme-label">Theme</span>
-      <div class="theme-dot active" data-theme="dark"   onclick="setTheme('dark')"   title="Dark"></div>
-      <div class="theme-dot"        data-theme="light"  onclick="setTheme('light')"  title="Light"></div>
-      <div class="theme-dot"        data-theme="blue"   onclick="setTheme('blue')"   title="Blue"></div>
-      <div class="theme-dot"        data-theme="orange" onclick="setTheme('orange')" title="Orange"></div>
+      <span class="theme-btns">
+        <button type="button" class="theme-dot active" data-theme="dark"  onclick="setTheme('dark')"  title="Black theme" aria-label="Black theme"></button>
+        <button type="button" class="theme-dot"        data-theme="light" onclick="setTheme('light')" title="White theme" aria-label="White theme"></button>
+      </span>
     </div>
 
     <button class="btn-logout" onclick="logout()" id="logoutBtn"></button>
-  
+  </div>
 </aside>
+
+<!-- ═══ NAV ACCORDION CONTROLLER ═══
+     One group open at a time. Opening a group assembles its items from a short
+     orbit (APPEAR → ORBIT → ACCELERATE → ALIGN → SETTLE); switching first packs
+     the old group away, then assembles the new one. Navigation never depends on
+     animation: state (aria-expanded / hidden) is applied first and the motion is
+     cosmetic. prefers-reduced-motion skips the orbit entirely. -->
+<script>
+(function () {
+  const nav = document.getElementById('sidebarNav');
+  if (!nav) return;
+
+  const reduced = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const OPEN_MS = 520, CLOSE_MS = 220, STAGGER = 30;
+
+  let seq = 0;            // bumps on every request so stale animation callbacks bail out
+  let anims = [];         // running WAAPI animations
+  let intended = null;    // which group SHOULD be open once all motion has finished
+
+  const groups   = () => Array.from(nav.querySelectorAll('.nav-group'));
+  const byId     = id => nav.querySelector('.nav-group[data-group="' + id + '"]');
+  const headOf   = g => g.querySelector(':scope > .nav-group-head');
+  const panelOf  = g => g.querySelector(':scope > .nav-group-panel');
+  const itemsOf  = g => Array.from(panelOf(g).querySelectorAll('.nav-item')).filter(el => el.offsetParent !== null);
+
+  function applyState(g, open) {
+    g.classList.toggle('open', open);
+    headOf(g).setAttribute('aria-expanded', open ? 'true' : 'false');
+    panelOf(g).hidden = !open;
+  }
+  function cancelMotion() {
+    anims.forEach(a => { try { a.cancel(); } catch (e) {} });
+    anims = [];
+    nav.querySelectorAll('.orbiting').forEach(el => el.classList.remove('orbiting'));
+  }
+  // Snap every group to the intended state immediately (no motion).
+  function settle() {
+    cancelMotion();
+    groups().forEach(g => applyState(g, g.dataset.group === intended));
+  }
+
+  // Positions items on a small ellipse around the (invisible) centre of the group's item box,
+  // expressed as offsets from each item's final slot. rx is kept small and items are scaled down
+  // while orbiting so nothing pokes outside the sidebar (no horizontal scrollbar).
+  function geometry(g) {
+    const items = itemsOf(g);
+    const box = panelOf(g).querySelector('.nav-group-items');
+    const br = box.getBoundingClientRect();
+    const cx = br.width / 2, cy = br.height / 2;
+    const rx = Math.min(36, br.width * 0.14);
+    const ry = Math.min(64, Math.max(34, br.height * 0.5));
+    const n = items.length;
+    return items.map((el, i) => {
+      const r = el.getBoundingClientRect();
+      const fx = r.left - br.left + r.width / 2, fy = r.top - br.top + r.height / 2;
+      const th = (-90 + (360 / n) * i) * Math.PI / 180;
+      const at = (ang, k) => ({ x: cx + Math.cos(ang) * rx * k - fx, y: cy + Math.sin(ang) * ry * k - fy });
+      return { el, p0: at(th, 1), p1: at(th + 0.9, 0.85), p2: at(th + 1.9, 0.4) };
+    });
+  }
+  const T = (p, sc, rot) => 'translate(' + p.x.toFixed(1) + 'px,' + p.y.toFixed(1) + 'px) scale(' + sc + ') rotate(' + rot + 'deg)';
+
+  function assemble(g, token) {
+    if (reduced()) return Promise.resolve();
+    const geo = geometry(g);
+    const runs = geo.map((o, i) => {
+      o.el.classList.add('orbiting');
+      const a = o.el.animate([
+        { opacity: 0, transform: T(o.p0, 0.5, -18), offset: 0 },                                   // APPEAR on the ring
+        { opacity: 1, transform: T(o.p0, 0.6, -10), offset: 0.18, easing: 'cubic-bezier(.45,0,.55,1)' },
+        { opacity: 1, transform: T(o.p1, 0.62, 6),  offset: 0.45, easing: 'cubic-bezier(.55,0,.9,.6)' },   // ORBIT toward the centre
+        { opacity: 1, transform: T(o.p2, 0.7, 12),  offset: 0.68, easing: 'cubic-bezier(.25,.7,.3,1)' },   // ACCELERATE
+        { opacity: 1, transform: 'translate(0,0) scale(1.02) rotate(0deg)', offset: 0.92 },       // ALIGN into the column
+        { opacity: 1, transform: 'none', offset: 1 }                                               // SETTLE
+      ], { duration: OPEN_MS, delay: i * STAGGER, easing: 'linear', fill: 'backwards' });
+      anims.push(a);
+      return a.finished.catch(() => {});
+    });
+    return Promise.all(runs).then(() => { if (token === seq) geo.forEach(o => o.el.classList.remove('orbiting')); });
+  }
+
+  function packAway(g) {
+    if (reduced()) return Promise.resolve();
+    const geo = geometry(g);
+    const runs = geo.map((o, i) => {
+      o.el.classList.add('orbiting');
+      const a = o.el.animate([
+        { opacity: 1, transform: 'none', offset: 0 },
+        { opacity: 1, transform: T(o.p2, 0.7, 12), offset: 0.4, easing: 'cubic-bezier(.4,0,.6,1)' },
+        { opacity: 0, transform: T(o.p0, 0.5, -18), offset: 1 }
+      ], { duration: CLOSE_MS, delay: i * 12, easing: 'linear', fill: 'forwards' });
+      anims.push(a);
+      return a.finished.catch(() => {});
+    });
+    return Promise.all(runs);
+  }
+
+  function openGroup(g, token) {
+    applyState(g, true);
+    intended = g.dataset.group;
+    // bring the header into view BEFORE measuring, so the orbit geometry matches what is on screen
+    try { headOf(g).scrollIntoView({ block: 'nearest' }); } catch (e) {}
+    return assemble(g, token);
+  }
+  function closeGroup(g, token) {
+    headOf(g).setAttribute('aria-expanded', 'false');
+    intended = null;
+    return packAway(g).then(() => { if (token === seq) { cancelMotion(); applyState(g, false); } });
+  }
+
+  function toggle(id) {
+    const target = byId(id);
+    if (!target) return;
+    settle();                                   // finish any half-run motion instantly, never stack animations
+    const token = ++seq;
+    const cur = groups().find(g => g.classList.contains('open'));
+    if (cur === target) { closeGroup(cur, token); return; }             // clicking the open group collapses it
+    if (cur) {                                                           // switching: pack away, THEN assemble
+      closeGroup(cur, token).then(() => { if (token === seq) openGroup(target, token); });
+    } else {
+      openGroup(target, token);
+    }
+  }
+
+  // Instant (no motion) — used by the tour and by programmatic navigation.
+  function openInstant(id) {
+    ++seq;
+    intended = id || null;
+    settle();
+  }
+  function currentOpen() {
+    const g = groups().find(x => x.classList.contains('open'));
+    return g ? g.dataset.group : null;
+  }
+
+  function syncToSection(name) {
+    const items = Array.from(nav.querySelectorAll('.nav-item'));
+    items.forEach(n => n.removeAttribute('aria-current'));
+    const active = items.find(n => n.classList.contains('active'));
+    if (active) active.setAttribute('aria-current', 'page');
+    groups().forEach(g => g.classList.toggle('has-active', !!(active && g.contains(active))));
+    if (active) {
+      const g = active.closest('.nav-group');
+      if (g && !g.classList.contains('open')) openInstant(g.dataset.group);
+    }
+    document.querySelectorAll('.quickbar-item[data-qb]').forEach(q => q.classList.toggle('active', q.dataset.qb === name));
+  }
+
+  // Group badge = sum of the real child badges (never invented).
+  function refreshCounts() {
+    groups().forEach(g => {
+      let total = 0;
+      g.querySelectorAll('.nav-badge').forEach(b => {
+        if (b.style.display === 'none' || b.closest('.caretaker-hidden') && document.documentElement.getAttribute('data-caretaker') === 'true') return;
+        const v = parseInt(b.textContent, 10);
+        if (v > 0) total += v;
+      });
+      const c = g.querySelector('.ng-count');
+      if (c) c.textContent = total > 99 ? '99+' : String(total);
+      g.classList.toggle('has-count', total > 0);
+    });
+  }
+  let rafCount = 0;
+  const scheduleCounts = () => { cancelAnimationFrame(rafCount); rafCount = requestAnimationFrame(refreshCounts); };
+  const mo = new MutationObserver(scheduleCounts);
+  nav.querySelectorAll('.nav-badge').forEach(b => mo.observe(b, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['style'] }));
+
+  nav.addEventListener('click', e => {
+    const h = e.target.closest('.nav-group-head');
+    if (h) toggle(h.closest('.nav-group').dataset.group);
+  });
+
+  // Keyboard: Up/Down/Home/End move between visible headers + items. Enter/Space use native button behaviour.
+  nav.addEventListener('keydown', e => {
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return;
+    const list = Array.from(nav.querySelectorAll('.nav-group-head, .nav-item')).filter(el => el.offsetParent !== null);
+    const i = list.indexOf(document.activeElement);
+    if (i < 0) return;
+    e.preventDefault();
+    const next = e.key === 'Home' ? 0 : e.key === 'End' ? list.length - 1 : Math.max(0, Math.min(list.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)));
+    list[next].focus();
+  });
+
+  groups().forEach(g => applyState(g, false));
+  refreshCounts();
+  window.NavAccordion = { toggle, openInstant, currentOpen, syncToSection, refreshCounts, groupOf: el => el && el.closest ? el.closest('.nav-group') : null };
+})();
+</script>
 
 <!-- ═══ MAIN ═══ -->
 <main class="main">
@@ -1130,6 +1580,9 @@
       </div>
     </div>
 
+    <!-- Tenants between two semesters who still need a holding-fee decision (filled by renderGapDecisions) -->
+    <div id="dashGapBanner" style="display:none"></div>
+
     <div class="property-header-card" id="propertyHeaderCard">
       <div class="property-header-left">
         <div class="property-name" id="propertyNameDisplay">Your Property</div>
@@ -1159,9 +1612,25 @@
       <div id="maintAlertList" style="display:flex;flex-direction:column;gap:0.5rem"></div>
     </div>
 
+   <div class="stat-card" id="upcomingSemDueCard" style="cursor:pointer;display:none" onclick="showSection('arrears')">
+    <div class="stat-label" id="statLabel_upcomingSemDue"></div>
+    <div class="stat-value" id="upcomingSemDue" style="color:var(--warn)">0</div>
+    <div class="stat-sub">Due within 14 days</div>
+    </div>
+
+    <div class="card" id="semesterSnapshotCard" style="display:none;margin-bottom:1.25rem">
+    <div class="card-title" id="semSnapTitle"></div>
+    <div class="flex-between" style="margin-bottom:0.5rem">
+      <span style="font-size:0.8rem;color:var(--text-muted)" id="semSnapCollectedLabel"></span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--text-dim)" id="semSnapDueLabel"></span>
+    </div>
+    <div class="payment-progress"><div class="payment-progress-bar" id="semSnapProgressBar" style="width:0%"></div></div>
+    <div style="margin-top:0.5rem;font-family:'JetBrains Mono',monospace;font-size:0.68rem;color:var(--text-dim)" id="semSnapFooter"></div>
+  </div>
+
     <div class="stats-grid">
       <div class="stat-card"><div class="stat-label" id="statLabel_income"></div><div class="stat-value" id="income">0</div><div class="stat-sub">Ksh this month</div></div>
-      <div class="stat-card"><div class="stat-label" id="statLabel_arrears"></div> <div class="stat-value" id="arrears" style="color:var(--danger)">0</div><div class="stat-sub">Ksh outstanding</div></div>
+      <div class="stat-card"><div class="stat-label" id="statLabel_arrears"></div> <div class="stat-value" id="arrears" style="color:var(--danger)">0</div><div class="stat-sub" id="arrearsBreakdown">Ksh outstanding</div></div>
       <div class="stat-card"><div class="stat-label" id="statLabel_expenses"></div><div class="stat-value" id="expenses" style="color:var(--warn)">0</div><div class="stat-sub">Ksh this month</div></div>
       <div class="stat-card"><div class="stat-label" id="statLabel_netIncome"></div><div class="stat-value" id="netIncome">0</div><div class="stat-sub">Ksh after expenses</div></div>
       <div class="stat-card"><div class="stat-label" id="statLabel_occupied"></div>      <div class="stat-value" id="occupied">0</div><div class="stat-sub">Houses</div></div>
@@ -1196,6 +1665,9 @@
         <button class="btn btn-primary btn-sm"   onclick="loadTenants()" id="activeRefreshBtn"></button>
       </div>
     </div>
+
+    <div class="card" id="gapDecisionsCard" style="display:none;margin-bottom:1.25rem;border-left:3px solid var(--warn)"></div>
+    <div class="card" id="holidayHoldsCard" style="display:none;margin-bottom:1.25rem;border-left:3px solid var(--warn)"></div>
     <div class="grid-2">
       <div class="card">
         <div class="tenant-tabs">
@@ -1236,20 +1708,50 @@
 
 
   <!-- ─── ARREARS ─── -->
-  <div class="section" id="sec-arrears">
+<div class="section" id="sec-arrears">
     <div class="section-header">
       <div class="section-title">Tenants in Arrears</div>
-           <div class="flex">
-        <input type="text" id="arrearsMonth" placeholder="Month (optional)" style="width:160px;margin:0">
-        <button class="btn btn-primary btn-sm" onclick="loadArrears()">Load</button>
-        <button class="btn btn-secondary btn-sm" onclick="exportArrearsCsv()" id="exportArrearsBtn"></button>
-      </div>
+      <button class="btn btn-secondary btn-sm" onclick="exportArrearsCsv()" id="exportArrearsBtn"></button>
     </div>
+
+    <div class="tenant-tabs" style="margin-bottom:1rem">
+      <button class="tenant-tab active" id="arrTab-current" onclick="switchArrearsMode('current')">Current</button>
+      <button class="tenant-tab" id="arrTab-month" onclick="switchArrearsMode('month')">By Month</button>
+      <button class="tenant-tab" id="arrTab-semester" onclick="switchArrearsMode('semester')">By Semester</button>
+    </div>
+
+    <div id="arrPanel-current">
+      <p class="field-hint" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:0.75rem 1rem;margin-top:0;margin-bottom:1rem">
+        Every tenant's live balance right now — monthly tenants for the current calendar month, semester tenants for the current semester window.
+      </p>
+    </div>
+
+    <div id="arrPanel-month" style="display:none">
+      <div class="flex" style="margin-bottom:1rem">
+        <input type="text" id="arrearsMonth" placeholder="Month (e.g. May 2026)" style="width:200px;margin:0">
+        <button class="btn btn-primary btn-sm" onclick="loadArrearsByMonth()">Load</button>
+      </div>
+      <p class="field-hint" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:0.75rem 1rem;margin-top:0;margin-bottom:1rem">
+        Monthly-billed tenants only. Semester tenants are tracked under "By Semester".
+      </p>
+    </div>
+
+    <div id="arrPanel-semester" style="display:none">
+      <div class="flex" style="margin-bottom:1rem;flex-wrap:wrap">
+        <select id="arrSemesterProperty" style="width:220px;margin:0" onchange="loadSemesterPeriodOptions()"></select>
+        <select id="arrSemesterPeriod" style="width:220px;margin:0"></select>
+        <button class="btn btn-primary btn-sm" onclick="loadArrearsBySemester()">Load</button>
+      </div>
+      <p class="field-hint" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:0.75rem 1rem;margin-top:0;margin-bottom:1rem">
+        Pick a property, then a semester period — each already includes its year. Rows marked "Estimated" have no saved billing record for that period yet.
+      </p>
+    </div>
+
     <div class="card">
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Tenant</th><th>House</th><th>Rent</th><th>Paid</th><th>Balance</th><th>Status</th><th>Action</th></tr></thead>
-          <tbody id="arrearsTable"><tr><td colspan="7"><div class="empty-state">No data — click Load</div></td></tr></tbody>
+          <thead><tr><th>Tenant</th><th>House</th><th>Period</th><th>Rent</th><th>Paid</th><th>Balance</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="arrearsTable"><tr><td colspan="8"><div class="empty-state">No data — click Load</div></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -1268,12 +1770,42 @@
         <input type="text"   id="newName"    placeholder="Full name *">
         <input type="text"   id="newPhone"   placeholder="Phone number *">
         <input type="email"  id="newEmail"   placeholder="Email address *">
-        <input type="number" id="newDueDate" placeholder="Rent due day (default: 5)" min="1" max="28">
+        <select id="newExpectedSemesters">
+          <option value="">Expected semesters (optional)</option>
+          <option value="1">1 semester</option>
+          <option value="2">2 semesters</option>
+          <option value="3">3 semesters</option>
+        </select>
+        <div class="field-hint">For semester-billed houses: how many semesters this tenant stays this academic year. Changeable later from their profile.</div>
         <button class="btn btn-primary btn-full" onclick="addTenant()" id="addTenantBtn"></button>
       </div>
     </div>
   </div>
 
+    <div class="section caretaker-hidden" id="sec-invite">
+      <div class="section-header"><div class="section-title">Invite Existing Tenants</div></div>
+      <p class="field-hint" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:0.75rem 1rem;margin-top:0;margin-bottom:1.25rem">
+        Generate one link per property and share it in your tenants' WhatsApp group, or show the QR code. Tenants create their own account and land in this property; you assign their house afterwards. Adding tenants manually still works.
+      </p>
+      <div style="max-width:560px">
+        <div class="card">
+          <div class="card-title">Tenant Registration Link</div>
+          <div data-tour="inviteSetup" style="display:flow-root">
+            <label class="pay-setup-label" style="display:block;margin-bottom:0.35rem">Property</label>
+            <select id="invitePropertySelect" onchange="loadInvitation()"></select>
+            <label class="pay-setup-label" style="display:block;margin:0.75rem 0 0.35rem">Link expires</label>
+            <select id="inviteExpirySelect">
+              <option value="30">After 30 days</option>
+              <option value="90" selected>After 90 days</option>
+              <option value="365">After 1 year</option>
+              <option value="never">Never</option>
+            </select>
+            <div class="field-hint">Applies to the next link you generate. Revoking or replacing a link never affects tenants who already registered.</div>
+          </div>
+          <div id="inviteBody"></div>
+        </div>
+      </div>
+    </div>
 
   <!-- ─── MY PROPERTIES ─── -->
   <div class="section" id="sec-properties">
@@ -1296,12 +1828,23 @@
       <div class="section-title">Houses</div>
       <button class="btn btn-secondary btn-sm" onclick="loadHouses()" id="housesRefreshBtn"></button>
     </div>
-    <div class="grid-2 mb-3">
+    <div id="houseGroupLegend" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.85rem"></div>
+    <div class="house-grid" id="houseGrid"><div class="empty-state" style="grid-column:1/-1">Click Refresh to load houses</div></div>
+
+    <!-- Add a house / move a tenant out — below the buildings so the cards are the first thing you see -->
+    <div class="grid-2 mb-3" style="margin-top:1.75rem">
       <div class="card caretaker-hidden">
         <div class="card-title">Add New House</div>
         <button class="btn btn-secondary btn-full" onclick="openModal('modal-generate-houses')" style="margin-top:0.5rem" id="genUnitsBtn"></button>
-        <input type="text"   id="houseName" placeholder="House name (e.g. A-12)">
-        <input type="number" id="houseRent" placeholder="Monthly rent (Ksh)">
+        <input type="text" id="houseName" placeholder="House name (e.g. A-12)">
+        <select id="houseBillingCycle" data-tour="houseBilling" onchange="onHouseBillingCycleChange()">
+          <option value="monthly">Monthly</option>
+          <option value="semester">Semester</option>
+        </select>
+        <div id="houseRentWrap">
+          <input type="number" id="houseRent" placeholder="Rent per month (Ksh)">
+        </div>
+        <div id="houseSemesterRentBox" style="display:none;margin-bottom:0.6rem;background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:0.6rem 0.85rem;font-size:0.75rem;color:var(--text-muted)"></div>
         <button class="btn btn-primary btn-full" onclick="addHouse()" id="addHouseBtn"></button>
       </div>
       <div class="card caretaker-hidden">
@@ -1310,8 +1853,6 @@
         <button class="btn btn-warn btn-full" onclick="moveOutTenant()" style="margin-top:0.25rem" id="moveOutBtn"></button>
       </div>
     </div>
-    <div id="houseGroupLegend" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.85rem"></div>
-    <div class="house-grid" id="houseGrid"><div class="empty-state" style="grid-column:1/-1">Click Refresh to load houses</div></div>
   </div>
 
 
@@ -1331,13 +1872,38 @@
 </div>
 
 
+  <!-- --- HOUSE APPLICATIONS --- -->
+  <div class="section" id="sec-applications">
+    <div class="section-header">
+      <div class="section-title">House Applications</div>
+      <button class="btn btn-secondary btn-sm" onclick="BuildingBrowser.loadApplications()" id="applicationsRefreshBtn"></button>
+    </div>
+    <p class="field-hint" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:0.75rem 1rem;margin-top:0;margin-bottom:1.25rem">
+      Tenants who have no house yet can browse your buildings and apply for an available house. Approving an application assigns the house using the same rules as <strong>Assign House</strong> — including the deposit requirement.
+    </p>
+    <div class="bb-tabs" role="tablist" aria-label="Filter applications">
+      <button type="button" role="tab" data-app-filter="pending" class="on">Pending</button>
+      <button type="button" role="tab" data-app-filter="all">All</button>
+    </div>
+    <div id="applicationsList"><div class="empty-state">Loading applications…</div></div>
+  </div>
+
+
+
+
   <!-- ─── PAYMENTS ─── -->
   <div class="section" id="sec-payments">
     <div class="section-header"><div class="section-title">Record Payment</div></div>
     <div style="max-width:480px">
       <div class="card">
         <div class="card-title">Payment Details</div>
+          <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem" id="paymentTypeToggle" data-tour="paymentType">
+            <button type="button" class="btn btn-primary btn-sm" id="payTypeRentBtn" onclick="setPaymentType('rent')" style="flex:1">Rent</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="payTypeDepositBtn" onclick="setPaymentType('deposit')" style="flex:1">Deposit</button>
+            <button type="button" class="btn btn-secondary btn-sm caretaker-hidden" id="payTypeRefundBtn" onclick="setPaymentType('refund')" style="flex:1">Refund</button>
+          </div>
         <select id="payTenantSelect" onchange="onPayTenantChange()"></select>
+        <div id="rentOnlyFields">
         <input type="text" id="month" placeholder="Month (e.g. May 2026)" oninput="loadPaymentSummary()">
         <div id="paymentSummaryBox" style="display:none;margin-bottom:0.75rem">
           <div class="pay-summary">
@@ -1347,7 +1913,8 @@
             <div class="pay-summary-row"><span class="pay-summary-label">Status</span>           <span id="sumStatus">—</span></div>
           </div>
           <div class="payment-progress"><div class="payment-progress-bar" id="progressBar" style="width:0%"></div></div>
-          <div style="font-size:0.68rem;color:var(--text-dim);text-align:right;margin-top:0.3rem" id="progressLabel"></div>
+        <div style="font-size:0.68rem;color:var(--text-dim);text-align:right;margin-top:0.3rem" id="progressLabel"></div>
+        </div>
         </div>
         <input type="number" id="amount" placeholder="Amount to record (Ksh)" min="1">
         <select id="payMethod">
@@ -1565,6 +2132,7 @@
           <option value="">All Activity</option>
           <option value="tenant.created">Tenant Created</option>
           <option value="tenant.readded">Tenant Re-added</option>
+          <option value="tenant.self_registered">Tenant Self-Registered</option>
           <option value="tenant.assigned">House Assigned</option>
           <option value="tenant.reactivated">Tenant Reactivated</option>
           <option value="tenant.moved_out">Tenant Moved Out</option>
@@ -1774,7 +2342,6 @@
   </div>
 </div>
 
-
 <!-- ─── ADD PROPERTY ─── -->
 <div class="modal-overlay" id="modal-add-property">
   <div class="modal">
@@ -1788,7 +2355,7 @@
     <input type="text" id="newPropName"     placeholder="Property name *">
     <input type="text" id="newPropLocation" placeholder="Location (e.g. Nairobi, Westlands)">
     <input type="text" id="newPropPhone"    placeholder="Contact phone (optional)">
-  <div class="loc-picker-hint" style="margin-top:0.25rem">Optional: search for the address or pin it on the map now, or set it later from My Properties.</div>
+    <div class="loc-picker-hint" style="margin-top:0.25rem">Optional: search for the address or pin it on the map now, or set it later from My Properties.</div>
     <div id="newPropMapWrap">
       <div class="loc-search-row">
         <input type="text" id="newPropSearchInput" placeholder="Search address, estate, or landmark…" autocomplete="off">
@@ -1799,9 +2366,124 @@
       <div id="newPropMap" class="loc-picker-map"></div>
       <div class="loc-picker-coords" id="newPropCoords">No location selected</div>
     </div>
+
+    <div class="pay-setup-field" style="margin-top:0.75rem">
+      <label class="pay-setup-label">Semester billing</label>
+      <select id="newPropSemesterEnabled" onchange="_toggleNewPropSemesterFields()" style="margin-bottom:0">
+        <option value="false">Disabled</option>
+        <option value="true">Enabled</option>
+      </select>
+      <div class="pay-setup-hint">Controls every semester-billed house in this property.</div>
+    </div>
+    <div id="newPropSemesterFieldsWrap" style="display:none">
+      <div class="pay-setup-field">
+        <label class="pay-setup-label">Academic year calendar (2–3 semesters)</label>
+        <div id="newPropSemestersEditor"></div>
+      </div>
+      <div class="pay-setup-field">
+        <label class="pay-setup-label">Default semester rent (Ksh)</label>
+        <input type="number" id="newPropSemesterRentAmount" min="0" placeholder="e.g. 45000" style="margin-bottom:0">
+        <div class="pay-setup-hint">Used by every semester that doesn't set its own rent. Daily rate = rent ÷ days in that semester.</div>
+      </div>
+      <div class="pay-setup-field">
+        <label class="pay-setup-label">Due day (day of the final semester month)</label>
+        <input type="number" id="newPropSemesterDueDay" min="1" max="28" value="5" style="margin-bottom:0">
+      </div>
+      <div class="pay-setup-field">
+        <label class="pay-setup-label">Holiday holding fee (Ksh per month)</label>
+        <input type="number" id="newPropHoldingFee" min="0" placeholder="e.g. 3000" style="margin-bottom:0">
+        <div class="pay-setup-hint">Charged per day while a tenant is away on holiday but keeps the room. Adjustable per tenant when the holiday starts.</div>
+      </div>
+    </div>
+    <div class="pay-setup-field">
+      <label class="pay-setup-label">Deposit before first assignment</label>
+      <select id="newPropRequireDeposit" style="margin-bottom:0">
+        <option value="true">Required</option>
+        <option value="false">Not required</option>
+      </select>
+
+        <input type="number" id="newPropDepositAmount" min="0" placeholder="Deposit amount (Ksh)" style="margin-top:0.5rem;margin-bottom:0">
+    </div>
+    <div class="pay-setup-field">
+      <label class="pay-setup-label">Landlord override</label>
+      <select id="newPropLandlordOverride" style="margin-bottom:0">
+        <option value="true">Allowed</option>
+        <option value="false">Not allowed</option>
+      </select>
+      <div class="pay-setup-hint">Only the landlord can override the deposit rule during assignment.</div>
+    </div>
+
     <button class="btn btn-primary btn-full" onclick="addProperty()">Create Property</button>
   </div>
 </div>
+
+
+<!-- ─── PROPERTY SEMESTER & DEPOSIT SETTINGS ─── -->
+<div class="modal-overlay" id="modal-property-settings">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header">
+      <div class="modal-title" id="propSettingsModalTitle"></div>
+      <button class="modal-close" onclick="closeModal('modal-property-settings')" id="propSettingsCloseBtn"></button>
+    </div>
+    <input type="hidden" id="propSettingsPropertyId">
+    <div class="pay-setup-field">
+      <label class="pay-setup-label">Semester billing</label>
+      <select id="propSettingsSemesterEnabled" onchange="_togglePropSettingsSemesterFields()" style="margin-bottom:0">
+        <option value="false">Disabled</option>
+        <option value="true">Enabled</option>
+      </select>
+    </div>
+    <div id="propSettingsSemesterFieldsWrap" style="display:none">
+      <div class="pay-setup-field">
+        <label class="pay-setup-label">Academic year calendar (2–3 semesters)</label>
+        <div id="propSettingsSemestersEditor"></div>
+      </div>
+      <div class="pay-setup-field">
+        <label class="pay-setup-label">Default semester rent (Ksh)</label>
+        <input type="number" id="propSettingsSemesterRentAmount" min="0" style="margin-bottom:0">
+        <div class="pay-setup-hint">Used by every semester that doesn't set its own rent. Daily rate = rent ÷ days in that semester.</div>
+      </div>
+      <div class="pay-setup-field">
+        <label class="pay-setup-label">Due day (day of the final semester month)</label>
+        <input type="number" id="propSettingsDueDay" min="1" max="28" placeholder="e.g. 5" style="margin-bottom:0">
+        <div class="pay-setup-hint">Each semester's rent is due by this day of that semester's last month.</div>
+      </div>
+      <div class="pay-setup-field">
+        <label class="pay-setup-label">Holiday holding fee (Ksh per month)</label>
+        <input type="number" id="propSettingsHoldingFee" min="0" style="margin-bottom:0">
+        <div class="pay-setup-hint">Charged per day while a tenant is away on holiday but keeps the room.</div>
+      </div>
+      <div class="pay-setup-field">
+        <label class="pay-setup-label">Between semesters (when one ends and the next has not started)</label>
+        <select id="propSettingsGapPolicy" style="margin-bottom:0">
+          <option value="ask">Ask me to choose a holding fee for each tenant</option>
+          <option value="auto">Apply the default holding fee automatically</option>
+          <option value="none">No holding fee between semesters</option>
+        </select>
+        <div class="pay-setup-hint">Rent is paused for the break either way. With "Ask me", a prompt appears on the tenant's profile and on your dashboard.</div>
+      </div>
+    </div>
+    <div class="pay-setup-field">
+      <label class="pay-setup-label">Holiday holding fee — monthly tenants (Ksh per month)</label>
+      <input type="number" id="propSettingsMonthlyHoldingFee" min="0" style="margin-bottom:0">
+      <div class="pay-setup-hint">The default when a monthly tenant goes on holiday and keeps the room. You can still pick a custom fee or no fee each time.</div>
+    </div>
+    <div class="pay-setup-field">
+      <label class="pay-setup-label">Deposit before first assignment</label>
+      <select id="propSettingsRequireDeposit" style="margin-bottom:0">
+        <option value="true">Required</option>
+        <option value="false">Not required</option>
+      </select>
+    </div>
+      <div class="pay-setup-field">
+        <label class="pay-setup-label">Deposit amount (Ksh)</label>
+        <input type="number" id="propSettingsDepositAmount" min="0" style="margin-bottom:0">
+        <div class="pay-setup-hint">Fixed amount required before any house in this property can be assigned. No exceptions.</div>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="submitPropertySettings()" style="margin-top:0.5rem" id="propSettingsSaveBtn"></button>
+  </div>
+</div>
+
 
 <!-- ─── GENERATE HOUSES (bulk naming) ─── -->
 <div class="modal-overlay" id="modal-generate-houses">
@@ -1811,13 +2493,25 @@
       <button class="modal-close" onclick="closeModal('modal-generate-houses')" id="genHousesCloseBtn"></button>
     </div>
 
-    <div class="pay-setup-field" style="margin-bottom:1rem">
-      <label class="pay-setup-label">Monthly Rent (applies to all generated units)</label>
+    <!-- Shown only when the generator was opened from a building: the building is already attached -->
+    <div id="genBuildingBanner" class="field-hint" style="display:none;background:var(--accent-dim);border:1px solid rgba(110,231,183,0.2);border-radius:7px;padding:0.65rem 0.85rem;margin:0 0 1rem;line-height:1.6"></div>
+
+    <div class="pay-setup-field" id="genBillingCycleWrap" style="margin-bottom:1rem">
+      <label class="pay-setup-label">1. Generation Type</label>
+      <select id="genHouseBillingCycle" onchange="onGenBillingCycleChange()" style="margin-bottom:0">
+        <option value="monthly">Monthly</option>
+        <option value="semester">Semester</option>
+      </select>
+      <div class="pay-setup-hint" id="genBillingCycleHint" style="display:none">Extending an existing building inherits its current billing cycle automatically.</div>
+    </div>
+    <div class="pay-setup-field" id="genMonthlyRentWrap" style="margin-bottom:1rem">
+      <label class="pay-setup-label">Rent Per Month (applies to all generated units)</label>
       <input type="number" id="genHouseRent" placeholder="e.g. 8000" style="margin-bottom:0">
     </div>
-
+    <div id="genSemesterRentBox" style="display:none;margin-bottom:1rem;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:0.75rem 1rem;font-size:0.78rem;color:var(--text-muted)"></div>
      
 <div style="display:flex;gap:0.5rem;margin-bottom:1rem" id="genModeToggle">
+  <button class="btn btn-secondary btn-sm" id="genModeSingleBtn" onclick="setGenMode('single')" style="flex:1;display:none">Single House</button>
   <button class="btn btn-secondary btn-sm" id="genModeSimpleBtn" onclick="setGenMode('simple')" style="flex:1">Simple</button>
   <button class="btn btn-secondary btn-sm" id="genModeAdvBtn" onclick="setGenMode('advanced')" style="flex:1">Per-Floor</button>
   <button class="btn btn-secondary btn-sm" id="genModeExtendBtn" onclick="setGenMode('extend')" style="flex:1">Extend Group</button>
@@ -1828,9 +2522,15 @@
     </div>
 
   <div id="genGroupsWrap"></div>
+
+<div id="genSingleWrap" style="display:none;margin-bottom:1rem">
+  <label class="pay-setup-label">House / room name</label>
+  <input type="text" id="genSingleName" placeholder="e.g. Room 1" oninput="_renderGenPreview()" style="margin-bottom:0.5rem">
+  <div style="font-family:'JetBrains Mono',monospace;font-size:0.68rem;color:var(--text-dim)" id="genSingleHint"></div>
+</div>
      
 <div id="genExtendWrap" style="display:none;margin-bottom:1rem">
-  <label class="pay-setup-label">Which group?</label>
+  <label class="pay-setup-label" id="genExtendGroupLabel">Which group?</label>
   <select id="genExtendGroupSelect" onchange="onGenExtendGroupChange()" style="margin-bottom:0.75rem"></select>
  
   <label class="pay-setup-label">How many more units?</label>
@@ -1937,6 +2637,7 @@
         <div class="pay-summary-row"><span class="pay-summary-label">Rate</span><span class="pay-summary-value" id="commSumRate">—</span></div>
         <div class="pay-summary-row"><span class="pay-summary-label">Collected</span><span class="pay-summary-value" id="commSumCollected">—</span></div>
         <div class="pay-summary-row"><span class="pay-summary-label">Amount Due</span><span class="pay-summary-value" id="commSumDue" style="color:var(--warn)">—</span></div>
+        <div class="pay-summary-row"><span class="pay-summary-label">Credit Applied</span><span class="pay-summary-value" id="commSumCredit" style="color:var(--accent)">—</span></div>
         <div class="pay-summary-row"><span class="pay-summary-label">Status</span><span id="commSumStatus">—</span></div>
       </div>
     </div>
@@ -1982,6 +2683,12 @@
     </div>
     <div class="card-title" id="payModalTenantName"></div>
     <input type="hidden" id="payModalTenantId">
+    <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem" id="payModalTypeToggle">
+      <button type="button" class="btn btn-primary btn-sm" id="payModalTypeRentBtn" onclick="setModalPaymentType('rent')" style="flex:1">Rent</button>
+      <button type="button" class="btn btn-secondary btn-sm" id="payModalTypeDepositBtn" onclick="setModalPaymentType('deposit')" style="flex:1">Deposit</button>
+      <button type="button" class="btn btn-secondary btn-sm caretaker-hidden" id="payModalTypeRefundBtn" onclick="setModalPaymentType('refund')" style="flex:1">Refund</button>
+    </div>
+    <div id="modalRentOnlyFields">
     <div id="modalSummaryBox" style="margin-bottom:0.75rem;display:none">
       <div class="pay-summary">
         <div class="pay-summary-row"><span class="pay-summary-label">Monthly Rent</span>    <span class="pay-summary-value" id="modalSumRent">—</span></div>
@@ -1992,6 +2699,7 @@
       <div class="payment-progress"><div class="payment-progress-bar" id="modalProgressBar" style="width:0%"></div></div>
     </div>
     <input type="text"   id="payModalMonth"  placeholder="Month (e.g. May 2026)" oninput="loadModalSummary()">
+    </div>
     <input type="number" id="payModalAmount" placeholder="Amount (Ksh)" min="1">
     <select id="payModalMethod">
       <option value="cash">Cash</option>
@@ -2091,6 +2799,7 @@
 ════════════════════════════════════════ -->
 <script src="icons.js"></script>
 <script src="config.js"></script>
+<script src="public.js"></script>
 <script>
 // ── Static icon wiring — runs once icons.js is loaded, before config.js
 //    needs anything visual. Fills every element that used to hold a
@@ -2115,18 +2824,17 @@
     inquiries: 'inquiries', settings: 'settings'
   };
 
-  document.querySelectorAll('.nav-item .icon').forEach((el, i) => {
-    const order = ['dashboard','tenants','arrears','addTenant','assign','properties','houses',
-      'payments','expenses','receipts','maintenance','messages','announcements','rules','activity',
-      'caretakers','inquiries','settings'];
-    const name = order[i];
-    if (name) el.innerHTML = ICON(navIcons[name], 16);
+  // Nav icons are now bound by name (data-icon), not by DOM position, so the
+  // nav can be regrouped freely without icons drifting onto the wrong items.
+  document.querySelectorAll('#sidebarNav [data-icon]').forEach(el => {
+    el.innerHTML = ICON(el.getAttribute('data-icon'), el.classList.contains('ng-chev') ? 14 : 16);
   });
 
   // Sidebar footer
   set('maintenanceRowLabel', `${ICON('maintenance',14)} Maintenance Mode`);
   set('sessionRowLabel', `${ICON('clock',14)} Session`);
   set('takeTourBtn', `${ICON('sparkle',14)} Take a Tour`);
+  set('helpBtn', `${ICON('phone',14)} Help & Support`);
   set('logoutBtn', `${ICON('logout',14)} Sign Out`);
 
   // Topbar
@@ -2154,6 +2862,7 @@
 
   set('statLabel_income', `${ICON('cash',14)} Total Collected`);
   set('statLabel_arrears', `${ICON('arrears',14)} Total Arrears`);
+  set('statLabel_upcomingSemDue', `${ICON('clock',14)} Upcoming Semester Dues`);
   set('statLabel_expenses', `${ICON('expenses',14)} Total Expenses`);
   set('statLabel_netIncome', `${ICON('dashboard',14)} Net Income`);
   set('statLabel_occupied', `${ICON('houses',14)} Occupied`);
@@ -2184,6 +2893,7 @@
   set('emptyIcon_properties_lg', ICON('properties', 26));
 
   // Houses
+  set('applicationsRefreshBtn', `${ICON('loop',14)} Refresh`);
   set('housesRefreshBtn', `${ICON('refresh',14)} Refresh`);
   set('genUnitsBtn', `${ICON('flash',14)} Generate Multiple Units`);
   set('addHouseBtn', `${ICON('plus',14)} Add House`);
@@ -2275,7 +2985,7 @@
 
   set('genHousesModalTitle', `${ICON('flash',16)} Generate Multiple Units`);
   set('genHousesCloseBtn', ICON('close', 16));
-  set('genAddGroupBtn', `${ICON('plus',14)} Add Another Group`);
+  set('genAddGroupBtn', `${ICON('plus',14)} Add Another Building`);
 
   set('maintUpdateModalTitle', `${ICON('maintenance',16)} Update Request`);
   set('maintUpdateCloseBtn', ICON('close', 16));
@@ -2313,7 +3023,8 @@
 
 // ── Theme — runs immediately to avoid flash ──
 (function () {
-  const saved = localStorage.getItem('admin-theme') || 'dark';
+  let saved = localStorage.getItem('admin-theme') || 'dark';
+  if (saved !== 'dark' && saved !== 'light') { saved = 'dark'; localStorage.setItem('admin-theme', 'dark'); } // retired blue/orange themes
   document.documentElement.setAttribute('data-theme', saved);
   document.querySelectorAll('.theme-dot').forEach(d =>
     d.classList.toggle('active', d.dataset.theme === saved)
@@ -2321,7 +3032,10 @@
 })();
 
 function setTheme(name) {
+  if (name !== 'dark' && name !== 'light') name = 'dark';
   document.documentElement.setAttribute('data-theme', name);
+  const _mt = document.querySelector('meta[name="theme-color"]');
+  if (_mt) _mt.setAttribute('content', name === 'light' ? '#ffffff' : '#08090b');
   localStorage.setItem('admin-theme', name);
   document.querySelectorAll('.theme-dot').forEach(d =>
     d.classList.toggle('active', d.dataset.theme === name)
@@ -2453,7 +3167,7 @@ function openModal(id) {
   if (id === 'modal-pay-setup') {
     if (typeof openPaySetupModal === 'function') { openPaySetupModal(); return; }
   }
-  if (id === 'modal-generate-houses') { setGenMode('simple'); }   // ← add this line
+  if (id === 'modal-generate-houses') { _resetGenBuildingContext(); setGenMode('simple'); }   // global opener: no building attached
   const el = document.getElementById(id);
   if (el) el.classList.add('open');
   if (id === 'modal-add-property' && typeof initNewPropMap === 'function') {
@@ -2516,35 +3230,77 @@ function _startTyper(elementId, messages, opts) {
   _adminTypers[elementId] = () => clearTimeout(timer);
 }
 
+// What each page does, in plain words — shown in the top bar and switched every time the page changes.
+const SECTION_TYPERS = {
+  dashboard:     ['Your month at a glance: rent collected, arrears, occupancy and repairs.',
+                  'Pick a month and press Load to refresh the numbers.',
+                  'M-Pesa payments are recorded here automatically as tenants pay.',
+                  'Everything shown is for the property selected above.'],
+  tenants:       ['Every tenant on this property, with rent and deposit status.',
+                  'Click a tenant to open their profile and a menu of actions.',
+                  'From that menu: pay rent, record a deposit, assign a house or move out.',
+                  'Tick several tenants to send rent reminders in one go.',
+                  'Moved-out tenants keep their full payment history.'],
+  arrears:       ['Tenants who currently owe rent, based on their monthly or semester balance.',
+                  'Use By Month or By Semester to look back at an earlier period.',
+                  'Export the list to CSV to follow up outside the app.'],
+  addTenant:     ['Create a tenant account — a welcome email with a temporary password is sent.',
+                  'Tenants must change that password the first time they sign in.',
+                  'Assign them a house afterwards from Tenants or Houses.'],
+  invite:       ['Generate a link for a property and share it with your tenants.',
+                'Share it on WhatsApp or show the QR code — tenants create their own account.',
+                'Revoke or replace a link any time; tenants who already joined are not affected.'],
+  properties:    ['Your properties, each with its own map location and listing status.',
+                  'Semester dates and deposit rules are set per property.',
+                  'Listed properties go live once the platform approves them.'],
+  houses:        ['Your houses are grouped into buildings — open a building to see its houses.',
+                  'Add a house to a building, or generate many units at once.',
+                  'Choose Monthly or Semester billing for every house.',
+                  'Click a house to edit it, move it to another building, assign a tenant or move one out.'],
+  assign:        ['Open a building, then click a house card to assign a tenant to it, or to move a tenant out.',
+                  'Some properties require the deposit to be paid before a house is assigned.',
+                  'Your last tenant and house selection is remembered on this device.'],
+  applications:  ['Tenants without a house can apply for an available one — their requests land here.',
+                  'Approving assigns the house using the normal rules, including the deposit requirement.',
+                  'If a deposit is still missing, record it first, then approve.'],
+  payments:      ['Record rent, a deposit or a refund for any tenant.',
+                  'Cash, M-Pesa, bank transfer or other — the tenant is sent a receipt.',
+                  'Deposits are taken in full, at the amount set in Semester & Deposit Rules.'],
+  expenses:      ['Record what you spend on the property — water, electricity, repairs and more.',
+                  'Expenses are subtracted from income to give your net income.'],
+  maintenance:   ['Repair requests reported by tenants land here.',
+                  'Update each request from reported through to completed.',
+                  'The count beside Repair Requests shows what still needs action.'],
+  receipts:      ['Look up any payment by its ID and generate its receipt.'],
+  messages:      ['Chat with tenants — replies go straight to their tenant portal.',
+                  'New messages are checked for every 15 seconds.'],
+  announcements: ['Post a notice that reaches every tenant on the property at once.'],
+  rules:         ['House rules you add here are shown to your tenants in their portal.'],
+  inquiries:     ['People who enquire about your public listings show up here.',
+                  'The count beside Inquiries shows the ones you have not read yet.'],
+  activity:      ['A running record of tenants, payments and repairs on this property.',
+                  'Filter it by type, and page through older entries.'],
+  caretakers:    ['Create caretaker accounts and choose which properties and actions they can use.',
+                  'Caretakers sign in with the login details emailed to them.']
+};
+window.setSectionTyper = function (name) {
+  const list = SECTION_TYPERS[name] || SECTION_TYPERS.dashboard;
+  _startTyper('topbarGreeting', list, { typeSpeed: 26, deleteSpeed: 12, pauseAfter: 2600, pauseBefore: 250 });
+};
+
 function _startAdminTypers() {
-  _startTyper('topbarGreeting', [
-    'Managing your rental portfolio',
-    'All systems operational',
-    'Real-time M-Pesa payment tracking',
-    'Your properties, your control',
-    'Tenant management simplified',
-    'Affordable Rentals platform',
-    'Messages auto-refresh every 15 seconds',
-    'Multi-property management at scale',
-    'Kenyan rental management, reimagined',
-    'AES-256 encrypted M-Pesa credentials',
-    'Arrears tracked across all properties',
-    'Check the bell icon for new notifications',
-    'Move-out preserves full payment history',
-    'Each property has its own Paybill config',
-  ], { typeSpeed: 30, deleteSpeed: 15, pauseAfter: 2600, pauseBefore: 300 });
+  window.setSectionTyper('dashboard');
   _startTyper('dashboardSubtitle', [
     'Select a month above to load your financial summary.',
     'Track income, arrears and occupancy at a glance.',
     'All M-Pesa payments are recorded in real time.',
-    'Click a tenant row to view their profile and payment history.',
+    'Click a tenant in Tenants to view their profile and payment history.',
     'Switch properties using the property selector in the top bar.',
-    'New inquiries appear under Listings → Inquiries.',
+    'New inquiries appear under Listings & Account → Inquiries.',
     'Use the bell icon to see unread messages and new inquiries.',
     'Mark tenants as moved out to preserve their payment history.',
     'Each property can have its own M-Pesa Paybill configuration.',
     'Post announcements to notify all tenants instantly.',
-    'House assignment selections are remembered across page refreshes.',
     'Editing credentials requires OTP verification sent to your email.',
   ], { typeSpeed: 32, deleteSpeed: 15, pauseAfter: 3200, pauseBefore: 500 });
 }
@@ -2644,6 +3400,7 @@ window.addEventListener('load', () => {
 
 <script src="script.js"></script>
 <script src="dashboard.js"></script>
+<script src="buildings.js"></script>
 <script src="session-manager.js"></script>
 
 
@@ -2653,22 +3410,35 @@ window.addEventListener('load', () => {
 // SPOTLIGHT TOUR — first-login walkthrough (landlord & caretaker)
 // ═══════════════════════════════════════
 
+// Steps follow the sidebar's group order. Each step is only shown when it is real for THIS user:
+//  • caretakers never see landlord-only items (they live in .caretaker-hidden groups/items)
+//  • items inside a collapsed group still count — the tour opens the group for them
+//  • `section` steps point at something inside a page; the tour opens that page first
 const TOUR_STEPS = [
-  { sel: '[data-tour="propertySwitcher"]', title: 'Property Switcher', desc: 'Shows which property you\'re currently viewing — switch between multiple properties here.' },
+  { sel: '[data-tour="propertySwitcher"]', title: 'Property Switcher', desc: 'Shows which property you\'re currently viewing — switch between multiple properties here. Everything below follows this selection.' },
   { sel: '[data-tour="dashboard"]',    title: 'Dashboard',       desc: 'Your overview — income, arrears, occupancy and open repair requests at a glance.' },
-  { sel: '[data-tour="tenants"]',      title: 'All Tenants',     desc: 'View every tenant, check their payment history, and manage their house assignment.' },
-  { sel: '[data-tour="arrears"]',      title: 'Arrears',         desc: 'See every tenant currently behind on rent, and jump straight to recording a payment for them.' },
+  { sel: '[data-tour="tenants"]',      title: 'All Tenants',     desc: 'View every tenant, open their profile and payment history, and click a tenant for quick actions like recording rent or moving out.' },
+  { sel: '[data-tour="arrears"]',      title: 'Arrears',         desc: 'See every tenant currently behind on rent — now, by month, or by semester — and jump straight to recording a payment.' },
   { sel: '[data-tour="addTenant"]',    title: 'Add Tenant',      desc: 'Bring a new tenant onto the platform — they\'ll get a welcome email with login details.' },
-  { sel: '[data-tour="assign"]',       title: 'Assign House',    desc: 'Click a house card to assign a tenant to it, or move a tenant out.' },
+  { sel: '[data-tour="invite"]', title: 'Invite Tenants', desc: 'Let tenants create their own accounts. Generate a link for a property, then copy it, share it on WhatsApp or show a QR code. It saves you adding hundreds of tenants by hand.' },
+  { sel: '[data-tour="inviteSetup"]', section: 'invite', title: 'Choose Property & Expiry', desc: 'Pick the property tenants are joining and how long the link stays valid, then generate it. Each property has its own link, and you can replace or revoke it any time.' },
+  { sel: '[data-tour="assign"]',       title: 'Assign House',    desc: 'Open a building, then click a house card to assign a tenant to it, or move a tenant out.' },
+  { sel: '[data-tour="applications"]', title: 'Applications',    desc: 'Tenants without a house can apply for an available one. Approve to assign it — the normal deposit and rent rules still apply.' },
   { sel: '[data-tour="properties"]',   title: 'My Properties',   desc: 'Manage all your properties, their public listing status, and map location.' },
-  { sel: '[data-tour="houses"]',       title: 'Houses',          desc: 'Add individual houses or bulk-generate units for a property.' },
+  { sel: '[data-tour="houses"]',       title: 'Houses',          desc: 'Houses are grouped into buildings. Open a building to see its houses, add new ones, or move a house to another building.' },
+  { sel: '[data-tour="houseBilling"]', section: 'houses',   title: 'Billing Cycle',   desc: 'Set a house to Monthly or Semester billing — semester houses let you set a custom amount per period from the tenant\'s profile.' },
+  { sel: '[data-tour="propertyRules"]',title: 'Semester & Deposit Rules', desc: 'Set this property\'s semester calendar, holding fee and deposit policy. Tenant billing and house assignment follow these rules.' },
   { sel: '[data-tour="payments"]',     title: 'Record Payment',  desc: 'Log a rent payment for any tenant — cash, M-Pesa, bank transfer, or other.' },
+  { sel: '[data-tour="paymentType"]',  section: 'payments', title: 'Payment Types',   desc: 'Switch between Rent, Deposit and Refund — deposits and refunds track a house\'s security deposit separately from rent.' },
   { sel: '[data-tour="expenses"]',     title: 'Expenses',        desc: 'Track property expenses like water, electricity and repairs against your income.' },
+  { sel: '[data-tour="receipts"]',     title: 'Receipts',        desc: 'Look up any payment by its ID and generate its receipt.' },
   { sel: '[data-tour="maintenance"]',  title: 'Repair Requests', desc: 'Track and update maintenance issues tenants report, from reported to completed.' },
   { sel: '[data-tour="messages"]',     title: 'Messages',        desc: 'Chat directly with tenants — replies are sent straight to their tenant portal.' },
   { sel: '[data-tour="announcements"]',title: 'Announcements',   desc: 'Post updates that go out to every tenant on the property at once.' },
+  { sel: '[data-tour="rules"]',        title: 'Rules',           desc: 'Publish house rules for your tenants to read in their portal.' },
   { sel: '[data-tour="activity"]',     title: 'Activity Log',    desc: 'A running record of everything that happens on this property — tenants, payments, repairs.' },
   { sel: '[data-tour="caretakers"]',   title: 'Caretakers',      desc: 'Add caretaker accounts with scoped permissions across your properties.' },
+  { sel: '[data-tour="inquiries"]',    title: 'Inquiries',       desc: 'People who enquire about your public listings show up here.' },
   { sel: '[data-tour="paymentSetup"]', title: 'Payment Setup',   desc: 'Configure M-Pesa Paybill or Till details so tenants can pay rent directly.' },
   { sel: '[data-tour="referral"]',     title: 'Refer & Earn',    desc: 'Invite other landlords — refer enough of them and unlock a commission-free month.' },
   { sel: '[data-tour="notifBell"]',    title: 'Notifications',   desc: 'Unread messages, new repair requests and inquiries all surface here.' }
@@ -2676,6 +3446,8 @@ const TOUR_STEPS = [
 
 let _tourIndex = 0;
 let _tourWasSidebarOpen = false;
+let _tourWasGroup = null;
+let _tourWasSection = null;
 let _tourEls = {};
 let _tourResizeTimer = null;
 
@@ -2689,50 +3461,99 @@ function _tourUserId() {
 }
 
 function _tourStorageKey() { return `tourSeen_${_tourUserId()}`; }
+function _tourSeen() { return localStorage.getItem(_tourStorageKey()) === 'true'; }
+function _tourIsCaretaker() { return document.documentElement.getAttribute('data-caretaker') === 'true'; }
 
-// Exposed for other scripts (script.js's maybeShowReferralModal, currently)
-// to check before opening anything unprompted. The tour is NOT a
-// `.modal-overlay` — it's a separate spotlight/catcher overlay — so the
-// existing "don't stack modals" checks elsewhere never noticed it. Without
-// this, the auto-popup Refer & Earn modal could open on top of a
-// still-running tour: the tour's own z-index sits above the modal, but the
-// modal's dark, blurred backdrop still renders behind it, obscuring
-// whichever sidebar item the tour is trying to spotlight — and the tour's
-// full-viewport click-catcher then blocks any click on the modal underneath
-// it too, so neither surface is actually usable.
+// ── "Tour pending" = this page load is a first-run that WILL start the tour shortly.
+//    While pending or running, automatic popups (onboarding, referral…) are queued,
+//    not shown and not dropped. They are released only after the tour has finished
+//    — however long the user takes. ──
+let _tourPendingStart = !window.__AUTH_INVALID__ && !_tourSeen();
+
 window.isTourActive = function () {
-    return !!(_tourEls && _tourEls.catcher);
+  return !!(_tourEls && _tourEls.catcher);
 };
+window.isTourBlocking = function () {
+  return window.isTourActive() || _tourPendingStart;
+};
+function _tourResolvePending() {
+  if (!_tourPendingStart) return;
+  _tourPendingStart = false;
+  if (window.PopupQueue) window.PopupQueue.flush();
+}
+// Safety net: if the tour somehow never gets its turn, never hold popups forever.
+setTimeout(() => { if (_tourPendingStart && !window.isTourActive()) _tourResolvePending(); }, 90000);
 
-function maybeStartTour(attemptsLeft = 15) {
-  if (window.__AUTH_INVALID__) return;
-  if (localStorage.getItem(_tourStorageKey()) === 'true') return;
+// ── Popup queue ─────────────────────────────────────────────────────────────
+window.PopupQueue = (function () {
+  const q = [];
+  let flushing = false;
+  const sessionWarningUp = () => !!document.querySelector('.sm-overlay.sm-visible');
+  const modalOpen = () => !!document.querySelector('.modal-overlay.open');
 
-  if (document.querySelector('.modal-overlay.open')) {
-    if (attemptsLeft <= 0) return;
+  // Runs fn now if nothing is blocking, otherwise queues it (deduped by name).
+  function request(name, fn, priority) {
+    if (!window.isTourBlocking()) { fn(); return true; }
+    if (!q.some(x => x.name === name)) q.push({ name, fn, priority: priority || 5 });
+    q.sort((x, y) => x.priority - y.priority);
+    return false;
+  }
+  function flush() {
+    if (flushing) return;
+    flushing = true;
+    (function next() {
+      if (window.isTourBlocking()) { flushing = false; return; }   // a tour is (again) in charge — its endTour() flushes again
+      if (!q.length) { flushing = false; return; }
+      if (modalOpen() || sessionWarningUp()) { setTimeout(next, 500); return; }   // one popup at a time
+      const item = q.shift();
+      try { item.fn(); } catch (err) { console.error('PopupQueue item failed:', err); }
+      setTimeout(next, 700);   // give the popup time to open before looking at the next one
+    })();
+  }
+  return { request, flush, size: () => q.length };
+})();
+
+function _tourBlockingOverlayShown() {
+  return !!document.querySelector('#expiredOverlay.show, #platformMaintenanceOverlay.show');
+}
+
+// A step is usable when its target exists AND is real for this role. Elements that are hidden only
+// because their nav group is collapsed, or because their page isn't the active one, still count —
+// the tour opens them itself. (Checking offsetParent here would silently drop every step inside a
+// collapsed group.)
+function _tourStepUsable(step) {
+  const el = document.querySelector(step.sel);
+  if (!el) return false;
+  if (_tourIsCaretaker() && el.closest('.caretaker-hidden')) return false;
+  for (let n = el; n && n !== document.body; n = n.parentElement) {
+    if (n.classList && (n.classList.contains('nav-group-panel') || n.classList.contains('section'))) continue;
+    if (getComputedStyle(n).display === 'none') return false;
+  }
+  return true;
+}
+function _tourUsableSteps() { return TOUR_STEPS.filter(_tourStepUsable); }
+
+function maybeStartTour(attemptsLeft = 60) {
+  if (window.__AUTH_INVALID__) { _tourResolvePending(); return; }
+  if (window.isTourActive()) return;                       // never start a second tour on top of a running one
+  if (_tourSeen()) { _tourResolvePending(); return; }
+  if (_tourBlockingOverlayShown()) { _tourResolvePending(); return; }   // suspended / maintenance: no walkthrough
+
+  // Only something the USER opened can be in the way now (automatic popups are queued behind the tour).
+  if (document.querySelector('.modal-overlay.open, .sm-overlay.sm-visible')) {
+    if (attemptsLeft <= 0) { _tourResolvePending(); return; }
     setTimeout(() => maybeStartTour(attemptsLeft - 1), 1000);
     return;
   }
 
-  // Steps whose target doesn't exist are dropped. Note: offsetParent can be
-  // non-null even for a mobile-sidebar item that's currently slid off-screen
-  // (translateX doesn't affect offsetParent), so this filter only catches
-  // caretaker-hidden / missing elements — the actual on-screen visibility
-  // per step is handled live by _prepareSidebarForStep during the tour.
-  const usableSteps = TOUR_STEPS.filter(s => {
-    const el = document.querySelector(s.sel);
-    return el && el.offsetParent !== null;
-  });
-  if (!usableSteps.length) return;
+  const usableSteps = _tourUsableSteps();
+  if (!usableSteps.length) { _tourResolvePending(); return; }
 
   _startTour(usableSteps);
 }
 
 // Manually re-launch the tour on demand (the sidebar "Take a Tour" button).
-// Unlike maybeStartTour(), this ignores the tourSeen_<userId> flag entirely —
-// it's an explicit request, not the automatic first-login walkthrough — so
-// it never overwrites or clears that flag either. Closes any open modal or
-// notification dropdown first so the tour has a clean stage to work with.
+// Ignores the tourSeen_<userId> flag entirely — it's an explicit request.
 function startTourManually() {
   if (window.__AUTH_INVALID__) return;
   if (_tourEls && _tourEls.catcher) return; // tour already running — no-op
@@ -2740,11 +3561,9 @@ function startTourManually() {
   document.querySelectorAll('.modal-overlay.open').forEach(m => closeModal(m.id));
   if (typeof closeNotifDropdown === 'function') closeNotifDropdown();
   if (typeof closePropertyMenu === 'function') closePropertyMenu();
+  document.querySelectorAll('.ctx-menu').forEach(m => m.remove());
 
-  const usableSteps = TOUR_STEPS.filter(s => {
-    const el = document.querySelector(s.sel);
-    return el && el.offsetParent !== null;
-  });
+  const usableSteps = _tourUsableSteps();
 
   if (!usableSteps.length) {
     if (typeof showToast === 'function') showToast('Nothing to show right now — try again from the dashboard', 'warn');
@@ -2754,17 +3573,10 @@ function startTourManually() {
   _startTour(usableSteps);
 }
 
-// A step's target is either inside the mobile sidebar or out in the topbar/
-// main area. On mobile these need different sidebar states to be visible
-// and undimmed — this is the fix for the spotlight "pointing at nothing".
 function _elementNeedsSidebar(el) {
   return !!el.closest('#sidebar');
 }
 
-// Ensures the mobile sidebar is open/closed correctly for the given step's
-// target before we measure its position, waiting out the 0.3s slide
-// transition whenever a toggle actually happens. On desktop this is a
-// same-tick no-op — the sidebar has no hide/show state there.
 function _prepareSidebarForStep(el, cb) {
   const isMobile = window.innerWidth <= 768;
   if (!isMobile) { cb(); return; }
@@ -2779,9 +3591,29 @@ function _prepareSidebarForStep(el, cb) {
   setTimeout(cb, 320);
 }
 
+// Opens whatever the step needs to be visible: the page it lives on, and the nav group it sits in.
+function _tourRevealTarget(step) {
+  if (step.section && typeof showSection === 'function') {
+    const cur = document.querySelector('.section.active');
+    if (!cur || cur.id !== 'sec-' + step.section) showSection(step.section);
+  }
+  const el = document.querySelector(step.sel);
+  if (!el) return null;
+  const grp = window.NavAccordion && window.NavAccordion.groupOf(el);
+  if (grp && grp.classList.contains('nav-group')) window.NavAccordion.openInstant(grp.dataset.group);
+  return el;
+}
+
 function _startTour(steps) {
   _tourIndex = 0;
   _tourWasSidebarOpen = !!document.getElementById('sidebar')?.classList.contains('open');
+  _tourWasGroup   = window.NavAccordion ? window.NavAccordion.currentOpen() : null;
+  const _act = document.querySelector('.section.active');
+  _tourWasSection = _act ? _act.id.replace(/^sec-/, '') : null;
+
+  // A tour owns the screen: nothing else (menus, dropdowns) may sit on top of its spotlight.
+  document.querySelectorAll('.ctx-menu').forEach(m => m.remove());
+  if (typeof closeNotifDropdown === 'function') closeNotifDropdown();
 
   _tourEls.catcher = document.createElement('div');
   _tourEls.catcher.className = 'tour-catcher';
@@ -2792,6 +3624,8 @@ function _startTour(steps) {
 
   _tourEls.card = document.createElement('div');
   _tourEls.card.className = 'tour-card';
+  _tourEls.card.setAttribute('role', 'dialog');
+  _tourEls.card.setAttribute('aria-label', 'Dashboard tour');
 
   document.body.append(_tourEls.catcher, _tourEls.spotlight, _tourEls.card);
   _tourEls.steps = steps;
@@ -2808,96 +3642,128 @@ function _tourKeyHandler(e) {
   if (e.key === 'ArrowLeft')  _tourBack();
 }
 
-// Debounced full re-render on resize — not just a reposition — because
-// crossing the 768px breakpoint mid-tour changes whether a step even
-// needs the mobile sidebar toggled.
 function _tourReposition() {
   if (!_tourEls.steps) return;
   clearTimeout(_tourResizeTimer);
   _tourResizeTimer = setTimeout(_renderTourStep, 150);
 }
 
+function _fillTourCard(step, steps) {
+  const pct = Math.round(((_tourIndex + 1) / steps.length) * 100);
+  const el  = document.querySelector(step.sel);
+  const grpEl = window.NavAccordion && el ? window.NavAccordion.groupOf(el) : null;
+  const grpLabel = grpEl && grpEl.classList.contains('nav-group') ? grpEl.querySelector('.ng-label').textContent.trim() : '';
+  _tourEls.card.innerHTML = `
+    <div class="tour-progress-track"><div class="tour-progress-fill" style="width:${pct}%"></div></div>
+    <div class="tour-step-count">${ICON('sparkle',11)} Step ${_tourIndex + 1} of ${steps.length}${grpLabel ? ' · ' + grpLabel : ''}</div>
+    <div class="tour-title">${step.title}</div>
+    <div class="tour-desc">${step.desc}</div>
+    <div class="tour-actions">
+      <button class="tour-skip" onclick="endTour()">Skip tour</button>
+      <div class="tour-nav-btns">
+        ${_tourIndex > 0 ? `<button class="tour-btn tour-btn-secondary" onclick="_tourBack()">← Back</button>` : ''}
+        <button class="tour-btn tour-btn-primary" onclick="_tourNext()">${_tourIndex === steps.length - 1 ? `${ICON('check',14)} Done` : 'Next →'}</button>
+      </div>
+    </div>`;
+  _tourEls.card.scrollTop = 0;
+}
+
 function _renderTourStep() {
+  if (!_tourEls.steps) return;
+  if (_tourBlockingOverlayShown()) { endTour(false); return; }
+
   const steps = _tourEls.steps;
   const step  = steps[_tourIndex];
-  const el    = document.querySelector(step.sel);
-  if (!el) { _tourNext(); return; }
+  const el    = _tourRevealTarget(step);
+  if (!el) {
+    if (_tourIndex >= steps.length - 1) { endTour(); return; }
+    _tourNext(); return;
+  }
+  const myIndex = _tourIndex;
 
   _prepareSidebarForStep(el, () => {
-    // Instant scroll, not smooth — a smooth-scroll animation racing a
-    // fixed timeout is what caused the spotlight to land on the wrong
-    // element before. Double rAF waits for the instant scroll (and any
-    // sidebar toggle above) to actually paint before we measure.
+    if (!_tourEls.steps || myIndex !== _tourIndex) return;
     el.scrollIntoView({ block: 'nearest', behavior: 'auto' });
 
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        _positionTourAt(step);
-        const pct = Math.round(((_tourIndex + 1) / steps.length) * 100);
-        _tourEls.card.innerHTML = `
-          <div class="tour-progress-track"><div class="tour-progress-fill" style="width:${pct}%"></div></div>
-          <div class="tour-step-count">${ICON('sparkle',11)} Step ${_tourIndex + 1} of ${steps.length}</div>
-          <div class="tour-title">${step.title}</div>
-          <div class="tour-desc">${step.desc}</div>
-          <div class="tour-actions">
-            <button class="tour-skip" onclick="endTour()">Skip tour</button>
-            <div class="tour-nav-btns">
-              ${_tourIndex > 0 ? `<button class="tour-btn tour-btn-secondary" onclick="_tourBack()">← Back</button>` : ''}
-              <button class="tour-btn tour-btn-primary" onclick="_tourNext()">${_tourIndex === steps.length - 1 ? `${ICON('check',14)} Done` : 'Next →'}</button>
-            </div>
-          </div>`;
-      });
-    });
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (!_tourEls.steps || myIndex !== _tourIndex) return;
+      _fillTourCard(step, steps);       // content FIRST, so the card can be measured
+      _positionTourAt(step);
+      _tourEls.card.querySelector('.tour-btn-primary')?.focus({ preventScroll: true });
+      // Pages fade in (8px shift) and may load data: re-measure once things settle
+      setTimeout(() => {
+        if (_tourEls.steps && myIndex === _tourIndex) _positionTourAt(step);
+      }, 300);
+    }));
   });
 }
 
 function _positionTourAt(step) {
   const el = document.querySelector(step.sel);
-  if (!el) return;
-  const rect = el.getBoundingClientRect();
-  const pad  = 6;
+  if (!el || !_tourEls.card) return;
 
-  _tourEls.spotlight.style.top    = `${rect.top - pad}px`;
-  _tourEls.spotlight.style.left   = `${rect.left - pad}px`;
-  _tourEls.spotlight.style.width  = `${rect.width + pad * 2}px`;
-  _tourEls.spotlight.style.height = `${rect.height + pad * 2}px`;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const m = 12, gap = 14, pad = 6;
+  const r = el.getBoundingClientRect();
 
-  const cardW = 300, cardH = 190, gap = 14;
-  let top  = rect.top;
-  let left = rect.right + gap;
+  // Spotlight, clamped so a very tall/wide element never exceeds the screen
+  const sp = {
+    top:    Math.max(0, r.top - pad),
+    left:   Math.max(0, r.left - pad),
+    right:  Math.min(vw, r.right + pad),
+    bottom: Math.min(vh, r.bottom + pad)
+  };
+  _tourEls.spotlight.style.top    = `${sp.top}px`;
+  _tourEls.spotlight.style.left   = `${sp.left}px`;
+  _tourEls.spotlight.style.width  = `${Math.max(0, sp.right - sp.left)}px`;
+  _tourEls.spotlight.style.height = `${Math.max(0, sp.bottom - sp.top)}px`;
 
-  if (left + cardW > window.innerWidth - 12) { left = rect.left; top = rect.bottom + gap; }
-  if (top + cardH > window.innerHeight - 12) top = window.innerHeight - cardH - 12;
-  if (top < 12) top = 12;
-  if (left + cardW > window.innerWidth - 12) left = window.innerWidth - cardW - 12;
-  if (left < 12) left = 12;
+  // Real card size (offset* ignores the pop-in scale animation)
+  const cw = _tourEls.card.offsetWidth, ch = _tourEls.card.offsetHeight;
+  const clampX = x => Math.min(Math.max(m, x), Math.max(m, vw - cw - m));
+  const clampY = y => Math.min(Math.max(m, y), Math.max(m, vh - ch - m));
+
+  const spaceR = vw - sp.right - m, spaceL = sp.left - m;
+  const spaceB = vh - sp.bottom - m, spaceT = sp.top - m;
+
+  let top, left;
+  if      (spaceR >= cw + gap) { left = sp.right + gap;       top = clampY(sp.top); }   // right of it
+  else if (spaceL >= cw + gap) { left = sp.left - gap - cw;   top = clampY(sp.top); }   // left of it
+  else if (spaceB >= ch + gap) { top  = sp.bottom + gap;      left = clampX(sp.left); } // below it
+  else if (spaceT >= ch + gap) { top  = sp.top - gap - ch;    left = clampX(sp.left); } // above it
+  else {                                                                                 // no clean fit
+    left = clampX((vw - cw) / 2);
+    top  = clampY(((sp.top + sp.bottom) / 2 < vh / 2) ? vh - ch - m : m);               // far side from the target
+  }
 
   _tourEls.card.style.top  = `${top}px`;
   _tourEls.card.style.left = `${left}px`;
 }
 
+
 function _tourNext() {
+  if (!_tourEls.steps) return;
   if (_tourIndex >= _tourEls.steps.length - 1) { endTour(); return; }
   _tourIndex++;
   _renderTourStep();
 }
 
 function _tourBack() {
-  if (_tourIndex <= 0) return;
+  if (!_tourEls.steps || _tourIndex <= 0) return;
   _tourIndex--;
   _renderTourStep();
 }
 
-function endTour() {
-  localStorage.setItem(_tourStorageKey(), 'true');
+// markSeen=false is used only when the tour is aborted by a blocking overlay.
+function endTour(markSeen = true) {
+  if (markSeen) localStorage.setItem(_tourStorageKey(), 'true');
   document.removeEventListener('keydown', _tourKeyHandler);
   window.removeEventListener('resize', _tourReposition);
   clearTimeout(_tourResizeTimer);
   ['catcher', 'spotlight', 'card'].forEach(k => _tourEls[k]?.remove());
   _tourEls = {};
 
-  // Restore whatever sidebar state the person had before the tour started
-  // — the tour may have toggled it open/closed several times per step.
+  // Put the sidebar back the way the person had it: mobile drawer, open group, and current page.
   if (window.innerWidth <= 768) {
     const sidebar = document.getElementById('sidebar');
     const isOpen = !!sidebar?.classList.contains('open');
@@ -2905,9 +3771,16 @@ function endTour() {
       if (_tourWasSidebarOpen) openSidebar(); else closeSidebar();
     }
   }
-if (!window.__AUTH_INVALID__ && typeof maybeShowReferralModal === 'function') {
-  maybeShowReferralModal();
-}
+  const nowSec = document.querySelector('.section.active');
+  if (_tourWasSection && nowSec && nowSec.id !== 'sec-' + _tourWasSection && typeof showSection === 'function') {
+    showSection(_tourWasSection);
+  }
+  if (window.NavAccordion) window.NavAccordion.openInstant(_tourWasGroup);
+  if (window.NavAccordion) window.NavAccordion.syncToSection(_tourWasSection);
+
+  // Only now may queued popups (onboarding first, then the referral prompt) appear.
+  _tourPendingStart = false;
+  if (!window.__AUTH_INVALID__ && window.PopupQueue) window.PopupQueue.flush();
 }
 </script>
 
@@ -2925,11 +3798,14 @@ if (!window.__AUTH_INVALID__ && typeof maybeShowReferralModal === 'function') {
     });
   }
 </script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js" defer
+        onerror="this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js';document.head.appendChild(this)"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      onerror="this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css';" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer
+        onerror="this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js';document.head.appendChild(this)"></script>
   <script>
-    if ("serviceWorker" in navigator) {
+    if ("serviceWorker" in navigator) { 
       window.addEventListener("load", () => {
         navigator.serviceWorker.register("service-worker.js").catch(err => {
           console.error("Service Worker registration failed:", err);

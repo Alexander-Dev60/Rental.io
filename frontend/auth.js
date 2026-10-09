@@ -553,11 +553,99 @@ function setupEnterToSubmit() {
         if (e.key !== 'Enter') return;
         // Don't hijack Enter when the user is inside the location search box
         if (e.target && e.target.id === 'locationSearch') return;
-        if (document.getElementById('panelLogin')?.classList.contains('active')) submitLogin();
+        if (document.getElementById('panelInvite')?.classList.contains('active')) submitInviteRegister();
+        else if (document.getElementById('panelLogin')?.classList.contains('active')) submitLogin();
         else submitRegister();
     });
 }
 
+
+// ═══════════════════════════════════════
+// TENANT INVITATION MODE  (/auth.html?invite=AR-XXXXXXXX)
+// ═══════════════════════════════════════
+// No ?invite= → none of this runs and the page behaves exactly as before.
+// The code is only ever sent to the backend, which resolves landlord + property.
+
+let _inviteCode = null;
+
+async function initInviteMode() {
+    const code = (new URLSearchParams(window.location.search).get('invite') || '').trim();
+    if (!code) return;
+
+    try {
+        const res  = await fetch(`${API}/public/invite/${encodeURIComponent(code)}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.valid) {
+            showToast(data.message || 'This invitation link is invalid or has expired.', 'error');
+            return;                                   // stay on the normal auth page
+        }
+
+        _inviteCode = code;
+        document.getElementById('invitePropName').textContent = data.propertyName;
+        document.getElementById('invitePropLoc').textContent  = data.location || '';
+
+        document.querySelector('.card').classList.add('invite-mode');
+        document.getElementById('panelLogin').classList.remove('active');
+        document.getElementById('panelRegister').classList.remove('active');
+        document.getElementById('panelInvite').classList.add('active');
+        const hint = document.getElementById('tenantHint');
+        if (hint) hint.style.display = 'none';
+    } catch (err) {
+        console.warn('Invite check failed:', err.message);   // fail back to normal auth
+    }
+}
+
+function exitInviteMode() {
+    _inviteCode = null;
+    document.querySelector('.card').classList.remove('invite-mode');
+    document.getElementById('panelInvite').classList.remove('active');
+    pickRole('tenant');                                      // existing function → shows Sign In
+}
+
+async function submitInviteRegister() {
+    const name     = (document.getElementById('invName')?.value  || '').trim();
+    const phone    = (document.getElementById('invPhone')?.value || '').trim();
+    const email    = (document.getElementById('invEmail')?.value || '').trim();
+    const password = document.getElementById('invPassword')?.value || '';
+    const confirm  = document.getElementById('invConfirm')?.value  || '';
+
+    if (!_inviteCode)  { showToast('Invitation not found. Please reopen the link.', 'error'); return; }
+    if (!name)         { showToast('Full name is required.', 'error'); return; }
+    if (!phone)        { showToast('Phone number is required.', 'error'); return; }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('Please enter a valid email address.', 'error'); return; }
+    if (password.length < 6)  { showToast('Password must be at least 6 characters.', 'error'); return; }
+    if (password !== confirm) { showToast('Passwords do not match.', 'error'); return; }
+    if (!document.getElementById('invTerms')?.checked) {
+        showToast('Please agree to the Terms of Service and Privacy Policy.', 'error'); return;
+    }
+
+    setLoading('inviteBtn', true, 'Create Tenant Account');
+    try {
+        const res  = await fetch(`${API}/public/invite/${encodeURIComponent(_inviteCode)}/register`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, phone, email, password, termsAccepted: true })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+            showToast(data.message || 'Registration failed. Please try again.', 'error');
+            setLoading('inviteBtn', false, 'Create Tenant Account');
+            if (data.code === 'INVITE_INVALID') setTimeout(() => window.location.href = 'auth.html', 1800);
+            return;
+        }
+
+        const user = getUserFromToken(data.token);
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(user));
+        showToast('Account created! Taking you to your dashboard…', 'success');
+        setTimeout(() => { window.location.href = 'tenant.html'; }, 900);
+
+    } catch (err) {
+        console.error('Invite register error:', err);
+        showToast('Cannot reach server. Are you connected to the internet?', 'error');
+        setLoading('inviteBtn', false, 'Create Tenant Account');
+    }
+}
 
 // ═══════════════════════════════════════
 // INIT
@@ -577,6 +665,7 @@ document.addEventListener('DOMContentLoaded', function () {
 window.addEventListener('load', () => {
     initPageLoader();
     checkAuthOnLoad();
+    initInviteMode();
     initBgSlideshow();
     initHeroTypewriter();
     initExplore();

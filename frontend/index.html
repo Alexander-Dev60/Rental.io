@@ -411,12 +411,13 @@
     .nav-links { gap: 1.1rem; }
   }
   @media (max-width: 960px) {
+    .trial-grid, .tenant-pathway, .contact-wrap, .invite-grid { grid-template-columns: 1fr; gap: 2rem; }
     .nav-links, .nav-cta { display: none; }
     .hamburger { display: flex; }
     .hero { grid-template-columns: 1fr; text-align: center; }
     .hero-right { height: 320px; max-width: 480px; margin: 0 auto; }
     .hero-btns, .hero-tenant-link { justify-content: center; }
-    .trial-grid, .tenant-pathway, .contact-wrap { grid-template-columns: 1fr; gap: 2rem; }
+    .faq-item.open .faq-a { max-height: 420px; padding: 0 22px 16px; }
     .footer-top { grid-template-columns: 1fr 1fr; gap: 2rem; }
   }
   @media (max-width: 700px) {
@@ -443,6 +444,22 @@
     .live-stats-strip { gap: 1.2rem; }
     .contact-form { padding: 20px; }
   }
+
+  /* ── TENANT INVITATION SECTION ── */
+.invite-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: center; max-width: 980px; margin: 0 auto; }
+.invite-card { background: var(--card); border: 1px solid var(--border2); border-radius: 20px; padding: 26px; backdrop-filter: blur(24px) saturate(1.4); -webkit-backdrop-filter: blur(24px) saturate(1.4); box-shadow: 0 8px 40px rgba(0,0,0,.4); position: relative; overflow: hidden; min-width: 0; }
+.invite-card::before { content: ''; position: absolute; top: 0; left: 12%; right: 12%; height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); opacity: .5; }
+.invite-example { position: absolute; top: 14px; right: 16px; font-family: var(--font-m); font-size: .5rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted2); }
+.invite-card-head { display: flex; align-items: center; gap: 8px; font-family: var(--font-d); font-style: italic; font-size: 1.2rem; color: var(--text); margin-bottom: 16px; padding-right: 48px; }
+.invite-card-head > span { color: var(--gold); display: inline-flex; }
+.invite-label { font-family: var(--font-m); font-size: .55rem; letter-spacing: .16em; text-transform: uppercase; color: var(--muted2); margin-bottom: 6px; }
+.invite-link { font-family: var(--font-m); font-size: .66rem; color: var(--gold); background: var(--input-bg); border: 1px solid var(--border2); border-radius: 10px; padding: 10px 12px; word-break: break-all; margin-bottom: 12px; }
+.invite-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.invite-pill { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-s); font-size: .72rem; font-weight: 600; color: var(--muted); border: 1px solid var(--border2); border-radius: 99px; padding: 6px 12px; }
+.invite-pill--wa { color: var(--success); border-color: rgba(74,222,128,.3); background: rgba(74,222,128,.08); }
+.invite-bottom { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.invite-qr { flex-shrink: 0; background: #fff; padding: 6px; border-radius: 10px; line-height: 0; }
+.invite-meta { font-size: .78rem; color: var(--muted); line-height: 1.7; flex: 1 1 140px; min-width: 0; }
 
   /* ══════════════════════════════════════════
      PRODUCT TOUR — blue accent layer
@@ -560,8 +577,7 @@
         <span class="typewriter-text" id="typewriterEl"></span>
         <span class="typewriter-cursor"></span>
       </div>
-      <p class="hero-sub">The all-in-one rental platform for Kenyan landlords. Collect rent via M-Pesa, manage tenants, automate receipts, and list your properties for free.</p>
-      <div class="hero-btns">
+        <p class="hero-sub">The all-in-one rental platform for Kenyan landlords. Onboard hundreds of tenants with one WhatsApp link, collect rent by M-Pesa, run monthly or semester billing, handle deposits and receipts, and list your properties for free.</p>
         <a href="auth.html?tab=register" class="btn-primary"><span data-icon="flash" data-icon-size="15"></span> Get Started Free</a>
         <a href="listings.html"           class="btn-secondary">Browse Properties <span class="ar-i" data-icon="arrowDown" data-icon-size="13"></span></a>
       </div>
@@ -604,10 +620,10 @@
     </div>
   </div>
   <div class="hero-stats">
-        <div class="hero-stat"><div class="hero-stat-value">KES 0</div><div class="hero-stat-label">To Join</div></div>
+    <div class="hero-stat"><div class="hero-stat-value">KES 0</div><div class="hero-stat-label">To Join</div></div>
+    <div class="hero-stat"><div class="hero-stat-value">1 LINK</div><div class="hero-stat-label">Onboards All Your Tenants</div></div>
     <div class="hero-stat"><div class="hero-stat-value">M-PESA</div><div class="hero-stat-label">Daraja Integrated</div></div>
     <div class="hero-stat"><div class="hero-stat-value">AES-256</div><div class="hero-stat-label">Encrypted Credentials</div></div>
-    <div class="hero-stat"><div class="hero-stat-value">KES 0</div><div class="hero-stat-label">To Get Started</div></div>
   </div>
 </section>
 
@@ -616,15 +632,15 @@
   <div class="proof-inner">
     <div class="proof-item"><span data-icon="phone" data-icon-size="14"></span><span>M-Pesa STK Push</span></div>
     <span class="proof-sep">·</span>
+    <div class="proof-item"><span data-icon="addTenant" data-icon-size="14"></span><span>Invite Links &amp; QR Codes</span></div>
+    <span class="proof-sep">·</span>
+    <div class="proof-item"><span data-icon="clock" data-icon-size="14"></span><span>Monthly &amp; Semester Billing</span></div>
+    <span class="proof-sep">·</span>
     <div class="proof-item"><span data-icon="receipts" data-icon-size="14"></span><span>PDF Receipts via Email</span></div>
     <span class="proof-sep">·</span>
-    <div class="proof-item"><span data-icon="lock" data-icon-size="14"></span><span>JWT + bcrypt Auth</span></div>
+    <div class="proof-item"><span data-icon="hardhat" data-icon-size="14"></span><span>Caretaker Accounts</span></div>
     <span class="proof-sep">·</span>
-    <div class="proof-item"><span data-icon="globe" data-icon-size="14"></span><span>Public Property Listings</span></div>
-    <span class="proof-sep">·</span>
-    <div class="proof-item"><span data-icon="cloud" data-icon-size="14"></span><span>Cloudinary Photo Storage</span></div>
-    <span class="proof-sep">·</span>
-    <div class="proof-item"><span data-icon="arrears" data-icon-size="14"></span><span>Real-time Arrears Tracking</span></div>
+    <div class="proof-item"><span data-icon="globe" data-icon-size="14"></span><span>Public Listings</span></div>
   </div>
 </div>
 
@@ -637,12 +653,18 @@
       <p class="section-sub">From public property listings to rent collection and tenant communication — Affordable Rentals handles it all.</p>
     </div>
     <div class="features-grid">
-      <div class="feature-card reveal reveal-delay-1"><div class="feature-icon"><span data-icon="globe" data-icon-size="20"></span></div><div class="feature-title">Public Property Listings</div><div class="feature-desc">Your vacant units are automatically published on a public listings page. Prospective tenants browse, search by location, and contact you directly — no account needed.</div></div>
-      <div class="feature-card reveal reveal-delay-2"><div class="feature-icon"><span data-icon="phone" data-icon-size="20"></span></div><div class="feature-title">M-Pesa Rent Collection</div><div class="feature-desc">Tenants pay rent with a single M-Pesa STK Push to your Paybill. Payments are confirmed instantly and digital receipts are emailed automatically after every transaction.</div></div>
-      <div class="feature-card reveal reveal-delay-3"><div class="feature-icon"><span data-icon="receipts" data-icon-size="20"></span></div><div class="feature-title">Digital PDF Receipts</div><div class="feature-desc">Every payment generates a PDF receipt delivered straight to the tenant's email. Full payment history is accessible anytime from the tenant dashboard.</div></div>
-      <div class="feature-card reveal reveal-delay-1"><div class="feature-icon"><span data-icon="messages" data-icon-size="20"></span></div><div class="feature-title">Tenant–Landlord Messaging</div><div class="feature-desc">Tenants message landlords directly from their dashboard. All communication is logged, timestamped, and in one place — no more endless phone calls.</div></div>
-      <div class="feature-card reveal reveal-delay-2"><div class="feature-icon"><span data-icon="arrears" data-icon-size="20"></span></div><div class="feature-title">Arrears &amp; Payment Tracking</div><div class="feature-desc">See exactly who has paid, who owes, and by how much across all your units in real time. Partial payments are tracked with running balances.</div></div>
-      <div class="feature-card reveal reveal-delay-3"><div class="feature-icon"><span data-icon="announcements" data-icon-size="20"></span></div><div class="feature-title">Announcements &amp; House Rules</div><div class="feature-desc">Post notices and house rules from your dashboard. All tenants see them instantly — no WhatsApp groups, no printed notices, no confusion.</div></div>
+      <div class="feature-card reveal reveal-delay-1"><div class="feature-icon"><span data-icon="addTenant" data-icon-size="20"></span></div><div class="feature-title">Tenant Invitation Links &amp; QR</div><div class="feature-desc">Generate one link per property and share it in your tenants' WhatsApp group, or show a QR code. Tenants create their own accounts and land in the right property automatically. Manual tenant creation still works too.</div></div>
+      <div class="feature-card reveal reveal-delay-2"><div class="feature-icon"><span data-icon="globe" data-icon-size="20"></span></div><div class="feature-title">Public Listings with Map &amp; Photos</div><div class="feature-desc">Publish a property with a description, up to five photos and a map pin. Prospective tenants search by location and send an inquiry you can answer by call or WhatsApp, with no account needed.</div></div>
+      <div class="feature-card reveal reveal-delay-3"><div class="feature-icon"><span data-icon="phone" data-icon-size="20"></span></div><div class="feature-title">M-Pesa Rent Collection</div><div class="feature-desc">Tenants pay by STK Push to your Paybill or Till, and each property can have its own. Credentials are AES-256 encrypted, and changing them needs an email OTP.</div></div>
+      <div class="feature-card reveal reveal-delay-1"><div class="feature-icon"><span data-icon="clock" data-icon-size="20"></span></div><div class="feature-title">Monthly &amp; Semester Billing</div><div class="feature-desc">Monthly rent runs on each tenant's own cycle from the day they move in. For student housing, set two or three semesters a year with prorated rent for late joiners and a daily rate for extended stays.</div></div>
+      <div class="feature-card reveal reveal-delay-2"><div class="feature-icon"><span data-icon="door" data-icon-size="20"></span></div><div class="feature-title">Holiday Holding Fees</div><div class="feature-desc">Tenant going home for the break? Keep the room reserved and charge a daily holding fee instead of full rent. Gaps between semesters can be charged, waived or applied automatically.</div></div>
+      <div class="feature-card reveal reveal-delay-3"><div class="feature-icon"><span data-icon="houses" data-icon-size="20"></span></div><div class="feature-title">Properties, Buildings &amp; Bulk Setup</div><div class="feature-desc">Run unlimited properties from one account, group houses into buildings, and generate hundreds of units at once with your own naming, like A-01 to A-40 or floor by floor.</div></div>
+      <div class="feature-card reveal reveal-delay-1"><div class="feature-icon"><span data-icon="cash" data-icon-size="20"></span></div><div class="feature-title">Deposits &amp; Refunds</div><div class="feature-desc">Require a fixed deposit before a house can be assigned. Record deposit refunds, and issue prorated rent refunds when a semester tenant moves out part-way.</div></div>
+      <div class="feature-card reveal reveal-delay-2"><div class="feature-icon"><span data-icon="assign" data-icon-size="20"></span></div><div class="feature-title">House Applications</div><div class="feature-desc">Tenants without a house can browse your buildings and apply for an available one. You approve it, and the same deposit and rent rules apply as when you assign a house yourself.</div></div>
+      <div class="feature-card reveal reveal-delay-3"><div class="feature-icon"><span data-icon="hardhat" data-icon-size="20"></span></div><div class="feature-title">Caretaker Accounts &amp; Activity Log</div><div class="feature-desc">Give caretakers their own login, limited to the properties you choose, with separate switches for payments, tenants, repairs, messages and announcements. Every action is recorded in an activity log.</div></div>
+      <div class="feature-card reveal reveal-delay-1"><div class="feature-icon"><span data-icon="maintenance" data-icon-size="20"></span></div><div class="feature-title">Repairs &amp; Expenses</div><div class="feature-desc">Tenants report issues by category and priority, and you track them from reported to completed with the cost. Record water, electricity, repairs, security and staff costs to see your net income.</div></div>
+      <div class="feature-card reveal reveal-delay-2"><div class="feature-icon"><span data-icon="messages" data-icon-size="20"></span></div><div class="feature-title">Messaging, Announcements &amp; Rules</div><div class="feature-desc">Chat with tenants from the dashboard, post notices to everyone on a property at once, and publish house rules they can read in their portal. No more scattered WhatsApp groups.</div></div>
+      <div class="feature-card reveal reveal-delay-3"><div class="feature-icon"><span data-icon="arrears" data-icon-size="20"></span></div><div class="feature-title">Arrears, Receipts &amp; Reminders</div><div class="feature-desc">See live balances for every tenant, export arrears to CSV, email a PDF receipt for every payment, and let automatic daily reminders chase rent once it is due.</div></div>
     </div>
   </div>
 </section>
@@ -670,17 +692,17 @@
         <div class="trial-free-tag">KES 0</div>
         <div class="trial-days-note">NO SIGNUP FEE · NO MONTHLY FEE · FULL ACCESS</div>
         <ul class="trial-card-features">
-          <li><span class="feat-dot"></span>Public property listings page</li>
+          <li><span class="feat-dot"></span>Unlimited properties, houses and tenants</li>
+          <li><span class="feat-dot"></span>Invitation links, WhatsApp sharing and QR codes</li>
           <li><span class="feat-dot"></span>M-Pesa STK Push rent collection</li>
-          <li><span class="feat-dot"></span>Automated PDF receipts via email</li>
-          <li><span class="feat-dot"></span>Tenant &amp; landlord dashboards</li>
-          <li><span class="feat-dot"></span>Arrears tracking &amp; payment history</li>
-          <li><span class="feat-dot"></span>Tenant-landlord messaging</li>
-          <li><span class="feat-dot"></span>Announcements &amp; house rules</li>
-          <li><span class="feat-dot"></span>Automated rent reminders (cron)</li>
+          <li><span class="feat-dot"></span>Monthly and semester billing, deposits and holiday fees</li>
+          <li><span class="feat-dot"></span>Caretaker accounts and activity log</li>
+          <li><span class="feat-dot"></span>Public listings with photos and map pin</li>
+          <li><span class="feat-dot"></span>PDF receipts, reminders and arrears tracking</li>
+          <li><span class="feat-dot"></span>Refer enough landlords (currently 5) for a commission-free month</li>
         </ul>
         <a href="auth.html?tab=register" class="btn-trial">Get Started Free <span class="ar-i" data-icon="arrowRight" data-icon-size="13"></span></a>
-        <p class="trial-after-note">A small commission is deducted automatically from rent collected each month — never a flat fee, never charged on rent you haven't received.</p>
+        <p class="trial-after-note">The commission applies only to rent actually collected in a closed month. Deposits and holiday holding fees carry no commission, and refunded rent is deducted before it is calculated.</p>
       </div>
     </div>
   </div>
@@ -735,20 +757,70 @@
       <p class="section-sub">Up and running in minutes. No paperwork, no confusion, no technical setup required.</p>
     </div>
     <div class="steps-wrap">
-      <div class="step-card reveal reveal-delay-1">
-        <div class="step-icon"><span data-icon="edit" data-icon-size="24"></span></div>
-        <div class="step-title">1. Register &amp; Start Your Trial</div>
-        <div class="step-desc">Create your landlord account in under two minutes. Your 14-day free trial begins immediately — full access from day one, no credit card required.</div>
+      <div class="step-card reveal reveal-delay-1"><div class="step-icon"><span data-icon="edit" data-icon-size="24"></span></div><div class="step-title">1. Register &amp; Set Up M-Pesa</div><div class="step-desc">Create your landlord account in under two minutes. It's free to join. Connect your Paybill or Till when you're ready to collect.</div></div>
+      <div class="step-card reveal reveal-delay-2"><div class="step-icon"><span data-icon="houses" data-icon-size="24"></span></div><div class="step-title">2. Add Properties &amp; Houses</div><div class="step-desc">Create your properties, group houses into buildings, and generate whole blocks of units at once. Choose monthly or semester billing and set your deposit rule.</div></div>
+      <div class="step-card reveal reveal-delay-3"><div class="step-icon"><span data-icon="addTenant" data-icon-size="24"></span></div><div class="step-title">3. Invite Your Tenants</div><div class="step-desc">Share one invitation link or QR code per property, or add tenants manually. Then assign each tenant a house, or approve their application.</div></div>
+      <div class="step-card reveal reveal-delay-1"><div class="step-icon"><span data-icon="payments" data-icon-size="24"></span></div><div class="step-title">4. Collect, Track &amp; Manage</div><div class="step-desc">Tenants pay by M-Pesa and receipts go out by email. Watch arrears, repairs, messages and expenses from one dashboard, with caretakers helping if you want.</div></div>
+    </div>
+  </div>
+</section>
+
+
+<!-- TENANT INVITATION -->
+<section id="invite" class="full-section">
+  <div class="container">
+    <div class="invite-grid">
+      <div class="reveal reveal-delay-1">
+        <div class="trial-badge"><span class="trial-badge-dot"></span>Onboard in minutes</div>
+        <h2 class="trial-title">400 tenants?<br><em>One link.</em></h2>
+        <p class="trial-sub">Stop creating accounts one by one. Generate an invitation for a property, drop it in your tenants' WhatsApp group or print the QR code for the notice board. Tenants create their own accounts and land in the right property automatically.</p>
+        <div class="tenant-steps" style="margin-bottom:22px">
+          <div class="tenant-step"><div class="tenant-step-num">1</div><span>Open <strong>Invite Tenants</strong> in your dashboard and pick a property</span></div>
+          <div class="tenant-step"><div class="tenant-step-num">2</div><span>Copy the link, share it on WhatsApp, or show the QR code</span></div>
+          <div class="tenant-step"><div class="tenant-step-num">3</div><span>Tenants register with their own details and password</span></div>
+          <div class="tenant-step"><div class="tenant-step-num">4</div><span>You assign each one a house, or they apply for one</span></div>
+        </div>
+        <div class="trial-checks">
+          <div class="trial-check"><div class="trial-check-icon"><span data-icon="check" data-icon-size="11"></span></div><span>One link per property, so tenants can't join the wrong landlord</span></div>
+          <div class="trial-check"><div class="trial-check-icon"><span data-icon="check" data-icon-size="11"></span></div><span>Expires in 30 days, 90 days, a year, or never</span></div>
+          <div class="trial-check"><div class="trial-check-icon"><span data-icon="check" data-icon-size="11"></span></div><span>Replace or revoke it any time; tenants who joined are unaffected</span></div>
+        </div>
+        <a href="auth.html?tab=register" class="btn-primary" style="display:inline-flex"><span data-icon="flash" data-icon-size="15"></span> Get Started Free</a>
       </div>
-      <div class="step-card reveal reveal-delay-2">
-        <div class="step-icon"><span data-icon="houses" data-icon-size="24"></span></div>
-        <div class="step-title">2. Add Properties &amp; Tenants</div>
-        <div class="step-desc">Add your houses and set monthly rent amounts. Create tenant accounts — they receive a welcome email with credentials and set their own password on first login.</div>
-      </div>
-      <div class="step-card reveal reveal-delay-3">
-        <div class="step-icon"><span data-icon="payments" data-icon-size="24"></span></div>
-        <div class="step-title">3. Collect, Track &amp; Manage</div>
-        <div class="step-desc">Tenants pay rent via M-Pesa STK Push with one tap. Monitor all payments, arrears, messages, and announcements from a single dashboard.</div>
+
+      <div class="invite-card reveal reveal-delay-2" aria-label="Example of a tenant invitation">
+        <span class="invite-example">Example</span>
+        <div class="invite-card-head"><span data-icon="properties" data-icon-size="16"></span> Sunrise Apartments</div>
+        <div class="invite-label">Tenant registration link</div>
+        <div class="invite-link">affordablerentals.site/auth.html?invite=AR-7K29XQ4M</div>
+        <div class="invite-actions">
+          <span class="invite-pill"><span data-icon="lock" data-icon-size="12"></span> Copy link</span>
+          <span class="invite-pill invite-pill--wa"><span data-icon="messages" data-icon-size="12"></span> Share on WhatsApp</span>
+          <span class="invite-pill"><span data-icon="eye" data-icon-size="12"></span> Show QR</span>
+        </div>
+        <div class="invite-bottom">
+          <div class="invite-qr" aria-hidden="true">
+            <svg viewBox="0 0 29 29" width="92" height="92" shape-rendering="crispEdges">
+              <rect width="29" height="29" fill="#fff"/>
+              <g fill="#111">
+                <path d="M1 1h7v7H1z"/><path d="M21 1h7v7h-7z"/><path d="M1 21h7v7H1z"/>
+              </g>
+              <g fill="#fff"><path d="M2 2h5v5H2z"/><path d="M22 2h5v5h-5z"/><path d="M2 22h5v5H2z"/></g>
+              <g fill="#111">
+                <path d="M3 3h3v3H3z"/><path d="M23 3h3v3h-3z"/><path d="M3 23h3v3H3z"/>
+                <rect x="10" y="1" width="2" height="2"/><rect x="14" y="2" width="3" height="1"/><rect x="10" y="5" width="1" height="3"/>
+                <rect x="13" y="6" width="3" height="2"/><rect x="17" y="3" width="2" height="3"/><rect x="1" y="10" width="3" height="1"/>
+                <rect x="6" y="10" width="2" height="3"/><rect x="10" y="10" width="4" height="2"/><rect x="16" y="9" width="2" height="4"/>
+                <rect x="21" y="10" width="3" height="2"/><rect x="25" y="12" width="3" height="1"/><rect x="2" y="14" width="2" height="3"/>
+                <rect x="8" y="15" width="3" height="2"/><rect x="13" y="14" width="2" height="3"/><rect x="18" y="15" width="4" height="1"/>
+                <rect x="23" y="15" width="2" height="3"/><rect x="10" y="19" width="3" height="2"/><rect x="15" y="18" width="2" height="4"/>
+                <rect x="19" y="20" width="3" height="2"/><rect x="24" y="21" width="3" height="1"/><rect x="11" y="24" width="2" height="3"/>
+                <rect x="15" y="25" width="4" height="2"/><rect x="21" y="24" width="2" height="3"/><rect x="25" y="25" width="3" height="2"/>
+              </g>
+            </svg>
+          </div>
+          <div class="invite-meta">Same link, same sign-up page.<br>Valid for 90 days · replace or revoke any time.</div>
+        </div>
       </div>
     </div>
   </div>
@@ -761,23 +833,23 @@
       <div>
         <div class="tenant-pathway-tag">For Tenants</div>
         <h2 class="tenant-pathway-title">Already have a landlord on Affordable Rentals?</h2>
-        <p class="tenant-pathway-desc">Tenants don't self-register. Your landlord creates your account and emails you login credentials. Here's what happens next:</p>
+        <p class="tenant-pathway-desc">There are two ways in, and your landlord picks one. Tenants never pay a platform fee.</p>
         <div class="tenant-steps">
-          <div class="tenant-step"><div class="tenant-step-num">1</div><span>Your landlord creates your account from their dashboard</span></div>
-          <div class="tenant-step"><div class="tenant-step-num">2</div><span>You receive a welcome email with a temporary password</span></div>
-          <div class="tenant-step"><div class="tenant-step-num">3</div><span>Sign in and set your permanent password on first login</span></div>
-          <div class="tenant-step"><div class="tenant-step-num">4</div><span>Pay rent, view receipts, and message your landlord — from your phone</span></div>
+          <div class="tenant-step"><div class="tenant-step-num">1</div><span><strong>Invitation link or QR:</strong> open the link your landlord shared, check the property name, and create your own account with your own password</span></div>
+          <div class="tenant-step"><div class="tenant-step-num">2</div><span><strong>Or account created for you:</strong> your landlord adds you and you get an email with a temporary password to change on first sign-in</span></div>
+          <div class="tenant-step"><div class="tenant-step-num">3</div><span>Your landlord assigns you a house, or you apply for an available one</span></div>
+          <div class="tenant-step"><div class="tenant-step-num">4</div><span>Pay rent, view receipts and message your landlord, all from your phone</span></div>
         </div>
       </div>
       <div>
         <div class="section-tag" style="margin-bottom:13px">Tenant Dashboard Features</div>
         <div style="display:flex;flex-direction:column;gap:10px">
           <div class="trial-check"><div class="trial-check-icon"><span data-icon="check" data-icon-size="11"></span></div><span>Pay rent via M-Pesa with one tap</span></div>
-          <div class="trial-check"><div class="trial-check-icon"><span data-icon="check" data-icon-size="11"></span></div><span>Download PDF receipts instantly</span></div>
-          <div class="trial-check"><div class="trial-check-icon"><span data-icon="check" data-icon-size="11"></span></div><span>View full payment history and arrears</span></div>
-          <div class="trial-check"><div class="trial-check-icon"><span data-icon="check" data-icon-size="11"></span></div><span>Message your landlord directly</span></div>
-          <div class="trial-check"><div class="trial-check-icon"><span data-icon="check" data-icon-size="11"></span></div><span>Read announcements and house rules</span></div>
-          <div class="trial-check"><div class="trial-check-icon"><span data-icon="check" data-icon-size="11"></span></div><span>No subscription fee — ever</span></div>
+          <div class="trial-check"><div class="trial-check-icon"><span data-icon="check" data-icon-size="11"></span></div><span>See your current rent period, due date and balance</span></div>
+          <div class="trial-check"><div class="trial-check-icon"><span data-icon="check" data-icon-size="11"></span></div><span>Download PDF receipts and view full payment history</span></div>
+          <div class="trial-check"><div class="trial-check-icon"><span data-icon="check" data-icon-size="11"></span></div><span>Report repairs and follow them until they're fixed</span></div>
+          <div class="trial-check"><div class="trial-check-icon"><span data-icon="check" data-icon-size="11"></span></div><span>Message your landlord, and read announcements and house rules</span></div>
+          <div class="trial-check"><div class="trial-check-icon"><span data-icon="check" data-icon-size="11"></span></div><span>Get notified about holiday holding fees</span></div>
         </div>
         <a href="auth.html" class="btn-secondary" style="display:inline-flex;margin-top:22px">Tenant Sign In <span class="ar-i" data-icon="arrowRight" data-icon-size="13"></span></a>
       </div>
@@ -795,7 +867,7 @@
     </div>
     <div class="faq-list">
       <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">Is Affordable Rentals really free? How does pricing work?<span class="faq-icon">+</span></div><div class="faq-a">There's no signup fee and no monthly subscription — ever. Instead, a small commission is deducted automatically only from rent your tenants have actually paid that month. If nothing was collected, nothing is owed. Tenants never pay a platform fee.</div></div>
-      <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">How do tenants get access to Affordable Rentals?<span class="faq-icon">+</span></div><div class="faq-a">Tenants do not self-register. As the landlord, you create each tenant's account from your dashboard. The tenant automatically receives a welcome email with a temporary password and is prompted to set their own on first login.</div></div>
+      <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">How do my tenants get on the platform?<span class="faq-icon">+</span></div><div class="faq-a">Two ways, and you can use both. Generate an invitation link or QR code for a property and let tenants register themselves, or create each tenant's account from your dashboard, which emails them a temporary password. Either way, the tenant is tied to the right landlord and property automatically.</div></div>
       <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">How does a tenant pay rent?<span class="faq-icon">+</span></div><div class="faq-a">From the tenant dashboard, click "Pay Rent", enter the amount and month, then confirm. An STK Push notification is sent to the tenant's phone. They enter their M-Pesa PIN and the payment is confirmed. A PDF receipt is emailed automatically within seconds.</div></div>
       <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">What happens if an M-Pesa payment fails?<span class="faq-icon">+</span></div><div class="faq-a">If a payment fails, it appears as "Failed" in the payment history and no funds are deducted. The tenant can attempt the payment again immediately. Common causes include wrong PIN, insufficient balance, or a timeout — all safe to retry.</div></div>
       <div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">Is my data safe?<span class="faq-icon">+</span></div><div class="faq-a">Yes. All passwords are hashed using bcrypt. Sessions are protected by JWT tokens and every API endpoint requires authentication. M-Pesa credentials are stored with AES-256 encryption and payments are processed through Safaricom's Daraja API.</div></div>
@@ -1116,20 +1188,21 @@ async function sendContact(){
     var preparing = false, runId = 0, lastKey = '', ro = null;
 
     var landlordSteps = [
-      { selector: '.hero-btns .btn-primary', eyebrow: 'Step 1 of 6', title: 'Start free', body: 'Create your landlord account in under two minutes \u2014 no card required.' },
-      { selector: '#livePanel', eyebrow: 'Step 2 of 6', title: 'Your listings, live', body: 'Add a vacant unit and it appears here automatically for prospective tenants to browse.' },
-      { selector: '.trial-card', eyebrow: 'Step 3 of 6', title: 'Simple pricing', body: 'No signup fee, no monthly cost \u2014 a small commission is deducted only from rent you actually collect.' },
-      { selector: '#features .features-grid', eyebrow: 'Step 4 of 6', title: 'Everything included', body: 'M-Pesa collection, PDF receipts, tenant messaging and arrears tracking \u2014 all included from day one.' },
-      { selector: '#how .steps-wrap', eyebrow: 'Step 5 of 6', title: 'Up and running fast', body: 'Register, add your properties and tenants, then start collecting rent via M-Pesa.' },
-      { selector: '#contact .contact-form', eyebrow: 'Step 6 of 6', title: 'We\u2019re here to help', body: 'Questions along the way? Send us a message \u2014 we usually reply within a day.' }
+      { selector: '.hero-btns .btn-primary', title: 'Start free', body: 'Create your landlord account in under two minutes. Joining is free.' },
+      { selector: '#livePanel', title: 'Your listings, live', body: 'Publish a vacant unit and it appears here for prospective tenants to browse.' },
+      { selector: '#invite .invite-card', title: 'Onboard tenants with one link', body: 'Generate an invitation link or QR code per property and share it on WhatsApp. Tenants create their own accounts.' },
+      { selector: '#features .section-header', title: 'Built for real rentals', body: 'Semester billing, holiday fees, deposits, caretakers, repairs and M-Pesa collection are all included.' },
+      { selector: '.trial-card', title: 'Simple pricing', body: 'No signup or monthly fee. A small commission applies only to rent you actually collect.' },
+      { selector: '#how .section-header', title: 'Up and running fast', body: 'Register, add properties and houses, invite tenants, then start collecting rent.' },
+      { selector: '#contact .contact-form', title: 'We\u2019re here to help', body: 'Questions along the way? Send us a message and we usually reply within a day.' }
     ];
 
     var tenantSteps = [
-      { selector: '.hero-tenant-link', eyebrow: 'Step 1 of 5', title: 'Already a tenant?', body: 'If your landlord has set up your account, sign in here to pay rent and message them directly.' },
-      { selector: 'nav .nav-hi', mobileSelector: '.hamburger', eyebrow: 'Step 2 of 5', title: 'Browse available homes', body: 'Search vacant properties by location \u2014 no account needed.', mobileBody: 'Tap the menu icon, then \u201cBrowse Properties\u201d to search vacant homes \u2014 no account needed.' },
-      { selector: '#tenants .tenant-pathway', eyebrow: 'Step 3 of 5', title: 'How access works', body: 'Your landlord creates your account and emails you login details \u2014 you just set your password.' },
-      { selector: '#faq', eyebrow: 'Step 4 of 5', title: 'Got questions?', body: 'Payments, password resets, data safety \u2014 the common ones are answered here.' },
-      { selector: '#contact .contact-form', eyebrow: 'Step 5 of 5', title: 'Need a hand?', body: 'Send us a message any time \u2014 we typically respond within 24 hours.' }
+      { selector: '.hero-tenant-link', title: 'Already a tenant?', body: 'If your landlord has set up your account, sign in here to pay rent and message them.' },
+      { selector: 'nav .nav-hi', mobileSelector: '.hamburger', title: 'Browse available homes', body: 'Search vacant properties by location. No account needed.', mobileBody: 'Tap the menu icon, then \u201cBrowse Properties\u201d to search vacant homes. No account needed.' },
+      { selector: '#tenants .tenant-pathway', title: 'How you get in', body: 'Use the invitation link or QR code your landlord shared, or sign in with the details they emailed you.' },
+      { selector: '#faq .section-header', title: 'Got questions?', body: 'Payments, deposits, holidays, password resets. The common ones are answered here.' },
+      { selector: '#contact .contact-form', title: 'Need a hand?', body: 'Send us a message any time. We typically respond within 24 hours.' }
     ];
 
     function isVisible(el){
@@ -1244,7 +1317,7 @@ async function sendContact(){
       var step = steps[i];
       var resolved = resolveTarget(step);
 
-      card.querySelector('.tour-eyebrow').textContent = step.eyebrow || '';
+      card.querySelector('.tour-eyebrow').textContent = 'Step ' + (i + 1) + ' of ' + steps.length;
       card.querySelector('.tour-title').textContent = step.title || '';
       card.querySelector('.tour-body').textContent = resolved.body || '';
       card.querySelector('[data-act="back"]').style.visibility = (i === 0) ? 'hidden' : 'visible';

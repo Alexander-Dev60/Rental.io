@@ -2,7 +2,7 @@
 <html lang="en" data-theme="dark">
 <head>
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#0b0f1a">
+  <meta name="theme-color" content="#08090b">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <meta charset="UTF-8">
   <!-- Tour readiness gate: the product tour waits for full load, fonts, the page loader,
@@ -59,56 +59,59 @@
   /* ══════════════════════════════════════
      THEMES
   ══════════════════════════════════════ */
+    /* Exactly two themes: Black (data-theme="dark") and White (data-theme="light").
+       The keys stay "dark"/"light" so saved preferences keep working; the retired
+       blue/orange values fall back to Black (see loadTheme in tenant.js). */
     :root, [data-theme="dark"] {
-    --bg:         #0b0f1a;
-    --bg2:        #0f131f;
-    --bg3:        #161b2a;
-    --panel:      #161c2b;
-    --panel2:     #1c2233;
-    --border:     rgba(228,199,122,0.08);
-    --border2:    rgba(228,199,122,0.16);
+    --bg:         #08090b;
+    --bg2:        #0d0f12;
+    --bg3:        #15181d;
+    --panel:      #111418;
+    --panel2:     #181c22;
+    --border:     rgba(255,255,255,0.075);
+    --border2:    rgba(255,255,255,0.16);
     --accent:     #e0bb64;
     --accent2:    #c9962e;
     --accent-dim: rgba(224,187,100,0.10);
     --green:      #34d399;
     --red:        #f87171;
     --amber:      #fbbf24;
-    --text:       #f7f2e4;
-    --text-dim:   #8a8474;
-    --text-muted: #a9a495;
+    --text:       #f5f5f6;
+    --text-dim:   #8c8f97;
+    --text-muted: #b3b6bd;
     --nav-h:      58px;
-    --header-bg:  rgba(11,15,26,0.92);
-    --nav-bg:     rgba(11,15,26,0.97);
+    --header-bg:  rgba(8,9,11,0.92);
+    --nav-bg:     rgba(8,9,11,0.97);
+
+    /* glass + semantic tones (grouped navigation) */
+    --side-top:#0e1013; --side-bot:#08090b;
+    --ambient-1:rgba(106,168,255,0.10); --ambient-2:rgba(183,156,255,0.08);
+    --glass-bg:rgba(255,255,255,0.045); --glass-bg-hover:rgba(255,255,255,0.08); --glass-bg-active:rgba(255,255,255,0.115);
+    --glass-border:rgba(255,255,255,0.09);
+    --glass-shadow:0 1px 0 rgba(255,255,255,0.05) inset, 0 6px 18px rgba(0,0,0,0.35);
+    --tone-blue:#6aa8ff; --tone-green:#5fd3a0; --tone-red:#ff7b7b; --tone-amber:#f0b35a; --tone-violet:#b79cff; --tone-teal:#4fd1d9; --tone-rose:#ff8fb1;
+    color-scheme: dark;
   }
 
     [data-theme="light"] {
-    --bg:#f5f1e6; --bg2:#eee7d6; --bg3:#e6dcc4;
-    --panel:#fffdf7; --panel2:#f8f4ea;
-    --border:rgba(122,87,20,0.08); --border2:rgba(122,87,20,0.16);
-    --accent:#a9781f; --accent2:#7a5714; --accent-dim:rgba(169,120,31,0.08);
-    --green:#059669; --red:#dc2626; --amber:#d97706;
-    --text:#17140c; --text-dim:#7c745e; --text-muted:#8f8770;
-    --header-bg:rgba(245,241,230,0.94); --nav-bg:rgba(245,241,230,0.98);
-  }
+    --bg:#f2f2f4; --bg2:#ffffff; --bg3:#ececef;
+    --panel:#ffffff; --panel2:#f7f7f9;
+    --border:rgba(0,0,0,0.085); --border2:rgba(0,0,0,0.18);
+    --accent:#8a5a00; --accent2:#5f3f00; --accent-dim:rgba(138,90,0,0.09);
+    --green:#0d8558; --red:#c62828; --amber:#a85a05;
+    --text:#0c0c0e; --text-dim:#6a6d75; --text-muted:#43464d;
+    --header-bg:rgba(255,255,255,0.94); --nav-bg:rgba(255,255,255,0.98);
 
-  [data-theme="blue"] {
-    --bg:#050d1a; --bg2:#071223; --bg3:#0a1a30;
-    --panel:#0d2040; --panel2:#112548;
-    --border:rgba(59,130,246,0.15); --border2:rgba(59,130,246,0.3);
-    --accent:#60a5fa; --accent2:#3b82f6; --accent-dim:rgba(96,165,250,0.12);
-    --green:#34d399; --red:#f87171; --amber:#fbbf24;
-    --text:#e0f0ff; --text-dim:#4a7eb5; --text-muted:#7aadda;
-    --header-bg:rgba(5,13,26,0.94); --nav-bg:rgba(5,13,26,0.98);
+    --side-top:#fbfbfc; --side-bot:#eeeef1;
+    --ambient-1:rgba(29,95,214,0.07); --ambient-2:rgba(138,90,0,0.06);
+    --glass-bg:rgba(255,255,255,0.66); --glass-bg-hover:rgba(255,255,255,0.92); --glass-bg-active:#ffffff;
+    --glass-border:rgba(0,0,0,0.09);
+    --glass-shadow:0 1px 0 rgba(255,255,255,0.9) inset, 0 1px 2px rgba(0,0,0,0.05), 0 6px 16px rgba(0,0,0,0.05);
+    --tone-blue:#1d5fd6; --tone-green:#0d8558; --tone-red:#c62828; --tone-amber:#a85a05; --tone-violet:#6a45d1; --tone-teal:#0a7f8a; --tone-rose:#c2255c;
+    color-scheme: light;
   }
-  [data-theme="orange"] {
-    --bg:#0f0a05; --bg2:#180f07; --bg3:#221509;
-    --panel:#2a1a0a; --panel2:#321f0c;
-    --border:rgba(251,146,60,0.15); --border2:rgba(251,146,60,0.3);
-    --accent:#fb923c; --accent2:#ea580c; --accent-dim:rgba(251,146,60,0.12);
-    --green:#34d399; --red:#f87171; --amber:#fbbf24;
-    --text:#fff7ed; --text-dim:#92400e; --text-muted:#c2803a;
-    --header-bg:rgba(15,10,5,0.94); --nav-bg:rgba(15,10,5,0.98);
-  }
+  /* white text on the gold accent is unreadable on Black — use near-black there */
+  [data-theme="dark"] .btn-primary { color: #17130a; }
 
   /* ═══ PAGE LOADER ═══ */
 #pageLoader {
@@ -153,6 +156,52 @@
   /* ══════════════════════════════════════
      TYPING CURSOR
   ══════════════════════════════════════ */
+  .sec-typer { margin-top: 0.3rem; }
+
+  /* ═══ FIND A HOUSE (buildings → houses → apply) ═══ */
+  .nav-item.nav-hidden { display: none !important; }
+  .fh-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.9rem; }
+  .fh-card { --bb: var(--tone-blue); position: relative; display: flex; flex-direction: column; gap: 0.55rem; text-align: left; padding: 1.05rem 1.1rem; min-height: 150px; color: var(--text); font-family: inherit; cursor: pointer;
+    background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 14px; box-shadow: var(--glass-shadow); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); overflow: hidden;
+    transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease; -webkit-tap-highlight-color: transparent; }
+  .fh-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--bb); }
+  .fh-card:hover:not(:disabled) { transform: translateY(-3px); background: var(--glass-bg-hover); border-color: var(--bb); }
+  .fh-card:disabled { cursor: default; opacity: 0.6; }
+  .fh-card:focus-visible, .fh-back:focus-visible { outline: 2px solid var(--tone-blue); outline-offset: 2px; }
+  .fh-card-top { display: flex; align-items: center; gap: 0.7rem; min-width: 0; }
+  .fh-card-icon { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 11px; color: var(--bb); background: var(--glass-bg-active); border: 1px solid var(--glass-border); }
+  .fh-card-title { font-weight: 700; font-size: 1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fh-card-desc { font-size: 0.72rem; color: var(--text-dim); line-height: 1.4; }
+  .fh-count { margin-top: auto; font-size: 0.8rem; color: var(--text-muted); }
+  .fh-count b { color: var(--bb); font-family: 'DM Mono', monospace; font-size: 1rem; }
+  .fh-cta { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.74rem; font-weight: 600; color: var(--bb); }
+  .fh-cta svg { transform: rotate(-90deg); }
+  .fh-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem; margin-bottom: 0.9rem; font-size: 0.78rem; color: var(--text-dim); }
+  .fh-back { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.4rem 0.75rem; min-height: 38px; font: inherit; font-weight: 600; color: var(--text); cursor: pointer; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 8px; }
+  .fh-back svg { transform: rotate(90deg); }
+  .fh-cur { color: var(--text); font-weight: 700; padding-left: 0.5rem; border-left: 3px solid var(--bb, var(--accent)); }
+  .fh-houses { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.9rem; }
+  .fh-house { --bb: var(--tone-green); display: flex; flex-direction: column; gap: 0.35rem; padding: 1rem 1.1rem; background: var(--glass-bg); border: 1px solid var(--glass-border); border-left: 3px solid var(--bb); border-radius: 12px; box-shadow: var(--glass-shadow); }
+  .fh-house-name { font-weight: 700; font-size: 1.05rem; color: var(--text); }
+  .fh-rent { font-family: 'DM Mono', monospace; font-size: 0.85rem; color: var(--text); }
+  .fh-rent small { color: var(--text-dim); font-size: 0.68rem; }
+  .fh-meta { font-size: 0.72rem; color: var(--text-dim); }
+  .fh-status { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.7rem; color: var(--tone-green); }
+  .fh-status::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .fh-apply { margin-top: 0.4rem; }
+  .fh-form { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; }
+  .fh-form textarea { min-height: 64px; resize: vertical; }
+  .fh-form-row { display: flex; gap: 0.5rem; }
+  .fh-form-row .btn { flex: 1; min-height: 42px; }
+  .fh-note { padding: 0.8rem 1rem; margin-bottom: 1rem; font-size: 0.78rem; line-height: 1.55; color: var(--text-muted); background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; }
+  .fh-app { display: flex; flex-wrap: wrap; align-items: center; gap: 0.7rem 1rem; margin-bottom: 1rem; padding: 1rem 1.1rem; background: var(--glass-bg); border: 1px solid var(--glass-border); border-left: 3px solid var(--tone-amber); border-radius: 12px; }
+  .fh-app.approved { border-left-color: var(--tone-green); } .fh-app.rejected { border-left-color: var(--tone-red); }
+  .fh-app-main { flex: 1 1 240px; min-width: 0; }
+  .fh-app-title { font-weight: 700; color: var(--text); font-size: 0.95rem; }
+  .fh-app-sub { margin-top: 0.2rem; font-size: 0.74rem; color: var(--text-dim); line-height: 1.5; }
+  @media (max-width: 560px) { .fh-cards, .fh-houses { grid-template-columns: 1fr; } .fh-app .btn, .fh-apply, .fh-back, .fh-form-row .btn { min-height: 44px; } .fh-app .btn { width: 100%; } }
+  @media (prefers-reduced-motion: reduce) { .fh-card { transition: none; } .fh-card:hover:not(:disabled) { transform: none; } }
+
   .typing-cursor {
     display: inline-block;
     animation: cursorBlink 0.8s step-end infinite;
@@ -388,33 +437,126 @@
   }
   .sidebar-desktop { display: none; }
 
-  .dsk-nav-item {
-    display: flex; align-items: center; gap: 0.6rem;
-    padding: 0.58rem 1.1rem; color: var(--text-muted);
-    font-size: 0.8rem; font-weight: 500;
-    cursor: pointer; border-left: 2px solid transparent;
-    transition: all 0.15s; user-select: none;
-  }
-  .dsk-nav-item:hover  { background: var(--accent-dim); color: var(--text); }
-  .dsk-nav-item.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-dim); font-weight: 600; }
-  .dsk-nav-item .icon  { font-size: 0.88rem; width: 18px; text-align: center; flex-shrink: 0; }
+  /* ═══ GROUPED GLASS NAVIGATION ═══
+     One <nav> serves both layouts: the desktop sidebar, and on phones a bottom sheet
+     opened from the "Menu" tab — so there is a single navigation to maintain. */
+  .sidebar-desktop { background: linear-gradient(180deg, var(--side-top), var(--side-bot)) !important; }
+  .sidebar-desktop::before { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+    background: radial-gradient(120% 45% at 0% 0%, var(--ambient-1), transparent 62%),
+                radial-gradient(100% 45% at 100% 100%, var(--ambient-2), transparent 62%); }
+  .sidebar-desktop > * { position: relative; z-index: 1; }
+  .sidebar-nav { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 0.85rem 0.7rem !important; min-height: 0; display: flex; flex-direction: column; gap: 0.35rem; scrollbar-width: thin; scrollbar-color: var(--border2) transparent; overscroll-behavior: contain; }
+  .nav-group { display: block; flex-shrink: 0; }
+  .nav-group-head { width: 100%; display: flex; align-items: center; gap: 0.6rem; min-height: 40px; padding: 0.5rem 0.7rem; background: transparent; border: 1px solid transparent; border-radius: 10px; color: var(--text-muted); font-family: 'DM Mono', monospace; font-size: 0.62rem; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; text-align: left; cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s; -webkit-tap-highlight-color: transparent; }
+  .nav-group-head:hover { background: var(--glass-bg); color: var(--text); }
+  .nav-group-head[aria-expanded="true"] { background: var(--glass-bg); border-color: var(--glass-border); color: var(--text); }
+  .nav-group-head .ng-icon { display: flex; width: 18px; justify-content: center; flex-shrink: 0; color: var(--text-dim); }
+  .nav-group-head[aria-expanded="true"] .ng-icon { color: var(--accent); }
+  .ng-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ng-count { display: none; font-family: 'DM Mono', monospace; font-size: 0.58rem; font-weight: 700; padding: 1px 6px; border-radius: 99px; color: var(--text); background: var(--glass-bg-active); border: 1px solid var(--glass-border); letter-spacing: 0; }
+  .nav-group.has-count:not(.open) .ng-count { display: inline-block; }
+  .ng-dot { display: none; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+  .nav-group.has-active:not(.open) .ng-dot { display: inline-block; }
+  .ng-chev { display: flex; flex-shrink: 0; color: var(--text-dim); transition: transform 0.25s ease; }
+  .nav-group-head[aria-expanded="true"] .ng-chev { transform: rotate(180deg); }
+  .nav-group-panel { padding: 0.4rem 0 0.25rem 0.4rem; }
+  .nav-group-panel[hidden] { display: none; }
+  .nav-group-items { display: flex; flex-direction: column; gap: 0.3rem; position: relative; }
+  .nav-pinned { padding-bottom: 0.35rem; margin-bottom: 0.1rem; border-bottom: 1px solid var(--border); }
+  .nav-pinned-end { padding-top: 0.35rem; margin-top: 0.1rem; border-top: 1px solid var(--border); }
 
-  /* Theme dots */
+  .nav-item { --tone: var(--tone-blue); position: relative; display: flex; align-items: center; gap: 0.6rem; width: 100%; min-height: 40px; padding: 0.5rem 0.7rem; text-align: left; font-family: 'DM Sans', sans-serif; font-size: 0.8rem; font-weight: 500; color: var(--text-muted); background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 10px; -webkit-backdrop-filter: blur(12px) saturate(140%); backdrop-filter: blur(12px) saturate(140%); box-shadow: var(--glass-shadow); cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; transition: background 0.15s, border-color 0.15s, color 0.15s; }
+  .nav-item[data-tone="green"]  { --tone: var(--tone-green); }
+  .nav-item[data-tone="red"]    { --tone: var(--tone-red); }
+  .nav-item[data-tone="amber"]  { --tone: var(--tone-amber); }
+  .nav-item[data-tone="violet"] { --tone: var(--tone-violet); }
+  .nav-item .icon { width: 18px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--tone); }
+  .nav-item:hover { background: var(--glass-bg-hover); color: var(--text); border-color: var(--tone); }
+  .nav-item.active { background: var(--glass-bg-active); color: var(--text); font-weight: 600; border-color: var(--tone); }
+  .nav-item.active::before { content: ''; position: absolute; left: -1px; top: 22%; bottom: 22%; width: 3px; border-radius: 0 3px 3px 0; background: var(--tone); }
+  .nav-item.active .icon { filter: drop-shadow(0 0 4px var(--tone)); }
+  .nav-badge { margin-left: auto; background: var(--glass-bg-active); color: var(--tone); border: 1px solid var(--tone); font-size: 0.6rem; font-weight: 700; padding: 0 6px; line-height: 1.5; border-radius: 99px; font-family: 'DM Mono', monospace; }
+  .nav-group-head:focus-visible, .nav-item:focus-visible, .bnav-item:focus-visible, .theme-dot:focus-visible { outline: 2px solid var(--tone-blue); outline-offset: 2px; }
+  .nav-item.orbiting { will-change: transform, opacity; }
+  @supports (color: color-mix(in srgb, red, blue)) {
+    .nav-item:hover  { border-color: color-mix(in srgb, var(--tone) 45%, var(--glass-border)); }
+    .nav-item.active { border-color: color-mix(in srgb, var(--tone) 60%, var(--glass-border)); background: linear-gradient(90deg, color-mix(in srgb, var(--tone) 13%, transparent), var(--glass-bg-active) 70%); }
+    .nav-badge { background: color-mix(in srgb, var(--tone) 18%, transparent); border-color: color-mix(in srgb, var(--tone) 50%, transparent); }
+  }
+  .sidebar-footer { padding: 0.75rem 0.7rem !important; }
+  .sidebar-footer .footer-label { font-family: 'DM Mono', monospace; font-size: 0.56rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim); }
+
+  /* bottom-nav items are real buttons now */
+  button.bnav-item { background: transparent; border: 0; padding: 0; font-family: inherit; -webkit-tap-highlight-color: transparent; }
+  .bnav-item[aria-expanded="true"] { color: var(--accent); }
+
+  /* ── phones: the same <nav> becomes a bottom sheet opened from the "Menu" tab ── */
+  .nav-sheet-backdrop { display: none; }
+  @media (max-width: 767.98px) {
+    /* the menu button now sits top-left in the header, and the navigation slides in from the left */
+    .sidebar-desktop { display: flex; flex-direction: column; position: fixed; left: 0; top: 0; bottom: 0; width: min(310px, 88vw); z-index: 300; border: 0; border-right: 1px solid var(--glass-border); border-radius: 0 16px 16px 0; box-shadow: 20px 0 60px rgba(0,0,0,0.5); overflow: hidden; padding-top: env(safe-area-inset-top, 0px); transform: translateX(-104%); opacity: 1; visibility: hidden; pointer-events: none; transition: transform 0.28s ease, opacity 0.2s ease, visibility 0s linear 0.28s; }
+    .sidebar-desktop.sheet-open { transform: none; opacity: 1; visibility: visible; pointer-events: auto; transition: transform 0.28s ease, opacity 0.2s ease, visibility 0s; }
+    .nav-sheet-backdrop { display: block; position: fixed; left: 0; right: 0; top: 0; bottom: 0; z-index: 290; background: rgba(0,0,0,0.5); opacity: 0; visibility: hidden; transition: opacity 0.2s ease, visibility 0s linear 0.2s; }
+    .nav-sheet-backdrop.show { opacity: 1; visibility: visible; transition: opacity 0.2s ease, visibility 0s; }
+    .nav-item, .nav-group-head { min-height: 46px; }
+    .nav-item { font-size: 0.86rem; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .nav-group-head, .nav-item, .ng-chev, .sidebar-desktop, .nav-sheet-backdrop { transition: none !important; }
+  }
+
+  /* ═══ GROUP IDENTITY ═══
+     Every nav group owns one colour (--gtone). Its header, its opened panel and the
+     item cards inside that panel all carry it, so an opened group can never be mistaken
+     for another one. Item badges keep their own meaning-based tone (Arrears stays red).
+     Purely visual — the open/close/orbit behaviour is untouched. */
+  .nav-group { --gtone: var(--tone-blue); }
+  .nav-group[data-group="properties"] { --gtone: var(--tone-teal); }
+  .nav-group[data-group="finance"], .nav-group[data-group="pay"] { --gtone: var(--tone-green); }
+  .nav-group[data-group="operations"] { --gtone: var(--tone-amber); }
+  .nav-group[data-group="records"], .nav-group[data-group="comms"] { --gtone: var(--tone-violet); }
+  .nav-group[data-group="account"] { --gtone: var(--tone-rose); }
+
+  .nav-group-head .ng-icon, .nav-group-head[aria-expanded="true"] .ng-icon { color: var(--gtone); }
+  .nav-group.has-active:not(.open) .ng-dot { background: var(--gtone); }
+  .nav-group-head[aria-expanded="true"] { border-color: var(--gtone); }
+
+  .nav-group-panel { margin: 0.4rem 0 0.25rem 0.3rem; padding: 0.5rem 0.45rem 0.5rem 0.5rem; border: 1px solid var(--glass-border); border-left: 3px solid var(--gtone); border-radius: 4px 14px 14px 4px; }
+  .nav-group-panel .nav-item { gap: 0.6rem; min-height: 42px; padding: 0.4rem 0.6rem 0.4rem 0.5rem; border-radius: 12px; overflow: hidden; overflow-wrap: anywhere; transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s; }
+  .nav-group-panel .nav-item .icon { width: 28px; height: 28px; border-radius: 9px; color: var(--gtone); background: var(--glass-bg-active); border: 1px solid var(--glass-border); }
+  .nav-group-panel .nav-item::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gtone); opacity: 0.55; }
+  .nav-group-panel .nav-item:hover { border-color: var(--gtone); }
+  .nav-group-panel .nav-item.active { border-color: var(--gtone); }
+  .nav-group-panel .nav-item.active::before { top: 0; bottom: 0; border-radius: 0; opacity: 1; }
+  .nav-group-panel .nav-item.active .icon { border-color: var(--gtone); filter: drop-shadow(0 0 4px var(--gtone)); }
+  .nav-group-panel .nav-badge { flex-shrink: 0; }
+  @media (hover: hover) { .nav-group-panel .nav-item:hover { transform: translateY(-1px); } }
+  @supports (color: color-mix(in srgb, red, blue)) {
+    .nav-group-head[aria-expanded="true"] { background: color-mix(in srgb, var(--gtone) 14%, var(--glass-bg)); border-color: color-mix(in srgb, var(--gtone) 50%, transparent); }
+    .nav-group-panel { background: color-mix(in srgb, var(--gtone) 6%, transparent); border-color: color-mix(in srgb, var(--gtone) 26%, transparent); border-left-color: var(--gtone); }
+    .nav-group-panel .nav-item:hover { border-color: color-mix(in srgb, var(--gtone) 55%, var(--glass-border)); }
+    .nav-group-panel .nav-item.active { border-color: color-mix(in srgb, var(--gtone) 65%, var(--glass-border)); background: linear-gradient(90deg, color-mix(in srgb, var(--gtone) 15%, transparent), var(--glass-bg-active) 75%); }
+    .nav-group-panel .nav-item .icon { background: color-mix(in srgb, var(--gtone) 14%, var(--glass-bg-active)); border-color: color-mix(in srgb, var(--gtone) 35%, var(--glass-border)); }
+  }
+  @media (max-width: 768px) { .nav-group-panel .nav-item { min-height: 46px; } }
+  @media (prefers-reduced-motion: reduce) { .nav-group-panel .nav-item { transition: none; } .nav-group-panel .nav-item:hover { transform: none; } }
+
+  /* Theme dots — two themes */
+  .theme-switcher { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 0.65rem; padding: 0.35rem 0.6rem; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; }
+  .theme-btns { display: flex; gap: 8px; }
   .theme-dot {
-    width: 17px; height: 17px; border-radius: 50%;
+    width: 17px; height: 17px; border-radius: 50%; padding: 0; appearance: none; -webkit-appearance: none;
     cursor: pointer; border: 2px solid transparent;
     transition: border-color 0.2s, transform 0.15s; flex-shrink: 0;
   }
   .theme-dot:hover { transform: scale(1.2); }
-  .theme-dot.active { border-color: var(--text); }
-  .theme-dot[data-theme="dark"]   { background: #1e222c; }
-  .theme-dot[data-theme="light"]  { background: #cbd5e1; }
-  .theme-dot[data-theme="blue"]   { background: #1e40af; }
-  .theme-dot[data-theme="orange"] { background: #ea580c; }
+  .theme-dot.active { border-color: var(--accent); }
+  .theme-dot[data-theme="dark"]   { background: #08090b; box-shadow: 0 0 0 1px rgba(128,128,128,0.55) inset; }
+  .theme-dot[data-theme="light"]  { background: #ffffff; box-shadow: 0 0 0 1px rgba(128,128,128,0.55) inset; }
 
   /* ── TAKE A TOUR button — deliberately bluish/gradient so it visually
        matches the restyled spotlight tour it launches, independent of
-       whichever accent theme (dark/light/blue/orange) is active. ── */
+       whichever theme (black/white) is active. ── */
   .btn-tour {
     width: 100%;
     background: linear-gradient(135deg, rgba(90,164,255,0.16), rgba(143,139,255,0.16));
@@ -427,6 +569,8 @@
     display: inline-flex; align-items: center; justify-content: center; gap: 0.4em;
     margin-top: 0.1rem;
   }
+  [data-theme="light"] .btn-tour { background: linear-gradient(135deg, rgba(29,95,214,0.09), rgba(106,69,209,0.09)); border-color: rgba(29,95,214,0.4); color: #1d4fb8; }
+  [data-theme="light"] .btn-tour:hover { background: linear-gradient(135deg, rgba(29,95,214,0.16), rgba(106,69,209,0.16)); border-color: rgba(29,95,214,0.7); color: #163f96; box-shadow: 0 4px 16px rgba(29,95,214,0.15); }
   .btn-tour:hover {
     background: linear-gradient(135deg, rgba(90,164,255,0.28), rgba(143,139,255,0.28));
     border-color: rgba(90,164,255,0.7);
@@ -512,6 +656,10 @@
   .pay-progress-fill.status-paid    { background: var(--green); }
   .pay-progress-fill.status-partial { background: var(--amber); }
   .pay-progress-fill.status-unpaid  { background: var(--red); width: 0% !important; }
+  /* Stay progress — same track as the payment bar; colour follows how close the due/end date is */
+  .pay-progress-fill.stay-ok     { background: var(--green); }
+  .pay-progress-fill.stay-warn   { background: var(--amber); }
+  .pay-progress-fill.stay-urgent { background: var(--red); }
   .pay-status-row { display: flex; justify-content: space-between; align-items: center; margin-top: 0.4rem; font-size: 0.78rem; }
   .pay-status-row .label { color: var(--text-dim); }
   .pay-status-row .value { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--text); }
@@ -842,6 +990,50 @@
 .tour-btn-secondary { background: rgba(255,255,255,0.05); border: 1px solid rgba(90,164,255,0.3); color: #c3d3f2; }
 .tour-btn-secondary:hover { border-color: var(--tour-blue); color: #fff; background: rgba(90,164,255,0.1); }
 @media (max-width:480px) { .tour-card { max-width: calc(100vw - 2rem); } }
+
+  /* ══════════════════════════════════════
+     HEADER — menu button + small screens
+     The menu button lives top-left (phones only). On phones the header becomes a grid so
+     every element gets its own line and nothing can collide or be clipped:
+       row 1  ☰ menu · logo ··············· status · sign out
+       row 2  avatar · name
+       row 3  typewriter (full width)
+       row 4  property badge
+     ≥768px keeps the original single-row header.
+  ══════════════════════════════════════ */
+  .hdr-menu-btn {
+    display: none; align-items: center; justify-content: center; flex-shrink: 0;
+    width: 38px; height: 38px; padding: 0; margin: 0; cursor: pointer;
+    background: transparent; border: 1px solid var(--border2); border-radius: 10px;
+    color: var(--text-muted); transition: border-color 0.2s, color 0.2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .hdr-menu-btn:hover, .hdr-menu-btn.active, .hdr-menu-btn[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
+  .hdr-menu-btn:focus-visible { outline: 2px solid var(--tone-blue); outline-offset: 2px; }
+  .hdr-menu-icon { display: flex; align-items: center; justify-content: center; }
+
+  @media (max-width: 767.98px) {
+    header {
+      display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+      align-items: center; column-gap: 0.5rem; row-gap: 0.3rem;
+      height: auto; min-height: 58px;
+      padding: 0.5rem 0.85rem; padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
+    }
+    .header-identity, .header-identity-text, .header-right { display: contents; }
+    .hdr-menu-btn { display: flex; grid-row: 1; grid-column: 1; }
+    .header-logo { grid-row: 1; grid-column: 2; }
+    #headerStatus { grid-row: 1; grid-column: 4; justify-self: end; }
+    header .btn-logout { grid-row: 1; grid-column: 5; }
+    .header-avatar { grid-row: 2; grid-column: 1; margin-right: 0; justify-self: start; }
+    .header-name { grid-row: 2; grid-column: 2 / -1; min-width: 0; }
+    #headerGreeting { grid-row: 3; grid-column: 1 / -1; }
+    /* !important: showPropertyBadge() in tenant.js sets inline max-width / nowrap / ellipsis styles */
+    #headerPropertyBadge { grid-row: 4; grid-column: 1 / -1; justify-self: start; max-width: 100% !important; white-space: normal !important; }
+  }
+  /* typewriter lines wrap (two lines reserved, so nothing jumps) instead of being clipped */
+  @media (max-width: 1000px) {
+    .typer-line { height: auto; min-height: 2.7em; white-space: normal; overflow-wrap: anywhere; }
+  }
   </style>
 </head>
 
@@ -867,8 +1059,9 @@
 </div>
 <!-- ═══ HEADER ═══ -->
 <header>
+  <button type="button" class="hdr-menu-btn" data-tour-key="menu" id="bnav-menu" aria-label="Menu" aria-haspopup="true" aria-expanded="false" aria-controls="desktopSidebar" onclick="TenantNav.toggleSheet()"><span class="hdr-menu-icon" id="bnavIcon_menu"></span></button>
   <div class="header-identity">
-    <a href="index.html" style="display:flex;align-items:center;flex-shrink:0;margin-right:0.55rem" aria-label="Affordable Rentals">
+    <a href="index.html" class="header-logo" style="display:flex;align-items:center;flex-shrink:0;margin-right:0.55rem" aria-label="Affordable Rentals">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="4 16 96 82" width="24" height="24" role="img">
         <g id="logo-mark">
           <path d="M 18,62 L 18,92 L 32,92 L 32,62 Z" fill="var(--accent)" />
@@ -908,30 +1101,86 @@
 <!-- ═══ PAGE BODY ═══ -->
 <div class="page-body">
 
-  <!-- Desktop sidebar -->
-  <aside class="sidebar-desktop" id="desktopSidebar">
-    <div class="sidebar-nav">
-      <div class="dsk-nav-item active" data-tour-key="home" onclick="showSection('home')">    <span class="icon" id="navIcon_home"></span>Home    </div>
-      <div class="dsk-nav-item" data-tour-key="profile" onclick="showSection('profile')"> <span class="icon" id="navIcon_profile"></span>Profile </div>
-      <div class="dsk-nav-item" data-tour-key="pay" onclick="showSection('pay')">     <span class="icon" id="navIcon_pay"></span>Pay Rent</div>
-      <div class="dsk-nav-item" data-tour-key="receipts" onclick="showSection('receipts')"><span class="icon" id="navIcon_receipts"></span>Receipts</div>
-      <div class="dsk-nav-item" data-tour-key="messages" onclick="showSection('messages')">
-        <span class="icon" id="navIcon_messages"></span>Messages
-        <span class="bnav-badge" id="dskMsgBadge" style="position:static;margin-left:auto;display:none"></span>
+  <!-- Navigation: desktop sidebar; on phones the same element is the bottom sheet opened by the Menu tab -->
+  <div class="nav-sheet-backdrop" id="navSheetBackdrop" onclick="TenantNav.closeSheet()"></div>
+  <aside class="sidebar-desktop" id="desktopSidebar" aria-label="Navigation">
+    <nav class="sidebar-nav" id="tenantNav" aria-label="Main navigation">
+      <div class="nav-pinned">
+        <button type="button" class="nav-item active" data-tone="blue" data-tour-key="home" title="Your balance, house and this month at a glance" onclick="showSection('home')"><span class="icon" data-icon="home"></span> Home
+        </button>
       </div>
-      <div class="dsk-nav-item" data-tour-key="notices" onclick="showSection('notices')"> <span class="icon" id="navIcon_notices"></span>Notices </div>
-      <div class="dsk-nav-item" data-tour-key="rules" onclick="showSection('rules')">   <span class="icon" id="navIcon_rules"></span>Rules   </div>
-      <div class="dsk-nav-item" data-tour-key="maintenance" onclick="showSection('maintenance')"><span class="icon" id="navIcon_maintenance"></span>Maintenance</div>
-      <div class="dsk-nav-item" data-tour-key="settings" onclick="showSection('settings')"><span class="icon" id="navIcon_settings"></span>Settings</div>
-    </div>
+      <div class="nav-group" data-group="pay">
+        <button type="button" class="nav-group-head" id="ng-pay" aria-expanded="false" aria-controls="ngp-pay">
+          <span class="ng-icon" data-icon="payments"></span>
+          <span class="ng-label">Payments</span>
+          <span class="ng-dot" aria-hidden="true"></span>
+          <span class="ng-count" aria-hidden="true"></span>
+          <span class="ng-chev" data-icon="chevron" aria-hidden="true"></span>
+        </button>
+        <div class="nav-group-panel" id="ngp-pay" role="group" aria-labelledby="ng-pay" hidden>
+          <div class="nav-group-items">
+        <button type="button" class="nav-item" data-tone="green" data-tour-key="pay" title="Pay with M-Pesa" onclick="showSection('pay')"><span class="icon" data-icon="payments"></span> Pay Rent
+        </button>
+        <button type="button" class="nav-item" data-tone="green" data-tour-key="deposit" title="Your security deposit status" onclick="showSection('deposit')"><span class="icon" data-icon="cash"></span> Deposit
+        </button>
+        <button type="button" class="nav-item" data-tone="green" data-tour-key="receipts" title="Every payment, with a PDF receipt" onclick="showSection('receipts')"><span class="icon" data-icon="receipts"></span> Receipts
+        </button>
+          </div>
+        </div>
+      </div>
+      <div class="nav-group" data-group="tenancy">
+        <button type="button" class="nav-group-head" id="ng-tenancy" aria-expanded="false" aria-controls="ngp-tenancy">
+          <span class="ng-icon" data-icon="home"></span>
+          <span class="ng-label">My Tenancy</span>
+          <span class="ng-dot" aria-hidden="true"></span>
+          <span class="ng-count" aria-hidden="true"></span>
+          <span class="ng-chev" data-icon="chevron" aria-hidden="true"></span>
+        </button>
+        <div class="nav-group-panel" id="ngp-tenancy" role="group" aria-labelledby="ng-tenancy" hidden>
+          <div class="nav-group-items">
+        <button type="button" class="nav-item nav-hidden" id="navFindHouse" data-tone="green" data-tour-key="find" title="Browse buildings and apply for an available house" onclick="showSection('find')"><span class="icon" data-icon="houses"></span> Find a House</button>
+        <button type="button" class="nav-item" data-tone="blue" data-tour-key="profile" title="Your details and payment history" onclick="showSection('profile')"><span class="icon" data-icon="user"></span> Profile
+        </button>
+        <button type="button" class="nav-item" data-tone="blue" data-tour-key="stay" title="Your rent period, semester and any holiday" onclick="showSection('stay')"><span class="icon" data-icon="clock"></span> Stay
+        </button>
+        <button type="button" class="nav-item" data-tone="amber" data-tour-key="maintenance" title="Report a repair and track it" onclick="showSection('maintenance')"><span class="icon" data-icon="maintenance"></span> Maintenance
+        </button>
+          </div>
+        </div>
+      </div>
+      <div class="nav-group" data-group="comms">
+        <button type="button" class="nav-group-head" id="ng-comms" aria-expanded="false" aria-controls="ngp-comms">
+          <span class="ng-icon" data-icon="messages"></span>
+          <span class="ng-label">Updates</span>
+          <span class="ng-dot" aria-hidden="true"></span>
+          <span class="ng-count" aria-hidden="true"></span>
+          <span class="ng-chev" data-icon="chevron" aria-hidden="true"></span>
+        </button>
+        <div class="nav-group-panel" id="ngp-comms" role="group" aria-labelledby="ng-comms" hidden>
+          <div class="nav-group-items">
+        <button type="button" class="nav-item" data-tone="violet" data-tour-key="messages" title="Chat with your landlord" onclick="showSection('messages')"><span class="icon" data-icon="messages"></span> Messages
+          <span class="nav-badge" id="dskMsgBadge" style="display:none"></span>
+        </button>
+        <button type="button" class="nav-item" data-tone="violet" data-tour-key="notices" title="Announcements from your landlord" onclick="showSection('notices')"><span class="icon" data-icon="announcements"></span> Notices
+        </button>
+        <button type="button" class="nav-item" data-tone="violet" data-tour-key="rules" title="House rules for your property" onclick="showSection('rules')"><span class="icon" data-icon="rules"></span> Rules
+        </button>
+          </div>
+        </div>
+      </div>
+      <div class="nav-pinned-end">
+        <button type="button" class="nav-item" data-tone="blue" data-tour-key="settings" title="Password, theme and the tour" onclick="showSection('settings')"><span class="icon" data-icon="settings"></span> Settings
+        </button>
+      </div>
+    </nav>
 
     <div class="sidebar-footer">
-      <div style="font-family:'DM Mono',monospace;font-size:0.56rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-dim);margin-bottom:0.5rem">Appearance</div>
-      <div style="display:flex;gap:6px;margin-bottom:0.75rem">
-        <div class="theme-dot active" data-theme="dark"   onclick="setTheme('dark')"   title="Dark"></div>
-        <div class="theme-dot"        data-theme="light"  onclick="setTheme('light')"  title="Light"></div>
-        <div class="theme-dot"        data-theme="blue"   onclick="setTheme('blue')"   title="Blue"></div>
-        <div class="theme-dot"        data-theme="orange" onclick="setTheme('orange')" title="Orange"></div>
+      <div class="theme-switcher" role="group" aria-label="Theme">
+        <span class="footer-label">Theme</span>
+        <span class="theme-btns">
+          <button type="button" class="theme-dot active" data-theme="dark"  onclick="setTheme('dark')"  title="Black theme" aria-label="Black theme"></button>
+          <button type="button" class="theme-dot"        data-theme="light" onclick="setTheme('light')" title="White theme" aria-label="White theme"></button>
+        </span>
       </div>
       <button class="btn-tour" onclick="startTourManually()" id="takeTourBtnSidebar"></button>
     </div>
@@ -970,6 +1219,9 @@
         <span class="typer-line" id="homeSubtitle"></span>
       </div>
 
+      <div id="homeBanners"></div>
+      <div id="notifCard"></div>
+
       <div class="stats-row">
         <div class="stat-card">
           <div class="stat-label">Total Paid</div>
@@ -979,18 +1231,18 @@
         <div class="stat-card">
           <div class="stat-label">Balance</div>
           <div class="stat-value" id="statArrears" style="color:var(--amber)">—</div>
-          <div style="font-size:0.62rem;color:var(--text-dim);margin-top:0.2rem">Ksh this month</div>
+          <div id="statArrearsSub" style="font-size:0.62rem;color:var(--text-dim);margin-top:0.2rem">Ksh this month</div>
         </div>
         <div class="stat-card" style="grid-column:span 2;">
           <div class="stat-label">House</div>
           <div class="stat-value" id="statHouse" style="font-size:1.2rem;color:var(--text)">—</div>
-          <div style="font-size:0.62rem;color:var(--text-dim);margin-top:0.2rem">Your unit</div>
+          <div id="statHouseSub" style="font-size:0.62rem;color:var(--text-dim);margin-top:0.2rem">Your unit</div>
         </div>
       </div>
 
       <!-- This month payment status card -->
       <div class="card" id="monthStatusCard">
-        <div class="card-label">This Month</div>
+        <div class="card-label" id="monthStatusLabel">This Month</div>
         <div id="monthStatus" style="font-size:0.85rem;color:var(--text-muted)">Loading...</div>
         <div id="homeProgressWrap" style="display:none">
           <div class="pay-progress-wrap">
@@ -1025,6 +1277,7 @@
     <div class="section" id="sec-profile">
       <div class="sec-header">
         <div class="sec-title">My Profile</div>
+        <span class="typer-line sec-typer" id="secTyper_profile"></span>
       </div>
       <div class="card">
         <div class="profile-avatar-wrap">
@@ -1045,13 +1298,16 @@
         <div class="info-row"><span class="info-row-label">Member Since</span> <span class="info-row-value" id="profileSince">—</span></div>
       </div>
 
+      <!-- Stay progress — filled by renderStayProgress() in tenant.js; empty until the tenant has a house -->
+      <div id="stayProgressCard"></div>
+
       <div class="card">
         <div class="card-label">Payment History</div>
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Month</th><th>Amount</th><th>Total Paid</th>
+                <th>Period</th><th>Amount</th><th>Total Paid</th>
                 <th>Balance</th><th>Status</th><th>Date</th>
               </tr>
             </thead>
@@ -1074,7 +1330,7 @@
 
       <!-- Monthly summary card -->
       <div class="card" id="rentSummaryCard">
-        <div class="card-label">Current Month Status</div>
+        <div class="card-label" id="rentSummaryLabel">Current Month Status</div>
         <div id="rentSummary" style="font-size:0.85rem;color:var(--text-muted)">Enter month below to check balance.</div>
         <div id="payProgressWrap" style="display:none;margin-top:0.65rem">
           <div class="pay-progress-wrap">
@@ -1093,7 +1349,7 @@
         </div>
       </div>
 
-      <div class="card">
+      <div class="card" id="payFormCard">
         <div class="card-label">M-Pesa Payment</div>
         <div style="font-size:0.76rem;color:var(--text-dim);margin-bottom:0.8rem;line-height:1.65">
           Enter the month and amount. An M-Pesa STK push will be sent to your registered phone number.
@@ -1110,6 +1366,32 @@
 
       <!-- Payment status / receipt -->
       <div id="payReceipt"></div>
+    </div>
+
+        <!-- ─── STAY ─── -->
+    <div class="section" id="sec-find">
+      <div class="sec-header">
+        <div class="sec-title">Find a House</div>
+        <span class="typer-line sec-typer" id="secTyper_find"></span>
+      </div>
+      <div id="findHouseBody"><div class="empty-state">Loading…</div></div>
+    </div>
+
+    <div class="section" id="sec-stay">
+      <div class="sec-header">
+        <div class="sec-title">My Stay</div>
+        <span class="typer-line sec-typer" id="secTyper_stay"></span>
+      </div>
+      <div id="stayContent"></div>
+    </div>
+
+    <!-- ─── DEPOSIT ─── -->
+    <div class="section" id="sec-deposit">
+      <div class="sec-header">
+        <div class="sec-title">Deposit</div>
+        <span class="typer-line sec-typer" id="secTyper_deposit"></span>
+      </div>
+      <div id="depositContent"></div>
     </div>
 
     <!-- ─── RECEIPTS ─── -->
@@ -1157,6 +1439,7 @@
     <div class="section" id="sec-notices">
       <div class="sec-header">
         <div class="sec-title">Announcements</div>
+        <span class="typer-line sec-typer" id="secTyper_notices"></span>
       </div>
       <div class="card">
         <div id="noticesList">
@@ -1169,6 +1452,7 @@
     <div class="section" id="sec-rules">
       <div class="sec-header">
         <div class="sec-title">House Rules</div>
+        <span class="typer-line sec-typer" id="secTyper_rules"></span>
       </div>
       <div class="card">
         <div id="rulesList">
@@ -1181,6 +1465,7 @@
 <div class="section" id="sec-maintenance">
   <div class="sec-header">
     <div class="sec-title">Maintenance</div>
+        <span class="typer-line sec-typer" id="secTyper_maintenance"></span>
   </div>
   <div class="card">
     <div class="card-label">Report an Issue</div>
@@ -1213,6 +1498,7 @@
     <div class="section" id="sec-settings">
       <div class="sec-header">
         <div class="sec-title">Settings</div>
+        <span class="typer-line sec-typer" id="secTyper_settings"></span>
       </div>
 
       <!-- Account info -->
@@ -1232,12 +1518,10 @@
       <!-- Appearance -->
       <div class="card settings-section">
         <div class="settings-label">Appearance</div>
-        <div style="display:flex;gap:10px;align-items:center;padding:0.15rem 0;flex-wrap:wrap">
-          <div class="theme-dot" data-theme="dark"   onclick="setTheme('dark')"   title="Dark"   style="width:24px;height:24px"></div>
-          <div class="theme-dot" data-theme="light"  onclick="setTheme('light')"  title="Light"  style="width:24px;height:24px"></div>
-          <div class="theme-dot" data-theme="blue"   onclick="setTheme('blue')"   title="Blue"   style="width:24px;height:24px"></div>
-          <div class="theme-dot" data-theme="orange" onclick="setTheme('orange')" title="Orange" style="width:24px;height:24px"></div>
-          <span style="font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--text-dim)" id="currentThemeLabel">dark</span>
+        <div style="display:flex;gap:10px;align-items:center;padding:0.15rem 0;flex-wrap:wrap" role="group" aria-label="Theme">
+          <button type="button" class="theme-dot" data-theme="dark"  onclick="setTheme('dark')"  title="Black theme" aria-label="Black theme" style="width:24px;height:24px"></button>
+          <button type="button" class="theme-dot" data-theme="light" onclick="setTheme('light')" title="White theme" aria-label="White theme" style="width:24px;height:24px"></button>
+          <span style="font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--text-dim)" id="currentThemeLabel">Black</span>
         </div>
         <button class="btn-tour" onclick="startTourManually()" id="takeTourBtn" style="margin-top:0.85rem"></button>
       </div>
@@ -1300,15 +1584,14 @@
 </div><!-- /page-body -->
 
 <!-- ═══ BOTTOM NAV ═══ -->
-<nav class="bottom-nav">
-  <div class="bnav-item active" data-tour-key="home" onclick="showSection('home')"     id="bnav-home">    <span class="bnav-icon" id="bnavIcon_home"></span>Home    </div>
-  <div class="bnav-item" data-tour-key="profile" onclick="showSection('profile')"  id="bnav-profile"> <span class="bnav-icon" id="bnavIcon_profile"></span>Profile </div>
-  <div class="bnav-item" data-tour-key="pay" onclick="showSection('pay')"      id="bnav-pay">     <span class="bnav-icon" id="bnavIcon_pay"></span>Pay     </div>
-  <div class="bnav-item" data-tour-key="messages" onclick="showSection('messages')" id="bnav-messages">
+<nav class="bottom-nav" aria-label="Quick navigation">
+  <button type="button" class="bnav-item active" data-tour-key="home" onclick="showSection('home')" id="bnav-home"><span class="bnav-icon" id="bnavIcon_home"></span>Home</button>
+  <button type="button" class="bnav-item" data-tour-key="pay" onclick="showSection('pay')" id="bnav-pay"><span class="bnav-icon" id="bnavIcon_pay"></span>Pay</button>
+  <button type="button" class="bnav-item" data-tour-key="messages" onclick="showSection('messages')" id="bnav-messages">
     <span class="bnav-icon" id="bnavIcon_messages"></span>Chat
     <span class="bnav-badge" id="msgBadge" style="display:none">!</span>
-  </div>
-  <div class="bnav-item" data-tour-key="settings" onclick="showSection('settings')" id="bnav-settings"><span class="bnav-icon" id="bnavIcon_settings"></span>Settings</div>
+  </button>
+  <button type="button" class="bnav-item" data-tour-key="profile" onclick="showSection('profile')" id="bnav-profile"><span class="bnav-icon" id="bnavIcon_profile"></span>Profile</button>
 </nav>
 
 <div id="toast"></div>
@@ -1318,7 +1601,8 @@
 ══════════════════════════════════════════════════════ -->
 <script>
 (function() {
-  const t = localStorage.getItem('tenant-theme') || 'dark';
+  let t = localStorage.getItem('tenant-theme') || 'dark';
+  if (t !== 'dark' && t !== 'light') t = 'dark';   // retired blue/orange themes fall back to Black
   document.documentElement.setAttribute('data-theme', t);
 })();
 
@@ -1344,27 +1628,22 @@ function togglePwEye(inputId, btn) {
 
 <script src="icons.js"></script>
 <script src="config.js"></script>
+<script src="public.js"></script>
 <script>
 (function wireStaticIcons() {
   const set = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
   try {
-    // Sidebar (desktop)
-    set('navIcon_home', ICON('home', 15));
-    set('navIcon_profile', ICON('user', 15));
-    set('navIcon_pay', ICON('payments', 15));
-    set('navIcon_receipts', ICON('receipts', 15));
-    set('navIcon_messages', ICON('messages', 15));
-    set('navIcon_notices', ICON('announcements', 15));
-    set('navIcon_rules', ICON('rules', 15));
-    set('navIcon_maintenance', ICON('maintenance', 15));
-    set('navIcon_settings', ICON('settings', 15));
+    // Navigation (icons are bound by name, so the nav can be regrouped freely)
+    document.querySelectorAll('#tenantNav [data-icon]').forEach(el => {
+      el.innerHTML = ICON(el.getAttribute('data-icon'), el.classList.contains('ng-chev') ? 14 : 15);
+    });
 
-    // Bottom nav (mobile)
+    // Bottom bar (phones): Home · Pay · Chat · Profile   (Menu button: top-left of the header)
     set('bnavIcon_home', ICON('home', 18));
-    set('bnavIcon_profile', ICON('user', 18));
     set('bnavIcon_pay', ICON('payments', 18));
     set('bnavIcon_messages', ICON('messages', 18));
-    set('bnavIcon_settings', ICON('settings', 18));
+    set('bnavIcon_profile', ICON('user', 18));
+    set('bnavIcon_menu', ICON('menu', 18));
 
     // Home — quick actions
     set('qaPayBtn', `${ICON('payments',14)} Pay Rent`);
@@ -1403,6 +1682,200 @@ function togglePwEye(inputId, btn) {
 <script src="tenant.js"></script>
 <script src="session-manager.js"></script>
 
+<!-- ═══ NAV ACCORDION + PHONE SHEET ═══
+     One group open at a time. Opening assembles the items from a short orbit
+     (APPEAR → ORBIT → ACCELERATE → ALIGN → SETTLE); switching packs the old group
+     away first. State (aria-expanded / hidden) is applied before any motion, so
+     navigation never depends on animation; prefers-reduced-motion skips the orbit. -->
+<script>
+(function () {
+  const nav = document.getElementById('tenantNav');
+  const sidebar = document.getElementById('desktopSidebar');
+  const backdrop = document.getElementById('navSheetBackdrop');
+  if (!nav || !sidebar) return;
+
+  const reduced = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const desktopMQ = window.matchMedia('(min-width: 768px)');
+  const OPEN_MS = 520, CLOSE_MS = 220, STAGGER = 30;
+
+  let seq = 0, anims = [], intended = null;
+
+  const groups  = () => Array.from(nav.querySelectorAll('.nav-group'));
+  const byId    = id => nav.querySelector('.nav-group[data-group="' + id + '"]');
+  const headOf  = g => g.querySelector(':scope > .nav-group-head');
+  const panelOf = g => g.querySelector(':scope > .nav-group-panel');
+  const itemsOf = g => Array.from(panelOf(g).querySelectorAll('.nav-item')).filter(el => el.offsetParent !== null);
+
+  function applyState(g, open) {
+    g.classList.toggle('open', open);
+    headOf(g).setAttribute('aria-expanded', open ? 'true' : 'false');
+    panelOf(g).hidden = !open;
+  }
+  function cancelMotion() {
+    anims.forEach(a => { try { a.cancel(); } catch (e) {} });
+    anims = [];
+    nav.querySelectorAll('.orbiting').forEach(el => el.classList.remove('orbiting'));
+  }
+  function settle() {
+    cancelMotion();
+    groups().forEach(g => applyState(g, g.dataset.group === intended));
+  }
+
+  function geometry(g) {
+    const items = itemsOf(g);
+    const box = panelOf(g).querySelector('.nav-group-items');
+    const br = box.getBoundingClientRect();
+    const cx = br.width / 2, cy = br.height / 2;
+    const rx = Math.min(36, br.width * 0.14);
+    const ry = Math.min(64, Math.max(34, br.height * 0.5));
+    const n = items.length;
+    return items.map((el, i) => {
+      const r = el.getBoundingClientRect();
+      const fx = r.left - br.left + r.width / 2, fy = r.top - br.top + r.height / 2;
+      const th = (-90 + (360 / n) * i) * Math.PI / 180;
+      const at = (ang, k) => ({ x: cx + Math.cos(ang) * rx * k - fx, y: cy + Math.sin(ang) * ry * k - fy });
+      return { el, p0: at(th, 1), p1: at(th + 0.9, 0.85), p2: at(th + 1.9, 0.4) };
+    });
+  }
+  const T = (p, sc, rot) => 'translate(' + p.x.toFixed(1) + 'px,' + p.y.toFixed(1) + 'px) scale(' + sc + ') rotate(' + rot + 'deg)';
+
+  function assemble(g, token) {
+    if (reduced()) return Promise.resolve();
+    const geo = geometry(g);
+    const runs = geo.map((o, i) => {
+      o.el.classList.add('orbiting');
+      const a = o.el.animate([
+        { opacity: 0, transform: T(o.p0, 0.5, -18), offset: 0 },
+        { opacity: 1, transform: T(o.p0, 0.6, -10), offset: 0.18, easing: 'cubic-bezier(.45,0,.55,1)' },
+        { opacity: 1, transform: T(o.p1, 0.62, 6),  offset: 0.45, easing: 'cubic-bezier(.55,0,.9,.6)' },
+        { opacity: 1, transform: T(o.p2, 0.7, 12),  offset: 0.68, easing: 'cubic-bezier(.25,.7,.3,1)' },
+        { opacity: 1, transform: 'translate(0,0) scale(1.02) rotate(0deg)', offset: 0.92 },
+        { opacity: 1, transform: 'none', offset: 1 }
+      ], { duration: OPEN_MS, delay: i * STAGGER, easing: 'linear', fill: 'backwards' });
+      anims.push(a);
+      return a.finished.catch(() => {});
+    });
+    return Promise.all(runs).then(() => { if (token === seq) geo.forEach(o => o.el.classList.remove('orbiting')); });
+  }
+  function packAway(g) {
+    if (reduced()) return Promise.resolve();
+    const geo = geometry(g);
+    const runs = geo.map((o, i) => {
+      o.el.classList.add('orbiting');
+      const a = o.el.animate([
+        { opacity: 1, transform: 'none', offset: 0 },
+        { opacity: 1, transform: T(o.p2, 0.7, 12), offset: 0.4, easing: 'cubic-bezier(.4,0,.6,1)' },
+        { opacity: 0, transform: T(o.p0, 0.5, -18), offset: 1 }
+      ], { duration: CLOSE_MS, delay: i * 12, easing: 'linear', fill: 'forwards' });
+      anims.push(a);
+      return a.finished.catch(() => {});
+    });
+    return Promise.all(runs);
+  }
+  function openGroup(g, token) {
+    applyState(g, true);
+    intended = g.dataset.group;
+    try { headOf(g).scrollIntoView({ block: 'nearest' }); } catch (e) {}
+    return assemble(g, token);
+  }
+  function closeGroup(g, token) {
+    headOf(g).setAttribute('aria-expanded', 'false');
+    intended = null;
+    return packAway(g).then(() => { if (token === seq) { cancelMotion(); applyState(g, false); } });
+  }
+  function toggle(id) {
+    const target = byId(id);
+    if (!target) return;
+    settle();
+    const token = ++seq;
+    const cur = groups().find(g => g.classList.contains('open'));
+    if (cur === target) { closeGroup(cur, token); return; }
+    if (cur) closeGroup(cur, token).then(() => { if (token === seq) openGroup(target, token); });
+    else openGroup(target, token);
+  }
+  function openInstant(id) { ++seq; intended = id || null; settle(); }
+  function currentOpen() { const g = groups().find(x => x.classList.contains('open')); return g ? g.dataset.group : null; }
+
+  // ── phone sheet ──
+  const menuBtn = () => document.getElementById('bnav-menu');
+  const sheetOpen = () => sidebar.classList.contains('sheet-open');
+  function reflectMenuBtn() { const b = menuBtn(); if (b) b.setAttribute('aria-expanded', sheetOpen() ? 'true' : 'false'); }
+  function openSheet() {
+    if (desktopMQ.matches) return;
+    sidebar.classList.add('sheet-open');
+    if (backdrop) backdrop.classList.add('show');
+    reflectMenuBtn();
+    const active = nav.querySelector('.nav-item.active');
+    const g = active && active.closest('.nav-group');
+    if (g && !g.classList.contains('open')) openInstant(g.dataset.group);
+  }
+  function closeSheet() {
+    sidebar.classList.remove('sheet-open');
+    if (backdrop) backdrop.classList.remove('show');
+    reflectMenuBtn();
+  }
+  function toggleSheet() { sheetOpen() ? closeSheet() : openSheet(); }
+  desktopMQ.addEventListener && desktopMQ.addEventListener('change', closeSheet);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && sheetOpen() && !(typeof window.isTourActive === 'function' && window.isTourActive())) { closeSheet(); const b = menuBtn(); if (b) b.focus(); }
+  });
+
+  function syncToSection(name) {
+    const items = Array.from(nav.querySelectorAll('.nav-item'));
+    items.forEach(n => n.removeAttribute('aria-current'));
+    const active = items.find(n => n.classList.contains('active'));
+    if (active) active.setAttribute('aria-current', 'page');
+    groups().forEach(g => g.classList.toggle('has-active', !!(active && g.contains(active))));
+    if (active) {
+      const g = active.closest('.nav-group');
+      if (g && !g.classList.contains('open')) openInstant(g.dataset.group);
+    }
+    // the Menu tab lights up when the current page is one that only lives in the sheet
+    const m = menuBtn();
+    if (m) {
+      const inBar = Array.from(document.querySelectorAll('.bottom-nav .bnav-item')).some(b => b !== m && b.classList.contains('active'));
+      m.classList.toggle('active', !inBar);
+    }
+    closeSheet();   // choosing a page closes the phone sheet
+  }
+
+  function refreshCounts() {
+    groups().forEach(g => {
+      let total = 0;
+      g.querySelectorAll('.nav-badge').forEach(b => {
+        if (b.style.display === 'none') return;
+        const v = parseInt(b.textContent, 10);
+        if (v > 0) total += v;
+      });
+      const c = g.querySelector('.ng-count');
+      if (c) c.textContent = total > 99 ? '99+' : String(total);
+      g.classList.toggle('has-count', total > 0);
+    });
+  }
+  let rafCount = 0;
+  const mo = new MutationObserver(() => { cancelAnimationFrame(rafCount); rafCount = requestAnimationFrame(refreshCounts); });
+  nav.querySelectorAll('.nav-badge').forEach(b => mo.observe(b, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['style'] }));
+
+  nav.addEventListener('click', e => {
+    const h = e.target.closest('.nav-group-head');
+    if (h) toggle(h.closest('.nav-group').dataset.group);
+  });
+  nav.addEventListener('keydown', e => {
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return;
+    const list = Array.from(nav.querySelectorAll('.nav-group-head, .nav-item')).filter(el => el.offsetParent !== null);
+    const i = list.indexOf(document.activeElement);
+    if (i < 0) return;
+    e.preventDefault();
+    const next = e.key === 'Home' ? 0 : e.key === 'End' ? list.length - 1 : Math.max(0, Math.min(list.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)));
+    list[next].focus();
+  });
+
+  groups().forEach(g => applyState(g, false));
+  refreshCounts();
+  window.TenantNav = { toggle, openInstant, currentOpen, syncToSection, refreshCounts, openSheet, closeSheet, toggleSheet, sheetOpen, isDesktop: () => desktopMQ.matches };
+})();
+</script>
+
 <script>
 // ═══════════════════════════════════════
 // SPOTLIGHT TOUR — first-login walkthrough
@@ -1414,22 +1887,35 @@ function togglePwEye(inputId, btn) {
 // naturally shorter on phones. The usable list is recomputed on every render
 // so crossing the 768px breakpoint mid-tour stays consistent.
 
+// Steps follow the navigation's group order. The tour opens whatever a step needs:
+//  • desktop: the nav group that holds the item
+//  • phones: the bottom-bar tab, or the Menu sheet + group for items that only live there
+// Nothing is dropped just because its group is collapsed or the sheet is closed.
 const TOUR_STEPS = [
   { key: 'home',        title: 'Home',          desc: 'Your overview — total paid, this month\'s balance, and your assigned house at a glance.' },
-  { key: 'profile',     title: 'Profile',       desc: 'Your account details and full payment history.' },
+  { key: 'find',        title: 'Find a House',  desc: 'No house yet? Browse the buildings of your property, see which houses are available and apply. Your landlord reviews it and assigns the house.' },
   { key: 'pay',         title: 'Pay Rent',      desc: 'Pay your rent via M-Pesa — enter the month and amount, and a prompt is sent to your phone.' },
+  { key: 'deposit',     title: 'Deposit',       desc: 'See whether your security deposit is recorded and how much is required. Your landlord records deposits and refunds — they can\'t be paid through M-Pesa here.' },
   { key: 'receipts',    title: 'Receipts',      desc: 'Every payment you\'ve made, with a downloadable PDF receipt for each.' },
+  { key: 'profile',     title: 'Profile',       desc: 'Your account details and full payment history.' },
+  { key: 'stay',        title: 'Stay',          desc: 'Your current rent period or semester, the academic year, and any holiday your landlord has recorded for you.' },
+  { key: 'maintenance', title: 'Maintenance',   desc: 'Report a repair issue and track its progress until it\'s resolved.' },
   { key: 'messages',    title: 'Messages',      desc: 'Chat directly with your landlord — ask questions or follow up anytime.' },
   { key: 'notices',     title: 'Announcements', desc: 'Updates your landlord posts for everyone on the property.' },
   { key: 'rules',       title: 'House Rules',   desc: 'Rules and guidelines set for your property.' },
-  { key: 'maintenance', title: 'Maintenance',   desc: 'Report a repair issue and track its progress until it\'s resolved.' },
-  { key: 'settings',    title: 'Settings',      desc: 'Update your password, and switch the app\'s appearance.' }
+  { key: 'settings',    title: 'Settings',      desc: 'Update your password, and switch between the Black and White themes.' },
+  { key: 'menu',        title: 'Menu',          desc: 'Everything else lives here — Deposit, Receipts, Stay, Maintenance, Notices, Rules and Settings — grouped by topic. Tap a group to open it.' }
 ];
+const TOUR_BAR_ORDER = ['home', 'pay', 'messages', 'profile', 'menu'];
 
 let _tourIndex = 0;
 let _tourEls = {};
 let _tourResizeTimer = null;
 let _tourActive = false;
+let _tourRenderSeq = 0;
+let _tourWasSheet = false;
+let _tourWasGroup = null;
+let _tourObserver = null;
 
 // icons.js may not have every key — never let a missing icon kill a render.
 function _tourIcon(name, size) {
@@ -1447,34 +1933,67 @@ function _tourUserId() {
 }
 
 function _tourStorageKey() { return `tourSeen_${_tourUserId()}`; }
+function _tourSeen() { return localStorage.getItem(_tourStorageKey()) === 'true'; }
 
-function _tourFindVisible(key) {
-  const candidates = document.querySelectorAll(`[data-tour-key="${key}"]`);
-  for (const el of candidates) {
-    if (el.offsetParent !== null && el.getBoundingClientRect().width > 0) return el;
-  }
-  return null;
+// Exposed so session-manager.js (idle-warning popup) never lands on top of the tour, and so
+// anything else that wants to pop up can wait. "Blocking" = a tour is running OR this
+// first-run load is about to start one.
+let _tourPending = !_tourSeen();
+window.isTourActive   = function () { return _tourActive; };
+window.isTourBlocking = function () { return _tourActive || _tourPending; };
+setTimeout(() => { if (_tourPending && !_tourActive) _tourPending = false; }, 90000);   // never hold forever
+
+function _tourOverlayShown() {
+  return !!document.querySelector('#platformMaintenanceOverlay.show') || !!document.getElementById('maintenanceScreen');
+}
+function _tourIsDesktop() { return window.matchMedia('(min-width: 768px)').matches; }
+
+// Where a step lives right now: the sidebar (desktop), a bottom-bar tab, or the Menu sheet (phones).
+function _tourTarget(key) {
+  let side = document.querySelector(`#tenantNav [data-tour-key="${key}"]`);
+  if (side && side.classList.contains('nav-hidden')) side = null;       // e.g. "Find a House" once you have a house
+  if (_tourIsDesktop()) return side ? { el: side, kind: 'side' } : null;
+  const bar = document.querySelector(`.bottom-nav [data-tour-key="${key}"], header [data-tour-key="${key}"]`);
+  if (bar && bar.offsetParent !== null && bar.getBoundingClientRect().width > 0) return { el: bar, kind: 'bar' };
+  return side ? { el: side, kind: 'sheet' } : null;
 }
 
 function _tourUsableSteps() {
-  return TOUR_STEPS.filter(s => _tourFindVisible(s.key) !== null);
+  const usable = TOUR_STEPS.filter(s => _tourTarget(s.key) !== null);
+  if (_tourIsDesktop()) return usable;
+  // phones: bar tabs first, then the Menu tab, then everything that lives in the sheet
+  const inBar = k => TOUR_BAR_ORDER.indexOf(k);
+  return usable.slice().sort((a, b) => {
+    const ia = inBar(a.key), ib = inBar(b.key);
+    if (ia >= 0 && ib >= 0) return ia - ib;
+    if (ia >= 0) return -1;
+    if (ib >= 0) return 1;
+    return TOUR_STEPS.indexOf(a) - TOUR_STEPS.indexOf(b);
+  });
 }
 
 function maybeStartTour(attemptsLeft = 15) {
   if (_tourActive) return;
 
-  // Maintenance screen hides the nav entirely — wait it out.
-  if (document.getElementById('maintenanceScreen')) {
-    if (attemptsLeft <= 0) return;
+  // A maintenance screen took over — wait it out, then give up quietly (tour stays "unseen").
+  if (_tourOverlayShown()) {
+    if (attemptsLeft <= 0) { _tourPending = false; return; }
     setTimeout(() => maybeStartTour(attemptsLeft - 1), 1000);
     return;
   }
 
-  if (localStorage.getItem(_tourStorageKey()) === 'true') return;
+  if (_tourSeen()) { _tourPending = false; return; }
+
+  // The idle-session warning must be answered first; the tour never opens underneath it.
+  if (document.querySelector('.sm-overlay.sm-visible')) {
+    if (attemptsLeft <= 0) { _tourPending = false; return; }
+    setTimeout(() => maybeStartTour(attemptsLeft - 1), 1000);
+    return;
+  }
 
   const usableSteps = _tourUsableSteps();
   if (!usableSteps.length) {
-    if (attemptsLeft <= 0) return;
+    if (attemptsLeft <= 0) { _tourPending = false; return; }
     setTimeout(() => maybeStartTour(attemptsLeft - 1), 500);
     return;
   }
@@ -1482,14 +2001,14 @@ function maybeStartTour(attemptsLeft = 15) {
   _startTour(usableSteps);
 }
 
-// Manually re-launch the tour on demand (the "Take a Tour" button in the
-// desktop sidebar footer and in Settings → Appearance). Unlike
-// maybeStartTour(), this ignores the tourSeen_<userId> flag entirely — it's
-// an explicit request, not the automatic first-login walkthrough — so it
-// never overwrites or clears that flag either.
+// Manually re-launch the tour on demand (the "Take a Tour" buttons). Ignores the
+// tourSeen_<userId> flag — it's an explicit request — so it never touches that flag.
 function startTourManually() {
   if (_tourActive) return; // already running — no-op
-  if (document.getElementById('maintenanceScreen')) return;
+  if (_tourOverlayShown()) return;
+  if (document.querySelector('.sm-overlay.sm-visible')) return;
+
+  if (window.TenantNav && window.TenantNav.sheetOpen()) window.TenantNav.closeSheet();
 
   const usableSteps = _tourUsableSteps();
   if (!usableSteps.length) {
@@ -1502,7 +2021,10 @@ function startTourManually() {
 
 function _startTour(steps) {
   _tourActive = true;
+  _tourPending = false;
   _tourIndex  = 0;
+  _tourWasSheet = !!(window.TenantNav && window.TenantNav.sheetOpen());
+  _tourWasGroup = window.TenantNav ? window.TenantNav.currentOpen() : null;
 
   _tourEls.catcher = document.createElement('div');
   _tourEls.catcher.className = 'tour-catcher';
@@ -1513,9 +2035,19 @@ function _startTour(steps) {
 
   _tourEls.card = document.createElement('div');
   _tourEls.card.className = 'tour-card';
+  _tourEls.card.setAttribute('role', 'dialog');
+  _tourEls.card.setAttribute('aria-label', 'Dashboard tour');
 
   document.body.append(_tourEls.catcher, _tourEls.spotlight, _tourEls.card);
   _tourEls.steps = steps;
+
+  // If a maintenance screen appears mid-tour it wins: stop quietly and leave the tour "unseen".
+  const ov = document.getElementById('platformMaintenanceOverlay');
+  if (ov && window.MutationObserver) {
+    _tourObserver = new MutationObserver(() => { if (_tourOverlayShown()) endTour(false); });
+    _tourObserver.observe(ov, { attributes: true, attributeFilter: ['class'] });
+  }
+
   _renderTourStep();
 
   document.addEventListener('keydown', _tourKeyHandler);
@@ -1528,19 +2060,36 @@ function _tourKeyHandler(e) {
   if (e.key === 'ArrowLeft')  _tourBack();
 }
 
-// Debounced full re-render — crossing 768px swaps which element
-// (sidebar vs bottom-nav) is the live target for the current step.
+// Debounced full re-render — crossing 768px swaps which element is the live target.
 function _tourReposition() {
   if (!_tourActive) return;
   clearTimeout(_tourResizeTimer);
   _tourResizeTimer = setTimeout(_renderTourStep, 150);
 }
 
+// Opens whatever this step's target needs; returns how long to wait for the sheet animation.
+function _tourReveal(step) {
+  const t = _tourTarget(step.key);
+  if (!t) return null;
+  const TN = window.TenantNav;
+  let wait = 0;
+  if (TN) {
+    if (t.kind === 'bar') {
+      if (TN.sheetOpen()) { TN.closeSheet(); wait = 320; }
+    } else {
+      const grp = t.el.closest('.nav-group');
+      if (grp) TN.openInstant(grp.dataset.group);
+      if (t.kind === 'sheet' && !TN.sheetOpen()) { TN.openSheet(); wait = 320; }
+    }
+  }
+  return { el: t.el, wait };
+}
+
 function _renderTourStep() {
   if (!_tourActive || !_tourEls.card) return;
+  if (_tourOverlayShown()) { endTour(false); return; }
 
-  // Recompute from the live DOM every time, so a breakpoint change
-  // never leaves us pointing at an element that's now hidden.
+  // Recompute from the live DOM every time, so a breakpoint change never leaves us on a hidden element.
   const steps = _tourUsableSteps();
   if (!steps.length) { endTour(); return; }
   _tourEls.steps = steps;
@@ -1549,30 +2098,40 @@ function _renderTourStep() {
   if (_tourIndex > steps.length - 1) _tourIndex = steps.length - 1;
 
   const step = steps[_tourIndex];
-  const el   = _tourFindVisible(step.key);
-  if (!el) { endTour(); return; }
+  const rv   = _tourReveal(step);
+  if (!rv) {
+    if (_tourIndex >= steps.length - 1) { endTour(); return; }
+    _tourIndex++; _renderTourStep(); return;
+  }
+  const my = ++_tourRenderSeq;
 
-  el.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+  setTimeout(() => {
+    if (!_tourActive || my !== _tourRenderSeq || !_tourEls.card) return;
+    const el = rv.el;
+    el.scrollIntoView({ block: 'nearest', behavior: 'auto' });
 
-  const isLast = _tourIndex === steps.length - 1;
-  const pct    = Math.round(((_tourIndex + 1) / steps.length) * 100);
-  _tourEls.card.innerHTML = `
-    <div class="tour-progress-track"><div class="tour-progress-fill" style="width:${pct}%"></div></div>
-    <div class="tour-step-count">${_tourIcon('sparkle',11)} Step ${_tourIndex + 1} of ${steps.length}</div>
-    <div class="tour-title">${step.title}</div>
-    <div class="tour-desc">${step.desc}</div>
-    <div class="tour-actions">
-      <button class="tour-skip" onclick="endTour()">Skip tour</button>
-      <div class="tour-nav-btns">
-        ${_tourIndex > 0 ? `<button class="tour-btn tour-btn-secondary" onclick="_tourBack()">← Back</button>` : ''}
-        <button class="tour-btn tour-btn-primary" onclick="_tourNext()">${isLast ? `${_tourIcon('check',14)} Done` : 'Next →'}</button>
-      </div>
-    </div>`;
+    const isLast = _tourIndex === steps.length - 1;
+    const pct    = Math.round(((_tourIndex + 1) / steps.length) * 100);
+    const grpEl  = el.closest('.nav-group');
+    const grpLabel = grpEl ? grpEl.querySelector('.ng-label').textContent.trim() : '';
+    _tourEls.card.innerHTML = `
+      <div class="tour-progress-track"><div class="tour-progress-fill" style="width:${pct}%"></div></div>
+      <div class="tour-step-count">${_tourIcon('sparkle',11)} Step ${_tourIndex + 1} of ${steps.length}${grpLabel ? ' · ' + grpLabel : ''}</div>
+      <div class="tour-title">${step.title}</div>
+      <div class="tour-desc">${step.desc}</div>
+      <div class="tour-actions">
+        <button class="tour-skip" onclick="endTour()">Skip tour</button>
+        <div class="tour-nav-btns">
+          ${_tourIndex > 0 ? `<button class="tour-btn tour-btn-secondary" onclick="_tourBack()">← Back</button>` : ''}
+          <button class="tour-btn tour-btn-primary" onclick="_tourNext()">${isLast ? `${_tourIcon('check',14)} Done` : 'Next →'}</button>
+        </div>
+      </div>`;
 
-  // Position AFTER the content is in, so the card's real height is known.
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => _positionTourAt(el));
-  });
+    // Position AFTER the content is in, so the card's real height is known.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => { if (my === _tourRenderSeq) _positionTourAt(el); });
+    });
+  }, rv.wait);
 }
 
 function _positionTourAt(el) {
@@ -1592,24 +2151,31 @@ function _positionTourAt(el) {
   const gap   = 14;
   const vw    = window.innerWidth;
   const vh    = window.innerHeight;
+  const sp    = { top: rect.top - pad, bottom: rect.bottom + pad, left: rect.left - pad, right: rect.right + pad };
+  const fits  = (t, l) => t >= 12 && l >= 12 && t + cardH <= vh - 12 && l + cardW <= vw - 12;
+  const clash = (t, l) => !(t + cardH <= sp.top || t >= sp.bottom || l + cardW <= sp.left || l >= sp.right);
 
-  let top  = rect.top - cardH - gap;   // default: above the target (bottom-nav case)
-  let left = rect.left;
-
-  // If above would clip the top (desktop sidebar items), try right, then below.
-  if (top < 12) {
-    top  = rect.top;
-    left = rect.right + gap;
-    if (left + cardW > vw - 12) {
-      left = rect.left;
-      top  = rect.bottom + gap;
+  // Try: above, right, below, left — first spot that fits AND doesn't cover the highlighted item.
+  const candidates = [
+    [rect.top - cardH - gap - pad, rect.left],
+    [rect.top,                     rect.right + gap + pad],
+    [rect.bottom + gap + pad,      rect.left],
+    [rect.top,                     rect.left - cardW - gap - pad]
+  ];
+  let pick = candidates.find(([t, l]) => fits(t, l) && !clash(t, l));
+  if (!pick) {
+    // Nothing fits cleanly (very small screens): clamp, then push away from the item vertically.
+    let [t, l] = candidates[0];
+    l = Math.max(12, Math.min(l, vw - cardW - 12));
+    t = Math.max(12, Math.min(t, vh - cardH - 12));
+    if (clash(t, l)) {
+      const below = sp.bottom + gap, above = sp.top - cardH - gap;
+      t = (below + cardH <= vh - 12) ? below : Math.max(12, above);
     }
+    pick = [t, l];
   }
-
-  if (top + cardH > vh - 12) top = vh - cardH - 12;
-  if (top < 12) top = 12;
-  if (left + cardW > vw - 12) left = vw - cardW - 12;
-  if (left < 12) left = 12;
+  let [top, left] = pick;
+  left = Math.max(12, Math.min(left, vw - cardW - 12));
 
   _tourEls.card.style.top  = `${top}px`;
   _tourEls.card.style.left = `${left}px`;
@@ -1628,20 +2194,28 @@ function _tourBack() {
   _renderTourStep();
 }
 
-function endTour() {
+// markSeen=false is used only when a maintenance screen aborts the tour.
+function endTour(markSeen = true) {
   if (!_tourActive) return;
   _tourActive = false;
-  localStorage.setItem(_tourStorageKey(), 'true');
+  _tourPending = false;
+  _tourRenderSeq++;
+  if (markSeen) localStorage.setItem(_tourStorageKey(), 'true');
   document.removeEventListener('keydown', _tourKeyHandler);
   window.removeEventListener('resize', _tourReposition);
   clearTimeout(_tourResizeTimer);
+  if (_tourObserver) { _tourObserver.disconnect(); _tourObserver = null; }
   ['catcher', 'spotlight', 'card'].forEach(k => _tourEls[k]?.remove());
   _tourEls = {};
+
+  // Put the navigation back the way the person had it.
+  if (window.TenantNav) {
+    window.TenantNav.openInstant(_tourWasGroup);
+    if (_tourWasSheet) window.TenantNav.openSheet(); else window.TenantNav.closeSheet();
+  }
 }
 
-// ── THE MISSING PIECE ──────────────────────────────────
-// Nothing was ever calling maybeStartTour(), so the tour never ran.
-// Small delay lets the maintenance check and loadProfile() settle first.
+// ── Boot ── waits for load, fonts, the page loader and finished API calls before measuring.
 function _bootTour() { _arTourReady().then(() => maybeStartTour()); }
 
 if (document.readyState === 'loading') {
@@ -1662,52 +2236,81 @@ function resetTour() {
      is available. All containers are fixed-height in CSS.
 ══════════════════════════════════════════════════════ -->
 <script>
+// What each page does, in plain words. The header typer swaps to the matching lines
+// every time the page changes (see showSection in tenant.js).
+const SECTION_TYPERS = {
+  home:        ['Your total paid, balance and house at a glance.',
+                'Quick actions below take you to Pay Rent, Receipts, Notices and repairs.',
+                'Your rent status for the current period is shown on this page.'],
+  profile:     ['Your account details and your full payment history.'],
+  find:        ['Browse the buildings of your property and see which houses are available.',
+                'Pick a house and apply — your landlord reviews it and assigns the house.',
+                'If a deposit is required, your landlord records it before assigning you.'],
+  pay:         ['Pay rent with M-Pesa — enter the month and amount.',
+                'A payment prompt is sent to your registered phone.',
+                'You can pay part of a month; your balance updates as you go.'],
+  stay:        ['Your current rent period or semester, and the academic year.',
+                'If your landlord records a holiday, it shows here with the holding fee.'],
+  deposit:     ['Whether your security deposit is recorded, and how much is required.',
+                'Deposits and refunds are recorded by your landlord — not paid through M-Pesa here.'],
+  receipts:    ['Every payment you have made, with a PDF receipt to download.'],
+  messages:    ['Chat directly with your landlord.',
+                'A badge on Messages shows how many replies you have not read yet.'],
+  notices:     ['Updates your landlord posts for everyone on the property.'],
+  rules:       ['The rules and guidelines set for your property.'],
+  maintenance: ['Report a repair — choose a category and priority, then describe the problem.',
+                'Follow each request until it is resolved.'],
+  settings:    ['Change your password, and switch between the Black and White themes.',
+                'Take a Tour replays the walkthrough of this dashboard.']
+};
+// One short, page-specific tip under each page title (pages that already have their own
+// typer — Home, Pay Rent, Receipts, Messages — keep it).
+const SECTION_TIPS = {
+  find:        ['You can have one pending application at a time — withdraw it to apply elsewhere.'],
+  profile:     ['The Payment History below lists every payment recorded for you.'],
+  stay:        ['Holiday and holding-fee details appear only if your landlord records a holiday.'],
+  deposit:     ['Deposits are recorded by your landlord.'],
+  notices:     ['New announcements appear here when your landlord posts them.'],
+  rules:       ['Your landlord sets these rules for the property.'],
+  maintenance: ['Urgent? Choose High priority when you submit your request.'],
+  settings:    ['Passwords need at least 6 characters.']
+};
+window.setSectionTyper = function (name) {
+  Object.keys(SECTION_TIPS).forEach(k => { if (k !== name) { stopTyper('secTyper_' + k); const e = document.getElementById('secTyper_' + k); if (e) e.innerHTML = ''; } });
+  if (SECTION_TIPS[name]) startTyper('secTyper_' + name, SECTION_TIPS[name], { typeSpeed: 30, deleteSpeed: 14, pauseAfter: 3500, pauseBefore: 500, loop: true });
+
+  const list = SECTION_TYPERS[name] || SECTION_TYPERS.home;
+  stopTyper('headerGreeting');                                   // drop the previous page's line immediately
+  const _el = document.getElementById('headerGreeting');
+  if (_el) _el.innerHTML = '';
+  startTyper('headerGreeting', list, { typeSpeed: 30, deleteSpeed: 14, pauseAfter: 2800, pauseBefore: 300, loop: true });
+};
+
 window.addEventListener('DOMContentLoaded', () => {
 
-  /* ── TYPER 1: Header greeting ────────────────────────
-     Container: #headerGreeting (.typer-line, h=1.35em)
-  ──────────────────────────────────────────────────── */
-  startTyper('headerGreeting', [
-    '// your home, your account — all here',
-    '// M-Pesa payments in seconds',
-    '// track every payment, every month',
-    '// receipts always at your fingertips',
-    '// your landlord is just a message away',
-    '// never miss a due date again',
-    '// Affordable Rentals — built for Kenya',
-    '// pay partial or full — we track it all',
-    '// rent on time, stress-free living',
-    '// all your records in one place',
-  ], { typeSpeed: 32, deleteSpeed: 16, pauseAfter: 2800, pauseBefore: 400, loop: true });
+  /* ── Header: describes the page you are on (starts on Home) ── */
+  const _act = document.querySelector('.section.active');
+  window.setSectionTyper(_act ? _act.id.replace(/^sec-/, '') : 'home');
 
 
-  /* ── TYPER 2: Home subtitle ──────────────────────────
-     Container: #homeSubtitle (.typer-line, h=1.35em)
-  ──────────────────────────────────────────────────── */
+  /* ── Home subtitle ── */
   startTyper('homeSubtitle', [
     'Welcome back. Here\'s your rental overview.',
-    'Your dashboard is up to date.',
-    'Everything you need, right here.',
-    'Manage your rent from anywhere.',
-    'Stay on top of your payments effortlessly.',
+    'Total paid, balance and house — all in one place.',
+    'Use the quick actions below to pay, message or report an issue.',
   ], { typeSpeed: 36, deleteSpeed: 18, pauseAfter: 3200, pauseBefore: 600, loop: true });
 
 
-  /* ── TYPER 3: Pay Rent tip ───────────────────────────
-     Container: #payTip (.pay-tip-line, h=1.2em)
-  ──────────────────────────────────────────────────── */
+  /* ── Pay Rent tip ── */
   startTyper('payTip', [
-    'Tip: your registered phone receives the M-Pesa prompt instantly.',
+    'Tip: your registered phone receives the M-Pesa prompt.',
     'Tip: partial payments are tracked — pay what you can today.',
-    'Tip: your receipt is emailed right after payment confirms.',
-    'Tip: you can pay for any month — past or current.',
+    'Tip: once a payment confirms, its receipt appears under Receipts.',
     'Tip: enter your balance amount to clear this month fully.',
   ], { typeSpeed: 30, deleteSpeed: 14, pauseAfter: 3500, pauseBefore: 800, loop: true });
 
 
-  /* ── TYPER 4: Receipts tip ───────────────────────────
-     Container: #receiptsTip (.receipts-tip-line, h=1.15em)
-  ──────────────────────────────────────────────────── */
+  /* ── Receipts tip ── */
   startTyper('receiptsTip', [
     'Every payment generates a downloadable PDF receipt.',
     'Download any receipt as PDF for your records.',
@@ -1715,14 +2318,11 @@ window.addEventListener('DOMContentLoaded', () => {
   ], { typeSpeed: 34, deleteSpeed: 16, pauseAfter: 4000, pauseBefore: 600, loop: true });
 
 
-  /* ── TYPER 5: Messages empty state ──────────────────
-     Container: #messagesEmptyText (inside .empty-state)
-  ──────────────────────────────────────────────────── */
+  /* ── Messages empty state ── */
   startTyper('messagesEmptyText', [
     'Send a message to your landlord — they\'ll respond shortly.',
-    'Have a maintenance request? Send it here directly.',
     'Questions about your rent? Message your landlord now.',
-    'Your messages are private between you and your landlord.',
+    'For repairs, use the Maintenance page so they can be tracked.',
   ], { typeSpeed: 34, deleteSpeed: 16, pauseAfter: 3800, pauseBefore: 600, loop: true });
 
 });

@@ -1,7 +1,7 @@
 // Bump this on every deploy where cached files changed, so old caches get evicted.
 // AFTER:
 // Bump this on every deploy where cached files changed, so old caches get evicted.
-const CACHE_NAME = "affordable-rentals-v3";
+const CACHE_NAME = "affordable-rentals-v5";
 
 const FILES_TO_CACHE = [
   "index.html",

@@ -1,15 +1,15 @@
-// models/HouseGroup.js
+// models/HouseGroup.js  — REPLACES the existing file.
 //
-// NEW FILE — add this alongside your other models (models/House.js etc).
-// A "group" represents one naming batch (one row in Simple/Advanced
-// generate mode — e.g. "Block A" or "Ground Floor"). Houses reference
-// their group so we can:
-//   1. Know the next number to continue from when extending a group
-//      (e.g. landlord adds A24, A25 to an existing A1..A23 block)
-//   2. Sort the house grid by group, then by position within the group
-//   3. Give each group a consistent color in the UI
+// A HouseGroup is one "naming batch" of houses, and it now also plays the part of a BUILDING:
+// each group is one building card in the landlord and tenant dashboards. Every group that already
+// exists simply becomes a building — no house or group data has to be rewritten.
+// (The Per-Floor generator still creates one group per floor, e.g. "Sunrise Tower -- Floor 1";
+//  those show up as separate building cards and can be renamed.)
 
 const mongoose = require('mongoose');
+
+// Icons a landlord may pick for a building (names exist in the frontend icons.js).
+const BUILDING_ICONS = ['properties', 'houses', 'home', 'layers', 'wall', 'box'];
 
 const houseGroupSchema = new mongoose.Schema({
     landlord:   { type: mongoose.Schema.Types.ObjectId, ref: 'User',     required: true },
@@ -19,10 +19,18 @@ const houseGroupSchema = new mongoose.Schema({
         trim:      true,
         required:  [true, 'A group label is required'],
         minlength: [1, 'A group label is required']
-    },  // e.g. "Ground Floor", "Block A" — shown in UI
-    prefix:     { type: String, default: '' },    // e.g. "A", "1"
+    },  // e.g. "Flat 1", "Block A" — shown as the building name
+    prefix:     { type: String, default: '' },    // naming hint, e.g. "A", "1" — optional
     padWidth:   { type: Number, default: 0 },     // zero-padding width used for this group's numbers
-    colorIndex: { type: Number, default: 0 }      // cycles through the frontend's color palette
+    colorIndex: { type: Number, default: 0 },     // cycles through the frontend's color palette
+
+    // ── NEW ──
+    icon:        { type: String, enum: BUILDING_ICONS, default: 'properties' },
+    description: { type: String, trim: true, maxlength: 200, default: '' }
 }, { timestamps: true });
 
+houseGroupSchema.index({ property: 1, createdAt: 1 });
+houseGroupSchema.index({ landlord: 1, property: 1 });
+
 module.exports = mongoose.model('HouseGroup', houseGroupSchema);
+module.exports.BUILDING_ICONS = BUILDING_ICONS;
